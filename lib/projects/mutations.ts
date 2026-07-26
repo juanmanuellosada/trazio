@@ -13,6 +13,14 @@ function snapshot(queryClient: QueryClient) {
 }
 
 /**
+ * `mutationKey` común a todas las mutaciones de este módulo (bloque 10.3,
+ * regla D3): `lib/realtime/handlers.ts` lo usa con `queryClient.isMutating`
+ * para saber si hay alguna en vuelo antes de invalidar por un evento de
+ * Realtime sobre `projects`.
+ */
+export const PROJECTS_MUTATION_KEY = ["projects"] as const;
+
+/**
  * Crea un proyecto (bloque 6.2). No es optimista: el `id` lo asigna el
  * servidor y hace falta antes de poder navegar o editar el proyecto nuevo.
  */
@@ -21,6 +29,7 @@ export function useCreateProject() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: async (input: ProjectFormOutput & { parentId: string | null }) => {
       const {
         data: { session },
@@ -68,6 +77,7 @@ export function useUpdateProject() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: async ({ id, patch }: { id: string; patch: ProjectPatch }) => {
       const { error } = await supabase.from("projects").update(patch).eq("id", id);
       if (error) throw error;
@@ -100,6 +110,7 @@ export function useMoveProject() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: async ({
       id,
       parentId,
@@ -150,6 +161,7 @@ export function useDeleteProject() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("projects").delete().eq("id", id);
       if (error) throw error;

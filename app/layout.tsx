@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -14,6 +14,20 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Trazio",
   description: "Gestor de tareas personal",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Trazio",
+  },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
+};
+
+// `theme_color` fuera de `metadata` (API separada desde Next 14): mismo azul
+// de marca que declara `app/manifest.ts`.
+export const viewport: Viewport = {
+  themeColor: "#283B56",
 };
 
 export default function RootLayout({

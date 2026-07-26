@@ -43,6 +43,14 @@ import { tasksQueryKey, type LabelChip, type TaskRow } from "./use-tasks";
 const HOY_QUERY_KEY = ["tasks", "hoy"] as const;
 const COMPLETADO_QUERY_KEY = ["tasks", "completado"] as const;
 
+/**
+ * `mutationKey` común a todas las mutaciones de este módulo (bloque 10.3,
+ * regla D3): `lib/realtime/handlers.ts` lo usa con `queryClient.isMutating`
+ * para saber si hay alguna en vuelo antes de invalidar por un evento de
+ * Realtime sobre `tasks`.
+ */
+export const TASKS_MUTATION_KEY = ["tasks"] as const;
+
 function listSnapshot(queryClient: QueryClient, projectId: string) {
   return queryClient.getQueryData<TaskRow[]>(tasksQueryKey(projectId));
 }
@@ -69,6 +77,7 @@ export function useCreateTask() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({
       projectId,
       sectionId,
@@ -145,6 +154,7 @@ export function useUpdateTask() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ id, patch }: { id: string; projectId: string; patch: TaskPatch }) => {
       const { error } = await supabase.from("tasks").update(patch).eq("id", id);
       if (error) throw error;
@@ -217,6 +227,7 @@ export function useMoveTask() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ id, fromProjectId, toProjectId, sectionId, parentId, position }: MoveTaskVariables) => {
       const { error } = await supabase
         .from("tasks")
@@ -319,6 +330,7 @@ export function useDuplicateTask() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ task }: { task: TaskRow }) => {
       const list = listSnapshot(queryClient, task.project_id) ?? [];
       const position = positionAfterOriginal(list, task);
@@ -345,6 +357,7 @@ export function useDeleteTask() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ id }: { id: string; projectId: string }) => {
       const snapshot = await snapshotTaskSubtree(supabase, id);
       const { error } = await supabase.from("tasks").delete().eq("id", id);
@@ -398,6 +411,7 @@ export function useReplaceTaskLabels() {
   const supabase = createClient();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ taskId, labels }: { taskId: string; projectId: string; labels: LabelChip[] }) => {
       const {
         data: { session },

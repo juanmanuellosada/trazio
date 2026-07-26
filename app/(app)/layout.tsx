@@ -9,6 +9,9 @@ import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeSync } from "@/components/providers/theme-sync";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { RealtimeProvider } from "@/components/providers/realtime-provider";
+import { OfflineBanner } from "@/components/providers/offline-banner";
+import { OfflineBoundary } from "@/components/providers/offline-boundary";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
@@ -43,28 +46,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <QueryProvider>
       <ThemeSync serverTheme={theme} />
       <PreferencesProvider preferences={preferences}>
-        <TaskDetailProvider>
-          <div className="flex min-h-dvh">
-            <AppSidebar
-              fullName={fullName}
-              email={user.email}
-              todayCount={todayCount}
-              projects={projects}
-              initialProjects={initialProjects}
-            />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <MobileNav
-                fullName={fullName}
-                email={user.email}
-                todayCount={todayCount}
-                projects={projects}
-                initialProjects={initialProjects}
-              />
-              <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
-            </div>
-          </div>
-          <TaskDetailPanel />
-        </TaskDetailProvider>
+        <RealtimeProvider userId={user.id}>
+          <TaskDetailProvider>
+            <OfflineBanner />
+            <OfflineBoundary>
+              <div className="flex min-h-dvh">
+                <AppSidebar
+                  fullName={fullName}
+                  email={user.email}
+                  todayCount={todayCount}
+                  projects={projects}
+                  initialProjects={initialProjects}
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <MobileNav
+                    fullName={fullName}
+                    email={user.email}
+                    todayCount={todayCount}
+                    projects={projects}
+                    initialProjects={initialProjects}
+                  />
+                  <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                </div>
+              </div>
+              <TaskDetailPanel />
+            </OfflineBoundary>
+          </TaskDetailProvider>
+        </RealtimeProvider>
       </PreferencesProvider>
     </QueryProvider>
   );

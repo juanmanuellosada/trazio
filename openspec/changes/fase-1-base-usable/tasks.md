@@ -150,13 +150,13 @@ Los tests van con el primer commit del parser, escritos antes de la lógica. Los
 
 ## 10. Realtime, optimistic updates y estado sin conexión
 
-- [ ] 10.1 Suscripción de Realtime por tabla filtrada por `user_id` sobre `tasks`, `projects` y `sections`
-- [ ] 10.2 Manejador que invalida la query correspondiente, sin mutar el caché a mano
-- [ ] 10.3 Implementar la regla D3: si hay mutaciones en vuelo sobre las claves afectadas, no invalidar y dejar que lo haga el `onSettled` de la mutación
-- [ ] 10.4 Test que dispara un evento de Realtime con una mutación en vuelo y verifica que la interfaz no parpadea
-- [ ] 10.5 Detección de estado sin conexión con las tres señales de D4, sin healthcheck periódico
-- [ ] 10.6 Cartel persistente, campos de escritura deshabilitados y botones inertes en estado offline
-- [ ] 10.7 Verificar que un cambio hecho en una pestaña aparece en otra en menos de dos segundos
+- [x] 10.1 Suscripción de Realtime por tabla filtrada por `user_id` sobre `tasks`, `projects` y `sections`
+- [x] 10.2 Manejador que invalida la query correspondiente, sin mutar el caché a mano
+- [x] 10.3 Implementar la regla D3: si hay mutaciones en vuelo sobre las claves afectadas, no invalidar y dejar que lo haga el `onSettled` de la mutación
+- [x] 10.4 Test que dispara un evento de Realtime con una mutación en vuelo y verifica que la interfaz no parpadea
+- [x] 10.5 Detección de estado sin conexión con las tres señales de D4, sin healthcheck periódico
+- [x] 10.6 Cartel persistente, campos de escritura deshabilitados y botones inertes en estado offline
+- [x] 10.7 Verificar que un cambio hecho en una pestaña aparece en otra en menos de dos segundos
 
 ## 11. Configuración
 
@@ -188,9 +188,9 @@ Va al final a propósito: necesita capturas del producto real.
 
 ## 13. PWA
 
-- [ ] 13.1 Manifest con `display: standalone`, íconos y color de tema
-- [ ] 13.2 Service worker mínimo, sin manejador de `fetch` y sin caché, con un comentario que explica por qué existe y que en fase 2 suma push
-- [ ] 13.3 Verificar la instalación desde el navegador y la apertura a pantalla completa
+- [x] 13.1 Manifest con `display: standalone`, íconos y color de tema
+- [x] 13.2 Service worker mínimo, sin manejador de `fetch` y sin caché, con un comentario que explica por qué existe y que en fase 2 suma push
+- [x] 13.3 Verificar la instalación desde el navegador y la apertura a pantalla completa
 
 ## 14. Verificación de los criterios de aceptación
 

@@ -12,6 +12,14 @@ function snapshot(queryClient: ReturnType<typeof useQueryClient>, projectId: str
   return queryClient.getQueryData<SectionRow[]>(sectionsQueryKey(projectId));
 }
 
+/**
+ * `mutationKey` común a todas las mutaciones de este módulo (bloque 10.3,
+ * regla D3): `lib/realtime/handlers.ts` lo usa con `queryClient.isMutating`
+ * para saber si hay alguna en vuelo antes de invalidar por un evento de
+ * Realtime sobre `sections`.
+ */
+export const SECTIONS_MUTATION_KEY = ["sections"] as const;
+
 /** Crea una sección al final del proyecto (bloque 6.8). */
 export function useCreateSection(projectId: string) {
   const queryClient = useQueryClient();
@@ -19,6 +27,7 @@ export function useCreateSection(projectId: string) {
   const key = sectionsQueryKey(projectId);
 
   return useMutation({
+    mutationKey: SECTIONS_MUTATION_KEY,
     mutationFn: async (input: SectionFormInput) => {
       const {
         data: { session },
@@ -53,6 +62,7 @@ export function useUpdateSection(projectId: string) {
   const key = sectionsQueryKey(projectId);
 
   return useMutation({
+    mutationKey: SECTIONS_MUTATION_KEY,
     mutationFn: async ({ id, patch }: { id: string; patch: SectionPatch }) => {
       const { error } = await supabase.from("sections").update(patch).eq("id", id);
       if (error) throw error;
@@ -80,6 +90,7 @@ export function useMoveSection(projectId: string) {
   const key = sectionsQueryKey(projectId);
 
   return useMutation({
+    mutationKey: SECTIONS_MUTATION_KEY,
     mutationFn: async ({ id, position }: { id: string; position: number }) => {
       const { error } = await supabase.from("sections").update({ position }).eq("id", id);
       if (error) throw error;
@@ -118,6 +129,7 @@ export function useDeleteSection(projectId: string) {
   const key = sectionsQueryKey(projectId);
 
   return useMutation({
+    mutationKey: SECTIONS_MUTATION_KEY,
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("sections").delete().eq("id", id);
       if (error) throw error;
