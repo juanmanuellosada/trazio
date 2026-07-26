@@ -47,6 +47,8 @@ El detalle completo del producto está en `docs/product-spec.md`.
 - **date-fns** + **date-fns-tz** — fechas y zonas horarias.
 - **rrule** — recurrencia según RFC 5545.
 - **Vitest** — tests unitarios.
+- **Testing Library** (`@testing-library/react`, `@testing-library/jest-dom`,
+  `@testing-library/user-event`) — tests de componente, con `jsdom` como entorno.
 - **Playwright** — tests end-to-end.
 
 No agregar librerías fuera de esta lista sin decisión explícita. Si hace falta

@@ -55,9 +55,9 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 - [x] 4.2 Middleware que protege `app/(app)/**` y redirige a login conservando el destino
 - [x] 4.3 Esquemas de Zod de registro y login en `lib/validation/`, con la contraseña de 8 caracteres o más, compartidos entre cliente y servidor
 - [ ] 4.4 Configurar el mínimo de 8 caracteres también en Supabase Auth
-- [ ] 4.5 Pantalla de registro con nombre, correo y contraseña, usando React Hook Form + Zod
-- [ ] 4.6 Pantalla de inicio de sesión
-- [ ] 4.7 Registro e inicio de sesión con Google OAuth, con el callback y el redirect configurados
+- [x] 4.5 Pantalla de registro con nombre, correo y contraseña, usando React Hook Form + Zod
+- [x] 4.6 Pantalla de inicio de sesión
+- [x] 4.7 Registro e inicio de sesión con Google OAuth, con el callback y el redirect configurados
 - [x] 4.8 Registrar `trazio.com.ar` en NIC Argentina (insumo del dueño del proyecto, no lo hace la implementación)
 - [x] 4.9 Apuntar el dominio a Vercel y configurarlo como dominio de producción del proyecto
 - [x] 4.10 Crear la cuenta de Resend y verificar el subdominio de envío `envios.trazio.com.ar` con sus registros SPF, DKIM, MX de return-path y DMARC
@@ -65,10 +65,10 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 - [ ] 4.12 Cargar `NEXT_PUBLIC_SITE_URL` por entorno en Vercel: el dominio propio en Production, y en Preview derivada de `VERCEL_URL`. Si se fija al dominio de producción, el login con Google y el link de reset se rompen en cada preview, que es justo donde se prueba
 - [ ] 4.13 Configurar las URLs de redirección en Supabase Auth: la Site URL en el dominio propio, y en Redirect URLs el dominio, el `www`, `localhost` y el comodín de los previews de Vercel. Sin el comodín, el login con Google y el link de reset fallan en cada rama nueva
 - [ ] 4.14 Integrar Resend y configurar las plantillas de confirmación de correo y de reset de contraseña
-- [ ] 4.15 Flujo de recuperación: pantalla para pedir el correo, envío del link, página de reset real que valida el token, cambio de contraseña y sesión iniciada
-- [ ] 4.16 Cerrar sesión limpiando todo lo local
-- [ ] 4.17 Mensajes de error de auth en tres partes (qué pasó, por qué, qué hacer), sin códigos técnicos y sin usar rojo de marca para el error
-- [ ] 4.18 Verificar que al primer login existen el perfil, las preferencias y la Bandeja de entrada
+- [x] 4.15 Flujo de recuperación: pantalla para pedir el correo, envío del link, página de reset real que valida el token, cambio de contraseña y sesión iniciada
+- [x] 4.16 Cerrar sesión limpiando todo lo local
+- [x] 4.17 Mensajes de error de auth en tres partes (qué pasó, por qué, qué hacer), sin códigos técnicos y sin usar rojo de marca para el error
+- [x] 4.18 Verificar que al primer login existen el perfil, las preferencias y la Bandeja de entrada
 
 ## 5. Layout de la app
 

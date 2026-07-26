@@ -1,23 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-path";
 import { getSiteUrl } from "@/lib/site-url";
 
 /**
- * Evita el open redirect: solo se acepta un destino interno (`/algo`), nunca
- * una URL absoluta ni un `//` que el navegador interprete como protocolo
- * relativo.
+ * Ruta compartida por dos flujos que Supabase resuelve igual, con un
+ * `code` de PKCE para intercambiar por sesión: el login con Google (tarea
+ * 4.7) y el enlace de recuperación de contraseña (tarea 4.15), que llega
+ * acá con `next=/restablecer-contrasena` en vez de un parámetro de token
+ * que se lea directamente.
  */
-function safeNextPath(value: string | null): string {
-  if (value && value.startsWith("/") && !value.startsWith("//")) {
-    return value;
-  }
-  return "/bandeja";
-}
+const RESET_PASSWORD_PATH = "/restablecer-contrasena";
 
 /**
- * Intercambia el código de OAuth por una sesión y redirige. La URL de
- * redirect se resuelve en tiempo de ejecución con `getSiteUrl()` para que
- * funcione igual en producción y en cada preview de Vercel.
+ * Intercambia el código de OAuth o de recuperación por una sesión y
+ * redirige. La URL de redirect se resuelve en tiempo de ejecución con
+ * `getSiteUrl()` para que funcione igual en producción y en cada preview
+ * de Vercel.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,6 +29,13 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       return NextResponse.redirect(`${siteUrl}${next}`);
+    }
+
+    // El código de recuperación venció o ya se usó: se vuelve a la pantalla
+    // de reset con su propio error, no con el de Google, porque nadie
+    // intentó entrar con OAuth acá.
+    if (next.startsWith(RESET_PASSWORD_PATH)) {
+      return NextResponse.redirect(`${siteUrl}${RESET_PASSWORD_PATH}?error=token`);
     }
   }
 

@@ -346,3 +346,25 @@ envío** (`envios.trazio.com.ar`) y no desde el dominio raíz, para que un probl
 de reputación quede contenido y no arrastre al dominio principal. El dominio es
 además el de la landing, el de la app y el que validan los redirects de Google
 OAuth.
+
+---
+
+## D23 — Testing Library para tests de componente
+
+**Fecha.** 2026-07-26
+
+**Contexto.** Las pantallas de autenticación (tarea 4.5 en adelante) exigen tests
+de componente sobre los formularios: validación que falla y que pasa, estado de
+carga, error mostrado. `AGENTS.md` no tenía ninguna librería para eso —
+Vitest solo cubría tests de lógica pura, y `@testing-library/react` no estaba en
+la lista cerrada.
+
+**Decisión.** Se agregan `@testing-library/react`, `@testing-library/jest-dom` y
+`@testing-library/user-event` como devDependencies, más `jsdom` como entorno de
+DOM para Vitest. Se activan por archivo con el pragma `// @vitest-environment
+jsdom`, no de forma global, para no pagar el costo de jsdom en el resto de la
+suite (que sigue en `"node"`).
+
+**Consecuencia.** `vitest.config.ts` suma `setupFiles: ["./vitest.setup.ts"]`,
+que carga los matchers de `jest-dom`. Se agrega a la lista de librerías
+decididas de `AGENTS.md`.
