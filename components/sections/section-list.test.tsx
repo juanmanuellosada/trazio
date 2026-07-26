@@ -4,8 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { SectionList } from "./section-list";
 import type { SectionRow } from "@/lib/sections/use-sections";
+
+const TEST_PREFERENCES = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd/MM/yyyy" as const,
+  timeFormat: 24 as const,
+  weekStartsOn: 1 as const,
+};
 
 vi.mock("@/lib/supabase/client", () => {
   const single = vi.fn();
@@ -56,7 +64,9 @@ function renderList(initialSections: SectionRow[] = sections) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <SectionList projectId="p1" initialSections={initialSections} />
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <SectionList projectId="p1" initialSections={initialSections} />
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }

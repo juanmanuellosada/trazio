@@ -122,31 +122,31 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 
 Los tests van con el primer commit del parser, escritos antes de la lógica. Los casos críticos primero.
 
-- [ ] 9.1 Escribir `lib/parser/casos.ts` reflejando 1 a 1 la tabla del contrato, más el test que afirma que la cantidad de casos coincide con el markdown
-- [ ] 9.2 Escribir `lib/parser/parser.test.ts` recorriendo los casos, con el reloj congelado y corriendo en `America/Argentina/Buenos_Aires` y `Pacific/Kiritimati`
-- [ ] 9.3 Definir la firma pura `parse(texto, { ahora, zonaHoraria, semanaEmpiezaEn, proyectos, etiquetas })` sin lectura de reloj ni de `Intl` del sistema
-- [ ] 9.4 Implementar los casos críticos 44 a 52 primero, incluido el par mínimo "de la mañana" contra "de mañana"
-- [ ] 9.5 Implementar el caso 53 completo, que es el de la demo de la landing
-- [ ] 9.6 Reconocedor de fechas relativas (casos 1 a 11)
-- [ ] 9.7 Reconocedor de fechas puntuales con R1 día primero, R2 próxima ocurrencia y año de dos dígitos como 20YY (casos 12 a 18)
-- [ ] 9.8 Reconocedor de día de la semana suelto, aplicando R4 (casos 19 a 21)
-- [ ] 9.9 Reconocedor de horas con R3, sin rollover cuando la hora ya pasó (casos 22 a 27)
-- [ ] 9.10 Reconocedor de duraciones (casos 28 a 30)
-- [ ] 9.11 Reconocedor de repetición que emite RRULE sin fecha ancla (casos 31 a 37)
-- [ ] 9.12 Caso mixto de repetición con hora ("Gimnasio cada lunes a las 8"): fija `due_at` en la próxima ocurrencia además de la `RRULE`, porque de lo contrario la hora reconocida se descartaría en silencio
-- [ ] 9.13 Reconocedor de símbolos `p1` a `p4`, `#` y `@`, con la tokenización de E7 y la comparación sin acentos ni mayúsculas (casos 38 a 43)
-- [ ] 9.14 Comparación sin acentos ni mayúsculas para entradas de fecha (por ejemplo "MIERCOLES" o "miercoles") y verificación de que un texto parcial sin coincidencias deja el título intacto sin atributos
-- [ ] 9.15 "Próxima semana" calculada a partir de `semanaEmpiezaEn` y no de un lunes fijo, con test que verifica el resultado para distintos valores de `week_starts_on`
-- [ ] 9.16 Asimetría al caer la fecha hoy: un día de la semana suelto como "lunes" dicho un lunes resuelve a hoy más 7 días, mientras que "este fin de semana" dicho un sábado o domingo resuelve a hoy
-- [ ] 9.17 Fase de resolución que aplica R4 y R5 con "primera en el texto", y recién después remueve los rangos ganadores del título
-- [ ] 9.18 Implementar R8: consumo de preposiciones y artículos solo cuando son parte léxica de la locución, con normalización de espacios y sin tocar los artículos huérfanos
-- [ ] 9.19 Borde que garantiza que el parser nunca tira una excepción: ante cualquier entrada, texto entero como título sin atributos
-- [ ] 9.20 Alta rápida: campo con resaltado en vivo, debounce de 120 ms, doble clic que desactiva un match y descarta su atributo, y remoción del token al confirmar
-- [ ] 9.21 Creación implícita de una etiqueta desde el alta rápida cuando el `#` no coincide, sin acentos ni mayúsculas, con ninguna etiqueta existente
-- [ ] 9.22 Verificar que un candidato descartado por R4 no queda resaltado (E9)
-- [ ] 9.23 Tests de componente del alta rápida que cubren R7, que es de interfaz y no tiene caso en la tabla
-- [ ] 9.24 Destino por defecto del alta rápida cuando no se usa `@`, según el proyecto por defecto de las preferencias
-- [ ] 9.25 Verificar que la suite completa pasa en las dos zonas horarias
+- [x] 9.1 Escribir `lib/parser/casos.ts` reflejando 1 a 1 la tabla del contrato, más el test que afirma que la cantidad de casos coincide con el markdown
+- [x] 9.2 Escribir `lib/parser/parser.test.ts` recorriendo los casos, con el reloj congelado y corriendo en `America/Argentina/Buenos_Aires` y `Pacific/Kiritimati`
+- [x] 9.3 Definir la firma pura `parse(texto, { ahora, zonaHoraria, semanaEmpiezaEn, proyectos, etiquetas })` sin lectura de reloj ni de `Intl` del sistema
+- [x] 9.4 Implementar los casos críticos 44 a 52 primero, incluido el par mínimo "de la mañana" contra "de mañana"
+- [x] 9.5 Implementar el caso 53 completo, que es el de la demo de la landing
+- [x] 9.6 Reconocedor de fechas relativas (casos 1 a 11)
+- [x] 9.7 Reconocedor de fechas puntuales con R1 día primero, R2 próxima ocurrencia y año de dos dígitos como 20YY (casos 12 a 18)
+- [x] 9.8 Reconocedor de día de la semana suelto, aplicando R4 (casos 19 a 21)
+- [x] 9.9 Reconocedor de horas con R3, sin rollover cuando la hora ya pasó (casos 22 a 27)
+- [x] 9.10 Reconocedor de duraciones (casos 28 a 30)
+- [x] 9.11 Reconocedor de repetición que emite RRULE sin fecha ancla (casos 31 a 37)
+- [x] 9.12 Caso mixto de repetición con hora ("Gimnasio cada lunes a las 8"): fija `due_at` en la próxima ocurrencia además de la `RRULE`, porque de lo contrario la hora reconocida se descartaría en silencio
+- [x] 9.13 Reconocedor de símbolos `p1` a `p4`, `#` y `@`, con la tokenización de E7 y la comparación sin acentos ni mayúsculas (casos 38 a 43)
+- [x] 9.14 Comparación sin acentos ni mayúsculas para entradas de fecha (por ejemplo "MIERCOLES" o "miercoles") y verificación de que un texto parcial sin coincidencias deja el título intacto sin atributos
+- [x] 9.15 "Próxima semana" calculada a partir de `semanaEmpiezaEn` y no de un lunes fijo, con test que verifica el resultado para distintos valores de `week_starts_on`
+- [x] 9.16 Asimetría al caer la fecha hoy: un día de la semana suelto como "lunes" dicho un lunes resuelve a hoy más 7 días, mientras que "este fin de semana" dicho un sábado o domingo resuelve a hoy
+- [x] 9.17 Fase de resolución que aplica R4 y R5 con "primera en el texto", y recién después remueve los rangos ganadores del título
+- [x] 9.18 Implementar R8: consumo de preposiciones y artículos solo cuando son parte léxica de la locución, con normalización de espacios y sin tocar los artículos huérfanos
+- [x] 9.19 Borde que garantiza que el parser nunca tira una excepción: ante cualquier entrada, texto entero como título sin atributos
+- [x] 9.20 Alta rápida: campo con resaltado en vivo, debounce de 120 ms, doble clic que desactiva un match y descarta su atributo, y remoción del token al confirmar
+- [x] 9.21 Creación implícita de una etiqueta desde el alta rápida cuando el `#` no coincide, sin acentos ni mayúsculas, con ninguna etiqueta existente
+- [x] 9.22 Verificar que un candidato descartado por R4 no queda resaltado (E9)
+- [x] 9.23 Tests de componente del alta rápida que cubren R7, que es de interfaz y no tiene caso en la tabla
+- [x] 9.24 Destino por defecto del alta rápida cuando no se usa `@`, según el proyecto por defecto de las preferencias (ver nota de interpretación en el reporte de esta tarea: usa el proyecto ambiente del campo, no `user_preferences.default_project_id` directamente — hoy son equivalentes en todas las superficies existentes)
+- [x] 9.25 Verificar que la suite completa pasa en las dos zonas horarias
 
 ## 10. Realtime, optimistic updates y estado sin conexión
 

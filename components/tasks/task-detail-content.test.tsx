@@ -4,10 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { TaskDetailContent } from "./task-detail-content";
 import type { TaskDetail } from "@/lib/tasks/use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+
+const TEST_PREFERENCES = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd/MM/yyyy" as const,
+  timeFormat: 24 as const,
+  weekStartsOn: 1 as const,
+};
 
 /**
  * Mock de `createClient()` para el formulario de detalle (bloque 7.2/7.10):
@@ -92,7 +100,9 @@ function renderDetail(task: TaskDetail = baseTask) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <TaskDetailContent taskId={task.id} initialData={task} />
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <TaskDetailContent taskId={task.id} initialData={task} />
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }
