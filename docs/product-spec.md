@@ -327,6 +327,11 @@ Al escribir el título de una tarea, ciertas palabras se reconocen y se conviert
 en atributos. Lo reconocido queda **resaltado en el texto**, se puede desactivar con
 doble clic si no era la intención, y al confirmar se quita del título.
 
+El contrato canónico del parser vive en `docs/parser-test-cases.md`: 56 casos con
+su salida exacta y las reglas de desambiguación. Si el parser no pasa un caso de
+esa tabla, el error está en el parser, no en el caso. Acá se describen las
+categorías que reconoce; ahí están los ejemplos concretos.
+
 **Fechas relativas:** hoy, mañana, pasado mañana, ayer, este fin de semana, próxima
 semana, próximo lunes, en 3 días / semanas / meses / años.
 
@@ -346,9 +351,13 @@ lunes, cada día laborable.
 **Símbolos:** `p1` a `p4` asignan prioridad; `#` elige o crea una etiqueta; `@`
 elige proyecto o sección.
 
-> **Regla crítica:** "la mañana" y "esta mañana" **no** se interpretan como
-> "mañana" (el día siguiente). Es el error clásico de los parsers en español y hay
-> que cubrirlo con tests desde el primer día.
+> **Regla crítica:** "la mañana", "a la mañana" y "de la mañana" son un momento
+> del día y no producen ningún atributo — quedan como texto del título. "Esta
+> mañana" sí produce fecha: `due_date = hoy`, sin hora. Y "de mañana", sin
+> artículo, es el día siguiente. El par mínimo es "de la mañana" contra "de
+> mañana": la única diferencia léxica es el artículo, y cambia todo el resultado.
+> Es el error clásico de los parsers en español y va cubierto con tests desde el
+> primer día.
 
 ---
 

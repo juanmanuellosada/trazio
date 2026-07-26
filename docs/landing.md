@@ -120,14 +120,15 @@ Para la fase 1:
 - Proyectos y secciones — tu estructura, no la nuestra
 - Prioridades y fechas — lo importante primero
 - Subtareas — dividí lo grande
-- Atajos de teclado — sin soltar las manos
+- Sincronización al instante — abrís en la compu y en el teléfono, siempre igual
 
 Cada bloque acompañado de una captura chica y real de esa parte de la interfaz.
 
 ### 5. Lo que viene
 
 Sección honesta y breve: hábitos con rachas, filtros guardados, recordatorios,
-Google Calendar. Presentado como hoja de ruta, no como si ya existiera.
+Google Calendar y atajos de teclado. Presentado como hoja de ruta, no como si ya
+existiera.
 
 Esto genera confianza en vez de romperla, y le da al visitante una razón para
 volver.

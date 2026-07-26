@@ -163,3 +163,160 @@ lo usa.
 
 **Consecuencia.** Si aparece una necesidad real de estado global compartido, se
 discute antes de instalar nada.
+
+---
+
+## D13 — React Hook Form
+
+**Fecha.** 2026-07-25
+
+**Contexto.** `.claude/rules/frontend.md` ya mandaba usar React Hook Form con Zod
+para formularios, pero la librería no estaba en la lista cerrada de `AGENTS.md` ni
+registrada acá, y `AGENTS.md` prohíbe agregar librerías fuera de esa lista sin
+decisión explícita.
+
+**Decisión.** Se adopta React Hook Form junto con Zod.
+
+**Consecuencia.** El esquema de validación se define una sola vez en
+`lib/validation/` y se importa de los dos lados, cliente y servidor; se agrega a la
+lista de librerías decididas de `AGENTS.md`.
+
+---
+
+## D14 — Las etiquetas se adelantan a la fase 1, con alcance acotado
+
+**Fecha.** 2026-07-25
+
+**Contexto.** Los casos 40, 43 y 53 del contrato del parser emiten etiquetas, y que
+el parser pase el contrato es criterio de aceptación de la fase 1; pero `labels` y
+`task_labels` estaban planificadas para la fase 2. Sin esas tablas, el usuario
+escribe `#compras` y la etiqueta desaparece sin explicación.
+
+**Decisión.** Se crean `labels` y `task_labels` en la fase 1, con RLS. Entra: crear
+una etiqueta por `#` desde el alta rápida si no existe una que coincida, asignarla,
+mostrar el chip, y agregar o quitar etiquetas desde el detalle de la tarea
+reemplazando el conjunto completo. No entra: la página de administración de
+etiquetas, la página propia por etiqueta, las favoritas y el acceso "Etiquetas" del
+panel lateral.
+
+**Consecuencia.** La fase 1 pasa de cinco tablas a siete.
+
+---
+
+## D15 — "próxima semana" respeta la preferencia del usuario
+
+**Fecha.** 2026-07-25
+
+**Contexto.** El caso 6 del contrato fijaba "próxima semana" en el lunes siguiente,
+pero `user_preferences.week_starts_on` admite domingo y sábado.
+
+**Decisión.** Resuelve al primer día de la semana siguiente según `week_starts_on`.
+
+**Consecuencia.** El caso 6 del contrato pasa a documentar que asume el valor por
+defecto (lunes); a quien configuró que su semana empieza el domingo, el parser deja
+de contestarle otra cosa.
+
+---
+
+## D16 — Asimetría cuando la fecha relativa cae en el día de hoy
+
+**Fecha.** 2026-07-25
+
+**Contexto.** Nada definía qué pasa con "lunes" escrito un lunes, ni con "este fin
+de semana" escrito un sábado.
+
+**Decisión.** El día de la semana suelto o precedido de "próximo" resuelve siempre
+a la próxima ocurrencia y nunca a hoy —un lunes, "lunes" es hoy+7—; pero "este fin
+de semana" escrito un sábado o un domingo resuelve a hoy.
+
+**Consecuencia.** La asimetría es deliberada, no un descuido: quien quiere hoy
+escribe "hoy", pero "este fin de semana" en pleno fin de semana significa
+literalmente el que está transcurriendo.
+
+---
+
+## D17 — El contrato del parser pasa de 53 a 56 casos
+
+**Fecha.** 2026-07-25
+
+**Contexto.** Al implementar aparecieron tres agujeros de cobertura.
+
+**Decisión.** Se agregan `Gimnasio cada lunes a las 8` (repetición con hora, el
+caso mixto más común y que no estaba), entradas sin acentos o en mayúsculas, y
+texto parcial.
+
+**Consecuencia.** La regla del ancla de recurrencia se precisa —la recurrencia sola
+no fija fecha, pero la recurrencia acompañada de una hora sí fija `due_at` en la
+próxima ocurrencia, porque de lo contrario un token ya reconocido se descartaría en
+silencio—; y el número de casos hay que mantenerlo sincronizado en
+`docs/roadmap.md`, `docs/product-spec.md` §6 y el propio contrato.
+
+---
+
+## D18 — Versiones del stack
+
+**Fecha.** 2026-07-25
+
+**Contexto.** Ningún documento fijaba versión de nada.
+
+**Decisión.** Node 24 LTS, Next.js 16 con App Router, React 19, TypeScript 5.9+
+con `strict`, Tailwind v4 y pnpm 11.
+
+**Consecuencia.** Tailwind v4 cambia la instalación de shadcn/ui, que se configura
+por CSS y no por `tailwind.config.js`; se acepta porque arrancar un proyecto nuevo
+en v3 es nacer con una migración pendiente.
+
+---
+
+## D19 — Los colores de proyectos y etiquetas salen de una paleta fija
+
+**Fecha.** 2026-07-25
+
+**Contexto.** `projects.color` y `labels.color` eran `text` sin restricción.
+
+**Decisión.** Paleta cerrada de alrededor de diez colores con nombre, impuesta por
+check constraint en la base y compartida por Zod desde `lib/validation/`.
+
+**Consecuencia.** No hay color libre; un `text` sin restricción produce proyectos
+con contraste ilegible y rompe el modo oscuro.
+
+---
+
+## D20 — El texto de términos y privacidad lo provee el dueño del proyecto
+
+**Fecha.** 2026-07-25
+
+**Contexto.** El pie de la landing linkea las dos páginas y no existían.
+
+**Decisión.** La implementación maqueta las páginas con sus metadatos, pero no
+redacta texto legal genérico ni deja un placeholder en producción.
+
+**Consecuencia.** La landing no se publica sin ese texto; y queda pendiente si D3
+(sin exportar datos) se refleja en la política de privacidad, dado que la Ley
+25.326 argentina cubre el derecho de acceso.
+
+---
+
+## D21 — Las reglas de desambiguación del parser se registran acá
+
+**Fecha.** 2026-07-25
+
+**Contexto.** `docs/parser-test-cases.md` define R1 a R7 y manda explícitamente que
+los cambios se anoten en este log, cosa que no se había hecho.
+
+**Decisión.** Quedan registradas las siete reglas originales (R1 día primero
+siempre; R2 año omitido resuelve a la próxima ocurrencia y nunca al pasado; R3 las
+horas 1 a 7 son PM y las 8 a 12 AM; R4 el día de la semana suelto solo como último
+recurso; R5 un solo valor por atributo, gana la primera reconocida; R6 los números
+sueltos no son fechas; R7 el resaltado es reversible con doble clic), más la regla
+nueva **R8** —la preposición o el artículo se consumen solo cuando son parte
+léxica de la locución que desambigua, y un determinante suelto delante de una fecha
+queda en el título— y las precisiones adoptadas: "primera" en R5 es primera en el
+texto de izquierda a derecha; `#` está exento de R5 porque las etiquetas son
+multivaluadas; un año de dos dígitos siempre es `20YY`; una hora ya pasada no se
+corre al día siguiente; y un candidato descartado no se resalta.
+
+**Consecuencia.** Sobre todas ellas manda un principio rector, **ante ambigüedad
+extraer menos** — un atributo de menos lo corrige el usuario en dos segundos, uno
+de más lo descubre cuando le suena una notificación que no esperaba. El contrato
+sigue siendo la fuente de verdad de los casos; este log guarda el porqué.

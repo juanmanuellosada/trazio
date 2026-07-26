@@ -23,9 +23,11 @@ El detalle completo del producto está en `docs/product-spec.md`.
 
 | Capa | Tecnología | Notas |
 | --- | --- | --- |
-| Framework | Next.js (App Router) | Landing con SSR + app privada como cliente |
-| Lenguaje | TypeScript | `strict: true` |
-| Estilos | Tailwind CSS | |
+| Runtime | Node 24 LTS | |
+| Framework | Next.js 16 (App Router) | Landing con SSR + app privada como cliente, React 19 |
+| Lenguaje | TypeScript 5.9+ | `strict: true` |
+| Estilos | Tailwind CSS v4 | |
+| Gestor de paquetes | pnpm 11 | |
 | Componentes | shadcn/ui | Instalar por componente, no la librería entera |
 | Base de datos | Supabase (Postgres) | RLS obligatorio en todas las tablas |
 | Auth | Supabase Auth | Email/contraseña + Google OAuth |
@@ -40,6 +42,8 @@ El detalle completo del producto está en `docs/product-spec.md`.
 - **dnd-kit** — drag & drop (reordenar tareas, secciones, proyectos).
 - **Tiptap** — editor de texto enriquecido para la descripción de tareas y comentarios.
 - **Zod** — validación de entrada, compartida entre cliente y servidor.
+- **React Hook Form** — formularios, junto con Zod; el esquema se define una vez
+  en `lib/validation/` y se comparte entre cliente y servidor.
 - **date-fns** + **date-fns-tz** — fechas y zonas horarias.
 - **rrule** — recurrencia según RFC 5545.
 - **Vitest** — tests unitarios.
@@ -74,10 +78,11 @@ app/
   (marketing)/            Landing pública, SSR
   (auth)/                 Registro, login, callback de OAuth
   (app)/                  App privada, protegida por middleware
-    inbox/
+    bandeja/
     hoy/
     proximos/
     proyecto/[id]/
+    tarea/[id]/
     completado/
     etiquetas/
     filtros/
@@ -127,6 +132,7 @@ Antes de dar por terminada cualquier tarea: `pnpm lint && pnpm typecheck && pnpm
 | `docs/product-spec.md` | El funcional completo: entidades, vistas, flujos, reglas |
 | `docs/data-model.md` | Tablas, relaciones, índices, políticas de RLS |
 | `docs/landing.md` | Especificación de la landing page |
+| `docs/design-system.md` | Sistema visual: paleta, tipografía, espaciado, estados de interacción |
 | `docs/roadmap.md` | Las cuatro fases y sus criterios de aceptación |
 | `docs/decisions.md` | Decisiones tomadas y su razón |
 | `docs/setup-google-calendar.md` | Paso a paso de credenciales en Google Cloud (fase 4) |

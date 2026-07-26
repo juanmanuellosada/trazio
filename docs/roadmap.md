@@ -44,6 +44,10 @@ alguien más pueda registrarse y hacer lo mismo.
 - Vistas: Bandeja de entrada, Hoy, Proyecto, Completado.
 - Modo lista (el panel y el calendario quedan para después).
 - Alta rápida con parseo de lenguaje natural en español.
+- Etiquetas, con alcance acotado: crear por `#` desde el alta rápida, asignar,
+  mostrar el chip, agregar o quitar desde el detalle de la tarea. La
+  administración completa, la página propia por etiqueta y las favoritas quedan
+  para la fase 2.
 - Configuración: perfil, tema, zona horaria, formatos, día de inicio de semana.
 - Realtime entre pestañas y dispositivos.
 - Optimistic updates en completar, editar, mover y reordenar.
@@ -52,8 +56,8 @@ alguien más pueda registrarse y hacer lo mismo.
 
 - [ ] Una persona se registra, confirma el correo, olvida la contraseña, la
       recupera y vuelve a entrar. Sin intervención manual.
-- [ ] El parser reconoce correctamente los 30 casos de prueba del spec, incluido
-      "la mañana" ≠ "mañana".
+- [ ] El parser reconoce correctamente los 56 casos de prueba de
+      `docs/parser-test-cases.md`, incluido "la mañana" ≠ "mañana".
 - [ ] Completar una tarea se ve instantáneo. Si el servidor falla, se revierte y
       se avisa.
 - [ ] Un cambio en una pestaña aparece en otra en menos de dos segundos.
