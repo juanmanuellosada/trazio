@@ -37,17 +37,19 @@ export function CompletedView({
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 aria-hidden className="size-5 text-primary" />
-          <h1 className="text-2xl font-semibold text-foreground">Completado</h1>
+        <div className="mx-auto w-full max-w-content">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 aria-hidden className="size-5 text-primary" />
+            <h1 className="text-2xl font-semibold text-foreground">Completado</h1>
+          </div>
+          {total > 0 && (
+            <p className="mt-1 text-sm text-text-secondary">
+              {total} {total === 1 ? "tarea completada" : "tareas completadas"}
+            </p>
+          )}
         </div>
-        {total > 0 && (
-          <p className="mt-1 text-sm text-text-secondary">
-            {total} {total === 1 ? "tarea completada" : "tareas completadas"}
-          </p>
-        )}
       </header>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6">
         {tasks.length === 0 ? (
           <TaskListEmptyState
             icon={CheckCircle2}

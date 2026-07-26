@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMounted } from "@/hooks/use-mounted";
 import { updateThemePreference } from "@/lib/preferences/theme-action";
 import { toastError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -26,7 +27,12 @@ const OPTIONS = [
  */
 export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   const { theme, setTheme } = useTheme();
-  const active = OPTIONS.find((option) => option.value === theme) ?? OPTIONS[2];
+  const mounted = useMounted();
+  // `theme` se lee de `localStorage` de forma síncrona en el cliente desde
+  // el primer render, antes de montar — puede no coincidir con lo que
+  // asumió el servidor. Hasta montar, mostrar siempre "Sistema" (la opción
+  // por defecto) en vez de adivinar.
+  const active = mounted ? (OPTIONS.find((option) => option.value === theme) ?? OPTIONS[2]) : OPTIONS[2];
   const ActiveIcon = active.icon;
 
   async function handleSelect(value: (typeof OPTIONS)[number]["value"]) {

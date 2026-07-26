@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useMounted } from "@/hooks/use-mounted";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
 import { useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
@@ -47,6 +48,7 @@ import { cn } from "@/lib/utils";
 
 export function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "icon"> }) {
   const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
 
   if (project.icon) {
     return (
@@ -56,7 +58,11 @@ export function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "
     );
   }
 
-  const hex = resolveProjectColorHex(project.color, resolvedTheme === "dark" ? "dark" : "light");
+  // `resolvedTheme` se resuelve en el cliente desde el primer render (lee
+  // `localStorage` de forma síncrona), antes de montar — puede no coincidir
+  // con lo que asumió el servidor. Hasta montar, forzar "light" (lo mismo
+  // que el servidor, que nunca conoce el tema real).
+  const hex = resolveProjectColorHex(project.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
   return <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} />;
 }
 

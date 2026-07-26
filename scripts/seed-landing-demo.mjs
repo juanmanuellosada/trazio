@@ -28,7 +28,7 @@ if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(SUPABASE_URL)) {
   process.exit(1);
 }
 
-const DEMO_EMAIL = "demo@trazio.test";
+const DEMO_EMAIL = "sofia.bianchi@example.com";
 const DEMO_PASSWORD = "TrazioDemo2026!";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -96,7 +96,7 @@ async function main() {
       email: DEMO_EMAIL,
       password: DEMO_PASSWORD,
       email_confirm: true,
-      user_metadata: { full_name: "Ana Demo" },
+      user_metadata: { full_name: "Sofía Bianchi" },
     }),
     "auth.admin.createUser",
   );
@@ -166,6 +166,7 @@ async function main() {
 
   const seccionEsteMes = await insertSection(casaId, "Este mes");
   const seccionPendiente = await insertSection(casaId, "Pendiente");
+  const seccionSprintActual = await insertSection(trabajoId, "Sprint actual");
 
   // --- 4. Etiquetas ---
 
@@ -248,6 +249,24 @@ async function main() {
     priority: 2,
     due_date: dateOnly(-1),
   });
+  await insertTask({
+    title: "Renovar el seguro del auto",
+    project_id: finanzasId,
+    priority: 2,
+    due_date: dateOnly(-2),
+  });
+  await insertTask({
+    title: "Devolver los libros a la biblioteca",
+    project_id: estudioId,
+    priority: 3,
+    due_date: dateOnly(-2),
+  });
+  await insertTask({
+    title: "Mandar el presupuesto a un cliente nuevo",
+    project_id: clienteAcmeId,
+    priority: 2,
+    due_date: dateOnly(-4),
+  });
 
   // Hoy, con hora
   await insertTask({
@@ -266,12 +285,32 @@ async function main() {
     due_at: timestampAt(0, 9, 0),
     duration_minutes: 30,
   });
+  await insertTask({
+    title: "Revisar el PR de Fede",
+    project_id: trabajoId,
+    section_id: seccionSprintActual,
+    priority: 2,
+    due_at: timestampAt(0, 15, 0),
+    duration_minutes: 30,
+  });
 
   // Hoy, todo el día
   await insertTask({
     title: "Llamar al contador por el monotributo",
     project_id: finanzasId,
     priority: 1,
+    due_date: dateOnly(0),
+  });
+  await insertTask({
+    title: "Entregar la reseña del libro",
+    project_id: estudioId,
+    priority: 3,
+    due_date: dateOnly(0),
+  });
+  await insertTask({
+    title: "Pasar la aspiradora",
+    project_id: casaId,
+    priority: 4,
     due_date: dateOnly(0),
   });
   await insertTask({
@@ -302,16 +341,56 @@ async function main() {
     title: "Revisión técnica del auto",
     project_id: casaId,
     section_id: seccionEsteMes,
-    priority: 4,
+    priority: 1,
     due_date: dateOnly(5),
   });
+  await insertTask({
+    title: "Preparar la presentación para el viernes",
+    project_id: trabajoId,
+    section_id: seccionSprintActual,
+    priority: 2,
+    due_date: dateOnly(3),
+  });
+  await insertTask({
+    title: "Mandar el reporte semanal a Acme",
+    project_id: clienteAcmeId,
+    priority: 3,
+    due_date: dateOnly(2),
+  });
 
-  // Sin fecha, en la Bandeja de entrada
+  // Sin fecha
   await insertTask({ title: "Leer el libro que me recomendó Pedro", project_id: inboxId });
   await insertTask({ title: "Buscar curso de inglés online", project_id: inboxId });
   await insertTask({
     title: "Averiguar precio de pasajes para las vacaciones",
     project_id: inboxId,
+  });
+  await insertTask({
+    title: "Actualizar el CV",
+    project_id: trabajoId,
+    section_id: seccionSprintActual,
+    priority: 4,
+  });
+  await insertTask({
+    title: "Subir la propuesta a Notion",
+    project_id: trabajoId,
+    section_id: seccionSprintActual,
+    priority: 3,
+  });
+  await insertTask({
+    title: "Actualizar el tablero de Jira",
+    project_id: clienteAcmeId,
+    priority: 4,
+  });
+  await insertTask({
+    title: "Anotarme al curso de Excel avanzado",
+    project_id: estudioId,
+    priority: 4,
+  });
+  await insertTask({
+    title: "Revisar los gastos de la tarjeta",
+    project_id: finanzasId,
+    priority: 4,
   });
 
   // Completadas
@@ -335,20 +414,24 @@ async function main() {
     completed_at: timestampAt(-5, 20, 0),
   });
 
-  // Tarea con subtareas anidadas en 3 niveles
+  // Tarea con subtareas anidadas en 3 niveles. "Contratar el flete" va
+  // *antes* que "Embalar la cocina" a propósito (script de capturas,
+  // subtasksClip): así el afiche "Agregar subtarea" que sigue a los hijos
+  // de "Embalar la cocina" queda al final del árbol, después del último
+  // hermano visible, no en el medio.
   const mudanzaId = await insertTask({
     title: "Organizar la mudanza",
     project_id: casaId,
     section_id: seccionPendiente,
     priority: 3,
   });
-  const embalarId = await insertTask({
-    title: "Embalar la cocina",
+  await insertTask({
+    title: "Contratar el flete",
     project_id: casaId,
     parent_id: mudanzaId,
   });
-  await insertTask({
-    title: "Contratar el flete",
+  const embalarId = await insertTask({
+    title: "Embalar la cocina",
     project_id: casaId,
     parent_id: mudanzaId,
   });

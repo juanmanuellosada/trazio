@@ -42,60 +42,62 @@ export function ProjectHeader({
   const hex = resolveProjectColorHex(project.color, resolvedTheme === "dark" ? "dark" : "light");
 
   return (
-    <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
-      <div className="flex min-w-0 items-start gap-3">
-        {project.is_inbox ? (
-          <Inbox aria-hidden className="mt-0.5 size-6 text-primary" />
-        ) : project.icon ? (
-          <span aria-hidden className="text-2xl leading-none">
-            {project.icon}
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className="mt-1.5 size-3 shrink-0 rounded-full"
-            style={{ backgroundColor: hex }}
-          />
-        )}
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
-          {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}
+    <header className="border-b border-border px-4 py-4 sm:px-6">
+      <div className="mx-auto flex w-full max-w-content items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          {project.is_inbox ? (
+            <Inbox aria-hidden className="mt-0.5 size-6 text-primary" />
+          ) : project.icon ? (
+            <span aria-hidden className="text-2xl leading-none">
+              {project.icon}
+            </span>
+          ) : (
+            <span
+              aria-hidden
+              className="mt-1.5 size-3 shrink-0 rounded-full"
+              style={{ backgroundColor: hex }}
+            />
+          )}
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
+            {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}
+          </div>
         </div>
-      </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={project.is_favorite ? "Quitar de favoritos" : "Marcar como favorito"}
-          onClick={() => updateProject.mutate({ id: project.id, patch: { is_favorite: !project.is_favorite } })}
-        >
-          <Star className={cn("size-4", project.is_favorite && "fill-current text-primary")} />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={project.is_favorite ? "Quitar de favoritos" : "Marcar como favorito"}
+            onClick={() => updateProject.mutate({ id: project.id, patch: { is_favorite: !project.is_favorite } })}
+          >
+            <Star className={cn("size-4", project.is_favorite && "fill-current text-primary")} />
+          </Button>
 
-        {!project.is_inbox && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones del proyecto" />}
-            >
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  updateProject.mutate({ id: project.id, patch: { is_archived: !project.is_archived } })
-                }
+          {!project.is_inbox && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones del proyecto" />}
               >
-                {project.is_archived ? "Desarchivar" : "Archivar"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    updateProject.mutate({ id: project.id, patch: { is_archived: !project.is_archived } })
+                  }
+                >
+                  {project.is_archived ? "Desarchivar" : "Archivar"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {!project.is_inbox && (

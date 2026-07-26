@@ -132,6 +132,9 @@
   --radius: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-full: 9999px;
+
+  /* Ancho de columna de contenido (§5.1): genera la utilidad `max-w-content`. */
+  --container-content: 48rem;
 }
 
 @layer base {

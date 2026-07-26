@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { Check } from "lucide-react";
+import { useMounted } from "@/hooks/use-mounted";
 import { useLabels } from "@/lib/labels/use-labels";
 import { useReplaceTaskLabels } from "@/lib/tasks/mutations";
 import type { LabelChip } from "@/lib/tasks/use-tasks";
@@ -30,6 +31,7 @@ export function LabelPicker({
   const { data: labels } = useLabels();
   const replaceLabels = useReplaceTaskLabels();
   const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
   const assignedIds = new Set(assigned.map((l) => l.id));
 
   function toggle(label: LabelChip) {
@@ -55,7 +57,11 @@ export function LabelPicker({
         // de las diez claves de la paleta (sin la excepción del azul de
         // marca que sí tiene `projects.color`). Ver `resolveProjectColorHex`
         // en `lib/validation/colors.ts`.
-        const hex = resolvedTheme === "dark" ? PROJECT_COLORS[label.color].dark : PROJECT_COLORS[label.color].light;
+        // Hasta montar, forzar "light" (lo mismo que asume el servidor):
+        // `resolvedTheme` se resuelve en el cliente desde el primer render,
+        // antes de montar, y puede no coincidir con el servidor.
+        const hex =
+          mounted && resolvedTheme === "dark" ? PROJECT_COLORS[label.color].dark : PROJECT_COLORS[label.color].light;
         return (
           <button
             key={label.id}

@@ -14,7 +14,8 @@
     "test:rls": "vitest run --config vitest.rls.config.ts",
     "test:e2e": "playwright test",
     "db:migrate": "supabase db push",
-    "db:types": "supabase gen types typescript --project-id aqijvhoesjozstzojlzr --schema public > lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id aqijvhoesjozstzojlzr --schema public > lib/supabase/database.types.ts",
+    "landing:screenshots": "node scripts/capture-landing-screenshots.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

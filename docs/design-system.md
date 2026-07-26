@@ -170,6 +170,25 @@ Escala de espaciado: la de Tailwind v4 sin modificar, base 4px (`p-1` = 4px,
 recomienda la skill para densidad táctil, y divergir de la escala por defecto
 de Tailwind es complejidad sin beneficio.
 
+### 5.1 Ancho de columna de contenido
+
+Token `max-w-content` (`--container-content: 48rem` / 768px, mapeado en
+`@theme inline` de `app/globals.css`). Recomendación de la skill `ui-ux-pro-max`
+(dominio `ux`, categoría *Layout → Container Width*): limitar el ancho de una
+columna de contenido a 65-75 caracteres (`max-w-prose` / `max-w-3xl`) en vez de
+dejarla ocupar todo el viewport — 48rem es exactamente el valor de `max-w-3xl`
+de Tailwind, con nombre semántico propio para no repetirlo como número mágico
+en cada componente.
+
+Corrige un bug real: sin este límite, una fila de tarea en una pantalla ancha
+(1440px+) deja el título a la izquierda y la fecha pegada al borde derecho,
+con un espacio muerto enorme entre los dos. Se aplica, centrado con `mx-auto`,
+al encabezado y al contenido de las vistas de lista (Hoy, Bandeja de entrada,
+Proyecto, Completado) y al detalle de tarea en su ruta suelta
+(`app/(app)/tarea/[id]`) — no al panel lateral de detalle
+(`task-detail-panel.tsx`), que ya tiene su propio ancho acotado (320-720px,
+redimensionable), ni al panel lateral de navegación.
+
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 
 | Token | Valor | Uso |
