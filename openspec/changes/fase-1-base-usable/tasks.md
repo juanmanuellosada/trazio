@@ -72,13 +72,13 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 
 ## 5. Layout de la app
 
-- [ ] 5.1 Definir el sistema visual con `ui-ux-pro-max` antes de escribir el primer componente: paleta, tipografía, espaciado y estados de interacción
-- [ ] 5.2 Instalar los componentes de shadcn/ui que hagan falta, de a uno
-- [ ] 5.3 Panel lateral de escritorio colapsable a íconos, con cuenta, accesos principales, favoritos, árbol de proyectos y pie
-- [ ] 5.4 Barra inferior de teléfono con tres accesos en fase 1 (Bandeja, Hoy y Agregar), dejando el cuarto lugar vacío a propósito hasta que exista Próximos
-- [ ] 5.5 Selector de tema claro, oscuro y sistema, con persistencia en preferencias
-- [ ] 5.6 Registro centralizado de toasts, con el formato de error de tres partes
-- [ ] 5.7 Verificar contraste AA y foco visible, y que el rojo `#EC1E2A` no se use para errores de formulario ni destructivos genéricos
+- [x] 5.1 Definir el sistema visual con `ui-ux-pro-max` antes de escribir el primer componente: paleta, tipografía, espaciado y estados de interacción
+- [x] 5.2 Instalar los componentes de shadcn/ui que hagan falta, de a uno
+- [x] 5.3 Panel lateral de escritorio colapsable a íconos, con cuenta, accesos principales, favoritos, árbol de proyectos y pie
+- [x] 5.4 Barra inferior de teléfono con tres accesos en fase 1 (Bandeja, Hoy y Agregar), dejando el cuarto lugar vacío a propósito hasta que exista Próximos
+- [x] 5.5 Selector de tema claro, oscuro y sistema, con persistencia en preferencias
+- [x] 5.6 Registro centralizado de toasts, con el formato de error de tres partes
+- [x] 5.7 Verificar contraste AA y foco visible, y que el rojo `#EC1E2A` no se use para errores de formulario ni destructivos genéricos
 
 ## 6. Proyectos y secciones
 
