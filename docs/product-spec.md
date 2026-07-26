@@ -184,7 +184,10 @@ Vista como lista, panel agrupado por sección, o calendario. Vacía muestra:
 
 Bloques en este orden: atrasadas (destacadas en rojo), tareas de hoy, hábitos del
 día (con contador de cuántos se hicieron), eventos de hoy, y — si se activa la
-opción — las completadas. El botón de agregar precarga la fecha de hoy.
+opción — las completadas. El botón de agregar precarga la fecha de hoy. Dentro de
+cada bloque, orden por hora y no manual (D25): primero las tareas con hora en
+orden cronológico, después las de todo el día; en atrasadas, la más vencida
+primero.
 
 ### Próximos
 
@@ -207,6 +210,7 @@ archivar, eliminar.
 ### Completado
 
 Lista simple con contador. Desde ahí se pueden volver a marcar como pendientes.
+Orden por fecha de completado, la más reciente primero (D25), no manual.
 
 ### Buscador
 

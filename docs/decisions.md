@@ -391,3 +391,19 @@ fluida y que la rara sea difícil de equivocar. Es coherente con la regla de
 arrastre. **Para las tareas el criterio va a ser distinto**, porque convertir
 una tarea en subtarea sí es frecuente: ahí el camino corto va a ser por
 teclado.
+
+---
+
+## D25 — Hoy y Completado no ordenan por `position`
+
+**Fecha.** 2026-07-26
+
+**Contexto.** `position` solo ordena entre hermanos del mismo proyecto; en las
+vistas transversales el número no es comparable y el orden resulta arbitrario.
+
+**Decisión.** Hoy se ordena por hora y Completado por fecha de completado
+descendente. Bandeja y Proyecto siguen con el orden manual.
+
+**Consecuencia.** El orden manual queda donde el usuario puede efectivamente
+arrastrar. Cuando la fase 2 traiga la barra de opciones de vista con orden
+configurable, estas dos vistas ya tienen un default que se explica solo.

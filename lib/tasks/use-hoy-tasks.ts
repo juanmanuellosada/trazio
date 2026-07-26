@@ -2,23 +2,23 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { hoyCandidatesFilter } from "./hoy-filter";
+import { compareHoyTasks, hoyCandidatesFilter } from "./hoy-filter";
 import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./use-tasks";
 
 export function hoyTasksQueryKey() {
   return ["tasks", "hoy"] as const;
 }
 
+/** El orden final lo da `compareHoyTasks` (D25), no `position`: ver `get-hoy-tasks.ts`. */
 export async function fetchHoyTasks(userId: string, timezone: string): Promise<TaskRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("tasks")
     .select(TASK_LIST_COLUMNS)
     .eq("user_id", userId)
-    .or(hoyCandidatesFilter(new Date(), timezone))
-    .order("position", { ascending: true });
+    .or(hoyCandidatesFilter(new Date(), timezone));
   if (error) throw error;
-  return ((data ?? []) as unknown as TaskListRawRow[]).map(toTaskRow);
+  return ((data ?? []) as unknown as TaskListRawRow[]).map(toTaskRow).sort(compareHoyTasks);
 }
 
 /**

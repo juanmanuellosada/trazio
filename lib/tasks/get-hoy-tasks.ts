@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { hoyCandidatesFilter } from "./hoy-filter";
+import { compareHoyTasks, hoyCandidatesFilter } from "./hoy-filter";
 import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./use-tasks";
 
 /**
@@ -8,6 +8,10 @@ import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from 
  * `now` viaja explícito (nunca `new Date()` del lado del cliente) para que
  * el primer render del cliente use el mismo instante que ya usó el
  * servidor y no haya divergencia de hidratación por el paso del reloj.
+ *
+ * El orden final lo da `compareHoyTasks` (D25), no `position`: acá se
+ * cruzan tareas de proyectos distintos, entre los que `position` no es
+ * comparable.
  */
 export async function getHoyTasks(userId: string, timezone: string, now: Date): Promise<TaskRow[]> {
   const supabase = await createClient();
@@ -15,7 +19,6 @@ export async function getHoyTasks(userId: string, timezone: string, now: Date): 
     .from("tasks")
     .select(TASK_LIST_COLUMNS)
     .eq("user_id", userId)
-    .or(hoyCandidatesFilter(now, timezone))
-    .order("position", { ascending: true });
-  return ((data ?? []) as unknown as TaskListRawRow[]).map(toTaskRow);
+    .or(hoyCandidatesFilter(now, timezone));
+  return ((data ?? []) as unknown as TaskListRawRow[]).map(toTaskRow).sort(compareHoyTasks);
 }
