@@ -95,18 +95,18 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 
 ## 7. Tareas
 
-- [ ] 7.1 Consultas y mutaciones de tareas con TanStack Query
-- [ ] 7.2 Crear y editar tareas con título en texto plano, prioridad, fecha de vencimiento con hora opcional, duración estimada y fecha límite
-- [ ] 7.3 Descripción con Tiptap, guardada como jsonb, con autoguardado
-- [ ] 7.4 Completar y descompletar con optimistic update, reversión y aviso si el servidor rechaza
-- [ ] 7.5 Subtareas anidadas sin límite de niveles
-- [ ] 7.6 Duplicar según F2: copia campos propios y subtareas recursivamente, nace pendiente, sin sufijo en el título, insertada justo después del original
-- [ ] 7.7 Mover una tarea entre proyectos y secciones, con optimistic update
-- [ ] 7.8 Reordenar con dnd-kit y su camino alternativo por teclado o menú contextual, con optimistic update
-- [ ] 7.9 Eliminar una tarea
-- [ ] 7.10 Panel lateral de detalle redimensionable que recuerda el ancho, y pantalla completa en teléfono
-- [ ] 7.11 Ruta `app/(app)/tarea/[id]` a pantalla completa con su propio `<title>`, y la acción de copiar enlace directo que apunta ahí
-- [ ] 7.12 Asignar y desasignar etiquetas desde el detalle de la tarea, reemplazando el conjunto completo en cada guardado
+- [x] 7.1 Consultas y mutaciones de tareas con TanStack Query
+- [x] 7.2 Crear y editar tareas con título en texto plano, prioridad, fecha de vencimiento con hora opcional, duración estimada y fecha límite
+- [x] 7.3 Descripción con Tiptap, guardada como jsonb, con autoguardado
+- [x] 7.4 Completar y descompletar con optimistic update, reversión y aviso si el servidor rechaza
+- [x] 7.5 Subtareas anidadas sin límite de niveles
+- [x] 7.6 Duplicar según F2: copia campos propios y subtareas recursivamente, nace pendiente, sin sufijo en el título, insertada justo después del original
+- [x] 7.7 Mover una tarea entre proyectos y secciones, con optimistic update
+- [x] 7.8 Reordenar con dnd-kit y su camino alternativo por teclado o menú contextual, con optimistic update
+- [x] 7.9 Eliminar una tarea
+- [x] 7.10 Panel lateral de detalle redimensionable que recuerda el ancho, y pantalla completa en teléfono
+- [x] 7.11 Ruta `app/(app)/tarea/[id]` a pantalla completa con su propio `<title>`, y la acción de copiar enlace directo que apunta ahí
+- [x] 7.12 Asignar y desasignar etiquetas desde el detalle de la tarea, reemplazando el conjunto completo en cada guardado
 
 ## 8. Vistas
 

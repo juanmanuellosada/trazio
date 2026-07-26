@@ -9,6 +9,8 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeSync } from "@/components/providers/theme-sync";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
 
 /**
  * Layout de la app privada (bloque 5): panel lateral de escritorio, barra +
@@ -39,25 +41,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <QueryProvider>
       <ThemeSync serverTheme={theme} />
-      <div className="flex min-h-dvh">
-        <AppSidebar
-          fullName={fullName}
-          email={user.email}
-          todayCount={todayCount}
-          projects={projects}
-          initialProjects={initialProjects}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <MobileNav
+      <TaskDetailProvider>
+        <div className="flex min-h-dvh">
+          <AppSidebar
             fullName={fullName}
             email={user.email}
             todayCount={todayCount}
             projects={projects}
             initialProjects={initialProjects}
           />
-          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <MobileNav
+              fullName={fullName}
+              email={user.email}
+              todayCount={todayCount}
+              projects={projects}
+              initialProjects={initialProjects}
+            />
+            <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+          </div>
         </div>
-      </div>
+        <TaskDetailPanel />
+      </TaskDetailProvider>
     </QueryProvider>
   );
 }

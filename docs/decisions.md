@@ -368,3 +368,26 @@ suite (que sigue en `"node"`).
 **Consecuencia.** `vitest.config.ts` suma `setupFiles: ["./vitest.setup.ts"]`,
 que carga los matchers de `jest-dom`. Se agrega a la lista de librerías
 decididas de `AGENTS.md`.
+
+---
+
+## D24 — Arrastrar proyectos solo reordena, no anida
+
+**Fecha.** 2026-07-26
+
+**Contexto.** El spec pedía anidar proyectos sosteniendo el arrastre. Es la
+interacción más frágil de la interfaz: en teléfono compite con el scroll, y la
+diferencia entre reordenar y anidar queda librada a cuánto tiempo sostuvo el
+usuario, sin una señal clara de qué va a pasar al soltar.
+
+**Decisión.** Arrastrar reordena entre hermanos y nada más. Anidar y cambiar de
+padre se hacen por el menú contextual y el diálogo "Mover a…".
+
+**Consecuencia.** Anidar cuesta un clic más, pero es una acción estructural y
+poco frecuente —el árbol de proyectos se arma una vez y casi no se toca—,
+mientras que reordenar es cotidiano. Se prioriza que la acción frecuente sea
+fluida y que la rara sea difícil de equivocar. Es coherente con la regla de
+`.claude/rules/frontend.md` de que ninguna acción quede disponible solo por
+arrastre. **Para las tareas el criterio va a ser distinto**, porque convertir
+una tarea en subtarea sí es frecuente: ahí el camino corto va a ser por
+teclado.

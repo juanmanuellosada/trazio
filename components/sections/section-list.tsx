@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TaskList } from "@/components/tasks/task-list";
 import { positionForIndex, positionForSwap } from "@/lib/projects/tree";
 import {
   useCreateSection,
@@ -142,6 +143,11 @@ function SectionItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {!section.is_collapsed && (
+        <div className="pl-7">
+          <TaskList projectId={projectId} sectionId={section.id} parentId={null} />
+        </div>
+      )}
     </li>
   );
 }

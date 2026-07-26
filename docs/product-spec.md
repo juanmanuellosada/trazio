@@ -272,8 +272,9 @@ Colapsable a una versión angosta de solo íconos. De arriba abajo:
    suma tareas y hábitos), Próximos, Hábitos, Completado.
 4. Favoritos: proyectos, etiquetas y filtros marcados como tales.
 5. Árbol de proyectos, con cantidad de tareas por proyecto, ramas colapsables,
-   botón para crear subproyecto, y arrastrar para reordenar o anidar (se anida
-   sosteniendo sobre otro proyecto un momento).
+   botón para crear subproyecto, y arrastrar para reordenar entre hermanos.
+   Anidar un proyecto o cambiarlo de padre se hace desde el menú contextual o
+   el diálogo "Mover a…".
 6. Listas colapsables de etiquetas y filtros.
 7. Al pie: cambiar tema, Configuración, cerrar sesión.
 

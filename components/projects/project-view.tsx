@@ -1,15 +1,18 @@
 "use client";
 
 import { SectionList } from "@/components/sections/section-list";
+import { TaskList } from "@/components/tasks/task-list";
 import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
 import type { SectionRow } from "@/lib/sections/use-sections";
 import { ProjectHeader } from "./project-header";
 
 /**
  * Vista de proyecto (bloque 6): encabezado con las acciones del proyecto y
- * sus secciones. La lista de tareas sin sección y dentro de cada sección es
- * del bloque 8 (vista Proyecto completa); acá viven la creación, el
- * renombrado, el reordenado, el colapso y el borrado de las secciones.
+ * sus secciones. El orden "primero las tareas sin sección, después las
+ * secciones colapsables" y el resto del pulido de esta vista son del
+ * bloque 8; acá alcanza con montar `TaskList` (bloque 7) para que el CRUD
+ * de tareas tenga un lugar real donde probarse — las tareas de cada
+ * sección se muestran dentro de `SectionList`, no acá.
  */
 export function ProjectView({
   projectId,
@@ -31,9 +34,15 @@ export function ProjectView({
   return (
     <div className="flex h-full flex-col">
       <ProjectHeader project={project} allProjects={allProjects} />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Secciones</h2>
-        <SectionList projectId={projectId} initialSections={initialSections} />
+      <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+        <div>
+          <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Tareas</h2>
+          <TaskList projectId={projectId} sectionId={null} parentId={null} />
+        </div>
+        <div>
+          <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Secciones</h2>
+          <SectionList projectId={projectId} initialSections={initialSections} />
+        </div>
       </div>
     </div>
   );
