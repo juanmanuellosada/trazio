@@ -30,7 +30,18 @@ import { tasksQueryKey, type LabelChip, type TaskRow } from "./use-tasks";
  * sincronizadas. Por eso `projectId` viaja como variable de cada mutación,
  * no como argumento del hook: cada llamador (fila de lista, panel de
  * detalle) ya lo tiene a mano en el `TaskRow`/`TaskDetail` que edita.
+ *
+ * Bloque 8: Hoy y Completado (`lib/tasks/use-hoy-tasks.ts`,
+ * `lib/tasks/use-completed-tasks.ts`) leen a través de proyectos, así que
+ * además del caché del proyecto de origen hay que mantener sincronizados
+ * esos dos cachés transversales — `HOY_QUERY_KEY`/`COMPLETADO_QUERY_KEY`
+ * son prefijos: `invalidateQueries`/`setQueriesData` con ellos alcanzan
+ * cualquier variante (la página de Completado que esté montada, sea cual
+ * sea su `limit`).
  */
+
+const HOY_QUERY_KEY = ["tasks", "hoy"] as const;
+const COMPLETADO_QUERY_KEY = ["tasks", "completado"] as const;
 
 function listSnapshot(queryClient: QueryClient, projectId: string) {
   return queryClient.getQueryData<TaskRow[]>(tasksQueryKey(projectId));
@@ -40,7 +51,19 @@ function detailSnapshot(queryClient: QueryClient, id: string) {
   return queryClient.getQueryData<TaskDetail>(taskDetailQueryKey(id));
 }
 
-/** Crea una tarea (bloque 7.2): solo pide título, como el alta rápida — prioridad y fechas se editan después desde el detalle. */
+/** Después de cualquier mutación que no parchea Hoy/Completado a mano, los invalida para que se pongan al día (eventual, no instantáneo — la instantaneidad exigida por D2 vive en `useUpdateTask`, que sí los parchea). */
+function invalidateCrossViewCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: HOY_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: COMPLETADO_QUERY_KEY });
+}
+
+/**
+ * Crea una tarea (bloque 7.2): solo pide título, como el alta rápida —
+ * prioridad y fechas se editan después desde el detalle. `dueDate` es la
+ * única excepción (bloque 8.2): el alta rápida de la vista Hoy la usa para
+ * precargar la fecha de hoy, según el requirement "El botón de agregar
+ * tarea de esta vista SHALL precargar la fecha de hoy".
+ */
 export function useCreateTask() {
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -51,11 +74,13 @@ export function useCreateTask() {
       sectionId,
       parentId,
       title,
+      dueDate,
     }: {
       projectId: string;
       sectionId: string | null;
       parentId: string | null;
       title: string;
+      dueDate?: string | null;
     }) => {
       const {
         data: { session },
@@ -67,7 +92,15 @@ export function useCreateTask() {
 
       const { data, error } = await supabase
         .from("tasks")
-        .insert({ user_id: session.user.id, project_id: projectId, section_id: sectionId, parent_id: parentId, title, position })
+        .insert({
+          user_id: session.user.id,
+          project_id: projectId,
+          section_id: sectionId,
+          parent_id: parentId,
+          title,
+          position,
+          due_date: dueDate ?? null,
+        })
         .select(
           "id, project_id, section_id, parent_id, title, priority, due_date, due_at, duration_minutes, deadline, completed_at, position",
         )
@@ -76,8 +109,10 @@ export function useCreateTask() {
       return { ...data, labels: [] } as TaskRow;
     },
     onError: reportTaskError,
-    onSettled: (_data, _error, { projectId }) =>
-      queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) }),
+    onSettled: (_data, _error, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
+      invalidateCrossViewCaches(queryClient);
+    },
   });
 }
 
@@ -117,25 +152,44 @@ export function useUpdateTask() {
     onMutate: async ({ id, projectId, patch }) => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKey(projectId) });
       await queryClient.cancelQueries({ queryKey: taskDetailQueryKey(id) });
+      await queryClient.cancelQueries({ queryKey: HOY_QUERY_KEY });
+      await queryClient.cancelQueries({ queryKey: COMPLETADO_QUERY_KEY });
+
       const previousList = listSnapshot(queryClient, projectId);
       const previousDetail = detailSnapshot(queryClient, id);
+      const previousHoy = queryClient.getQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY });
+      const previousCompleted = queryClient.getQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY });
 
       const listPatch = listPatchOf(patch);
       queryClient.setQueryData<TaskRow[]>(tasksQueryKey(projectId), (old) =>
         (old ?? []).map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
       );
       queryClient.setQueryData<TaskDetail>(taskDetailQueryKey(id), (old) => (old ? { ...old, ...patch } : old));
+      // Hoy y Completado también parchean acá (no solo invalidan en
+      // onSettled): completar/descompletar desde cualquiera de las cuatro
+      // vistas tiene que verse instantáneo en todas (D2 del design), y
+      // ninguna de las dos tiene un `onMutate` propio que lo haga por su
+      // cuenta.
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY }, (old) =>
+        old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
+      );
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY }, (old) =>
+        old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
+      );
 
-      return { previousList, previousDetail, projectId, id };
+      return { previousList, previousDetail, previousHoy, previousCompleted, projectId, id };
     },
     onError: (error, _vars, context) => {
       if (context?.previousList) queryClient.setQueryData(tasksQueryKey(context.projectId), context.previousList);
       if (context?.previousDetail) queryClient.setQueryData(taskDetailQueryKey(context.id), context.previousDetail);
+      context?.previousHoy?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      context?.previousCompleted?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       reportTaskError(error);
     },
     onSettled: (_data, _error, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
       queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) });
+      invalidateCrossViewCaches(queryClient);
     },
   });
 }
@@ -254,6 +308,7 @@ export function useMoveTask() {
         queryClient.invalidateQueries({ queryKey: tasksQueryKey(vars.toProjectId) });
       }
       queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(vars.id) });
+      invalidateCrossViewCaches(queryClient);
     },
   });
 }
@@ -271,7 +326,10 @@ export function useDuplicateTask() {
     },
     onSuccess: () => toastSuccess("Tarea duplicada."),
     onError: reportTaskError,
-    onSettled: (_data, _error, { task }) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(task.project_id) }),
+    onSettled: (_data, _error, { task }) => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey(task.project_id) });
+      invalidateCrossViewCaches(queryClient);
+    },
   });
 }
 
@@ -324,6 +382,7 @@ export function useDeleteTask() {
     onSettled: (_data, _error, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
       queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) });
+      invalidateCrossViewCaches(queryClient);
     },
   });
 }
@@ -378,6 +437,7 @@ export function useReplaceTaskLabels() {
     onSettled: (_data, _error, { taskId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
       queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(taskId) });
+      invalidateCrossViewCaches(queryClient);
     },
   });
 }

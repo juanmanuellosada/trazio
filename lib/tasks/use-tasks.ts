@@ -30,14 +30,14 @@ export type TaskRow = {
   labels: LabelChip[];
 };
 
-const TASK_LIST_COLUMNS =
+export const TASK_LIST_COLUMNS =
   "id, project_id, section_id, parent_id, title, priority, due_date, due_at, duration_minutes, deadline, completed_at, position, task_labels(labels(id, name, color))";
 
-type TaskListRawRow = Omit<TaskRow, "labels"> & {
+export type TaskListRawRow = Omit<TaskRow, "labels"> & {
   task_labels: { labels: LabelChip | null }[] | null;
 };
 
-function toTaskRow(row: TaskListRawRow): TaskRow {
+export function toTaskRow(row: TaskListRawRow): TaskRow {
   const { task_labels, ...rest } = row;
   return { ...rest, labels: (task_labels ?? []).map((t) => t.labels).filter((l): l is LabelChip => l != null) };
 }

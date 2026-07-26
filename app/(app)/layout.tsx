@@ -5,8 +5,10 @@ import { getSidebarProjects } from "@/lib/projects/get-sidebar-projects";
 import { getAllProjects } from "@/lib/projects/get-all-projects";
 import { getTodayTaskCount } from "@/lib/tasks/today-count";
 import { getThemePreference } from "@/lib/preferences/get-theme-preference";
+import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeSync } from "@/components/providers/theme-sync";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
@@ -26,43 +28,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const supabase = await createClient();
-  const [{ data: profile }, { data: preferences }, projects, initialProjects, theme] = await Promise.all([
+  const [{ data: profile }, preferences, projects, initialProjects, theme] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-    supabase.from("user_preferences").select("timezone").eq("user_id", user.id).single(),
+    getUserPreferences(user.id),
     getSidebarProjects(user.id),
     getAllProjects(user.id),
     getThemePreference(),
   ]);
 
-  const timezone = preferences?.timezone ?? "America/Argentina/Buenos_Aires";
-  const todayCount = await getTodayTaskCount(user.id, timezone);
+  const todayCount = await getTodayTaskCount(user.id, preferences.timezone);
   const fullName = profile?.full_name ?? null;
 
   return (
     <QueryProvider>
       <ThemeSync serverTheme={theme} />
-      <TaskDetailProvider>
-        <div className="flex min-h-dvh">
-          <AppSidebar
-            fullName={fullName}
-            email={user.email}
-            todayCount={todayCount}
-            projects={projects}
-            initialProjects={initialProjects}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <MobileNav
+      <PreferencesProvider preferences={preferences}>
+        <TaskDetailProvider>
+          <div className="flex min-h-dvh">
+            <AppSidebar
               fullName={fullName}
               email={user.email}
               todayCount={todayCount}
               projects={projects}
               initialProjects={initialProjects}
             />
-            <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <MobileNav
+                fullName={fullName}
+                email={user.email}
+                todayCount={todayCount}
+                projects={projects}
+                initialProjects={initialProjects}
+              />
+              <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+            </div>
           </div>
-        </div>
-        <TaskDetailPanel />
-      </TaskDetailProvider>
+          <TaskDetailPanel />
+        </TaskDetailProvider>
+      </PreferencesProvider>
     </QueryProvider>
   );
 }

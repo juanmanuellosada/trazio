@@ -20,11 +20,14 @@ export function TaskQuickAddRow({
   sectionId,
   parentId,
   indent,
+  defaultDueDate,
 }: {
   projectId: string;
   sectionId: string | null;
   parentId: string | null;
   indent?: boolean;
+  /** Fecha (`yyyy-MM-dd`) que se guarda como `due_date` de la tarea creada, sin que el usuario la escriba (bloque 8.2: el alta rápida de la vista Hoy precarga la fecha de hoy). */
+  defaultDueDate?: string;
 }) {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
@@ -37,7 +40,7 @@ export function TaskQuickAddRow({
       return;
     }
     createTask.mutate(
-      { projectId, sectionId, parentId, title: trimmed },
+      { projectId, sectionId, parentId, title: trimmed, dueDate: defaultDueDate ?? null },
       { onSuccess: () => setTitle("") },
     );
   }

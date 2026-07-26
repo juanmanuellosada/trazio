@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -34,12 +35,15 @@ export function TaskList({
   parentId,
   initialTasks,
   depth = 0,
+  emptyState,
 }: {
   projectId: string;
   sectionId: string | null;
   parentId: string | null;
   initialTasks?: TaskRowData[];
   depth?: number;
+  /** Reemplaza el mensaje vacío por defecto (bloque 8.6: cada vista explica qué va a aparecer ahí, no un genérico). Solo se usa en el nivel superior (`depth === 0`). */
+  emptyState?: ReactNode;
 }) {
   const { data } = useTasks(projectId, initialTasks);
   const moveTask = useMoveTask();
@@ -76,7 +80,7 @@ export function TaskList({
   return (
     <div>
       {tasks.length === 0 ? (
-        depth === 0 && <p className="py-1 text-sm text-text-secondary">No hay tareas acá todavía.</p>
+        depth === 0 && (emptyState ?? <p className="py-1 text-sm text-text-secondary">No hay tareas acá todavía.</p>)
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>

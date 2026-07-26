@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { useTheme } from "next-themes";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -25,11 +25,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toastSuccess } from "@/lib/toast";
+import { formatTaskDueLabel } from "@/lib/dates/format";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionForSwap } from "@/lib/tasks/tree";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { PROJECT_COLORS } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "./priority-select";
 import { useTaskDetail } from "./task-detail-context";
@@ -46,19 +48,8 @@ function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
   );
 }
 
-/** `due_date` es `date` puro (sin hora): se ancla al mediodía para que el huso horario del navegador nunca la corra un día. */
-function formatDue(task: TaskRowData): string | null {
-  if (task.due_at) {
-    return new Date(task.due_at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  }
-  if (task.due_date) {
-    return new Date(`${task.due_date}T12:00:00`).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
-  }
-  return null;
-}
-
 /**
- * Fila de tarea (bloque 7): completar con optimistic update, prioridad,
+ * Fila de tarea (bloque 7 y 8): completar con optimistic update, prioridad,
  * etiquetas, vencimiento, y todas las acciones (duplicar, mover, indentar/
  * desindentar, reordenar, eliminar, copiar enlace, abrir en ventana
  * aparte). Reordenar es por arrastre (`useSortable`) **con** camino
@@ -67,19 +58,30 @@ function formatDue(task: TaskRowData): string | null {
  * sobre el título enfocado) y por menú — nunca por arrastre, a diferencia
  * de proyectos, porque acá convertir en subtarea es una acción frecuente
  * que merece un camino corto, no el mismo gesto que reordenar.
+ *
+ * `variant="flat"` (bloque 8, Hoy y Completado): esas dos vistas cruzan
+ * proyectos, así que no hay un contexto único de hermanos/padre del cual
+ * indentar, reordenar por posición o colgar subtareas — se ocultan esas
+ * acciones y no se intenta expandir subtareas (que además no vienen en el
+ * mismo pedido: cada tarea ahí es candidata por su propia fecha, no por
+ * pertenecer al árbol de otra). El resto (completar, prioridad, etiquetas,
+ * duplicar, mover, eliminar, copiar enlace) se mantiene igual.
  */
 export function TaskRow({
   task,
   allTasks,
   siblings,
   depth,
+  variant = "list",
 }: {
   task: TaskRowData;
   allTasks: TaskRowData[];
   siblings: TaskRowData[];
   depth: number;
+  variant?: "list" | "flat";
 }) {
   const { open } = useTaskDetail();
+  const preferences = useUserPreferences();
   const updateTask = useUpdateTask();
   const moveTask = useMoveTask();
   const duplicateTask = useDuplicateTask();
@@ -87,14 +89,16 @@ export function TaskRow({
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [addingFirstSubtask, setAddingFirstSubtask] = useState(false);
+  const now = useMemo(() => new Date(), []);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
-  const children = allTasks.filter((t) => t.parent_id === task.id);
+  const isFlat = variant === "flat";
+  const children = isFlat ? [] : allTasks.filter((t) => t.parent_id === task.id);
   const hasChildren = children.length > 0;
   const isCompleted = task.completed_at != null;
-  const due = formatDue(task);
+  const due = formatTaskDueLabel(task, { now, ...preferences });
 
   function toggleComplete() {
     updateTask.mutate({
@@ -150,15 +154,17 @@ export function TaskRow({
   return (
     <li ref={setNodeRef} style={style} className={cn("group", isDragging && "opacity-50")}>
       <div style={{ paddingLeft: depth * 24 }} className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`Reordenar ${task.title}`}
-          className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary opacity-0 outline-none group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
-        >
-          <GripVertical className="size-3.5" />
-        </button>
+        {!isFlat && (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`Reordenar ${task.title}`}
+            className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary opacity-0 outline-none group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
+          >
+            <GripVertical className="size-3.5" />
+          </button>
+        )}
 
         {hasChildren ? (
           <button
@@ -192,7 +198,7 @@ export function TaskRow({
         <button
           type="button"
           onClick={() => open(task.id)}
-          onKeyDown={handleTitleKeyDown}
+          onKeyDown={isFlat ? undefined : handleTitleKeyDown}
           className={cn(
             "min-w-0 flex-1 truncate rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             isCompleted && "text-text-secondary line-through",
@@ -228,23 +234,27 @@ export function TaskRow({
             <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
               <FolderInput className="size-3.5" /> Mover…
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => moveWithinSiblings("up")}>Mover arriba</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => moveWithinSiblings("down")}>Mover abajo</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleIndent}>
-              <IndentIncrease className="size-3.5" /> Convertir en subtarea
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleOutdent}>
-              <IndentDecrease className="size-3.5" /> Sacar de ser subtarea
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setCollapsed(false);
-                setAddingFirstSubtask(true);
-              }}
-            >
-              Agregar subtarea
-            </DropdownMenuItem>
+            {!isFlat && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => moveWithinSiblings("up")}>Mover arriba</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => moveWithinSiblings("down")}>Mover abajo</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleIndent}>
+                  <IndentIncrease className="size-3.5" /> Convertir en subtarea
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOutdent}>
+                  <IndentDecrease className="size-3.5" /> Sacar de ser subtarea
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setCollapsed(false);
+                    setAddingFirstSubtask(true);
+                  }}
+                >
+                  Agregar subtarea
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={copyLink}>
               <Link2 className="size-3.5" /> Copiar enlace directo
@@ -263,10 +273,10 @@ export function TaskRow({
         </DropdownMenu>
       </div>
 
-      {hasChildren && !collapsed && (
+      {!isFlat && hasChildren && !collapsed && (
         <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} initialTasks={allTasks} depth={depth + 1} />
       )}
-      {!hasChildren && addingFirstSubtask && (
+      {!isFlat && !hasChildren && addingFirstSubtask && (
         <div style={{ paddingLeft: (depth + 1) * 24 }} className="py-0.5">
           <TaskQuickAddRow projectId={task.project_id} sectionId={null} parentId={task.id} />
         </div>

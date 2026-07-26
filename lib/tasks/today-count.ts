@@ -1,4 +1,4 @@
-import { formatInTimeZone } from "date-fns-tz";
+import { dayBoundsUtc, todayInTimeZone } from "@/lib/dates/today";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -8,24 +8,23 @@ import { createClient } from "@/lib/supabase/server";
  * vencen hoy en la zona horaria del usuario. No suma hábitos: no existen
  * todavía (fase 3).
  *
- * `due_date` (sin hora) cuenta si es hoy o antes. `due_at` (con hora)
- * cuenta si cae hasta el final del día de hoy en la zona del usuario, lo
- * que cubre tanto "vence hoy" como "atrasada" sin correr la fecha (E5).
+ * Usa los mismos límites de día que `lib/tasks/hoy-filter.ts` (la consulta
+ * detrás de la vista Hoy, bloque 8.2): mismo criterio de "atrasada o vence
+ * hoy" en los dos lugares, para que el número del panel lateral nunca
+ * diverja de lo que la vista realmente muestra (8.3).
  */
 export async function getTodayTaskCount(userId: string, timezone: string): Promise<number> {
   const supabase = await createClient();
   const now = new Date();
-  const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
-  const endOfTodayUtc = new Date(
-    formatInTimeZone(now, timezone, "yyyy-MM-dd'T'23:59:59.999XXX"),
-  ).toISOString();
+  const today = todayInTimeZone(now, timezone);
+  const { endUtc } = dayBoundsUtc(now, timezone);
 
   const { count } = await supabase
     .from("tasks")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("completed_at", null)
-    .or(`due_date.lte.${today},due_at.lte.${endOfTodayUtc}`);
+    .or(`due_date.lte.${today},due_at.lte.${endUtc}`);
 
   return count ?? 0;
 }

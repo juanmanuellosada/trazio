@@ -4,9 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import * as toastModule from "@/lib/toast";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { TaskDetailProvider } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
+
+const TEST_PREFERENCES = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd/MM/yyyy" as const,
+  timeFormat: 24 as const,
+  weekStartsOn: 1 as const,
+};
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 
@@ -113,9 +121,11 @@ function renderList(tasks: TaskRow[]) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <TaskDetailProvider>
-        <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
-      </TaskDetailProvider>
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <TaskDetailProvider>
+          <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
+        </TaskDetailProvider>
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }

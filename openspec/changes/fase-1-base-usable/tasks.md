@@ -110,13 +110,13 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 
 ## 8. Vistas
 
-- [ ] 8.1 Bandeja de entrada: tareas sin proyecto, en modo lista
-- [ ] 8.2 Hoy: bloque de atrasadas destacado, tareas de hoy y completadas opcionales, con el botón de agregar precargando la fecha de hoy
-- [ ] 8.3 Contador de Hoy en el panel lateral contando solo tareas (F1)
-- [ ] 8.4 Proyecto: primero las tareas sin sección, después las secciones colapsables con su propio botón de agregar
-- [ ] 8.5 Completado: lista con contador y opción de volver a marcar pendiente
-- [ ] 8.6 Estados vacíos de las cuatro vistas, explicando qué va a aparecer y ofreciendo la acción, con el tono de `.claude/rules/copy.md`
-- [ ] 8.7 Formato de fechas en lenguaje natural cuando faltan menos de siete días, respetando las preferencias de formato y zona horaria
+- [x] 8.1 Bandeja de entrada: tareas sin proyecto, en modo lista
+- [x] 8.2 Hoy: bloque de atrasadas destacado, tareas de hoy y completadas opcionales, con el botón de agregar precargando la fecha de hoy
+- [x] 8.3 Contador de Hoy en el panel lateral contando solo tareas (F1)
+- [x] 8.4 Proyecto: primero las tareas sin sección, después las secciones colapsables con su propio botón de agregar
+- [x] 8.5 Completado: lista con contador y opción de volver a marcar pendiente
+- [x] 8.6 Estados vacíos de las cuatro vistas, explicando qué va a aparecer y ofreciendo la acción, con el tono de `.claude/rules/copy.md`
+- [x] 8.7 Formato de fechas en lenguaje natural cuando faltan menos de siete días, respetando las preferencias de formato y zona horaria
 
 ## 9. El parser de lenguaje natural
 
