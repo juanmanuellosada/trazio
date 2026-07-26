@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tokens de docs/design-system.md §7. Los diez colores de proyecto/etiqueta
+   (§2) no van acá: viven como mapa de TypeScript en lib/validation/colors.ts. */
+:root {
+  /* Fondo y superficie */
+  --background: #ffffff;
+  --surface: #f7f8fa;
+  --border: #e2e5ea;
+  --input: #e2e5ea;
+
+  /* Texto */
+  --text-primary: #14181f;
+  --text-secondary: #5c6675;
+
+  /* Marca / acción primaria */
+  --primary: #283b56;
+  --primary-foreground: #ffffff;
+  --ring: #283b56;
+
+  /* Estado */
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --error: #be123c;
+  --error-foreground: #ffffff;
+  --info: #0369a1;
+  --info-foreground: #ffffff;
+
+  /* Prioridad — punto/ícono (marca) y texto (variante por tema) */
+  --priority-urgent: #ec1e2a;
+  --priority-urgent-text: #a61b23;
+  --priority-high: #f58220;
+  --priority-high-text: #b34f00;
+  --priority-medium: #283b56;
+  --priority-medium-text: #283b56;
+  --priority-low: #8a94a0;
+  --priority-low-text: #5c6675;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #0f172a;
+  --surface: #1a2436;
+  --border: #2a3547;
+  --input: #2a3547;
+
+  --text-primary: #f1f4f8;
+  --text-secondary: #94a3b8;
+
+  --primary: #8ca3c9;
+  --primary-foreground: #0f172a;
+  --ring: #8ca3c9;
+
+  --success: #4ade80;
+  --success-foreground: #0f172a;
+  --warning: #fbbf24;
+  --warning-foreground: #0f172a;
+  --error: #fb7185;
+  --error-foreground: #0f172a;
+  --info: #38bdf8;
+  --info-foreground: #0f172a;
+
+  --priority-urgent: #ec1e2a;
+  --priority-urgent-text: #ff6b6b;
+  --priority-high: #f58220;
+  --priority-high-text: #f58220;
+  --priority-medium: #283b56;
+  --priority-medium-text: #8ca3c9;
+  --priority-low: #8a94a0;
+  --priority-low-text: #8a94a0;
+}
+
+/* Mapeo a utilidades de Tailwind / shadcn (§8). shadcn no distingue card,
+   popover, secondary, muted y accent en nuestro sistema: los cuatro
+   comparten --surface, que es la única superficie elevada que define el
+   design system. */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-surface: var(--surface);
+  --color-text-secondary: var(--text-secondary);
+
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text-primary);
+  --color-secondary: var(--surface);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--text-secondary);
+  --color-accent: var(--surface);
+  --color-accent-foreground: var(--text-primary);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--error);
+  --color-destructive-foreground: var(--error-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-priority-urgent: var(--priority-urgent);
+  --color-priority-urgent-text: var(--priority-urgent-text);
+  --color-priority-high: var(--priority-high);
+  --color-priority-high-text: var(--priority-high-text);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-medium-text: var(--priority-medium-text);
+  --color-priority-low: var(--priority-low);
+  --color-priority-low-text: var(--priority-low-text);
+
+  /* Radios (§5). --radius se repite en litoral acá porque un alias
+     --radius: var(--radius) sería una referencia circular inválida. */
+  --radius-sm: 0.25rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
