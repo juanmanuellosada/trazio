@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./use-tasks";
+import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./task-columns";
 
 /**
  * Todas las tareas de un proyecto, para sembrar desde el Server Component

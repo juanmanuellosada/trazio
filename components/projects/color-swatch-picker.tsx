@@ -39,6 +39,9 @@ export function ColorSwatchPicker({
         className="flex flex-wrap gap-1"
       >
         {PROJECT_COLOR_IDS.map((id) => {
+          // Excepción intencional: acá se itera la paleta completa por diseño
+          // (construye el selector), no se resuelve un `project.color` ya
+          // guardado — no pasa por `resolveProjectColorHex`.
           const hex = dark ? PROJECT_COLORS[id].dark : PROJECT_COLORS[id].light;
           const selected = value === id;
           return (

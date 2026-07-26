@@ -6,7 +6,7 @@ import { useSections } from "@/lib/sections/use-sections";
 import { useMoveTask } from "@/lib/tasks/mutations";
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { useTasks } from "@/lib/tasks/use-tasks";
-import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -96,7 +96,7 @@ export function MoveTaskDialog({
                   <span
                     aria-hidden
                     className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: PROJECT_COLORS[project.color].light }}
+                    style={{ backgroundColor: resolveProjectColorHex(project.color, "light") }}
                   />
                 )}
                 <span className="truncate">{project.name}</span>

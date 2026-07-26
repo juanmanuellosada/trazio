@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { compareHoyTasks, hoyCandidatesFilter } from "./hoy-filter";
-import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./use-tasks";
+import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "./task-columns";
 
 /**
  * Candidatas a la vista Hoy (bloque 8.2), para sembrar el caché desde el

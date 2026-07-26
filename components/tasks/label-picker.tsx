@@ -50,6 +50,11 @@ export function LabelPicker({
     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Etiquetas de la tarea">
       {labels.map((label) => {
         const isAssigned = assignedIds.has(label.id);
+        // Indexar PROJECT_COLORS acá es seguro: es `label.color`, no
+        // `project.color`, y el check constraint de `labels` garantiza una
+        // de las diez claves de la paleta (sin la excepción del azul de
+        // marca que sí tiene `projects.color`). Ver `resolveProjectColorHex`
+        // en `lib/validation/colors.ts`.
         const hex = resolvedTheme === "dark" ? PROJECT_COLORS[label.color].dark : PROJECT_COLORS[label.color].light;
         return (
           <button

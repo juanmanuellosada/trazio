@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
 import { useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
 import { MAX_PROJECT_DEPTH, positionForIndex, positionForSwap, projectDepth } from "@/lib/projects/tree";
@@ -45,7 +45,7 @@ import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog
 import { MoveProjectDialog } from "@/components/projects/move-project-dialog";
 import { cn } from "@/lib/utils";
 
-function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "icon"> }) {
+export function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "icon"> }) {
   const { resolvedTheme } = useTheme();
 
   if (project.icon) {
@@ -56,7 +56,7 @@ function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "icon"> 
     );
   }
 
-  const hex = resolvedTheme === "dark" ? PROJECT_COLORS[project.color].dark : PROJECT_COLORS[project.color].light;
+  const hex = resolveProjectColorHex(project.color, resolvedTheme === "dark" ? "dark" : "light");
   return <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} />;
 }
 

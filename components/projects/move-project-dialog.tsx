@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMoveProject } from "@/lib/projects/mutations";
 import { MAX_PROJECT_DEPTH, nextSiblingPosition, projectDepth, wouldCreateCycle } from "@/lib/projects/tree";
 import type { ProjectRow } from "@/lib/projects/use-projects";
-import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -92,7 +92,7 @@ export function MoveProjectDialog({
                 <span
                   aria-hidden
                   className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: PROJECT_COLORS[candidate.color].light }}
+                  style={{ backgroundColor: resolveProjectColorHex(candidate.color, "light") }}
                 />
               )}
               <span className="truncate">{candidate.name}</span>

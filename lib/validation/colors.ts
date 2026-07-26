@@ -23,3 +23,36 @@ export const PROJECT_COLOR_IDS = Object.keys(PROJECT_COLORS) as [
   ProjectColor,
   ...ProjectColor[],
 ];
+
+/**
+ * La columna `projects.color` tiene dos vocabularios: un id de `PROJECT_COLORS`
+ * para los proyectos normales, o el azul de marca `#283B56` para la Bandeja de
+ * entrada (única excepción, agregada por la migración
+ * `20260726013242_projects_color_allow_inbox_blue.sql`). `labels.color` no
+ * tiene esta excepción — para el color de una etiqueta, indexar `PROJECT_COLORS`
+ * directamente sigue siendo correcto.
+ *
+ * Esta es la única función que debe resolver un `projects.color` de la base a
+ * un hex: nunca indexar `PROJECT_COLORS[projects.color]` a mano, porque rompe
+ * con `undefined` para la Bandeja. Nunca tira: cualquier valor que no sea un id
+ * conocido ni el azul de marca cae al gris neutro de `--text-secondary`
+ * (`docs/design-system.md`).
+ *
+ * Esto no aplica a `labels.color`: esa columna no tiene la excepción del azul
+ * de marca (el check constraint solo permite las diez claves de la paleta),
+ * así que indexar `PROJECT_COLORS[label.color]` directamente ahí sí es
+ * seguro (ver `components/tasks/label-picker.tsx` y `task-row.tsx`).
+ */
+const INBOX_BLUE_HEX = "#283B56";
+const INBOX_BLUE_DARK_HEX = "#8CA3C9";
+const FALLBACK_GRAY = { light: "#5C6675", dark: "#94A3B8" };
+
+export function resolveProjectColorHex(color: string, theme: "light" | "dark"): string {
+  if (color in PROJECT_COLORS) {
+    return PROJECT_COLORS[color as ProjectColor][theme];
+  }
+  if (color === INBOX_BLUE_HEX) {
+    return theme === "dark" ? INBOX_BLUE_DARK_HEX : INBOX_BLUE_HEX;
+  }
+  return FALLBACK_GRAY[theme];
+}

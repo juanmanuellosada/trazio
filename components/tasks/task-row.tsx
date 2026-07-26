@@ -40,6 +40,11 @@ import { TaskQuickAddRow } from "./task-quick-add-row";
 
 function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
   const { resolvedTheme } = useTheme();
+  // Indexar PROJECT_COLORS acá es seguro: es `label.color`, no
+  // `project.color`, y el check constraint de `labels` garantiza una de las
+  // diez claves de la paleta (sin la excepción del azul de marca que sí
+  // tiene `projects.color`). Ver `resolveProjectColorHex` en
+  // `lib/validation/colors.ts`.
   const hex = resolvedTheme === "dark" ? PROJECT_COLORS[label.color].dark : PROJECT_COLORS[label.color].light;
   return (
     <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium text-white" style={{ backgroundColor: hex }}>

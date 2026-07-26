@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useUpdateProject } from "@/lib/projects/mutations";
 import type { ProjectRow } from "@/lib/projects/use-projects";
-import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
@@ -39,12 +39,7 @@ export function ProjectHeader({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // La Bandeja no tiene color de la paleta (B3 del design de fase 1: su
-  // `color` en base es el azul de marca, no un id de `PROJECT_COLORS`), así
-  // que dibuja un ícono fijo en vez de pasar por la lógica de emoji/punto de
-  // color del resto de los proyectos.
-  const paletteColor = project.color in PROJECT_COLORS ? PROJECT_COLORS[project.color as keyof typeof PROJECT_COLORS] : null;
-  const hex = paletteColor ? (resolvedTheme === "dark" ? paletteColor.dark : paletteColor.light) : undefined;
+  const hex = resolveProjectColorHex(project.color, resolvedTheme === "dark" ? "dark" : "light");
 
   return (
     <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
@@ -59,7 +54,7 @@ export function ProjectHeader({
           <span
             aria-hidden
             className="mt-1.5 size-3 shrink-0 rounded-full"
-            style={hex ? { backgroundColor: hex } : undefined}
+            style={{ backgroundColor: hex }}
           />
         )}
         <div className="min-w-0">
