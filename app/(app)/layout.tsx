@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getSidebarProjects } from "@/lib/projects/get-sidebar-projects";
+import { getAllProjects } from "@/lib/projects/get-all-projects";
 import { getTodayTaskCount } from "@/lib/tasks/today-count";
 import { getThemePreference } from "@/lib/preferences/get-theme-preference";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -23,10 +24,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const supabase = await createClient();
-  const [{ data: profile }, { data: preferences }, projects, theme] = await Promise.all([
+  const [{ data: profile }, { data: preferences }, projects, initialProjects, theme] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).single(),
     supabase.from("user_preferences").select("timezone").eq("user_id", user.id).single(),
     getSidebarProjects(user.id),
+    getAllProjects(user.id),
     getThemePreference(),
   ]);
 
@@ -38,9 +40,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <QueryProvider>
       <ThemeSync serverTheme={theme} />
       <div className="flex min-h-dvh">
-        <AppSidebar fullName={fullName} email={user.email} todayCount={todayCount} projects={projects} />
+        <AppSidebar
+          fullName={fullName}
+          email={user.email}
+          todayCount={todayCount}
+          projects={projects}
+          initialProjects={initialProjects}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
-          <MobileNav fullName={fullName} email={user.email} todayCount={todayCount} projects={projects} />
+          <MobileNav
+            fullName={fullName}
+            email={user.email}
+            todayCount={todayCount}
+            projects={projects}
+            initialProjects={initialProjects}
+          />
           <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
         </div>
       </div>

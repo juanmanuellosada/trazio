@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SidebarContent } from "./sidebar-content";
-import type { SidebarProject } from "./project-tree";
+import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
+import type { ProjectRow } from "@/lib/projects/use-projects";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "trazio:sidebar-collapsed";
@@ -19,11 +20,13 @@ export function AppSidebar({
   email,
   todayCount,
   projects,
+  initialProjects,
 }: {
   fullName: string | null;
   email: string | null;
   todayCount: number;
   projects: SidebarProject[];
+  initialProjects: ProjectRow[];
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -59,6 +62,7 @@ export function AppSidebar({
         email={email}
         todayCount={todayCount}
         projects={projects}
+        initialProjects={initialProjects}
       />
       <button
         type="button"

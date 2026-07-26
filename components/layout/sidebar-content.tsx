@@ -1,10 +1,14 @@
 import { Inbox, Sun, CheckCircle2, Settings } from "lucide-react";
 import { NavLink } from "./nav-link";
-import { ProjectTree, FavoriteList, type SidebarProject } from "./project-tree";
+import { FavoritesSection, ProjectsSection } from "./project-tree";
 import { ThemeToggle } from "./theme-toggle";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
+import type { ProjectRow } from "@/lib/projects/use-projects";
+
+export type { SidebarProject };
 
 export type SidebarContentProps = {
   collapsed?: boolean;
@@ -12,6 +16,7 @@ export type SidebarContentProps = {
   email: string | null;
   todayCount: number;
   projects: SidebarProject[];
+  initialProjects: ProjectRow[];
 };
 
 function getInitials(source: string): string {
@@ -34,9 +39,13 @@ export function SidebarContent({
   email,
   todayCount,
   projects,
+  initialProjects,
 }: SidebarContentProps) {
-  const hasFavorites = projects.some((p) => p.isFavorite);
   const initials = getInitials(fullName ?? email ?? "?");
+  // El conteo de tareas por proyecto todavía sale de la proyección liviana
+  // del Server Component (`getSidebarProjects`): el bloque 6 no toca
+  // `tasks`, así que ese número se actualiza recién con el bloque 7.
+  const taskCounts = new Map(projects.map((p) => [p.id, p.taskCount]));
 
   return (
     <div className="flex h-full flex-col">
@@ -63,27 +72,11 @@ export function SidebarContent({
         <NavLink href="/completado" label="Completado" icon={CheckCircle2} collapsed={collapsed} />
       </nav>
 
-      {!collapsed && hasFavorites && (
-        <>
-          <Separator />
-          <div className="p-2">
-            <h2 className="px-2.5 py-1 text-xs font-semibold tracking-wide text-text-secondary uppercase">
-              Favoritos
-            </h2>
-            <FavoriteList projects={projects} />
-          </div>
-        </>
-      )}
-
       {!collapsed && (
         <>
+          <FavoritesSection initialProjects={initialProjects} taskCounts={taskCounts} />
           <Separator />
-          <div className="flex-1 overflow-y-auto p-2">
-            <h2 className="px-2.5 py-1 text-xs font-semibold tracking-wide text-text-secondary uppercase">
-              Proyectos
-            </h2>
-            <ProjectTree projects={projects} />
-          </div>
+          <ProjectsSection initialProjects={initialProjects} taskCounts={taskCounts} />
         </>
       )}
       {collapsed && <div className="flex-1" />}

@@ -1,29 +1,51 @@
 "use client";
 
+import { useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { useTheme } from "next-themes";
-import { ChevronRight } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ChevronRight, GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { PROJECT_COLORS, type ProjectColor } from "@/lib/validation/colors";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
+import { useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
+import { MAX_PROJECT_DEPTH, positionForIndex, positionForSwap, projectDepth } from "@/lib/projects/tree";
+import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
+import { MoveProjectDialog } from "@/components/projects/move-project-dialog";
 import { cn } from "@/lib/utils";
 
-export type SidebarProject = {
-  id: string;
-  name: string;
-  color: ProjectColor;
-  icon: string | null;
-  parentId: string | null;
-  isFavorite: boolean;
-  taskCount: number;
-};
-
-function ProjectMark({ project }: { project: SidebarProject }) {
+function ProjectMark({ project }: { project: Pick<ProjectRow, "color" | "icon"> }) {
   const { resolvedTheme } = useTheme();
 
   if (project.icon) {
@@ -34,13 +56,11 @@ function ProjectMark({ project }: { project: SidebarProject }) {
     );
   }
 
-  const hex =
-    resolvedTheme === "dark" ? PROJECT_COLORS[project.color].dark : PROJECT_COLORS[project.color].light;
-
+  const hex = resolvedTheme === "dark" ? PROJECT_COLORS[project.color].dark : PROJECT_COLORS[project.color].light;
   return <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} />;
 }
 
-function ProjectLink({ project }: { project: SidebarProject }) {
+function ProjectLink({ project, taskCount }: { project: ProjectRow; taskCount: number }) {
   const pathname = usePathname();
   const active = pathname === `/proyecto/${project.id}`;
 
@@ -57,79 +77,264 @@ function ProjectLink({ project }: { project: SidebarProject }) {
     >
       <ProjectMark project={project} />
       <span className="flex-1 truncate">{project.name}</span>
-      {project.taskCount > 0 && (
-        <span className="text-xs tabular-nums text-text-secondary">{project.taskCount}</span>
-      )}
+      {taskCount > 0 && <span className="text-xs tabular-nums text-text-secondary">{taskCount}</span>}
     </Link>
   );
 }
 
-/** Nodo recursivo del árbol: hasta 3 niveles, según el límite ya impuesto por la base. */
+/**
+ * Menú contextual de un proyecto (bloque 6.6): el camino sin arrastre para
+ * todo lo que también se puede hacer arrastrando (reordenar, anidar), más
+ * el resto de acciones del proyecto (editar, favorito, archivar, borrar).
+ */
+function ProjectActionsMenu({
+  project,
+  allProjects,
+  canHaveChildren,
+  onMoveUp,
+  onMoveDown,
+}: {
+  project: ProjectRow;
+  allProjects: ProjectRow[];
+  canHaveChildren: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const updateProject = useUpdateProject();
+  const [editOpen, setEditOpen] = useState(false);
+  const [createSubOpen, setCreateSubOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Más acciones para ${project.name}`}
+              className="shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100"
+            />
+          }
+        >
+          <MoreHorizontal className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {canHaveChildren && (
+            <DropdownMenuItem onClick={() => setCreateSubOpen(true)}>Agregar subproyecto</DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => updateProject.mutate({ id: project.id, patch: { is_favorite: !project.is_favorite } })}
+          >
+            {project.is_favorite ? "Quitar de favoritos" : "Marcar como favorito"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onMoveUp}>Mover arriba</DropdownMenuItem>
+          <DropdownMenuItem onClick={onMoveDown}>Mover abajo</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setMoveOpen(true)}>Mover a…</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => updateProject.mutate({ id: project.id, patch: { is_archived: !project.is_archived } })}
+          >
+            {project.is_archived ? "Desarchivar" : "Archivar"}
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+            Eliminar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ProjectFormDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
+      <ProjectFormDialog open={createSubOpen} onOpenChange={setCreateSubOpen} parentId={project.id} />
+      <MoveProjectDialog open={moveOpen} onOpenChange={setMoveOpen} project={project} allProjects={allProjects} />
+      <DeleteProjectDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        project={project}
+        allProjects={allProjects}
+      />
+    </>
+  );
+}
+
+/** Nodo recursivo del árbol, arrastrable (bloque 6.3/6.6). */
 function ProjectTreeItem({
   project,
   all,
+  taskCounts,
   depth,
 }: {
-  project: SidebarProject;
-  all: SidebarProject[];
+  project: ProjectRow;
+  all: ProjectRow[];
+  taskCounts: Map<string, number>;
   depth: number;
 }) {
   const [open, setOpen] = useState(true);
-  const children = all.filter((p) => p.parentId === project.id);
+  const moveProject = useMoveProject();
+  const children = all.filter((p) => p.parent_id === project.id && !p.is_archived);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: project.id,
+  });
 
-  if (children.length === 0) {
-    return (
-      <li style={{ paddingLeft: `${depth * 16}px` }} className="flex items-center">
-        <span aria-hidden className="size-7 shrink-0" />
-        <ProjectLink project={project} />
-      </li>
-    );
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  function moveWithinSiblings(direction: "up" | "down") {
+    const siblings = all
+      .filter((p) => p.parent_id === project.parent_id && !p.is_archived)
+      .sort((a, b) => a.position - b.position);
+    const index = siblings.findIndex((p) => p.id === project.id);
+    const position = positionForSwap(siblings, index, direction);
+    if (position == null) return;
+    moveProject.mutate({ id: project.id, parentId: project.parent_id, position });
   }
 
+  const row = (
+    <div className={cn("group flex items-center", isDragging && "opacity-50")}>
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={`Reordenar ${project.name}`}
+        className="flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary opacity-0 outline-none group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      {children.length > 0 ? (
+        <CollapsibleTrigger
+          aria-label={open ? `Contraer ${project.name}` : `Expandir ${project.name}`}
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+        </CollapsibleTrigger>
+      ) : (
+        <span aria-hidden className="size-7 shrink-0" />
+      )}
+      <ProjectLink project={project} taskCount={taskCounts.get(project.id) ?? 0} />
+      <ProjectActionsMenu
+        project={project}
+        allProjects={all}
+        canHaveChildren={projectDepth(all, project.id) < MAX_PROJECT_DEPTH}
+        onMoveUp={() => moveWithinSiblings("up")}
+        onMoveDown={() => moveWithinSiblings("down")}
+      />
+    </div>
+  );
+
   return (
-    <li style={{ paddingLeft: `${depth * 16}px` }}>
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <div className="flex items-center">
-          <CollapsibleTrigger
-            aria-label={open ? `Contraer ${project.name}` : `Expandir ${project.name}`}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
-          </CollapsibleTrigger>
-          <ProjectLink project={project} />
-        </div>
-        <CollapsibleContent>
-          <ul>
-            {children.map((child) => (
-              <ProjectTreeItem key={child.id} project={child} all={all} depth={depth + 1} />
-            ))}
-          </ul>
-        </CollapsibleContent>
-      </Collapsible>
+    <li ref={setNodeRef} style={{ ...style, paddingLeft: `${depth * 16}px` }}>
+      {children.length > 0 ? (
+        <Collapsible open={open} onOpenChange={setOpen}>
+          {row}
+          <CollapsibleContent>
+            <ProjectTreeLevel projects={children} all={all} taskCounts={taskCounts} depth={depth + 1} />
+          </CollapsibleContent>
+        </Collapsible>
+      ) : (
+        row
+      )}
     </li>
   );
 }
 
+/** Un nivel de hermanos, con su propio `SortableContext` para el arrastre. */
+function ProjectTreeLevel({
+  projects,
+  all,
+  taskCounts,
+  depth,
+}: {
+  projects: ProjectRow[];
+  all: ProjectRow[];
+  taskCounts: Map<string, number>;
+  depth: number;
+}) {
+  const ids = projects.map((p) => p.id);
+  return (
+    <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+      <ul className="flex flex-col gap-0.5">
+        {projects.map((project) => (
+          <ProjectTreeItem key={project.id} project={project} all={all} taskCounts={taskCounts} depth={depth} />
+        ))}
+      </ul>
+    </SortableContext>
+  );
+}
+
 /**
- * Árbol de proyectos del panel lateral (bloque 5.3). Si el usuario no
- * tiene más que la Bandeja (que no viaja acá, ver `get-sidebar-projects.ts`),
- * `projects` llega vacío y esto renderiza una lista vacía sin romper nada.
+ * Árbol de proyectos del panel lateral (bloque 5.3, con la interacción del
+ * bloque 6). `initialProjects` siembra el caché de TanStack Query con lo que
+ * ya trajo el Server Component del layout, así que el primer render no
+ * repite el fetch. La Bandeja no viaja acá (se muestra aparte, como acceso
+ * principal fijo); los archivados tampoco, según "Archivar conserva los
+ * datos" del spec: dejan de listarse en la navegación cotidiana.
  */
-export function ProjectTree({ projects }: { projects: SidebarProject[] }) {
-  const roots = projects.filter((p) => p.parentId === null);
+export function ProjectTree({
+  initialProjects,
+  taskCounts,
+}: {
+  initialProjects: ProjectRow[];
+  taskCounts: Map<string, number>;
+}) {
+  const { data } = useProjects(initialProjects);
+  const moveProject = useMoveProject();
+  const visible = (data ?? []).filter((p) => !p.is_inbox && !p.is_archived);
+  const roots = visible.filter((p) => p.parent_id === null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeProject = visible.find((p) => p.id === active.id);
+    const overProject = visible.find((p) => p.id === over.id);
+    // El arrastre solo reordena entre hermanos: anidar (cambiar de padre) se
+    // hace desde "Mover a…", el camino sin arrastre que exige el spec.
+    if (!activeProject || !overProject || activeProject.parent_id !== overProject.parent_id) return;
+
+    const siblings = visible
+      .filter((p) => p.parent_id === activeProject.parent_id)
+      .sort((a, b) => a.position - b.position);
+    const activeIndex = siblings.findIndex((p) => p.id === active.id);
+    const overIndex = siblings.findIndex((p) => p.id === over.id);
+    const reordered = arrayMove(siblings, activeIndex, overIndex);
+    const newIndex = reordered.findIndex((p) => p.id === active.id);
+    const others = siblings.filter((p) => p.id !== active.id).map((p) => p.position);
+
+    moveProject.mutate({
+      id: activeProject.id,
+      parentId: activeProject.parent_id,
+      position: positionForIndex(others, newIndex),
+    });
+  }
+
+  if (roots.length === 0) {
+    return <p className="px-2.5 py-1 text-sm text-text-secondary">Todavía no creaste ningún proyecto.</p>;
+  }
 
   return (
-    <ul className="flex flex-col gap-0.5">
-      {roots.map((project) => (
-        <ProjectTreeItem key={project.id} project={project} all={projects} depth={0} />
-      ))}
-    </ul>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <ProjectTreeLevel projects={roots} all={visible} taskCounts={taskCounts} depth={0} />
+    </DndContext>
   );
 }
 
 /** Lista plana de favoritos (sección aparte, sin jerarquía ni chevrons). */
-export function FavoriteList({ projects }: { projects: SidebarProject[] }) {
-  const favorites = projects.filter((p) => p.isFavorite);
+export function FavoriteList({
+  initialProjects,
+  taskCounts,
+}: {
+  initialProjects: ProjectRow[];
+  taskCounts: Map<string, number>;
+}) {
+  const { data } = useProjects(initialProjects);
+  const favorites = (data ?? []).filter((p) => p.is_favorite && !p.is_archived && !p.is_inbox);
 
   if (favorites.length === 0) {
     return null;
@@ -139,9 +344,83 @@ export function FavoriteList({ projects }: { projects: SidebarProject[] }) {
     <ul className="flex flex-col gap-0.5">
       {favorites.map((project) => (
         <li key={project.id}>
-          <ProjectLink project={project} />
+          <ProjectLink project={project} taskCount={taskCounts.get(project.id) ?? 0} />
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Botón "Nuevo proyecto" a la altura del encabezado "Proyectos" (bloque 6.2). */
+function NewProjectButton() {
+  const [open, setOpen] = useState(false);
+  const labelId = useId();
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-labelledby={labelId}
+        onClick={() => setOpen(true)}
+        className="text-text-secondary hover:text-foreground"
+      >
+        <Plus className="size-3.5" />
+        <span id={labelId} className="sr-only">
+          Nuevo proyecto
+        </span>
+      </Button>
+      <ProjectFormDialog open={open} onOpenChange={setOpen} parentId={null} />
+    </>
+  );
+}
+
+/**
+ * Sección "Favoritos" del panel lateral (bloque 6.4): no se renderiza nada
+ * (ni el separador ni el encabezado) cuando no hay ningún proyecto marcado
+ * como favorito, y reacciona al instante cuando se marca o desmarca uno
+ * porque lee del mismo caché de TanStack Query que la mutación actualiza.
+ */
+export function FavoritesSection({
+  initialProjects,
+  taskCounts,
+}: {
+  initialProjects: ProjectRow[];
+  taskCounts: Map<string, number>;
+}) {
+  const { data } = useProjects(initialProjects);
+  const hasFavorites = (data ?? []).some((p) => p.is_favorite && !p.is_archived && !p.is_inbox);
+
+  if (!hasFavorites) return null;
+
+  return (
+    <>
+      <Separator />
+      <div className="p-2">
+        <h2 className="px-2.5 py-1 text-xs font-semibold tracking-wide text-text-secondary uppercase">
+          Favoritos
+        </h2>
+        <FavoriteList initialProjects={initialProjects} taskCounts={taskCounts} />
+      </div>
+    </>
+  );
+}
+
+/** Sección "Proyectos" del panel lateral: encabezado con "+ Nuevo proyecto" y el árbol. */
+export function ProjectsSection({
+  initialProjects,
+  taskCounts,
+}: {
+  initialProjects: ProjectRow[];
+  taskCounts: Map<string, number>;
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex items-center justify-between px-2.5 py-1">
+        <h2 className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Proyectos</h2>
+        <NewProjectButton />
+      </div>
+      <ProjectTree initialProjects={initialProjects} taskCounts={taskCounts} />
+    </div>
   );
 }

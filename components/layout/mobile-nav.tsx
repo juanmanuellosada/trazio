@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { Menu, Inbox, Sun, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "./sidebar-content";
-import type { SidebarProject } from "./project-tree";
+import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
+import type { ProjectRow } from "@/lib/projects/use-projects";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,11 +22,13 @@ export function MobileNav({
   email,
   todayCount,
   projects,
+  initialProjects,
 }: {
   fullName: string | null;
   email: string | null;
   todayCount: number;
   projects: SidebarProject[];
+  initialProjects: ProjectRow[];
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -49,7 +52,13 @@ export function MobileNav({
             <Menu className="size-5" />
           </SheetTrigger>
           <SheetContent side="left" className="w-72 gap-0 bg-background p-0">
-            <SidebarContent fullName={fullName} email={email} todayCount={todayCount} projects={projects} />
+            <SidebarContent
+              fullName={fullName}
+              email={email}
+              todayCount={todayCount}
+              projects={projects}
+              initialProjects={initialProjects}
+            />
           </SheetContent>
         </Sheet>
       </header>

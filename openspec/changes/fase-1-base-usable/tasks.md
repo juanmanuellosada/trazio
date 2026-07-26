@@ -54,17 +54,17 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 - [x] 4.1 Configurar los tres clientes de `@supabase/ssr`: servidor, navegador y el de middleware que refresca la sesión
 - [x] 4.2 Middleware que protege `app/(app)/**` y redirige a login conservando el destino
 - [x] 4.3 Esquemas de Zod de registro y login en `lib/validation/`, con la contraseña de 8 caracteres o más, compartidos entre cliente y servidor
-- [ ] 4.4 Configurar el mínimo de 8 caracteres también en Supabase Auth
+- [x] 4.4 Configurar el mínimo de 8 caracteres también en Supabase Auth
 - [x] 4.5 Pantalla de registro con nombre, correo y contraseña, usando React Hook Form + Zod
 - [x] 4.6 Pantalla de inicio de sesión
 - [x] 4.7 Registro e inicio de sesión con Google OAuth, con el callback y el redirect configurados
 - [x] 4.8 Registrar `trazio.com.ar` en NIC Argentina (insumo del dueño del proyecto, no lo hace la implementación)
 - [x] 4.9 Apuntar el dominio a Vercel y configurarlo como dominio de producción del proyecto
 - [x] 4.10 Crear la cuenta de Resend y verificar el subdominio de envío `envios.trazio.com.ar` con sus registros SPF, DKIM, MX de return-path y DMARC
-- [ ] 4.11 Configurar el SMTP propio de Supabase Auth con las credenciales de Resend, para que la confirmación de cuenta y el reset salgan desde el dominio verificado y no por el SMTP compartido de Supabase, que está limitado a unos pocos envíos por hora y no es para producción
-- [ ] 4.12 Cargar `NEXT_PUBLIC_SITE_URL` por entorno en Vercel: el dominio propio en Production, y en Preview derivada de `VERCEL_URL`. Si se fija al dominio de producción, el login con Google y el link de reset se rompen en cada preview, que es justo donde se prueba
-- [ ] 4.13 Configurar las URLs de redirección en Supabase Auth: la Site URL en el dominio propio, y en Redirect URLs el dominio, el `www`, `localhost` y el comodín de los previews de Vercel. Sin el comodín, el login con Google y el link de reset fallan en cada rama nueva
-- [ ] 4.14 Integrar Resend y configurar las plantillas de confirmación de correo y de reset de contraseña
+- [x] 4.11 Configurar el SMTP propio de Supabase Auth con las credenciales de Resend, para que la confirmación de cuenta y el reset salgan desde el dominio verificado y no por el SMTP compartido de Supabase, que está limitado a unos pocos envíos por hora y no es para producción
+- [x] 4.12 Cargar `NEXT_PUBLIC_SITE_URL` por entorno en Vercel: el dominio propio en Production, y en Preview derivada de `VERCEL_URL`. Si se fija al dominio de producción, el login con Google y el link de reset se rompen en cada preview, que es justo donde se prueba
+- [x] 4.13 Configurar las URLs de redirección en Supabase Auth: la Site URL en el dominio propio, y en Redirect URLs el dominio, el `www`, `localhost` y el comodín de los previews de Vercel. Sin el comodín, el login con Google y el link de reset fallan en cada rama nueva
+- [x] 4.14 Integrar Resend y configurar las plantillas de confirmación de correo y de reset de contraseña
 - [x] 4.15 Flujo de recuperación: pantalla para pedir el correo, envío del link, página de reset real que valida el token, cambio de contraseña y sesión iniciada
 - [x] 4.16 Cerrar sesión limpiando todo lo local
 - [x] 4.17 Mensajes de error de auth en tres partes (qué pasó, por qué, qué hacer), sin códigos técnicos y sin usar rojo de marca para el error
@@ -82,16 +82,16 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 
 ## 6. Proyectos y secciones
 
-- [ ] 6.1 Consultas y mutaciones de proyectos con TanStack Query
-- [ ] 6.2 Crear, editar y eliminar proyectos, con nombre, color de la paleta fija, ícono emoji y descripción
-- [ ] 6.3 Anidamiento hasta 3 niveles en el árbol del panel lateral, con ramas colapsables y contador por proyecto
-- [ ] 6.4 Marcar favorito y archivar, con la sección de favoritos del panel lateral
-- [ ] 6.5 Diálogo de confirmación de borrado que muestra cuántas tareas se pierden, con el conteo real
-- [ ] 6.6 Reordenar y anidar proyectos con dnd-kit, **más** el camino equivalente por menú contextual o teclado
-- [ ] 6.7 La Bandeja de entrada no ofrece borrar ni archivar en la interfaz, además de estar protegida en la base
-- [ ] 6.8 Secciones: crear, renombrar, reordenar, colapsar y eliminar dentro de un proyecto
-- [ ] 6.9 Verificar que al eliminar una sección sus tareas quedan sin sección y no se borran
-- [ ] 6.10 Verificar que eliminar una etiqueta la quita de todas las tareas donde estaba asignada
+- [x] 6.1 Consultas y mutaciones de proyectos con TanStack Query
+- [x] 6.2 Crear, editar y eliminar proyectos, con nombre, color de la paleta fija, ícono emoji y descripción
+- [x] 6.3 Anidamiento hasta 3 niveles en el árbol del panel lateral, con ramas colapsables y contador por proyecto
+- [x] 6.4 Marcar favorito y archivar, con la sección de favoritos del panel lateral
+- [x] 6.5 Diálogo de confirmación de borrado que muestra cuántas tareas se pierden, con el conteo real
+- [x] 6.6 Reordenar y anidar proyectos con dnd-kit, **más** el camino equivalente por menú contextual o teclado
+- [x] 6.7 La Bandeja de entrada no ofrece borrar ni archivar en la interfaz, además de estar protegida en la base
+- [x] 6.8 Secciones: crear, renombrar, reordenar, colapsar y eliminar dentro de un proyecto
+- [x] 6.9 Verificar que al eliminar una sección sus tareas quedan sin sección y no se borran
+- [x] 6.10 Verificar que eliminar una etiqueta la quita de todas las tareas donde estaba asignada
 
 ## 7. Tareas
 
