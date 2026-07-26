@@ -320,3 +320,29 @@ corre al día siguiente; y un candidato descartado no se resalta.
 extraer menos** — un atributo de menos lo corrige el usuario en dos segundos, uno
 de más lo descubre cuando le suena una notificación que no esperaba. El contrato
 sigue siendo la fuente de verdad de los casos; este log guarda el porqué.
+
+---
+
+## D22 — El dominio del producto es `trazio.com.ar`.
+
+**Fecha.** 2026-07-25
+
+**Contexto.** Hasta ahora no había dominio. El deploy vive en
+`trazio-three.vercel.app`, que sirve como URL de la app pero **no** se puede usar
+como dominio remitente de correo: Resend verifica un dominio pidiendo registros
+DNS (SPF, DKIM, el MX del return-path y DMARC), y el DNS de `vercel.app` es de
+Vercel, no nuestro. Además `vercel.app` está en la Public Suffix List. Sin dominio
+propio, la confirmación de cuenta y el reset de contraseña no pueden funcionar
+para nadie que no sea el dueño de la cuenta de Resend, y eso bloquea el primer
+criterio de aceptación de la fase 1.
+
+**Decisión.** Se registra `trazio.com.ar` en NIC Argentina. Se evaluaron
+`trazio.com` y `trazio.io`, ambos ocupados, y `trazio.ar`, libre pero menos
+instalado entre usuarios argentinos. `.com.ar` es el más reconocible en el
+mercado al que el producto apunta explícitamente.
+
+**Consecuencia.** Los correos transaccionales se envían desde un **subdominio de
+envío** (`envios.trazio.com.ar`) y no desde el dominio raíz, para que un problema
+de reputación quede contenido y no arrastre al dominio principal. El dominio es
+además el de la landing, el de la app y el que validan los redirects de Google
+OAuth.

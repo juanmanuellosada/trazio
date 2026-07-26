@@ -25,29 +25,29 @@ Bloque bloqueante: las decisiones cerradas por el dueño del proyecto cambian el
 - [x] 2.6 Crear la estructura de carpetas de `AGENTS.md` con las correcciones de 1.11
 - [x] 2.7 Documentar las variables de entorno de la tabla A2 del design en un `.env.example`, con `SUPABASE_SERVICE_ROLE_KEY` marcada como exclusiva de servidor
 - [x] 2.8 Mover `logo.png` a `public/` y generar los íconos 192, 512 y maskable
-- [ ] 2.9 Conectar el repositorio a Vercel y verificar que un deploy vacío levanta con entornos de preview por rama
+- [x] 2.9 Conectar el repositorio a Vercel y verificar que un deploy vacío levanta con entornos de preview por rama
 - [x] 2.10 Configurar Vitest y Playwright, y dejar el gate `pnpm lint && pnpm typecheck && pnpm test` en verde sobre el proyecto vacío
 
 ## 3. Esquema de base de datos y RLS
 
 Cada tabla va en su propia migración, con RLS y sus índices adentro. Después de cada migración, `pnpm db:types`.
 
-- [ ] 3.1 Levantar Supabase local y conectar el proyecto remoto
-- [ ] 3.2 Migración de `profiles` con RLS, las cuatro políticas con `(select auth.uid()) = user_id` y su índice
-- [ ] 3.3 Migración de `user_preferences` con RLS, políticas, defaults de B4 y check constraints de `date_format`, `default_view`, `theme`, `time_format` y `week_starts_on`
-- [ ] 3.4 Migración de `projects` con RLS, políticas, índice único parcial de un solo `is_inbox` por usuario, constraint de 3 niveles de anidamiento, constraint que impide que un proyecto sea su propio ancestro y check constraint de la paleta de colores
-- [ ] 3.5 Trigger que impide borrar la Bandeja de entrada, archivarla o quitarle el `is_inbox`
-- [ ] 3.6 Migración de `sections` con RLS, políticas, `project_id ON DELETE CASCADE` e índices
-- [ ] 3.7 Migración de `tasks` con RLS, políticas, constraint de exclusión entre `due_date` y `due_at`, `priority` default 4, `section_id ON DELETE SET NULL`, `project_id` y `parent_id` en cascada
-- [ ] 3.8 Índices de `tasks`: `(user_id, due_date)`, `(user_id, due_at)`, `(user_id, project_id, position)`, `(user_id, completed_at)` y `(parent_id)`
-- [ ] 3.9 Migración de `labels` con RLS, `name` único por usuario, `color` de la paleta fija y su índice
-- [ ] 3.10 Migración de `task_labels` con PK compuesta, ambas FK en cascada y `user_id` propio para RLS
-- [ ] 3.11 Trigger que valida que el proyecto y la sección destino pertenezcan al mismo usuario al mover una tarea
-- [ ] 3.12 Trigger de aprovisionamiento sobre `auth.users` que crea perfil, preferencias y Bandeja de entrada en una sola transacción, con los valores iniciales de B3
-- [ ] 3.13 Función de rebalanceo de `position` cuando la diferencia entre vecinos baja de 0,0001, con espaciado inicial de 1000
-- [ ] 3.14 Habilitar replicación de Realtime en `tasks`, `projects`, `sections`, `labels` y `task_labels`
-- [ ] 3.15 Generar los tipos con `pnpm db:types` y verificar que compilan
-- [ ] 3.16 Tests de RLS: con dos usuarios distintos, verificar que ninguno ve, edita ni borra filas del otro en las siete tablas
+- [x] 3.1 Levantar Supabase local y conectar el proyecto remoto
+- [x] 3.2 Migración de `profiles` con RLS, las cuatro políticas con `(select auth.uid()) = user_id` y su índice
+- [x] 3.3 Migración de `user_preferences` con RLS, políticas, defaults de B4 y check constraints de `date_format`, `default_view`, `theme`, `time_format` y `week_starts_on`
+- [x] 3.4 Migración de `projects` con RLS, políticas, índice único parcial de un solo `is_inbox` por usuario, constraint de 3 niveles de anidamiento, constraint que impide que un proyecto sea su propio ancestro y check constraint de la paleta de colores
+- [x] 3.5 Trigger que impide borrar la Bandeja de entrada, archivarla o quitarle el `is_inbox`
+- [x] 3.6 Migración de `sections` con RLS, políticas, `project_id ON DELETE CASCADE` e índices
+- [x] 3.7 Migración de `tasks` con RLS, políticas, constraint de exclusión entre `due_date` y `due_at`, `priority` default 4, `section_id ON DELETE SET NULL`, `project_id` y `parent_id` en cascada
+- [x] 3.8 Índices de `tasks`: `(user_id, due_date)`, `(user_id, due_at)`, `(user_id, project_id, position)`, `(user_id, completed_at)` y `(parent_id)`
+- [x] 3.9 Migración de `labels` con RLS, `name` único por usuario, `color` de la paleta fija y su índice
+- [x] 3.10 Migración de `task_labels` con PK compuesta, ambas FK en cascada y `user_id` propio para RLS
+- [x] 3.11 Trigger que valida que el proyecto y la sección destino pertenezcan al mismo usuario al mover una tarea
+- [x] 3.12 Trigger de aprovisionamiento sobre `auth.users` que crea perfil, preferencias y Bandeja de entrada en una sola transacción, con los valores iniciales de B3
+- [x] 3.13 Función de rebalanceo de `position` cuando la diferencia entre vecinos baja de 0,0001, con espaciado inicial de 1000
+- [x] 3.14 Habilitar replicación de Realtime en `tasks`, `projects`, `sections`, `labels` y `task_labels`
+- [x] 3.15 Generar los tipos con `pnpm db:types` y verificar que compilan
+- [x] 3.16 Tests de RLS: con dos usuarios distintos, verificar que ninguno ve, edita ni borra filas del otro en las siete tablas
 
 ## 4. Autenticación de punta a punta
 
@@ -58,11 +58,16 @@ Cada tabla va en su propia migración, con RLS y sus índices adentro. Después 
 - [ ] 4.5 Pantalla de registro con nombre, correo y contraseña, usando React Hook Form + Zod
 - [ ] 4.6 Pantalla de inicio de sesión
 - [ ] 4.7 Registro e inicio de sesión con Google OAuth, con el callback y el redirect configurados
-- [ ] 4.8 Integrar Resend y configurar las plantillas de confirmación de correo y de reset de contraseña
-- [ ] 4.9 Flujo de recuperación: pantalla para pedir el correo, envío del link, página de reset real que valida el token, cambio de contraseña y sesión iniciada
-- [ ] 4.10 Cerrar sesión limpiando todo lo local
-- [ ] 4.11 Mensajes de error de auth en tres partes (qué pasó, por qué, qué hacer), sin códigos técnicos y sin usar rojo de marca para el error
-- [ ] 4.12 Verificar que al primer login existen el perfil, las preferencias y la Bandeja de entrada
+- [ ] 4.8 Registrar `trazio.com.ar` en NIC Argentina (insumo del dueño del proyecto, no lo hace la implementación)
+- [ ] 4.9 Apuntar el dominio a Vercel y configurarlo como dominio de producción del proyecto
+- [ ] 4.10 Crear la cuenta de Resend y verificar el subdominio de envío `envios.trazio.com.ar` con sus registros SPF, DKIM, MX de return-path y DMARC
+- [ ] 4.11 Configurar el SMTP propio de Supabase Auth con las credenciales de Resend, para que la confirmación de cuenta y el reset salgan desde el dominio verificado y no por el SMTP compartido de Supabase, que está limitado a unos pocos envíos por hora y no es para producción
+- [ ] 4.12 Cargar `NEXT_PUBLIC_SITE_URL` por entorno en Vercel: el dominio propio en Production, y en Preview derivada de `VERCEL_URL`. Si se fija al dominio de producción, el login con Google y el link de reset se rompen en cada preview, que es justo donde se prueba
+- [ ] 4.13 Integrar Resend y configurar las plantillas de confirmación de correo y de reset de contraseña
+- [ ] 4.14 Flujo de recuperación: pantalla para pedir el correo, envío del link, página de reset real que valida el token, cambio de contraseña y sesión iniciada
+- [ ] 4.15 Cerrar sesión limpiando todo lo local
+- [ ] 4.16 Mensajes de error de auth en tres partes (qué pasó, por qué, qué hacer), sin códigos técnicos y sin usar rojo de marca para el error
+- [ ] 4.17 Verificar que al primer login existen el perfil, las preferencias y la Bandeja de entrada
 
 ## 5. Layout de la app
 
