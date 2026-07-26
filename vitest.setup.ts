@@ -26,3 +26,14 @@ if (typeof Element !== "undefined") {
     Element.prototype.scrollIntoView = () => {};
   }
 }
+
+// jsdom tampoco implementa `ResizeObserver`, que `cmdk` (detrás de
+// `components/ui/command.tsx`, el combobox de zona horaria del bloque 11)
+// usa para medir la lista filtrada. Sin el stub, montar el componente tira.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

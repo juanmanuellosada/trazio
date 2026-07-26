@@ -8,7 +8,7 @@ import { z } from "zod";
  * validación de cliente es cortesía, no seguridad.
  */
 
-const nameSchema = z
+export const nameSchema = z
   .string()
   .trim()
   .min(1, "Falta tu nombre. Lo necesitamos para tu cuenta. Completá el campo antes de continuar.");
@@ -18,7 +18,7 @@ const emailSchema = z
   .trim()
   .pipe(z.email("Ingresá un correo válido, con el formato nombre@dominio.com."));
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(
     8,

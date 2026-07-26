@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-path";
 import { getSiteUrl } from "@/lib/site-url";
+import { resolveEntryPath } from "@/lib/preferences/get-default-view-path";
 
 /**
  * Ruta compartida por dos flujos que Supabase resuelve igual, con un
@@ -26,9 +27,10 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${siteUrl}${next}`);
+      const redirectTo = data.user ? await resolveEntryPath(data.user.id, next) : next;
+      return NextResponse.redirect(`${siteUrl}${redirectTo}`);
     }
 
     // El código de recuperación venció o ya se usó: se vuelve a la pantalla

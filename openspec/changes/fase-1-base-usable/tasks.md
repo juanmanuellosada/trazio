@@ -160,13 +160,13 @@ Los tests van con el primer commit del parser, escritos antes de la lógica. Los
 
 ## 11. Configuración
 
-- [ ] 11.1 Pantalla de configuración con las secciones de fase 1
-- [ ] 11.2 Perfil: nombre editable, correo no editable, cambiar contraseña
-- [ ] 11.3 Tema claro, oscuro y sistema
-- [ ] 11.4 Zona horaria con la lista IANA completa obtenida con `Intl`
-- [ ] 11.5 Formato de fecha, formato de hora 12 o 24, día de inicio de semana y pantalla por defecto
-- [ ] 11.6 Sección de instalación de la PWA, con las instrucciones para iPhone
-- [ ] 11.7 Verificar que las preferencias afectan de verdad el formateo de fechas y horas en las cuatro vistas y en el parser
+- [x] 11.1 Pantalla de configuración con las secciones de fase 1
+- [x] 11.2 Perfil: nombre editable, correo no editable, cambiar contraseña
+- [x] 11.3 Tema claro, oscuro y sistema
+- [x] 11.4 Zona horaria con la lista IANA completa obtenida con `Intl`
+- [x] 11.5 Formato de fecha, formato de hora 12 o 24, día de inicio de semana y pantalla por defecto
+- [x] 11.6 Sección de instalación de la PWA, con las instrucciones para iPhone
+- [x] 11.7 Verificar que las preferencias afectan de verdad el formateo de fechas y horas en las cuatro vistas y en el parser
 
 ## 12. Landing
 

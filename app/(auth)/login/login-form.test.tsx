@@ -39,8 +39,8 @@ describe("LoginForm", () => {
     expect(loginAction).not.toHaveBeenCalled();
   });
 
-  it("inicia sesión y vuelve a `next` cuando las credenciales son correctas", async () => {
-    vi.mocked(loginAction).mockResolvedValue({ success: true });
+  it("inicia sesión y vuelve al `redirectTo` que resuelve la acción", async () => {
+    vi.mocked(loginAction).mockResolvedValue({ success: true, redirectTo: "/proyecto/1" });
     const user = userEvent.setup();
     render(<LoginForm siteUrl="https://trazio.com.ar" next="/proyecto/1" initialError={null} />);
 
@@ -48,6 +48,10 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText("Contraseña"), "12345678");
     await user.click(screen.getByRole("button", { name: "Iniciar sesión" }));
 
+    await waitFor(() => expect(loginAction).toHaveBeenCalledWith(
+      { email: "juan@trazio.com.ar", password: "12345678" },
+      "/proyecto/1",
+    ));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/proyecto/1"));
   });
 

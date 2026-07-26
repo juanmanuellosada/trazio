@@ -3,11 +3,17 @@
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
 import { createClient } from "@/lib/supabase/server";
 import { translateAuthError } from "@/lib/auth/errors";
+import { resolveEntryPath } from "@/lib/preferences/get-default-view-path";
 
-export type LoginResult = { success: true } | { success: false; message: string };
+export type LoginResult = { success: true; redirectTo: string } | { success: false; message: string };
 
-/** Server Action de login (tarea 4.6): revalida con el mismo esquema de Zod del cliente. */
-export async function loginAction(input: LoginInput): Promise<LoginResult> {
+/**
+ * Server Action de login (tarea 4.6): revalida con el mismo esquema de Zod
+ * del cliente. `next` decide el destino (tarea 11.5/11.7): un deep link
+ * puntual se respeta, y si no hay ninguno se resuelve con la pantalla por
+ * defecto de la cuenta.
+ */
+export async function loginAction(input: LoginInput, next: string): Promise<LoginResult> {
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -17,10 +23,11 @@ export async function loginAction(input: LoginInput): Promise<LoginResult> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     return { success: false, message: translateAuthError(error) };
   }
 
-  return { success: true };
+  const redirectTo = await resolveEntryPath(data.user.id, next);
+  return { success: true, redirectTo };
 }

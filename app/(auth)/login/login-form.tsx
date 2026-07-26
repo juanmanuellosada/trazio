@@ -32,12 +32,12 @@ export function LoginForm({
 
   async function onSubmit(values: LoginInput) {
     setServerError(null);
-    const result = await loginAction(values);
+    const result = await loginAction(values, next);
     if (!result.success) {
       setServerError(result.message);
       return;
     }
-    router.push(next);
+    router.push(result.redirectTo);
     router.refresh();
   }
 
