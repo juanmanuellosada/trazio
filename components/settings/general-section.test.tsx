@@ -34,7 +34,7 @@ function renderSection() {
       <GeneralSection
         userId="user-1"
         timezone="America/Buenos_Aires"
-        dateFormat="dd/MM/yyyy"
+        dateFormat="dd-MM-yyyy"
         timeFormat={24}
         weekStartsOn={1}
         defaultView="bandeja"
@@ -108,5 +108,18 @@ describe("GeneralSection", () => {
 
     await waitFor(() => expect(update).toHaveBeenCalled());
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("cada selector muestra la etiqueta legible, no el valor crudo guardado", () => {
+    renderSection();
+
+    expect(screen.getByRole("combobox", { name: "Formato de fecha" })).toHaveTextContent(
+      "dd-mm-aaaa (31-12-2026)",
+    );
+    expect(screen.getByRole("combobox", { name: "Formato de hora" })).toHaveTextContent("24 horas (14:30)");
+    expect(screen.getByRole("combobox", { name: "Día de inicio de semana" })).toHaveTextContent("Lunes");
+    expect(screen.getByRole("combobox", { name: "Pantalla por defecto al entrar" })).toHaveTextContent(
+      "Bandeja de entrada",
+    );
   });
 });

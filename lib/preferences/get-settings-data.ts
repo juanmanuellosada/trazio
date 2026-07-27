@@ -45,7 +45,7 @@ export async function getSettingsData(userId: string): Promise<SettingsData> {
     hasPassword,
     theme: (preferences?.theme as ThemePreference | undefined) ?? "system",
     timezone: preferences?.timezone ?? "America/Argentina/Buenos_Aires",
-    dateFormat: (preferences?.date_format as DateFormatPreference | undefined) ?? "dd/MM/yyyy",
+    dateFormat: (preferences?.date_format as DateFormatPreference | undefined) ?? "dd-MM-yyyy",
     timeFormat: (preferences?.time_format as TimeFormatPreference | undefined) ?? 24,
     weekStartsOn: (preferences?.week_starts_on as 0 | 1 | 6 | undefined) ?? 1,
     defaultView: (preferences?.default_view as "bandeja" | "hoy" | undefined) ?? "bandeja",

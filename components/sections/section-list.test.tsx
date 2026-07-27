@@ -10,7 +10,7 @@ import type { SectionRow } from "@/lib/sections/use-sections";
 
 const TEST_PREFERENCES = {
   timezone: "America/Argentina/Buenos_Aires",
-  dateFormat: "dd/MM/yyyy" as const,
+  dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
 };

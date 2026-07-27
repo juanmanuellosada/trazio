@@ -3,11 +3,11 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { taskDueDay, todayInTimeZone, type TaskDueFields } from "./today";
 
-export type DateFormatPreference = "dd/MM/yyyy" | "yyyy-MM-dd";
+export type DateFormatPreference = "dd-MM-yyyy" | "yyyy-MM-dd";
 export type TimeFormatPreference = 12 | 24;
 
 const NUMERIC_PATTERN: Record<DateFormatPreference, string> = {
-  "dd/MM/yyyy": "dd/MM/yyyy",
+  "dd-MM-yyyy": "dd-MM-yyyy",
   "yyyy-MM-dd": "yyyy-MM-dd",
 };
 

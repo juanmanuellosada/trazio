@@ -11,7 +11,7 @@ export type UserPreferences = {
 /** Mismos defaults que B4 del design de fase 1, para el caso sin fila todavía (no debería pasar tras el aprovisionamiento, pero evita reventar la vista). */
 const DEFAULT_PREFERENCES: UserPreferences = {
   timezone: "America/Argentina/Buenos_Aires",
-  dateFormat: "dd/MM/yyyy",
+  dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
 };

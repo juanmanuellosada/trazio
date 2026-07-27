@@ -39,7 +39,7 @@ export const changePasswordSchema = z
   .superRefine(checkPasswordsMatch);
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-export const DATE_FORMAT_OPTIONS = ["dd/MM/yyyy", "yyyy-MM-dd"] as const;
+export const DATE_FORMAT_OPTIONS = ["dd-MM-yyyy", "yyyy-MM-dd"] as const;
 export const dateFormatSchema = z.enum(DATE_FORMAT_OPTIONS);
 
 export const TIME_FORMAT_OPTIONS = [24, 12] as const;

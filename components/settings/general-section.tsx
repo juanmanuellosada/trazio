@@ -10,8 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TimezoneCombobox } from "./timezone-combobox";
 
 const DATE_FORMAT_LABELS: Record<DateFormatPreference, string> = {
-  "dd/MM/yyyy": "dd/mm/aaaa (31/12/2026)",
+  "dd-MM-yyyy": "dd-mm-aaaa (31-12-2026)",
   "yyyy-MM-dd": "aaaa-mm-dd (2026-12-31)",
+};
+
+const TIME_FORMAT_LABELS: Record<TimeFormatPreference, string> = {
+  24: "24 horas (14:30)",
+  12: "12 horas (2:30 p. m.)",
 };
 
 const WEEK_STARTS_ON_LABELS: Record<number, string> = {
@@ -95,6 +100,7 @@ export function GeneralSection({
       <div className="space-y-1.5">
         <Label htmlFor={dateFormatId}>Formato de fecha</Label>
         <Select
+          items={DATE_FORMAT_LABELS}
           value={local.dateFormat}
           onValueChange={(value) => {
             const dateFormat = value as DateFormatPreference;
@@ -117,6 +123,7 @@ export function GeneralSection({
       <div className="space-y-1.5">
         <Label htmlFor={timeFormatId}>Formato de hora</Label>
         <Select
+          items={TIME_FORMAT_LABELS}
           value={String(local.timeFormat)}
           onValueChange={(value) => {
             const timeFormat = Number(value) as TimeFormatPreference;
@@ -127,8 +134,8 @@ export function GeneralSection({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="24">24 horas (14:30)</SelectItem>
-            <SelectItem value="12">12 horas (2:30 p. m.)</SelectItem>
+            <SelectItem value="24">{TIME_FORMAT_LABELS[24]}</SelectItem>
+            <SelectItem value="12">{TIME_FORMAT_LABELS[12]}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -136,6 +143,7 @@ export function GeneralSection({
       <div className="space-y-1.5">
         <Label htmlFor={weekStartsOnId}>Día de inicio de semana</Label>
         <Select
+          items={WEEK_STARTS_ON_LABELS}
           value={String(local.weekStartsOn)}
           onValueChange={(value) => {
             const weekStartsOn = Number(value) as 0 | 1 | 6;
@@ -158,6 +166,7 @@ export function GeneralSection({
       <div className="space-y-1.5">
         <Label htmlFor={defaultViewId}>Pantalla por defecto al entrar</Label>
         <Select
+          items={DEFAULT_VIEW_LABELS}
           value={local.defaultView}
           onValueChange={(value) => {
             const defaultView = value as "bandeja" | "hoy";

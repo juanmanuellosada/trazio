@@ -19,7 +19,7 @@ vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 
 const TEST_PREFERENCES = {
   timezone: "America/Argentina/Buenos_Aires",
-  dateFormat: "dd/MM/yyyy" as const,
+  dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
 };

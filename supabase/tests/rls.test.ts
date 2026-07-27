@@ -175,7 +175,7 @@ describe("Trigger de aprovisionamiento de cuenta (3.12)", () => {
       expect(prefs?.theme).toBe("system");
       expect(prefs?.time_format).toBe(24);
       expect(prefs?.week_starts_on).toBe(1);
-      expect(prefs?.date_format).toBe("dd/MM/yyyy");
+      expect(prefs?.date_format).toBe("dd-MM-yyyy");
       expect(prefs?.default_view).toBe("bandeja");
 
       const { data: inbox } = await admin

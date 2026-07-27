@@ -6,7 +6,7 @@ const BA = "America/Argentina/Buenos_Aires";
 const now = new Date("2026-07-26T15:00:00.000Z"); // 12:00 en Buenos Aires
 
 function prefs(overrides: Partial<Parameters<typeof formatTaskDueLabel>[1]> = {}) {
-  return { now, timezone: BA, dateFormat: "dd/MM/yyyy" as const, timeFormat: 24 as const, ...overrides };
+  return { now, timezone: BA, dateFormat: "dd-MM-yyyy" as const, timeFormat: 24 as const, ...overrides };
 }
 
 describe("formatTaskDueLabel — lenguaje natural a menos de 7 días (8.7)", () => {
@@ -47,7 +47,7 @@ describe("formatTaskDueLabel — lenguaje natural hacia atrás dentro de la vent
 
 describe("formatTaskDueLabel — formato numérico a partir de 7 días, en cualquiera de los dos sentidos", () => {
   it("vence en 7 días: fecha numérica, no día de la semana", () => {
-    expect(formatTaskDueLabel({ due_date: "2026-08-02", due_at: null }, prefs())).toBe("02/08/2026");
+    expect(formatTaskDueLabel({ due_date: "2026-08-02", due_at: null }, prefs())).toBe("02-08-2026");
   });
 
   it("respeta date_format = yyyy-MM-dd", () => {
@@ -57,7 +57,7 @@ describe("formatTaskDueLabel — formato numérico a partir de 7 días, en cualq
   });
 
   it("venció hace 7 días: fecha numérica, no \"hace 7 días\"", () => {
-    expect(formatTaskDueLabel({ due_date: "2026-07-19", due_at: null }, prefs())).toBe("19/07/2026");
+    expect(formatTaskDueLabel({ due_date: "2026-07-19", due_at: null }, prefs())).toBe("19-07-2026");
   });
 
   it("venció hace 7 días respetando date_format = yyyy-MM-dd", () => {

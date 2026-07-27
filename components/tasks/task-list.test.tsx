@@ -11,7 +11,7 @@ import type { TaskRow } from "@/lib/tasks/use-tasks";
 
 const TEST_PREFERENCES = {
   timezone: "America/Argentina/Buenos_Aires",
-  dateFormat: "dd/MM/yyyy" as const,
+  dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
 };
@@ -219,5 +219,28 @@ describe("TaskList — indentar/desindentar por teclado (bloque 7.8)", () => {
 
     await waitFor(() => expect(mock.updateCalls.length).toBeGreaterThan(0));
     expect(mock.updateCalls[0].patch).toMatchObject({ parent_id: null });
+  });
+});
+
+describe("TaskList — punto de prioridad (ruido en la prioridad por defecto)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateError.current = null;
+    mock.updateCalls.length = 0;
+    mock.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
+  });
+
+  it("no muestra el punto en la prioridad por defecto (4)", async () => {
+    renderList([task({ id: "t1", title: "Pagar el alquiler", priority: 4 })]);
+
+    await screen.findByRole("button", { name: "Pagar el alquiler" });
+    expect(document.querySelector(".rounded-full[aria-hidden]")).toBeNull();
+  });
+
+  it("muestra el punto cuando la prioridad no es la de por defecto", async () => {
+    renderList([task({ id: "t1", title: "Pagar el alquiler", priority: 1 })]);
+
+    await screen.findByRole("button", { name: "Pagar el alquiler" });
+    expect(document.querySelector(".rounded-full[aria-hidden]")).not.toBeNull();
   });
 });

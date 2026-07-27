@@ -33,6 +33,7 @@ import { PROJECT_COLORS } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMounted } from "@/hooks/use-mounted";
+import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "./priority-select";
 import { useTaskDetail } from "./task-detail-context";
@@ -204,7 +205,7 @@ export function TaskRow({
           {isCompleted && <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" />}
         </button>
 
-        <PriorityDot priority={task.priority} />
+        {task.priority !== DEFAULT_TASK_PRIORITY && <PriorityDot priority={task.priority} />}
 
         <button
           type="button"
