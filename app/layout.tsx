@@ -19,9 +19,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Trazio",
   },
-  icons: {
-    apple: "/icons/icon-192.png",
-  },
 };
 
 // `theme_color` fuera de `metadata` (API separada desde Next 14): mismo azul
