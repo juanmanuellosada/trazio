@@ -42,6 +42,19 @@
   --priority-low: #8a94a0;
   --priority-low-text: #5c6675;
 
+  /* Sistema gráfico de la landing (docs/design-system.md §4.2): cada tipo
+     de token del parser toma uno de los diez colores de proyecto — celeste,
+     índigo, turquesa, magenta, amarillo, violeta, verde. Es una asignación
+     propia de la landing, aparte de la paleta real de proyectos/etiquetas
+     de la app (`lib/validation/colors.ts`). */
+  --token-date: #0284c7;
+  --token-hour: #4f46e5;
+  --token-duration: #0d9488;
+  --token-priority: #c026d3;
+  --token-label: #b45309;
+  --token-project: #7c3aed;
+  --token-recurrence: #059669;
+
   --radius: 0.5rem;
 }
 
@@ -75,6 +88,14 @@
   --priority-medium-text: #8ca3c9;
   --priority-low: #8a94a0;
   --priority-low-text: #8a94a0;
+
+  --token-date: #38bdf8;
+  --token-hour: #818cf8;
+  --token-duration: #2dd4bf;
+  --token-priority: #e879f9;
+  --token-label: #fbbf24;
+  --token-project: #a78bfa;
+  --token-recurrence: #34d399;
 }
 
 /* Mapeo a utilidades de Tailwind / shadcn (§8). shadcn no distingue card,
@@ -126,6 +147,14 @@
   --color-priority-low: var(--priority-low);
   --color-priority-low-text: var(--priority-low-text);
 
+  --color-token-date: var(--token-date);
+  --color-token-hour: var(--token-hour);
+  --color-token-duration: var(--token-duration);
+  --color-token-priority: var(--token-priority);
+  --color-token-label: var(--token-label);
+  --color-token-project: var(--token-project);
+  --color-token-recurrence: var(--token-recurrence);
+
   /* Radios (§5). --radius se repite en litoral acá porque un alias
      --radius: var(--radius) sería una referencia circular inválida. */
   --radius-sm: 0.25rem;
@@ -135,6 +164,14 @@
 
   /* Ancho de columna de contenido (§5.1): genera la utilidad `max-w-content`. */
   --container-content: 48rem;
+
+  /* Escala tipográfica exclusiva de la landing (§4.1 y docs/design-system.md
+     §4.1): no toca la escala de la app (text-xs..text-4xl arriba). Fluida
+     con clamp() en vez de saltos por breakpoint. */
+  --text-landing-hero: clamp(2.75rem, 2.05rem + 3.25vw, 4.75rem);
+  --text-landing-hero--line-height: 1.05;
+  --text-landing-section: clamp(1.875rem, 1.6rem + 1.3vw, 2.5rem);
+  --text-landing-section--line-height: 1.15;
 }
 
 @layer base {
@@ -146,5 +183,67 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Solo landing, de acá para abajo. */
+@layer utilities {
+  /* Malla de fondo del hero (bloque 12.1): degradado en el azul de marca,
+     sin ninguna imagen. Radiales lisos (sin color-mix) por compatibilidad
+     amplia. */
+  .landing-hero-mesh {
+    background-image:
+      radial-gradient(55% 45% at 12% 8%, rgb(40 59 86 / 16%), transparent 70%),
+      radial-gradient(45% 40% at 88% 0%, rgb(124 58 237 / 12%), transparent 70%),
+      radial-gradient(60% 50% at 50% 100%, rgb(40 59 86 / 10%), transparent 70%);
+  }
+  .dark .landing-hero-mesh {
+    background-image:
+      radial-gradient(55% 45% at 12% 8%, rgb(140 163 201 / 14%), transparent 70%),
+      radial-gradient(45% 40% at 88% 0%, rgb(167 139 250 / 14%), transparent 70%),
+      radial-gradient(60% 50% at 50% 100%, rgb(140 163 201 / 10%), transparent 70%);
+  }
+
+  /* Cursor del campo del parser en el hero (bloque 12.1): decorativo, se
+     apaga con prefers-reduced-motion en vez de solo bajar la velocidad. */
+  @keyframes landing-caret-blink {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    50%,
+    95% {
+      opacity: 0;
+    }
+  }
+  .landing-caret {
+    animation: landing-caret-blink 1s steps(1) infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .landing-caret {
+      animation: none;
+    }
+  }
+
+  /* Animación al scroll con CSS puro (bloque 12.4): progressive enhancement
+     vía @supports, así que degrada sola donde no hay animation-timeline. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .landing-reveal {
+        animation: landing-reveal-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 30%;
+      }
+    }
+  }
+  @keyframes landing-reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

@@ -103,6 +103,34 @@ se probó primero con un tono más anaranjado (`#D97706`) y se descartó: en mod
 oscuro se confundía con la prioridad Alta. `#B08968` es un marrón desaturado,
 sin ambigüedad con el naranja de marca.
 
+### 2.1 Reutilización en la landing: color por tipo de token
+
+El rediseño "El editor" de `docs/landing.md` usa siete de estos diez colores
+para otra cosa: no proyectos de un usuario, sino **tipos de token del
+parser** — fecha, hora, duración, prioridad, etiqueta, proyecto y
+repetición, cada uno fijo a un color en toda la página (hero, demo, leyenda
+y galería). Es una asignación propia de la landing, expuesta como variables
+CSS aparte (`--token-date`, `--token-hour`, …, en `app/globals.css`, con su
+propio bloque `:root`/`.dark`) — no reemplaza ni se lee desde
+`lib/validation/colors.ts`, que sigue siendo la única fuente de verdad para
+`projects.color`/`labels.color`. Los tres colores sin usar en esta
+asignación son `lima`, `purpura` y `marron`.
+
+| Tipo de token | Color | Claro | Oscuro |
+| --- | --- | --- | --- |
+| Fecha (relativa y puntual) | `celeste` | `#0284C7` | `#38BDF8` |
+| Hora | `indigo` | `#4F46E5` | `#818CF8` |
+| Duración | `turquesa` | `#0D9488` | `#2DD4BF` |
+| Prioridad | `magenta` | `#C026D3` | `#E879F9` |
+| Etiqueta | `amarillo` | `#B45309` | `#FBBF24` |
+| Proyecto | `violeta` | `#7C3AED` | `#A78BFA` |
+| Repetición | `verde` | `#059669` | `#34D399` |
+
+El chip de prioridad de la demo (Urgente/Alta/Media/Baja) es la única
+excepción: sigue usando el color semántico de prioridad de la sección 3, no
+`--token-priority`, porque ahí lo que importa es el nivel, no el tipo de
+dato.
+
 ---
 
 ## 3. Colores de prioridad
@@ -154,12 +182,34 @@ mezcla de personalidades.
 | `text-lg` | 18px | Título de tarea en el detalle |
 | `text-xl` | 20px | Encabezado de sección/vista |
 | `text-2xl` | 24px | Título de página |
-| `text-3xl` | 32px | Titular de landing (mobile) |
-| `text-4xl` | 40px | Titular de landing (desktop) |
+| `text-3xl` | 32px | Sin uso fijo — disponible para jerarquías puntuales |
+| `text-4xl` | 40px | Sin uso fijo — disponible para jerarquías puntuales |
 
 **Pesos:** 400 (cuerpo), 500 (labels, botones), 600 (títulos de sección, valor
-activo en toggles), 700 (titular de landing únicamente). No se usa 300 ni 800:
-menos pesos cargados, menos peso de archivo.
+activo en toggles), 700 (titulares). No se usa 300 ni 800: menos pesos
+cargados, menos peso de archivo.
+
+### 4.1 Escala tipográfica exclusiva de la landing
+
+Dos escalones más, solo para `app/(marketing)/`: la escala de arriba topa en
+40px y esa es justo la causa medible de que el rediseño "El editor"
+(`docs/landing.md`) diagnosticó como problema — un titular de landing contra
+16px de cuerpo da una relación de 2,5×, y Linear, Raycast y Craft corren
+4×-5×. Arreglarlo sin tocar la escala de la app (usada también en el resto
+del sitio, donde 40px sería desproporcionado) significa una escala aparte,
+no un escalón más en la de arriba.
+
+| Token | Tamaño | Relación vs. cuerpo | Uso |
+| --- | --- | --- | --- |
+| `text-landing-hero` | `clamp(2.75rem, 2.05rem + 3.25vw, 4.75rem)` — 44px a 76px | 2,75× a 4,75× | El `<h1>` del hero, único uso |
+| `text-landing-section` | `clamp(1.875rem, 1.6rem + 1.3vw, 2.5rem)` — 30px a 40px | — | Encabezados `<h2>` de cada sección de la landing |
+
+Fluida con `clamp()` en vez de saltos por breakpoint (`sm:`, `lg:`): un solo
+valor que escala con el viewport, sin pasos bruscos ni CSS repetido por
+tamaño de pantalla. Los tokens viven en `app/globals.css` (`@theme inline`,
+junto a los del resto de la escala) y generan las utilidades de Tailwind
+`text-landing-hero` / `text-landing-section` — no hace falta ninguna clase
+`sm:`/`lg:` adicional para el titular del hero.
 
 ---
 

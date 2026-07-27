@@ -1,8 +1,20 @@
+import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { AnalyticsBridge } from "@/components/marketing/analytics-bridge";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
+import { getSiteUrl } from "@/lib/site-url";
+
+/**
+ * `metadataBase` vive acá, no en cada `page.tsx`, porque `/terminos` y
+ * `/privacidad` heredan el `opengraph-image.tsx` de este mismo grupo de
+ * rutas: sin una base, Next no puede armar la URL absoluta de esa imagen y
+ * el build tira warning ("metadataBase property... is not set").
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
+};
 
 /**
  * `<Analytics />` se monta acá y no en el layout raíz (bloque 12.12): la

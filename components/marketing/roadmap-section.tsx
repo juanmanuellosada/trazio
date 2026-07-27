@@ -9,7 +9,7 @@ export function RoadmapSection() {
   return (
     <section className="px-4 py-12 sm:px-6 sm:py-16">
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-2xl font-semibold text-foreground">Lo que viene</h2>
+        <h2 className="text-landing-section font-semibold text-foreground">Lo que viene</h2>
         <p className="mt-2 text-text-secondary">Todavía no está en la app. Es lo próximo en la hoja de ruta.</p>
         <ul className="mt-6 flex flex-wrap justify-center gap-3">
           {ROADMAP_ITEMS.map((item) => (

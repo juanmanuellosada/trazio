@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { ClosingSection } from "@/components/marketing/closing-section";
-import { FeaturesSection } from "@/components/marketing/features-section";
+import { FaqSection } from "@/components/marketing/faq-section";
 import { HeroSection } from "@/components/marketing/hero-section";
+import { LegendSection } from "@/components/marketing/legend-section";
 import { ParserDemoSection } from "@/components/marketing/parser-demo-section";
-import { ProblemSection } from "@/components/marketing/problem-section";
+import { ProductNarrativeSection } from "@/components/marketing/product-narrative-section";
 import { RoadmapSection } from "@/components/marketing/roadmap-section";
+import { TransformationsSection } from "@/components/marketing/transformations-section";
 import { getSiteUrl } from "@/lib/site-url";
 
 const TITLE = "Trazio — Tu día entero, en una sola pantalla";
@@ -22,30 +24,31 @@ export const metadata: Metadata = {
     siteName: "Trazio",
     locale: "es_AR",
     type: "website",
-    images: [
-      {
-        url: "/landing/today-hero.webp",
-        width: 2880,
-        height: 1800,
-        alt: "La vista Hoy de Trazio",
-      },
-    ],
+    // La imagen sale de `opengraph-image.tsx` (convención de archivo de
+    // Next.js, mismo grupo de rutas): no se referencia acá para no pisarla.
   },
 };
 
 /**
- * Landing pública (bloque 12): Server Components enteros salvo la demo del
- * parser (`ParserDemoSection` → `ParserDemo`), la única isla cliente. Las
- * siete secciones van en el orden de `docs/landing.md`; header y footer
- * viven en el layout del grupo, compartidos con `/terminos` y `/privacidad`.
+ * Landing pública (bloque 12, rediseño "El editor" — ver `docs/landing.md`):
+ * Server Components enteros salvo la demo del parser (`ParserDemoSection` →
+ * `ParserDemo`), la única isla cliente. El parser deja de ser una sección
+ * más y pasa a ser el esqueleto de la página: hero congelado → demo
+ * interactiva → leyenda de sintaxis → galería de transformaciones (que
+ * reemplaza a la vieja grilla de seis funcionalidades) → el resto del
+ * producto en una narrativa → preguntas directas → hoja de ruta → cierre.
+ * Header y footer viven en el layout del grupo, compartidos con
+ * `/terminos` y `/privacidad`.
  */
 export default function LandingPage() {
   return (
     <>
       <HeroSection />
       <ParserDemoSection />
-      <ProblemSection />
-      <FeaturesSection />
+      <LegendSection />
+      <TransformationsSection />
+      <ProductNarrativeSection />
+      <FaqSection />
       <RoadmapSection />
       <ClosingSection />
     </>

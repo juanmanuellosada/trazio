@@ -2,87 +2,26 @@
 
 import { useMemo, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { format } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { buildSegments } from "@/lib/landing/build-segments";
+import { LANDING_DEMO_PROJECTS, LANDING_WEEK_START, LANDING_ZONE } from "@/lib/landing/demo-context";
+import { DEMO_EXAMPLES } from "@/lib/landing/static-parses";
+import { TOKEN_MARK_BASE_CLASS, TOKEN_MARK_CLASS } from "@/lib/landing/token-visuals";
 import { parse } from "@/lib/parser/parse";
-import type { ParseMatch, ParserProject, ParseResult } from "@/lib/parser/types";
 import { cn } from "@/lib/utils";
+import { ParseResultChips } from "./parse-result-chips";
 
 /**
- * Única isla cliente de la landing (G1/G2, bloque 12.3): importa `parse`
- * directo, sin API. `proyectos` trae los mismos nombres que el seed de datos
- * de ejemplo (`scripts/seed-landing-demo.mjs`) para que `@Trabajo` resuelva
- * de verdad, igual que lo vería alguien con cuenta. `etiquetas` sí queda
- * vacía: a diferencia de `@` (que nunca crea un proyecto — decisión ya
- * tomada del parser, bloque 9, OQ1), `#` crea una etiqueta implícita cuando
- * no hay coincidencia, así que `#trabajo` se ve tal cual lo vería alguien
- * que recién llega.
+ * Única isla cliente de la landing (G1/G2, bloque 12.2): importa `parse`
+ * directo, sin API. Visualmente es el mismo campo del hero
+ * (`HeroParserPreview`), que se vuelve interactivo al hidratar — mismo
+ * resaltado por tipo de token, mismos chips de resultado
+ * (`ParseResultChips`). El estado inicial ya viene parseado
+ * (`DEMO_EXAMPLES[0]`, calculado en el primer render), así que se entiende
+ * incluso antes de que el JavaScript termine de cargar.
  */
-
-const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
-const SEMANA_EMPIEZA_EN = 1 as const; // lunes — mismo default que `user_preferences.week_starts_on`
-
-// Mismos nombres que `scripts/seed-landing-demo.mjs`.
-const PROYECTOS_DEMO: ParserProject[] = [
-  { id: "casa", name: "Casa", path: "Casa", sections: [] },
-  { id: "trabajo", name: "Trabajo", path: "Trabajo", sections: [] },
-  { id: "estudio", name: "Estudio", path: "Estudio", sections: [] },
-];
-
-const EJEMPLOS = [
-  "Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Trabajo",
-  "Llamar al contador mañana a las 10",
-  "Pagar el alquiler cada mes p1",
-  "Gimnasio cada lunes, miércoles y viernes por 1h",
-];
-
-const PRIORITY_LABELS: Record<number, string> = { 1: "Urgente", 2: "Alta", 3: "Media", 4: "Baja" };
-const PRIORITY_DOT: Record<number, string> = {
-  1: "bg-priority-urgent",
-  2: "bg-priority-high",
-  3: "bg-priority-medium",
-  4: "bg-priority-low",
-};
-const PRIORITY_TEXT: Record<number, string> = {
-  1: "text-priority-urgent-text",
-  2: "text-priority-high-text",
-  3: "text-priority-medium-text",
-  4: "text-priority-low-text",
-};
-
-function formatDuration(minutes: number): string {
-  if (minutes % 60 === 0) return `${minutes / 60}h`;
-  if (minutes < 60) return `${minutes} min`;
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
-}
-
-function formatWhen(result: ParseResult): string | null {
-  if (result.dueAt) {
-    return formatInTimeZone(result.dueAt, ZONA_HORARIA, "EEEE d 'de' MMMM, HH:mm'hs'", { locale: es });
-  }
-  if (result.dueDate) {
-    const [y, m, d] = result.dueDate.split("-").map(Number);
-    return format(new Date(y, m - 1, d), "EEEE d 'de' MMMM", { locale: es });
-  }
-  return null;
-}
-
-function buildSegments(text: string, matches: ParseMatch[]) {
-  const segments: { text: string; match: ParseMatch | null }[] = [];
-  let cursor = 0;
-  for (const match of matches) {
-    if (match.start > cursor) segments.push({ text: text.slice(cursor, match.start), match: null });
-    segments.push({ text: text.slice(match.start, match.end), match });
-    cursor = match.end;
-  }
-  if (cursor < text.length) segments.push({ text: text.slice(cursor), match: null });
-  return segments;
-}
-
 export function ParserDemo() {
-  const [text, setText] = useState(EJEMPLOS[0]);
+  const [text, setText] = useState<string>(DEMO_EXAMPLES[0]);
   const trackedInteraction = useRef(false);
 
   function trackInteractionOnce() {
@@ -95,21 +34,20 @@ export function ParserDemo() {
     () =>
       parse(text, {
         ahora: new Date(),
-        zonaHoraria: ZONA_HORARIA,
-        semanaEmpiezaEn: SEMANA_EMPIEZA_EN,
-        proyectos: PROYECTOS_DEMO,
+        zonaHoraria: LANDING_ZONE,
+        semanaEmpiezaEn: LANDING_WEEK_START,
+        proyectos: LANDING_DEMO_PROJECTS,
         etiquetas: [],
       }),
     [text],
   );
 
   const segments = useMemo(() => buildSegments(text, result.matches), [text, result.matches]);
-  const when = formatWhen(result);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex flex-wrap justify-center gap-2">
-        {EJEMPLOS.map((ejemplo) => (
+        {DEMO_EXAMPLES.map((ejemplo) => (
           <button
             key={ejemplo}
             type="button"
@@ -135,15 +73,7 @@ export function ParserDemo() {
           >
             {segments.map((segment, index) =>
               segment.match ? (
-                // `text-foreground` (no `text-primary`): en modo oscuro `--primary` es un
-                // azul claro pensado para texto sobre fondo sólido, no para texto propio
-                // sobre un fondo ya teñido con el mismo tono — ahí da 4.4:1, por debajo de
-                // AA. El resaltado se transmite con el fondo + subrayado, no con el color
-                // del texto (Lighthouse: 0 fallos de contraste con este cambio).
-                <mark
-                  key={index}
-                  className="rounded-[3px] bg-primary/15 font-medium text-foreground underline decoration-primary/60 decoration-2 underline-offset-2"
-                >
+                <mark key={index} className={cn(TOKEN_MARK_BASE_CLASS, TOKEN_MARK_CLASS[segment.match.attr])}>
                   {segment.text}
                 </mark>
               ) : (
@@ -168,50 +98,7 @@ export function ParserDemo() {
         {text.trim() === "" ? (
           <p className="text-sm text-text-secondary">Empezá a escribir arriba para ver cómo Trazio lo entiende.</p>
         ) : (
-          <div className="space-y-3">
-            <p className="text-base font-medium text-foreground">{result.title || text}</p>
-            <div className="flex flex-wrap gap-2">
-              {result.priority ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium">
-                  <span className={cn("size-2 rounded-full", PRIORITY_DOT[result.priority])} aria-hidden />
-                  <span className={PRIORITY_TEXT[result.priority]}>{PRIORITY_LABELS[result.priority]}</span>
-                </span>
-              ) : null}
-              {when ? (
-                <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground">
-                  {when}
-                </span>
-              ) : null}
-              {result.durationMinutes ? (
-                <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground">
-                  {formatDuration(result.durationMinutes)}
-                </span>
-              ) : null}
-              {result.recurrenceRule ? (
-                <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground">
-                  Se repite
-                </span>
-              ) : null}
-              {result.labels.map((label) => (
-                <span
-                  key={label.name}
-                  className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-text-secondary"
-                >
-                  #{label.name}
-                  {label.id === null ? " (se crea)" : ""}
-                </span>
-              ))}
-              {result.project ? (
-                <span className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-text-secondary">
-                  @{result.project.name}
-                  {result.project.section ? `/${result.project.section.name}` : ""}
-                </span>
-              ) : null}
-              {!result.priority && !when && !result.durationMinutes && !result.recurrenceRule && result.labels.length === 0 && !result.project ? (
-                <span className="text-xs text-text-secondary">Todavía no reconocimos ningún dato.</span>
-              ) : null}
-            </div>
-          </div>
+          <ParseResultChips result={result} fallbackTitle={text} />
         )}
       </div>
     </div>
