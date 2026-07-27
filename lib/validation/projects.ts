@@ -1,12 +1,20 @@
 import { z } from "zod";
-import { PROJECT_COLOR_IDS } from "./colors";
+import {
+  PROJECT_COLOR_IDS,
+  hasSufficientProjectColorContrast,
+  isValidProjectHexColor,
+} from "./colors";
 
 /**
- * Esquema de proyecto (bloque 6), compartido entre el formulario de React
- * Hook Form y cualquier validación de servidor. El color solo puede venir de
- * la paleta fija (`PROJECT_COLOR_IDS`), la misma lista que impone el check
- * constraint `projects_color_check` en la base — ver el requirement "Crear y
- * editar un proyecto" del spec de `proyectos-secciones`.
+ * Esquema de proyecto (bloque 6 y 8), compartido entre el formulario de
+ * React Hook Form y cualquier validación de servidor. El color viene de la
+ * paleta fija (`PROJECT_COLOR_IDS`, la misma lista que impone el check
+ * constraint `projects_color_check` en la base) o, como salida al final de
+ * esa lista, de un color personalizado en formato hexadecimal que además
+ * tiene que dar contraste contra los dos temas (D29 en docs/decisions.md):
+ * esa validación de contraste es la única que separa D29 de un retroceso
+ * sobre D19, así que corre acá y no en ningún otro lado — ver el requirement
+ * "Crear y editar un proyecto" del spec de `proyectos-secciones`.
  */
 
 const nameSchema = z
@@ -15,7 +23,27 @@ const nameSchema = z
   .min(1, "Falta el nombre del proyecto. Completá el campo antes de continuar.")
   .max(120, "El nombre es muy largo: como máximo 120 caracteres.");
 
-const colorSchema = z.enum(PROJECT_COLOR_IDS);
+const colorSchema = z
+  .string()
+  .min(1, "Falta elegir un color. Elegí uno de la paleta o un color personalizado.")
+  .superRefine((value, ctx) => {
+    if ((PROJECT_COLOR_IDS as readonly string[]).includes(value)) return;
+    if (!isValidProjectHexColor(value)) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Ese color no es válido porque no es ninguno de la paleta ni un color personalizado bien formado. Elegí un color de la lista o escribí un hexadecimal de seis dígitos, como #4F46E5.",
+      });
+      return;
+    }
+    if (!hasSufficientProjectColorContrast(value)) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Ese color personalizado no se guardó porque no se lee bien contra el fondo de la app en modo claro o en modo oscuro. Probá un tono más oscuro o más saturado, o elegí uno de la paleta.",
+      });
+    }
+  });
 
 // Un ícono es un solo emoji (Extended_Pictographic cubre también las
 // secuencias con ZWJ y modificador de tono de piel, por eso el largo
@@ -42,6 +70,9 @@ export const projectFormSchema = z.object({
   color: colorSchema,
   icon: iconSchema,
   description: descriptionSchema,
+  // Favorito desde el alta (bloque 8.9): antes solo se podía marcar después
+  // de creado, desde el menú de acciones del árbol.
+  isFavorite: z.boolean(),
 });
 
 // `icon` y `description` tienen `.transform()`: el tipo que React Hook Form

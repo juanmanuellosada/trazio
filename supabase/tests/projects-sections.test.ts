@@ -128,11 +128,35 @@ describe("Protección de la Bandeja de entrada (bloque 6.7)", () => {
   });
 });
 
-describe("Color de proyecto (D27 — nulo solo para la Bandeja)", () => {
-  it("rechaza un color fuera de la paleta", async () => {
+describe("Color de proyecto (D27 — nulo solo para la Bandeja; D29 — paleta o hex personalizado, bloque 8.2)", () => {
+  it("acepta un id de la paleta fija", async () => {
     const { error } = await user.client
       .from("projects")
-      .insert({ user_id: user.id, name: "Color inválido", color: "#283B56", position: 1000 });
+      .insert({ user_id: user.id, name: "Color de paleta", color: "magenta", position: 1000 });
+
+    expect(error).toBeNull();
+  });
+
+  it("acepta un color personalizado en formato hexadecimal de seis dígitos (D29)", async () => {
+    const { error } = await user.client
+      .from("projects")
+      .insert({ user_id: user.id, name: "Color personalizado", color: "#6366F1", position: 1000 });
+
+    expect(error).toBeNull();
+  });
+
+  it("rechaza un color que no es ni un id de la paleta ni un hexadecimal bien formado", async () => {
+    const { error } = await user.client
+      .from("projects")
+      .insert({ user_id: user.id, name: "Color inválido", color: "azul-marino", position: 1000 });
+
+    expect(error).not.toBeNull();
+  });
+
+  it("rechaza un hexadecimal mal formado (le faltan dígitos)", async () => {
+    const { error } = await user.client
+      .from("projects")
+      .insert({ user_id: user.id, name: "Hex corto", color: "#FFF", position: 1000 });
 
     expect(error).not.toBeNull();
   });

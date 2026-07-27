@@ -154,7 +154,12 @@ function ProjectActionsMenu({
       </DropdownMenu>
 
       <ProjectFormDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
-      <ProjectFormDialog open={createSubOpen} onOpenChange={setCreateSubOpen} parentId={project.id} />
+      <ProjectFormDialog
+        open={createSubOpen}
+        onOpenChange={setCreateSubOpen}
+        parentId={project.id}
+        allProjects={allProjects}
+      />
       <MoveProjectDialog open={moveOpen} onOpenChange={setMoveOpen} project={project} allProjects={allProjects} />
       <DeleteProjectDialog
         open={deleteOpen}
@@ -358,9 +363,10 @@ export function FavoriteList({
 }
 
 /** Botón "Nuevo proyecto" a la altura del encabezado "Proyectos" (bloque 6.2). */
-function NewProjectButton() {
+function NewProjectButton({ initialProjects }: { initialProjects: ProjectRow[] }) {
   const [open, setOpen] = useState(false);
   const labelId = useId();
+  const { data } = useProjects(initialProjects);
 
   return (
     <>
@@ -376,7 +382,7 @@ function NewProjectButton() {
           Nuevo proyecto
         </span>
       </Button>
-      <ProjectFormDialog open={open} onOpenChange={setOpen} parentId={null} />
+      <ProjectFormDialog open={open} onOpenChange={setOpen} parentId={null} allProjects={data ?? []} />
     </>
   );
 }
@@ -424,7 +430,7 @@ export function ProjectsSection({
     <div className="flex-1 overflow-y-auto p-2">
       <div className="flex items-center justify-between px-2.5 py-1">
         <h2 className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Proyectos</h2>
-        <NewProjectButton />
+        <NewProjectButton initialProjects={initialProjects} />
       </div>
       <ProjectTree initialProjects={initialProjects} taskCounts={taskCounts} />
     </div>

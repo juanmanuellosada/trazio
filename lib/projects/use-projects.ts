@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { ProjectColor } from "@/lib/validation/colors";
 
 /**
  * Fila de proyecto usada por toda la capa interactiva del bloque 6 (árbol
@@ -12,7 +11,11 @@ import type { ProjectColor } from "@/lib/validation/colors";
 export type ProjectRow = {
   id: string;
   name: string;
-  color: ProjectColor | null;
+  // `string`, no `ProjectColor`: desde D29 puede ser un id de la paleta o un
+  // color personalizado en formato hexadecimal, y nulo para la Bandeja
+  // (D27). Resolver siempre con `resolveProjectColorHex`, nunca indexando
+  // `PROJECT_COLORS[color]` a mano.
+  color: string | null;
   icon: string | null;
   description: string | null;
   parent_id: string | null;

@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { labelsQueryKey } from "@/lib/labels/use-labels";
+import type { Json } from "@/lib/supabase/database.types";
 import { reportTaskError } from "@/lib/tasks/errors";
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
@@ -31,10 +32,20 @@ const COMPLETADO_QUERY_KEY = ["tasks", "completado"] as const;
 export type CreateTaskFromParseVariables = {
   /** Título ya sin los tokens reconocidos (bloque 9.20: se quitan al confirmar, salvo los desactivados con doble clic). */
   title: string;
-  /** Proyecto/sección donde vive el campo de alta rápida — el destino cuando el texto no usa `@` (requirement "Sin `@`, el destino es el proyecto por defecto"). */
+  /**
+   * Proyecto/sección final donde va a quedar la tarea (bloque 5.4/5.5 del
+   * componente de alta): quien llama ya resolvió el destino —contexto de la
+   * vista, `@` reconocido por el parser, o el selector de destino explícito,
+   * en ese orden de prioridad— así que acá no queda ninguna resolución
+   * pendiente, solo el insert.
+   */
   projectId: string;
   sectionId: string | null;
   parentId: string | null;
+  /** `null` cuando el campo de descripción del alta quedó vacío. */
+  description: Json | null;
+  /** `yyyy-MM-dd` del selector de fecha límite, o `null` (el parser no reconoce fecha límite). */
+  deadline: string | null;
   /** Resultado del parser ya filtrado por los matches que el usuario no desactivó. */
   result: ParseResult;
 };
@@ -56,14 +67,19 @@ export function useCreateTaskFromParse() {
   const supabase = createClient();
 
   return useMutation({
-    mutationFn: async ({ title, projectId, sectionId, parentId, result }: CreateTaskFromParseVariables) => {
+    mutationFn: async ({
+      title,
+      projectId,
+      sectionId,
+      parentId,
+      description,
+      deadline,
+      result,
+    }: CreateTaskFromParseVariables) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) throw new Error("No hay sesión activa.");
-
-      const finalProjectId = result.project?.id ?? projectId;
-      const finalSectionId = result.project ? (result.project.section?.id ?? null) : sectionId;
 
       const labelIds: string[] = [];
       for (const label of result.labels) {
@@ -80,22 +96,20 @@ export function useCreateTaskFromParse() {
         labelIds.push(created.id);
       }
 
-      const list = queryClient.getQueryData<TaskRow[]>(tasksQueryKey(finalProjectId)) ?? [];
-      const position = nextSiblingPositionInContext(list, {
-        projectId: finalProjectId,
-        sectionId: finalSectionId,
-        parentId,
-      });
+      const list = queryClient.getQueryData<TaskRow[]>(tasksQueryKey(projectId)) ?? [];
+      const position = nextSiblingPositionInContext(list, { projectId, sectionId, parentId });
 
       const { data: task, error } = await supabase
         .from("tasks")
         .insert({
           user_id: session.user.id,
-          project_id: finalProjectId,
-          section_id: finalSectionId,
+          project_id: projectId,
+          section_id: sectionId,
           parent_id: parentId,
           title,
           position,
+          description,
+          deadline,
           due_date: result.dueDate,
           due_at: result.dueAt,
           duration_minutes: result.durationMinutes,
@@ -113,7 +127,7 @@ export function useCreateTaskFromParse() {
         if (taskLabelsError) throw taskLabelsError;
       }
 
-      return { finalProjectId, createdLabel: result.labels.some((l) => !l.id) };
+      return { finalProjectId: projectId, createdLabel: result.labels.some((l) => !l.id) };
     },
     onError: reportTaskError,
     onSettled: (data) => {

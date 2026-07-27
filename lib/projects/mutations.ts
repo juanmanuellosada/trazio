@@ -49,6 +49,7 @@ export function useCreateProject() {
           description: input.description || null,
           parent_id: input.parentId,
           position,
+          is_favorite: input.isFavorite,
         })
         .select(
           "id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, position",

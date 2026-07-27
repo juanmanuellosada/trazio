@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ProjectColor } from "@/lib/validation/colors";
 
 export type SidebarProject = {
   id: string;
   name: string;
-  color: ProjectColor;
+  // `string`: id de la paleta o color personalizado en hexadecimal (D29).
+  // La Bandeja se excluye más abajo, así que acá nunca es nulo.
+  color: string;
   icon: string | null;
   parentId: string | null;
   isFavorite: boolean;
@@ -48,7 +49,7 @@ export async function getSidebarProjects(userId: string): Promise<SidebarProject
     projects.push({
       id: row.id,
       name: row.name,
-      color: row.color as ProjectColor,
+      color: row.color as string,
       icon: row.icon,
       parentId: row.parent_id,
       isFavorite: row.is_favorite,

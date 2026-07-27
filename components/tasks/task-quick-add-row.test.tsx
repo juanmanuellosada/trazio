@@ -8,11 +8,13 @@ import { PreferencesProvider } from "@/components/providers/preferences-provider
 import { TaskQuickAddRow } from "./task-quick-add-row";
 
 /**
- * Tests de componente de R7 (bloque 9.23): la única regla del contrato sin
- * caso en la tabla porque es de interfaz, no de parsing (E10). Cubre el
- * resaltado en vivo, el doble clic que lo desactiva, y que al confirmar
- * los tokens todavía resaltados se quiten del título mientras los
- * desactivados queden como texto común.
+ * Tests del componente de alta (bloque 5.12): además de R7 (resaltado en
+ * vivo y doble clic, ya cubiertos desde `task-quick-add-row.tsx` original y
+ * sin cambios acá), cubre lo nuevo del bloque 5 — que los selectores carguen
+ * su atributo, que un selector tocado a mano le gane al parser, que el
+ * destino se muestre y se respete, que cancelar no persista nada, que se
+ * pueda cargar más de una tarea seguida sin tocar el mouse, y que todos los
+ * controles del alta sean alcanzables solo con teclado.
  */
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -23,6 +25,37 @@ const TEST_PREFERENCES = {
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
 };
+
+// Dos proyectos (bloque 5.4): "p1" es el contexto por defecto donde vive el
+// campo en todos los tests de acá (`renderRow` siempre lo usa como
+// `projectId`); "p2" existe solo para poder elegir un destino distinto desde
+// el selector y comprobar que ese es el que se respeta al confirmar.
+const PROJECTS = [
+  {
+    id: "p1",
+    name: "Bandeja de entrada",
+    color: null,
+    icon: null,
+    description: null,
+    parent_id: null,
+    is_inbox: true,
+    is_favorite: false,
+    is_archived: false,
+    position: 0,
+  },
+  {
+    id: "p2",
+    name: "Trabajo",
+    color: "celeste",
+    icon: null,
+    description: null,
+    parent_id: null,
+    is_inbox: false,
+    is_favorite: false,
+    is_archived: false,
+    position: 1,
+  },
+];
 
 function chain(result: unknown) {
   const self: Record<string, unknown> = {
@@ -41,7 +74,7 @@ function createSupabaseMock() {
   const insertCalls: { table: string; payload: Record<string, unknown> }[] = [];
 
   const from = vi.fn((table: string) => ({
-    select: vi.fn(() => chain({ data: [], error: null })),
+    select: vi.fn(() => chain(table === "projects" ? { data: PROJECTS, error: null } : { data: [], error: null })),
     insert: vi.fn((payload: Record<string, unknown>) => {
       insertCalls.push({ table, payload });
       if (table === "tasks") return chain({ data: { id: "new-task" }, error: null });
@@ -186,5 +219,156 @@ describe("TaskQuickAddRow — resaltado en vivo y R7", () => {
 
     const taskLabelInsert = mock.insertCalls.find((c) => c.table === "task_labels");
     expect(taskLabelInsert).toBeDefined();
+  });
+});
+
+describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.insertCalls.length = 0;
+  });
+
+  it("el selector de prioridad carga su atributo sin necesidad de escribirlo en el título", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+
+    await user.click(screen.getByRole("button", { name: "Baja" })); // default (4)
+    await user.click(await screen.findByRole("menuitem", { name: /Urgente/ }));
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.priority).toBe(1);
+  });
+
+  it("el selector de prioridad, tocado a mano, le gana a lo que el parser reconoce en el título (criterio de desempate)", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    // "p1" en el título pide Urgente (1): si el selector no ganara, la
+    // tarea se crearía con prioridad 1 en vez de la elegida a mano. La vista
+    // previa del selector ya muestra "Urgente" en cuanto el parser lo
+    // reconoce (antes de tocarlo) — se espera esa actualización primero.
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan p1");
+    const priorityTrigger = await screen.findByRole("button", { name: "Urgente" });
+
+    await user.click(priorityTrigger);
+    await user.click(await screen.findByRole("menuitem", { name: "Baja" })); // elegir explícitamente Baja: le gana al "p1" del título
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.priority).toBe(4); // el selector explícito, no el "p1" del título
+  });
+
+  it("el destino muestra el proyecto de contexto por defecto y respeta el que se elija a mano", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
+    expect(destinationTrigger).toHaveTextContent("Bandeja de entrada"); // "p1", visible antes de confirmar
+
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+    await user.click(destinationTrigger);
+    await user.click(await screen.findByRole("option", { name: "Trabajo" }));
+    expect(destinationTrigger).toHaveTextContent("Trabajo");
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.project_id).toBe("p2");
+  });
+
+  it("cancelar no crea la tarea y descarta lo escrito", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Algo que no debería guardarse");
+    await user.type(screen.getByLabelText("Descripción de la nueva tarea"), "Tampoco esto");
+
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(mock.insertCalls.find((c) => c.table === "tasks")).toBeUndefined();
+    expect(screen.queryByLabelText("Título de la nueva tarea")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar tarea" })).toBeInTheDocument();
+  });
+
+  it("después de confirmar, el foco vuelve al título: se pueden cargar varias tareas seguidas sin tocar el mouse", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Primera tarea");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(mock.insertCalls.filter((c) => c.table === "tasks")).toHaveLength(1));
+
+    expect(input).toHaveFocus();
+
+    await user.keyboard("Segunda tarea{Enter}");
+    await waitFor(() => expect(mock.insertCalls.filter((c) => c.table === "tasks")).toHaveLength(2));
+    const tasks = mock.insertCalls.filter((c) => c.table === "tasks").map((c) => c.payload);
+    expect(tasks[0].title).toBe("Primera tarea");
+    expect(tasks[1].title).toBe("Segunda tarea");
+  });
+
+  it("todos los controles del alta son alcanzables con Tab, en el orden esperado", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    const title = screen.getByLabelText("Título de la nueva tarea");
+    const description = screen.getByLabelText("Descripción de la nueva tarea");
+    const dateTrigger = screen.getByRole("button", { name: "Fecha de vencimiento" });
+    const deadlineTrigger = screen.getByRole("button", { name: "Fecha límite" });
+    const priorityTrigger = screen.getByRole("button", { name: "Baja" });
+    const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
+    const cancelButton = screen.getByRole("button", { name: "Cancelar" });
+    const confirmButton = screen.getByRole("button", { name: "Agregar tarea" });
+
+    expect(title).toHaveFocus();
+    await user.tab();
+    expect(description).toHaveFocus();
+    await user.tab();
+    expect(dateTrigger).toHaveFocus();
+    await user.tab();
+    expect(deadlineTrigger).toHaveFocus();
+    await user.tab();
+    expect(priorityTrigger).toHaveFocus();
+    await user.tab();
+    expect(destinationTrigger).toHaveFocus();
+    await user.tab();
+    expect(cancelButton).toHaveFocus();
+    await user.tab();
+    expect(confirmButton).toHaveFocus();
+  });
+
+  it("no muestra selector de proyecto destino al crear una subtarea: el proyecto es el de la tarea padre", async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={TEST_PREFERENCES}>
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId="task-parent" />
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar subtarea" }));
+    expect(screen.queryByRole("button", { name: "Proyecto destino" })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Título de la nueva subtarea"), "Una subtarea");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.parent_id).toBe("task-parent");
+    expect(insertedTask()!.project_id).toBe("p1");
   });
 });

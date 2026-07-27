@@ -48,18 +48,18 @@ Consumen las primitivas; los consume el componente de alta.
 
 Usa los selectores (design.md, sección E).
 
-- [ ] 5.1 Consultar la skill `ui-ux-pro-max` para el diseño del componente de alta rico
-- [ ] 5.2 Construir el componente de alta con título, descripción, y accesos a fecha, prioridad, fecha límite y proyecto destino, usando los selectores de `selectores-de-atributos`
-- [ ] 5.3 Conservar el reconocimiento de lenguaje natural del parser en el campo de título (resaltado en vivo mientras se escribe, doble clic desactiva un token) sin degradarlo
-- [ ] 5.4 Mostrar el proyecto o la sección de destino antes de confirmar la creación
-- [ ] 5.5 Acciones de confirmar y cancelar: cancelar no crea ninguna tarea ni persiste nada
-- [ ] 5.6 Reservar en la composición un lugar para recordatorios y para etiquetas, sin mostrar ningún control de esos dos atributos, ni siquiera deshabilitado
-- [ ] 5.7 Verificar que no existe ningún control de adjuntar archivos, ni implementado ni deshabilitado
-- [ ] 5.8 Reemplazar el alta de solo título por este componente en las vistas Bandeja de entrada, Hoy y Proyecto
-- [ ] 5.9 Reemplazar el alta de solo título por este componente dentro de cada sección de un proyecto, preconfigurado con esa sección como destino
-- [ ] 5.10 Reemplazar el alta de solo título por este componente al crear una subtarea desde el detalle de una tarea existente, preconfigurado con esa tarea como padre
-- [ ] 5.11 Verificar que ninguna de esas superficies conserva su propia implementación de alta
-- [ ] 5.12 Tests: el contrato del parser sigue pasando desde el nuevo componente de alta en cada una de sus superficies
+- [x] 5.1 Consultar la skill `ui-ux-pro-max` para el diseño del componente de alta rico
+- [x] 5.2 Construir el componente de alta con título, descripción, y accesos a fecha, prioridad, fecha límite y proyecto destino, usando los selectores de `selectores-de-atributos`
+- [x] 5.3 Conservar el reconocimiento de lenguaje natural del parser en el campo de título (resaltado en vivo mientras se escribe, doble clic desactiva un token) sin degradarlo
+- [x] 5.4 Mostrar el proyecto o la sección de destino antes de confirmar la creación
+- [x] 5.5 Acciones de confirmar y cancelar: cancelar no crea ninguna tarea ni persiste nada
+- [x] 5.6 Reservar en la composición un lugar para recordatorios y para etiquetas, sin mostrar ningún control de esos dos atributos, ni siquiera deshabilitado
+- [x] 5.7 Verificar que no existe ningún control de adjuntar archivos, ni implementado ni deshabilitado
+- [x] 5.8 Reemplazar el alta de solo título por este componente en las vistas Bandeja de entrada, Hoy y Proyecto
+- [x] 5.9 Reemplazar el alta de solo título por este componente dentro de cada sección de un proyecto, preconfigurado con esa sección como destino
+- [x] 5.10 Reemplazar el alta de solo título por este componente al crear una subtarea desde el detalle de una tarea existente, preconfigurado con esa tarea como padre
+- [x] 5.11 Verificar que ninguna de esas superficies conserva su propia implementación de alta
+- [x] 5.12 Tests: el contrato del parser sigue pasando desde el nuevo componente de alta en cada una de sus superficies
 
 ## 6. Detalle de tarea como modal
 
@@ -93,16 +93,16 @@ Vive dentro del detalle (design.md, sección E).
 
 Con emojis y color (design.md, sección E). Incluye la migración de esquema que este escalón necesita.
 
-- [ ] 8.1 Consultar la skill `ui-ux-pro-max` para el diseño del selector de color y del selector de emojis
-- [ ] 8.2 Migración: ampliar el check constraint de `projects.color` para admitir un color personalizado válido, además de los diez identificadores de la paleta
-- [ ] 8.3 Regenerar los tipos con `pnpm db:types` tras la migración
-- [ ] 8.4 Instalar la fuente de datos de emojis categorizada registrada en la decisión D31 (1.4)
-- [ ] 8.5 Selector de color: lista desplegable con nombre y muestra de los diez colores de la paleta como camino principal y primera opción, con el color personalizado al final de la lista
-- [ ] 8.6 Validar por contraste el color personalizado contra el fondo de superficie de los dos temas antes de guardar, rechazando el que no alcance el mínimo AA en cualquiera de los dos
-- [ ] 8.7 Selector de emojis: todos los emojis, categorizados y buscables, cargado recién al abrirse el selector, no con el arranque de la aplicación
-- [ ] 8.8 Elegir proyecto padre al crear, con "sin padre" por defecto, respetando el máximo de tres niveles ya impuesto en base de datos
-- [ ] 8.9 Marcar favorito desde la misma alta de proyecto
-- [ ] 8.10 Verificar que un color inválido (ni de la paleta ni personalizado con formato válido) se rechaza tanto en la validación de Zod como en el check constraint
+- [x] 8.1 Consultar la skill `ui-ux-pro-max` para el diseño del selector de color y del selector de emojis
+- [x] 8.2 Migración: ampliar el check constraint de `projects.color` para admitir un color personalizado válido, además de los diez identificadores de la paleta
+- [x] 8.3 Regenerar los tipos con `pnpm db:types` tras la migración
+- [x] 8.4 Instalar la fuente de datos de emojis categorizada registrada en la decisión D31 (1.4)
+- [x] 8.5 Selector de color: lista desplegable con nombre y muestra de los diez colores de la paleta como camino principal y primera opción, con el color personalizado al final de la lista
+- [x] 8.6 Validar por contraste el color personalizado contra el fondo de superficie de los dos temas antes de guardar, rechazando el que no alcance el mínimo AA en cualquiera de los dos
+- [x] 8.7 Selector de emojis: todos los emojis, categorizados y buscables, cargado recién al abrirse el selector, no con el arranque de la aplicación
+- [x] 8.8 Elegir proyecto padre al crear, con "sin padre" por defecto, respetando el máximo de tres niveles ya impuesto en base de datos
+- [x] 8.9 Marcar favorito desde la misma alta de proyecto
+- [x] 8.10 Verificar que un color inválido (ni de la paleta ni personalizado con formato válido) se rechaza tanto en la validación de Zod como en el check constraint
 
 ## 9. Configuración como modal
 
