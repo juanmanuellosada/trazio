@@ -41,25 +41,22 @@ export const metadata: Metadata = {
  * Header y footer viven en el layout del grupo, compartidos con
  * `/terminos` y `/privacidad`.
  *
- * El CTA principal (`CtaLink`, texto único) se repite cinco veces con el
- * mismo texto y el mismo destino: hero, después de la demo, después de la
- * galería, después de las preguntas, y cierre (`CtaBand` para las tres
- * repeticiones intermedias, sin titular propio). Es un solo CTA distinto
- * repetido, no varios CTA compitiendo — ver "Un solo CTA principal" en
- * `docs/landing.md`.
+ * El CTA principal (`CtaLink`, texto único) se repite tres veces con el
+ * mismo texto y el mismo destino: hero, después de la galería de
+ * transformaciones (`CtaBand`, sin titular propio, en el punto más alto de
+ * la página) y cierre. Es un solo CTA distinto repetido, no varios CTA
+ * compitiendo — ver "Un solo CTA principal" en `docs/landing.md`.
  */
 export default function LandingPage() {
   return (
     <>
       <HeroSection />
       <ParserDemoSection />
-      <CtaBand />
       <LegendSection />
       <TransformationsSection />
       <CtaBand />
       <ProductNarrativeSection />
       <FaqSection />
-      <CtaBand />
       <RoadmapSection />
       <ClosingSection />
     </>

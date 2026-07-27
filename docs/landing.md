@@ -150,13 +150,25 @@ Sin captura de producto. Tres elementos:
   pliegue en la versión anterior.
 
 **CTA principal** — "Crear mi cuenta gratis", un solo botón, con *"Gratis.
-Sin tarjeta."* debajo. Este es el primero de cinco puntos donde aparece el
+Sin tarjeta."* debajo. Este es el primero de **tres** puntos donde aparece el
 mismo botón, con el mismo texto y el mismo destino (`/registro`): hero,
-después de la demo (sección 2), después de la galería de transformaciones
-(sección 4), después de las preguntas directas (sección 6), y en el cierre
-(sección 8). Las tres repeticiones intermedias no llevan titular propio —
-solo el botón, para no competir con la sección que las rodea. Ver "Un solo
-CTA principal — pero puede repetirse" más arriba para la justificación.
+después de la galería de transformaciones (sección 4) y en el cierre
+(sección 8). La repetición intermedia no lleva titular propio — solo el
+botón, para no competir con la sección que la rodea.
+
+Antes había cinco: se sumaron dos de más copiando la landing de Todoist, sin
+tener en cuenta que la de Todoist es bastante más larga que esta. En una
+página de ocho secciones, tres CTA alcanzan para que el botón esté siempre
+a un scroll corto de distancia sin volverse empapelado. Se sacaron el de
+después de la demo (sección 2) y el de después de las preguntas directas
+(sección 6) — este último quedaba pegado al cierre, separado solo por la
+hoja de ruta, y la pregunta de precio (sección 6) queda sin botón: el cierre
+llega enseguida. La galería de transformaciones (sección 4) es el punto más
+alto de la página —el visitante ya vio el diferencial demostrado seis
+veces— así que es donde más rinde repetir el botón. Ver "Un solo CTA
+principal — pero puede repetirse" más arriba: sigue siendo un único CTA
+distinto, no varios compitiendo; lo que cambia es la cantidad de veces que
+se repite, ajustada al largo real de esta página y no copiada de otra.
 
 Sin menú de navegación con links que se lleven al visitante afuera. Como mucho, el
 logo a la izquierda y un "Iniciar sesión" discreto a la derecha.
@@ -208,24 +220,33 @@ etiqueta, repetición. Estática, renderizada en el servidor.
 
 ### 5. Y después de escribirla
 
-Todo lo que no es el parser, en dos recursos de texto y CSS y no en grilla
-ni en captura de pantalla — el dueño del producto la sacó explícitamente de
-esta sección porque un recorte de pantalla completa no se lee metido en
-medio de una narrativa, sobre todo en el teléfono:
+La mitad del producto que la landing no explicaba: las tareas se agrupan en
+proyectos, los proyectos tienen secciones, se anidan hasta tres niveles, y
+una tarea se parte en subtareas sin límite. Todo lo que no es el parser, en
+un solo bloque de texto y CSS y no en grilla ni en captura de pantalla — el
+dueño del producto la sacó explícitamente de esta sección porque un recorte
+de pantalla completa no se lee metido en medio de una narrativa, sobre todo
+en el teléfono.
 
-- **El recorrido**, condición → destino: si no le pusiste nada más cae en
-  la Bandeja de entrada, si tiene fecha aparece en Hoy, si tiene proyecto
-  vive ahí, si es grande se parte en subtareas, y es igual en la compu y en
-  el teléfono. Cada destino es un chip (mismo lenguaje visual que
-  `ParseResultChips`), no una frase corrida.
-- **El árbol de la jerarquía** — la mitad del producto que la landing no
-  explicaba: las tareas se agrupan en proyectos, los proyectos tienen
-  secciones, los proyectos se anidan hasta tres niveles, y una tarea se
-  parte en subtareas sin límite. Una jerarquía es un árbol, y un árbol se
-  dibuja con HTML anidado (`<ul>`/`<li>`) e indentación — cero imágenes,
-  cero peso, coherente con que el resaltado de tokens ya es el sistema
-  gráfico de la página. El nodo de proyecto reutiliza el mismo color que
-  `@Proyecto` en el parser: es el mismo concepto en los dos lados.
+Antes eran dos bloques seguidos que decían lo mismo con distinta forma: un
+recorrido en pasos ("si no le pusiste nada más, cae en la Bandeja de
+entrada", "si tiene proyecto, vive ahí", etc.) y, justo debajo, el árbol de
+la jerarquía repitiendo Bandeja, proyecto y subtareas. El visitante leía lo
+mismo dos veces. Ahora es un solo bloque:
+
+- **El árbol de la jerarquía** es el activo fuerte y lleva todo el peso —
+  muestra la estructura de un vistazo, algo que ninguna captura logra. Un
+  árbol se dibuja con HTML anidado (`<ul>`/`<li>`) e indentación — cero
+  imágenes, cero peso, coherente con que el resaltado de tokens ya es el
+  sistema gráfico de la página. El nodo de proyecto reutiliza el mismo
+  color que `@Proyecto` en el parser: es el mismo concepto en los dos lados.
+  Sin anotar cada nodo con su tipo ("· proyecto", "· sección", "· subtarea"
+  en cada uno) — la jerarquía ya se ve en la indentación, y los términos
+  quedan dichos una sola vez en el párrafo que antecede al árbol.
+- Dos cosas que el árbol **no** puede mostrar —que una tarea con fecha
+  aparece en Hoy cuando llega el día, y que es la misma en la compu y en el
+  teléfono— van como apoyo breve en un renglón después del árbol, no como
+  lista paralela.
 
 ### 6. Preguntas directas
 
