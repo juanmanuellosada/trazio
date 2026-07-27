@@ -14,6 +14,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { duplicateTaskTree } from "@/lib/tasks/duplicate";
 import { getLocalSupabaseEnv } from "./env";
+import { assertOk, unwrap } from "./helpers";
 
 const env = getLocalSupabaseEnv();
 
@@ -68,11 +69,12 @@ afterAll(async () => {
 
 describe("due_date y due_at son excluyentes (spec de tareas)", () => {
   it("rechaza guardar las dos a la vez", async () => {
-    const { data: project } = await createProject(user, "Proyecto para fechas");
+    const { data: projectData, error: projectError } = await createProject(user, "Proyecto para fechas");
+    const project = unwrap(projectData, projectError, "Proyecto para fechas");
 
     const { error } = await user.client.from("tasks").insert({
       user_id: user.id,
-      project_id: project!.id,
+      project_id: project.id,
       title: "Tarea con las dos fechas",
       due_date: "2026-08-01",
       due_at: "2026-08-01T10:00:00Z",
@@ -84,16 +86,17 @@ describe("due_date y due_at son excluyentes (spec de tareas)", () => {
   });
 
   it("acepta cualquiera de las dos por separado", async () => {
-    const { data: project } = await createProject(user, "Proyecto para fechas (ok)");
+    const { data: projectData, error: projectError } = await createProject(user, "Proyecto para fechas (ok)");
+    const project = unwrap(projectData, projectError, "Proyecto para fechas (ok)");
 
     const { error: onlyDate } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: project!.id, title: "Solo due_date", due_date: "2026-08-01", position: 1000 });
+      .insert({ user_id: user.id, project_id: project.id, title: "Solo due_date", due_date: "2026-08-01", position: 1000 });
     expect(onlyDate).toBeNull();
 
     const { error: onlyAt } = await user.client.from("tasks").insert({
       user_id: user.id,
-      project_id: project!.id,
+      project_id: project.id,
       title: "Solo due_at",
       due_at: "2026-08-01T10:00:00Z",
       position: 2000,
@@ -104,42 +107,56 @@ describe("due_date y due_at son excluyentes (spec de tareas)", () => {
 
 describe("Mover una tarea a un proyecto ajeno (bloque 7.7)", () => {
   it("lo rechaza el trigger de validación de dueño", async () => {
-    const { data: myProject } = await createProject(user, "Mi proyecto");
-    const { data: task } = await user.client
+    const { data: myProjectData, error: myProjectError } = await createProject(user, "Mi proyecto");
+    const myProject = unwrap(myProjectData, myProjectError, "Mi proyecto");
+    const { data: taskData, error: taskError } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: myProject!.id, title: "Tarea propia", position: 1000 })
+      .insert({ user_id: user.id, project_id: myProject.id, title: "Tarea propia", position: 1000 })
       .select("id")
       .single();
-    const { data: foreignProject } = await createProject(otherUser, "Proyecto ajeno");
+    const task = unwrap(taskData, taskError, "Tarea propia");
+    const { data: foreignProjectData, error: foreignProjectError } = await createProject(
+      otherUser,
+      "Proyecto ajeno",
+    );
+    const foreignProject = unwrap(foreignProjectData, foreignProjectError, "Proyecto ajeno");
 
-    const { error } = await user.client.from("tasks").update({ project_id: foreignProject!.id }).eq("id", task!.id);
+    const { error } = await user.client.from("tasks").update({ project_id: foreignProject.id }).eq("id", task.id);
 
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/no pertenece al usuario/i);
 
-    const { data: taskAfter } = await user.client.from("tasks").select("project_id").eq("id", task!.id).single();
-    expect(taskAfter?.project_id).toBe(myProject!.id);
+    const { data: taskAfter } = await user.client.from("tasks").select("project_id").eq("id", task.id).single();
+    expect(taskAfter?.project_id).toBe(myProject.id);
   });
 });
 
 describe("Duplicar una tarea (bloque 7.6, F2 del design)", () => {
   it("copia los campos propios, no hereda completed_at, y copia las subtareas recursivamente", async () => {
-    const { data: project } = await createProject(user, "Proyecto para duplicar");
-    const { data: original } = await user.client
+    const { data: projectData, error: projectError } = await createProject(user, "Proyecto para duplicar");
+    const project = unwrap(projectData, projectError, "Proyecto para duplicar");
+    const { data: originalData, error: originalError } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: project!.id, title: "Original", priority: 2, due_date: "2026-08-05", position: 1000 })
+      .insert({ user_id: user.id, project_id: project.id, title: "Original", priority: 2, due_date: "2026-08-05", position: 1000 })
       .select("id")
       .single();
-    await user.client
+    const original = unwrap(originalData, originalError, "Original");
+    const { error: subtask1Error } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: project!.id, parent_id: original!.id, title: "Subtarea 1", position: 1000 });
-    await user.client
+      .insert({ user_id: user.id, project_id: project.id, parent_id: original.id, title: "Subtarea 1", position: 1000 });
+    assertOk(subtask1Error, "Subtarea 1");
+    const { error: subtask2Error } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: project!.id, parent_id: original!.id, title: "Subtarea 2", position: 2000 });
+      .insert({ user_id: user.id, project_id: project.id, parent_id: original.id, title: "Subtarea 2", position: 2000 });
+    assertOk(subtask2Error, "Subtarea 2");
     // La original queda completada, para probar que la copia nace pendiente.
-    await user.client.from("tasks").update({ completed_at: new Date().toISOString() }).eq("id", original!.id);
+    const { error: completeError } = await user.client
+      .from("tasks")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("id", original.id);
+    assertOk(completeError, "Marcar la original como completada");
 
-    const newId = await duplicateTaskTree(user.client, original!.id, 1500);
+    const newId = await duplicateTaskTree(user.client, original.id, 1500);
 
     const { data: copy } = await user.client
       .from("tasks")
@@ -152,7 +169,7 @@ describe("Duplicar una tarea (bloque 7.6, F2 del design)", () => {
     expect(copy?.completed_at).toBeNull();
     expect(copy?.position).toBe(1500);
 
-    const { data: originalRow } = await user.client.from("tasks").select("created_at").eq("id", original!.id).single();
+    const { data: originalRow } = await user.client.from("tasks").select("created_at").eq("id", original.id).single();
     expect(copy?.created_at).not.toBe(originalRow?.created_at);
 
     const { data: copySubtasks } = await user.client

@@ -196,15 +196,15 @@ Va al final a propósito: necesita capturas del producto real.
 
 Cada tarea de este bloque corresponde a un criterio literal del roadmap. La fase no se cierra con ninguno pendiente.
 
-- [ ] 14.1 E2E: una persona se registra, confirma el correo, olvida la contraseña, la recupera y vuelve a entrar, sin intervención manual
-- [ ] 14.2 El parser pasa todos los casos de `docs/parser-test-cases.md`, incluido "la mañana" distinto de "mañana"
-- [ ] 14.3 Verificar específicamente que el parser resuelve los casos nuevos: "Gimnasio cada lunes a las 8" con `due_at` en la próxima ocurrencia, entradas sin acentos o en mayúsculas, texto parcial sin atributos, "próxima semana" según `week_starts_on`, y la asimetría al caer la fecha hoy entre día de la semana suelto y fin de semana
-- [ ] 14.4 Completar una tarea se ve instantáneo, y si el servidor falla se revierte y se avisa
-- [ ] 14.5 Un cambio en una pestaña aparece en otra en menos de dos segundos
-- [ ] 14.6 Sin internet, la app avisa y no permite escribir
-- [ ] 14.7 Eliminar un proyecto pide confirmación mostrando cuántas tareas se pierden
-- [ ] 14.8 Lighthouse en la landing por encima de 90 en rendimiento y accesibilidad, verificado en CI sobre el preview
-- [ ] 14.9 La app se instala desde el navegador y abre a pantalla completa
-- [ ] 14.10 `pnpm lint && pnpm typecheck && pnpm test` en verde
-- [ ] 14.11 E2E del flujo completo: registrarse, crear proyecto, crear tarea con lenguaje natural y completarla
-- [ ] 14.12 Usar Trazio un día entero con tareas reales antes de dar la fase por cerrada
+- [x] 14.1 E2E: una persona se registra, confirma el correo, olvida la contraseña, la recupera y vuelve a entrar, sin intervención manual (`e2e/auth-recovery.spec.ts`, vía Mailpit; falla probada rompiendo el callback de OAuth y revertida)
+- [x] 14.2 El parser pasa todos los casos de `docs/parser-test-cases.md`, incluido "la mañana" distinto de "mañana" (`lib/parser/parser.test.ts`, 134 casos en verde)
+- [x] 14.3 Verificar específicamente que el parser resuelve los casos nuevos: "Gimnasio cada lunes a las 8" con `due_at` en la próxima ocurrencia, entradas sin acentos o en mayúsculas, texto parcial sin atributos, "próxima semana" según `week_starts_on`, y la asimetría al caer la fecha hoy entre día de la semana suelto y fin de semana (cubierto en `lib/parser/casos.ts` / `parser.test.ts`, casos 54-56 y los describe blocks R9/R10)
+- [x] 14.4 Completar una tarea se ve instantáneo, y si el servidor falla se revierte y se avisa (`e2e/task-optimistic.spec.ts`; la reversión se probó rompiendo `onError` en `useUpdateTask` y revertida)
+- [x] 14.5 Un cambio en una pestaña aparece en otra en menos de dos segundos (`e2e/realtime-sync.spec.ts`, mide el tiempo real; falla probada rompiendo la invalidación de Realtime y revertida)
+- [x] 14.6 Sin internet, la app avisa y no permite escribir (`e2e/offline.spec.ts`, verifica `inert` real y recuperación al volver la conexión)
+- [x] 14.7 Eliminar un proyecto pide confirmación mostrando cuántas tareas se pierden (`e2e/project-delete-count.spec.ts`, árbol de 3 niveles armado por el propio test, conteo exacto)
+- [ ] 14.8 Lighthouse en la landing por encima de 90 en rendimiento y accesibilidad, verificado en CI sobre el preview — workflow creado en `.github/workflows/ci.yml` (gate + Lighthouse CI sobre el preview de Vercel vía `vercel/wait-for-deployment-action` + `treosh/lighthouse-ci-action`), pero **no corrió todavía en GitHub real**: falta confirmar que la integración Vercel↔GitHub publica deployment statuses en este repo y que el score de la landing da ≥90. Sin marcar hasta que corra en un push/PR real.
+- [ ] 14.9 La app se instala desde el navegador y abre a pantalla completa — automatizado lo automatizable (`e2e/pwa.spec.ts`: manifest válido, íconos resuelven, service worker registra y controla la página). El prompt real de instalación (`beforeinstallprompt`) no se dispara en Playwright/CDP; queda pendiente de prueba manual en un navegador real antes de marcar este criterio.
+- [x] 14.10 `pnpm lint && pnpm typecheck && pnpm test` en verde (314 tests, 39 archivos)
+- [x] 14.11 E2E del flujo completo: registrarse, crear proyecto, crear tarea con lenguaje natural y completarla (`e2e/full-flow.spec.ts`, tarea creada escribiendo "Comprar café mañana p1" en el alta rápida)
+- [ ] 14.12 Usar Trazio un día entero con tareas reales antes de dar la fase por cerrada — le corresponde al dueño del proyecto, no a la implementación

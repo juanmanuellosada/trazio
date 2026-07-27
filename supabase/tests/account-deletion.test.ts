@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getLocalSupabaseEnv } from "./env";
+import { assertOk, unwrap } from "./helpers";
 
 const env = getLocalSupabaseEnv();
 
@@ -58,31 +59,32 @@ describe("Protección de la Bandeja contra acción directa del usuario", () => {
   });
 
   it("rechaza borrar, archivar o desmarcar is_inbox de la Bandeja, con la cuenta viva", async () => {
-    const { data: inbox } = await user.client
+    const { data: inboxData, error: inboxError } = await user.client
       .from("projects")
       .select("id")
       .eq("is_inbox", true)
       .single();
+    const inbox = unwrap(inboxData, inboxError, "Bandeja no encontrada");
 
-    const { error: deleteError } = await user.client.from("projects").delete().eq("id", inbox!.id);
+    const { error: deleteError } = await user.client.from("projects").delete().eq("id", inbox.id);
     expect(deleteError).not.toBeNull();
 
     const { error: archiveError } = await user.client
       .from("projects")
       .update({ is_archived: true })
-      .eq("id", inbox!.id);
+      .eq("id", inbox.id);
     expect(archiveError).not.toBeNull();
 
     const { error: unsetInboxError } = await user.client
       .from("projects")
       .update({ is_inbox: false })
-      .eq("id", inbox!.id);
+      .eq("id", inbox.id);
     expect(unsetInboxError).not.toBeNull();
 
     const { data: stillThere } = await admin
       .from("projects")
       .select("is_inbox, is_archived")
-      .eq("id", inbox!.id)
+      .eq("id", inbox.id)
       .single();
     expect(stillThere?.is_inbox).toBe(true);
     expect(stillThere?.is_archived).toBe(false);
@@ -93,40 +95,46 @@ describe("Borrado de cuenta completo (cascada desde auth.users)", () => {
   it("borra la fila de auth.users y arrastra en cascada las siete tablas de datos, sin huérfanos", async () => {
     const user = await createTestUser("cascada");
 
-    const { data: inbox } = await user.client
+    const { data: inboxData, error: inboxError } = await user.client
       .from("projects")
       .select("id")
       .eq("is_inbox", true)
       .single();
-    const { data: project } = await user.client
+    const inbox = unwrap(inboxData, inboxError, "Bandeja no encontrada");
+    const { data: projectData, error: projectError } = await user.client
       .from("projects")
       .insert({ user_id: user.id, name: "Proyecto de prueba", color: "celeste", position: 1000 })
       .select("id")
       .single();
-    const { data: section } = await user.client
+    const project = unwrap(projectData, projectError, "Proyecto de prueba");
+    const { data: sectionData, error: sectionError } = await user.client
       .from("sections")
-      .insert({ user_id: user.id, project_id: project!.id, name: "Sección de prueba", position: 1000 })
+      .insert({ user_id: user.id, project_id: project.id, name: "Sección de prueba", position: 1000 })
       .select("id")
       .single();
-    const { data: task } = await user.client
+    const section = unwrap(sectionData, sectionError, "Sección de prueba");
+    const { data: taskData, error: taskError } = await user.client
       .from("tasks")
       .insert({
         user_id: user.id,
-        project_id: project!.id,
-        section_id: section!.id,
+        project_id: project.id,
+        section_id: section.id,
         title: "Tarea de prueba",
         position: 1000,
       })
       .select("id")
       .single();
-    const { data: label } = await user.client
+    const task = unwrap(taskData, taskError, "Tarea de prueba");
+    const { data: labelData, error: labelError } = await user.client
       .from("labels")
       .insert({ user_id: user.id, name: `etiqueta-${randomUUID().slice(0, 8)}`, color: "magenta" })
       .select("id")
       .single();
-    await user.client
+    const label = unwrap(labelData, labelError, "Etiqueta de prueba");
+    const { error: taskLabelError } = await user.client
       .from("task_labels")
-      .insert({ user_id: user.id, task_id: task!.id, label_id: label!.id });
+      .insert({ user_id: user.id, task_id: task.id, label_id: label.id });
+    assertOk(taskLabelError, "Asignación de etiqueta a tarea");
 
     // Antes de la corrección, este borrado fallaba entero porque la
     // cascada intentaba borrar la Bandeja y el trigger la rechazaba.
@@ -151,7 +159,7 @@ describe("Borrado de cuenta completo (cascada desde auth.users)", () => {
       .eq("user_id", user.id);
     expect(projectsCount).toBe(0);
     // El propio id de la Bandeja, en particular, no debe sobrevivir.
-    const { data: inboxAfter } = await admin.from("projects").select("id").eq("id", inbox!.id).maybeSingle();
+    const { data: inboxAfter } = await admin.from("projects").select("id").eq("id", inbox.id).maybeSingle();
     expect(inboxAfter).toBeNull();
 
     const { count: sectionsCount } = await admin

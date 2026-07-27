@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Mínimo privilegio a nivel workflow; el job de lighthouse eleva lo que
+# necesita puntualmente.
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, typecheck y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versión de pnpm fijada según AGENTS.md ("Gestor de paquetes | pnpm 11").
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      # Versión de Node desde .nvmrc (Node 24 LTS, ver AGENTS.md).
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Equivalente a `pnpm lint && pnpm typecheck && pnpm test`: cada step
+      # detiene el job si falla, en el mismo orden.
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  lighthouse:
+    name: Lighthouse sobre el preview de Vercel
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Los PR y los pushes a ramas que no son la rama por defecto generan
+      # un deployment "preview" en Vercel; un push a la rama por defecto
+      # genera "production". Sin esto, un push a main se quedaría esperando
+      # un deployment preview que no existe.
+      - name: Determinar el entorno de Vercel a esperar
+        id: vercel_env
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/${{ github.event.repository.default_branch }}" ]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Acción oficial de Vercel. Consulta la API de Deployments de GitHub
+      # (que la integración Vercel↔GitHub va completando con cada push), no
+      # la API de Vercel directamente, así que NO requiere VERCEL_TOKEN ni
+      # VERCEL_PROJECT_ID. Solo necesita permisos de lectura sobre
+      # deployments/statuses (arriba) y el GITHUB_TOKEN por defecto.
+      #
+      # Sin tag de versión publicado todavía (repo nuevo): se fija por SHA
+      # de commit, verificado en github.com/vercel/wait-for-deployment-action
+      # el 2026-07-27. Revisar si ya existe un tag estable antes de actualizar.
+      - name: Esperar el deployment de Vercel
+        id: deployment
+        uses: vercel/wait-for-deployment-action@0e2b0c5c5cce31f1648108aeec56467187aca037
+        with:
+          environment: ${{ steps.vercel_env.outputs.environment }}
+          # Descomentar si el repo llega a tener más de un proyecto de
+          # Vercel enganchado (monorepo):
+          # project-slug: trazio
+
+      # Audita la landing ("/") del deployment recién esperado. Falla el
+      # job si performance o accessibility bajan de 90 (ver
+      # .github/lighthouse/lighthouserc.json).
+      - name: Auditar la landing con Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: ${{ steps.deployment.outputs.deployment-url }}/
+          configPath: ./.github/lighthouse/lighthouserc.json
+          uploadArtifacts: true

@@ -17,7 +17,9 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     // Los tests de RLS de supabase/tests/ necesitan Supabase local
     // corriendo en Docker: quedan fuera de `pnpm test` y corren aparte
-    // con `pnpm test:rls` (ver vitest.rls.config.ts).
-    exclude: [...configDefaults.exclude, "supabase/tests/**"],
+    // con `pnpm test:rls` (ver vitest.rls.config.ts). `e2e/**` corre con
+    // Playwright (`pnpm test:e2e`), no con Vitest: sus archivos usan
+    // `@playwright/test`, no el `describe`/`it` de acá.
+    exclude: [...configDefaults.exclude, "supabase/tests/**", "e2e/**"],
   },
 });

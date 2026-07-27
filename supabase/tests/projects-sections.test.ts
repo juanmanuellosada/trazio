@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getLocalSupabaseEnv } from "./env";
+import { assertOk, unwrap } from "./helpers";
 
 const env = getLocalSupabaseEnv();
 
@@ -80,13 +81,15 @@ describe("Anidamiento de proyectos (bloque 6.3)", () => {
   });
 
   it("rechaza que un proyecto sea su propio ancestro", async () => {
-    const { data: parent } = await createProject(user, "Padre para ciclo");
-    const { data: child } = await createProject(user, "Hijo para ciclo", parent!.id);
+    const { data: parentData, error: parentError } = await createProject(user, "Padre para ciclo");
+    const parent = unwrap(parentData, parentError, "Padre para ciclo");
+    const { data: childData, error: childError } = await createProject(user, "Hijo para ciclo", parent.id);
+    const child = unwrap(childData, childError, "Hijo para ciclo");
 
     const { error } = await user.client
       .from("projects")
-      .update({ parent_id: child!.id })
-      .eq("id", parent!.id);
+      .update({ parent_id: child.id })
+      .eq("id", parent.id);
 
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/su propio ancestro/i);
@@ -95,22 +98,32 @@ describe("Anidamiento de proyectos (bloque 6.3)", () => {
 
 describe("Protección de la Bandeja de entrada (bloque 6.7)", () => {
   it("rechaza borrar la Bandeja, aunque se intente directo en la base", async () => {
-    const { data: inbox } = await user.client.from("projects").select("id").eq("is_inbox", true).single();
+    const { data: inboxData, error: inboxError } = await user.client
+      .from("projects")
+      .select("id")
+      .eq("is_inbox", true)
+      .single();
+    const inbox = unwrap(inboxData, inboxError, "Bandeja no encontrada");
 
-    const { error } = await user.client.from("projects").delete().eq("id", inbox!.id);
+    const { error } = await user.client.from("projects").delete().eq("id", inbox.id);
     expect(error).not.toBeNull();
 
-    const { data: stillThere } = await admin.from("projects").select("id").eq("id", inbox!.id).maybeSingle();
+    const { data: stillThere } = await admin.from("projects").select("id").eq("id", inbox.id).maybeSingle();
     expect(stillThere).not.toBeNull();
   });
 
   it("rechaza archivar la Bandeja", async () => {
-    const { data: inbox } = await user.client.from("projects").select("id").eq("is_inbox", true).single();
+    const { data: inboxData, error: inboxError } = await user.client
+      .from("projects")
+      .select("id")
+      .eq("is_inbox", true)
+      .single();
+    const inbox = unwrap(inboxData, inboxError, "Bandeja no encontrada");
 
-    const { error } = await user.client.from("projects").update({ is_archived: true }).eq("id", inbox!.id);
+    const { error } = await user.client.from("projects").update({ is_archived: true }).eq("id", inbox.id);
     expect(error).not.toBeNull();
 
-    const { data: after } = await admin.from("projects").select("is_archived").eq("id", inbox!.id).single();
+    const { data: after } = await admin.from("projects").select("is_archived").eq("id", inbox.id).single();
     expect(after?.is_archived).toBe(false);
   });
 });
@@ -135,61 +148,73 @@ describe("Color de proyecto (D27 — nulo solo para la Bandeja)", () => {
 
 describe("Eliminar una sección (bloque 6.8/6.9)", () => {
   it("no borra sus tareas: quedan sin sección, en el mismo proyecto", async () => {
-    const { data: project } = await createProject(user, "Proyecto con sección a borrar");
-    const { data: section } = await user.client
+    const { data: projectData, error: projectError } = await createProject(
+      user,
+      "Proyecto con sección a borrar",
+    );
+    const project = unwrap(projectData, projectError, "Proyecto con sección a borrar");
+    const { data: sectionData, error: sectionError } = await user.client
       .from("sections")
-      .insert({ user_id: user.id, project_id: project!.id, name: "Sección temporal", position: 1000 })
+      .insert({ user_id: user.id, project_id: project.id, name: "Sección temporal", position: 1000 })
       .select("id")
       .single();
-    const { data: task } = await user.client
+    const section = unwrap(sectionData, sectionError, "Sección temporal");
+    const { data: taskData, error: taskError } = await user.client
       .from("tasks")
       .insert({
         user_id: user.id,
-        project_id: project!.id,
-        section_id: section!.id,
+        project_id: project.id,
+        section_id: section.id,
         title: "Tarea que debe sobrevivir",
         position: 1000,
       })
       .select("id")
       .single();
+    const task = unwrap(taskData, taskError, "Tarea que debe sobrevivir");
 
-    const { error: deleteError } = await user.client.from("sections").delete().eq("id", section!.id);
+    const { error: deleteError } = await user.client.from("sections").delete().eq("id", section.id);
     expect(deleteError).toBeNull();
 
     const { data: taskAfter } = await user.client
       .from("tasks")
       .select("id, project_id, section_id")
-      .eq("id", task!.id)
+      .eq("id", task.id)
       .single();
     expect(taskAfter).not.toBeNull();
-    expect(taskAfter?.project_id).toBe(project!.id);
+    expect(taskAfter?.project_id).toBe(project.id);
     expect(taskAfter?.section_id).toBeNull();
   });
 });
 
 describe("Eliminar una etiqueta (bloque 6.10)", () => {
   it("la quita de todas las tareas donde estaba asignada", async () => {
-    const { data: project } = await createProject(user, "Proyecto para etiqueta");
-    const { data: task } = await user.client
+    const { data: projectData, error: projectError } = await createProject(user, "Proyecto para etiqueta");
+    const project = unwrap(projectData, projectError, "Proyecto para etiqueta");
+    const { data: taskData, error: taskError } = await user.client
       .from("tasks")
-      .insert({ user_id: user.id, project_id: project!.id, title: "Tarea etiquetada", position: 1000 })
+      .insert({ user_id: user.id, project_id: project.id, title: "Tarea etiquetada", position: 1000 })
       .select("id")
       .single();
-    const { data: label } = await user.client
+    const task = unwrap(taskData, taskError, "Tarea etiquetada");
+    const { data: labelData, error: labelError } = await user.client
       .from("labels")
       .insert({ user_id: user.id, name: `borrar-${randomUUID().slice(0, 8)}`, color: "indigo" })
       .select("id")
       .single();
-    await user.client.from("task_labels").insert({ user_id: user.id, task_id: task!.id, label_id: label!.id });
+    const label = unwrap(labelData, labelError, "Etiqueta de prueba");
+    const { error: taskLabelError } = await user.client
+      .from("task_labels")
+      .insert({ user_id: user.id, task_id: task.id, label_id: label.id });
+    assertOk(taskLabelError, "Asignación de etiqueta a tarea");
 
-    const { error: deleteError } = await user.client.from("labels").delete().eq("id", label!.id);
+    const { error: deleteError } = await user.client.from("labels").delete().eq("id", label.id);
     expect(deleteError).toBeNull();
 
     const { data: assignmentAfter } = await user.client
       .from("task_labels")
       .select("task_id")
-      .eq("task_id", task!.id)
-      .eq("label_id", label!.id);
+      .eq("task_id", task.id)
+      .eq("label_id", label.id);
     expect(assignmentAfter).toEqual([]);
   });
 });
