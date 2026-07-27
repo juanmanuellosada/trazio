@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClosingSection } from "@/components/marketing/closing-section";
+import { CtaBand } from "@/components/marketing/cta-band";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { HeroSection } from "@/components/marketing/hero-section";
 import { LegendSection } from "@/components/marketing/legend-section";
@@ -39,16 +40,26 @@ export const metadata: Metadata = {
  * producto en una narrativa → preguntas directas → hoja de ruta → cierre.
  * Header y footer viven en el layout del grupo, compartidos con
  * `/terminos` y `/privacidad`.
+ *
+ * El CTA principal (`CtaLink`, texto único) se repite cinco veces con el
+ * mismo texto y el mismo destino: hero, después de la demo, después de la
+ * galería, después de las preguntas, y cierre (`CtaBand` para las tres
+ * repeticiones intermedias, sin titular propio). Es un solo CTA distinto
+ * repetido, no varios CTA compitiendo — ver "Un solo CTA principal" en
+ * `docs/landing.md`.
  */
 export default function LandingPage() {
   return (
     <>
       <HeroSection />
       <ParserDemoSection />
+      <CtaBand />
       <LegendSection />
       <TransformationsSection />
+      <CtaBand />
       <ProductNarrativeSection />
       <FaqSection />
+      <CtaBand />
       <RoadmapSection />
       <ClosingSection />
     </>

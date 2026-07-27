@@ -56,9 +56,15 @@ Lo que sostiene la evidencia original:
   orientado al resultado, CTA arriba del pliegue, prueba social, features
   escaneables, y cierre con CTA**. Cada sección responde una pregunta del visitante,
   en el orden en que se la hace.
-- **Un solo CTA principal.** Las páginas con un CTA convierten alrededor de 13,5%
-  frente a 10,5% de las que tienen cinco o más. Las opciones secundarias aparecen
-  más abajo, cuando el visitante ya tiene contexto.
+- **Un solo CTA principal — pero puede repetirse.** Las páginas con un solo CTA
+  *distinto* (un mensaje, un destino, un texto) convierten alrededor de 13,5%
+  frente a 10,5% de las que tienen cinco o más. Esa comparación es entre CTA que
+  compiten entre sí en la misma página ("empezá gratis" vs. "ver demo" vs. "hablar
+  con ventas"), no entre repetir el mismo CTA en varios puntos del scroll. Repetir
+  el texto y el destino exactos del único CTA principal en distintos puntos de la
+  página no viola este principio — lo aplica correctamente: sigue siendo un solo
+  mensaje, solo que alcanzable sin volver a subir. Las opciones secundarias (si
+  las hubiera) aparecen más abajo, cuando el visitante ya tiene contexto.
 - **Mostrar el producto, no describirlo.** "El editor" lleva esto un paso más
   allá que la versión original: en vez de una captura anotada, el producto
   funcionando en vivo (o congelado, en el hero) arriba del pliegue.
@@ -144,7 +150,13 @@ Sin captura de producto. Tres elementos:
   pliegue en la versión anterior.
 
 **CTA principal** — "Crear mi cuenta gratis", un solo botón, con *"Gratis.
-Sin tarjeta."* debajo.
+Sin tarjeta."* debajo. Este es el primero de cinco puntos donde aparece el
+mismo botón, con el mismo texto y el mismo destino (`/registro`): hero,
+después de la demo (sección 2), después de la galería de transformaciones
+(sección 4), después de las preguntas directas (sección 6), y en el cierre
+(sección 8). Las tres repeticiones intermedias no llevan titular propio —
+solo el botón, para no competir con la sección que las rodea. Ver "Un solo
+CTA principal — pero puede repetirse" más arriba para la justificación.
 
 Sin menú de navegación con links que se lleven al visitante afuera. Como mucho, el
 logo a la izquierda y un "Iniciar sesión" discreto a la derecha.
@@ -319,5 +331,9 @@ tracciona. No instalar un stack de analítica pesado para cuatro métricas.
 - Chat de soporte.
 - Popup de newsletter.
 - Comparativas contra productos con nombre y apellido.
-- Más de un CTA principal.
+- Un segundo CTA distinto compitiendo con el principal (otro texto, otro destino
+  — "ver demo", "hablar con ventas"). El CTA principal sí se repite, con el mismo
+  texto y el mismo destino, en varios puntos del scroll: ver "Un solo CTA
+  principal — pero puede repetirse" más arriba y la sección 1 (Hero) para las
+  ubicaciones actuales.
 - Video.

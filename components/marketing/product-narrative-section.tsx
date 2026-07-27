@@ -13,9 +13,9 @@ const JOURNEY_STEPS: JourneyStep[] = [
 ];
 
 /**
- * "Y después de escribirla" (bloque 12.5, rediseño "El editor"): todo lo que
- * no es el parser, en dos recursos de puro texto y CSS en vez de una grilla
- * o una captura de pantalla.
+ * "Todo se ordena solo" (bloque 12.5, rediseño "El editor"): todo lo que no
+ * es el parser, en dos recursos de puro texto y CSS en vez de una grilla o
+ * una captura de pantalla.
  *
  * 1. El recorrido de una tarea (`JOURNEY_STEPS`): condición → destino, con
  *    el destino como chip, mismo lenguaje visual que `ParseResultChips`.
@@ -33,7 +33,7 @@ export function ProductNarrativeSection() {
     <section className="px-4 py-12 sm:px-6 sm:py-16" aria-labelledby="narrative-heading">
       <div className="mx-auto max-w-2xl text-center">
         <h2 id="narrative-heading" className="text-landing-section font-semibold text-foreground">
-          Y después de escribirla
+          Todo se ordena solo
         </h2>
         <p className="mt-4 text-lg text-text-secondary">Todo lo que no es el parser, en un recorrido.</p>
       </div>

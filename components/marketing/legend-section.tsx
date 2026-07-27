@@ -34,7 +34,7 @@ export function LegendSection() {
       <div className="mx-auto max-w-4xl">
         <div className="mx-auto max-w-2xl text-center">
           <h2 id="legend-heading" className="text-landing-section font-semibold text-foreground">
-            Lo que entiende
+            Sin formularios ni menús
           </h2>
           <p className="mt-2 text-text-secondary">
             Ocho tipos de dato, cada uno con su color. El mismo color de acá es el que ves resaltado
