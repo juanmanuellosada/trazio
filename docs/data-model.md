@@ -57,8 +57,8 @@ Una fila por usuario, creada junto con el perfil.
 | `user_id` | `uuid` FK | |
 | `parent_id` | `uuid` FK nullable | Auto-referencia. Máximo 3 niveles. |
 | `name` | `text` | |
-| `color` | `text` | |
-| `icon` | `text` | Emoji |
+| `color` | `text` nullable | Id de la paleta fija; nulo solo en la Bandeja de entrada (D27) |
+| `icon` | `text` | Emoji; nulo en la Bandeja de entrada |
 | `description` | `text` | |
 | `preferred_view` | `text` | `list` \| `board` |
 | `is_inbox` | `boolean` | Único `true` por usuario |
@@ -72,6 +72,8 @@ Una fila por usuario, creada junto con el perfil.
 - Trigger que impide borrar o archivar el proyecto de Bandeja de entrada.
 - Constraint o trigger que impide anidar más de tres niveles.
 - Constraint que impide que un proyecto sea su propio ancestro.
+- Constraint que exige `color` en todo proyecto que no sea la Bandeja, y lo
+  prohíbe en la Bandeja (D27).
 
 **Sobre `position`:** usar `numeric` y no `integer` permite insertar entre dos
 elementos calculando el promedio, sin reescribir toda la lista en cada arrastre.

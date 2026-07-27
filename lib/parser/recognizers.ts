@@ -32,7 +32,7 @@ export type Candidate =
   | { attr: "date"; kind: DateCandidateKind; start: number; end: number; date: CalendarDate }
   | { attr: "hour"; start: number; end: number; hour: number; minute: number }
   | { attr: "duration"; start: number; end: number; minutes: number }
-  | { attr: "recurrence"; start: number; end: number; rrule: string; anchorWeekday: number | null }
+  | { attr: "recurrence"; start: number; end: number; rrule: string; anchorWeekdays: number[] | null }
   | { attr: "priority"; start: number; end: number; value: number }
   | { attr: "label"; start: number; end: number; name: string; id: string | null }
   | {
@@ -44,6 +44,17 @@ export type Candidate =
       sectionId: string | null;
       sectionName: string | null;
     };
+
+// Un nombre de día suelto, y el separador entre días de una lista ("cada
+// lunes, miércoles y viernes"): coma, o " y " antes del último. Ambos se
+// comparten entre `recognizeWeekdayLoose` (para que no le agarre el segundo
+// o tercer día de una lista ya reconocida como repetición) y
+// `recognizeRecurrence` (para reconocer la lista entera).
+const DAY_ALT = `(?:${WEEKDAY_NAMES.join("|")})`;
+const DAY_LIST_SEP = `(?:\\s*,\\s*|\\s+y\\s+)`;
+// Todo lo que puede preceder al segundo día en adelante de una lista que
+// empezó con "cada": "cada lunes, ", "cada lunes, miércoles y ", etc.
+const CADA_LIST_PREFIX = `cada\\s+${DAY_ALT}${DAY_LIST_SEP}(?:${DAY_ALT}${DAY_LIST_SEP})*`;
 
 // ---------------------------------------------------------------------------
 // Fechas relativas (casos 1-11, más los casos críticos 44-46 y 50)
@@ -236,8 +247,15 @@ export function recognizePointDate(normalized: string, hoy: CalendarDate): Candi
 // `(?<!cada\s+)`: "cada lunes" es repetición (recognizeRecurrence), no una
 // fecha — sin esta exclusión, "lunes" se reconocería también como día
 // suelto y, sin otra fecha en el texto con la que R4 lo descarte, ganaría
-// por defecto (E12: la recurrencia sola no fija ancla).
-const WEEKDAY_LOOSE_RE = new RegExp(`(?<!cada\\s+)\\b(${WEEKDAY_NAMES.join("|")})\\b`, "g");
+// por defecto (E12: la recurrencia sola no fija ancla). El segundo lookbehind
+// hace lo mismo para el segundo día en adelante de una lista ("cada lunes,
+// miércoles y viernes"): sin él, "miércoles" y "viernes" no están precedidos
+// por "cada " de forma literal y se colarían como día suelto, compitiendo
+// mal en R4/R5 contra la lista ya reconocida como recurrencia.
+const WEEKDAY_LOOSE_RE = new RegExp(
+  `(?<!cada\\s+)(?<!${CADA_LIST_PREFIX})\\b(${WEEKDAY_NAMES.join("|")})\\b`,
+  "g",
+);
 
 export function recognizeWeekdayLoose(normalized: string, hoy: CalendarDate): Candidate[] {
   const candidates: Candidate[] = [];
@@ -307,7 +325,10 @@ export function recognizeHour(normalized: string): Candidate[] {
 // Duraciones (casos 28-30)
 // ---------------------------------------------------------------------------
 
-const HOUR_MIN_RE = /\b(\d{1,2})h(?:(\d{1,2})m)?\b/g;
+// `(?:por\s+)?`: R8 — "por" es parte de la locución cuando precede
+// directamente a una duración en formato corto ("por 1h", igual que "por
+// 45min" en `POR_MIN_RE`), así que se consume junto con el token.
+const HOUR_MIN_RE = /\b(?:por\s+)?(\d{1,2})h(?:(\d{1,2})m)?\b/g;
 const POR_MIN_RE = /\bpor\s+(\d{1,2})\s*min\b/g;
 const HORAS_RE = /\b(\d{1,2})\s*horas?\b/g;
 
@@ -351,16 +372,30 @@ export function recognizeDuration(normalized: string): Candidate[] {
 // ---------------------------------------------------------------------------
 
 const WEEKDAY_RRULE = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+// Orden canónico de BYDAY (RFC 5545, arranca en lunes): dos formulaciones
+// equivalentes ("lunes y miércoles" / "miércoles y lunes") tienen que dar la
+// misma regla, sin importar el orden en que el usuario tipeó los días.
+const BYDAY_CANONICAL_ORDER = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+const DAY_NAME_RE = new RegExp(`\\b${DAY_ALT}\\b`, "g");
+
+function byDayList(dows: number[]): string {
+  const codes = new Set(dows.map((dow) => WEEKDAY_RRULE[dow]));
+  return BYDAY_CANONICAL_ORDER.filter((code) => codes.has(code)).join(",");
+}
 
 // Igual que la familia de "mañana": una sola alternancia, ordenada de la
-// locución más específica ("cada día laborable") a la más general ("cada
-// día"), para que la más específica se coma la palabra entera y la general
-// no la vuelva a matchear suelta.
+// locución más específica a la más general, para que la más específica se
+// coma la locución entera y la general no la vuelva a matchear suelta. La
+// lista de días ("cada lunes, miércoles y viernes") va antes que el día
+// suelto ("cada lunes") porque es la más específica de las dos: si el día
+// suelto fuera primero, se comería solo el primer día de la lista y dejaría
+// ", miércoles y viernes" sin reconocer.
 const RECURRENCE_RE = new RegExp(
   [
     "cada\\s+dia\\s+laborable",
-    "cada\\s+(\\d+)\\s+semanas?",
-    `cada\\s+(${WEEKDAY_NAMES.join("|")})`,
+    "cada\\s+(?<weeksInterval>\\d+)\\s+semanas?",
+    `cada\\s+(?<dayList>${DAY_ALT}(?:${DAY_LIST_SEP}${DAY_ALT})+)`,
+    `cada\\s+(?<singleDay>${DAY_ALT})`,
     "cada\\s+dia\\b",
     "cada\\s+semana\\b",
     "cada\\s+mes\\b",
@@ -375,33 +410,49 @@ export function recognizeRecurrence(normalized: string): Candidate[] {
     const text = match[0];
     const start = match.index;
     const end = start + text.length;
+    const groups = match.groups ?? {};
     if (text.includes("laborable")) {
       candidates.push({
         attr: "recurrence",
         start,
         end,
         rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
-        anchorWeekday: null,
+        anchorWeekdays: null,
       });
-    } else if (match[1]) {
-      candidates.push({ attr: "recurrence", start, end, rrule: `FREQ=WEEKLY;INTERVAL=${match[1]}`, anchorWeekday: null });
-    } else if (match[2]) {
-      const dow = weekdayIndex(match[2]);
+    } else if (groups.weeksInterval) {
+      candidates.push({
+        attr: "recurrence",
+        start,
+        end,
+        rrule: `FREQ=WEEKLY;INTERVAL=${groups.weeksInterval}`,
+        anchorWeekdays: null,
+      });
+    } else if (groups.dayList) {
+      const dows = [...groups.dayList.matchAll(DAY_NAME_RE)].map((m) => weekdayIndex(m[0]));
+      candidates.push({
+        attr: "recurrence",
+        start,
+        end,
+        rrule: `FREQ=WEEKLY;BYDAY=${byDayList(dows)}`,
+        anchorWeekdays: dows, // E12: con varios días, el ancla (si hay hora) es la ocurrencia más próxima de todas — ver resolve.ts.
+      });
+    } else if (groups.singleDay) {
+      const dow = weekdayIndex(groups.singleDay);
       candidates.push({
         attr: "recurrence",
         start,
         end,
         rrule: `FREQ=WEEKLY;BYDAY=${WEEKDAY_RRULE[dow]}`,
-        anchorWeekday: dow,
+        anchorWeekdays: [dow],
       });
     } else if (text.startsWith("cada dia")) {
-      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=DAILY", anchorWeekday: null });
+      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=DAILY", anchorWeekdays: null });
     } else if (text.startsWith("cada semana")) {
-      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=WEEKLY", anchorWeekday: null });
+      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=WEEKLY", anchorWeekdays: null });
     } else if (text.startsWith("cada mes")) {
-      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=MONTHLY", anchorWeekday: null });
+      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=MONTHLY", anchorWeekdays: null });
     } else if (text.startsWith("cada ano")) {
-      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=YEARLY", anchorWeekday: null });
+      candidates.push({ attr: "recurrence", start, end, rrule: "FREQ=YEARLY", anchorWeekdays: null });
     }
   }
   return candidates;

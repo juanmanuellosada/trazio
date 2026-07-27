@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { appendNext, safeNextPath } from "@/lib/safe-path";
 import { getSiteUrl } from "@/lib/site-url";
@@ -19,19 +20,24 @@ export default async function RegistroPage({
   const siteUrl = getSiteUrl();
 
   return (
-    <AuthShell
-      title="Creá tu cuenta"
-      subtitle="Organizá tu día completo en una sola pantalla."
-      footer={
-        <>
-          ¿Ya tenés cuenta?{" "}
-          <Link href={appendNext("/login", next)} className="font-medium text-primary hover:underline">
-            Iniciá sesión
-          </Link>
-        </>
-      }
-    >
-      <RegistroForm siteUrl={siteUrl} next={next} />
-    </AuthShell>
+    <>
+      <AuthShell
+        title="Creá tu cuenta"
+        subtitle="Organizá tu día completo en una sola pantalla."
+        footer={
+          <>
+            ¿Ya tenés cuenta?{" "}
+            <Link href={appendNext("/login", next)} className="font-medium text-primary hover:underline">
+              Iniciá sesión
+            </Link>
+          </>
+        }
+      >
+        <RegistroForm siteUrl={siteUrl} next={next} />
+      </AuthShell>
+      {/* Solo esta página monta el script (bloque 12.12): "registros completados" es la
+          única de las cuatro métricas de la landing que no ocurre en app/(marketing)/. */}
+      <Analytics />
+    </>
   );
 }

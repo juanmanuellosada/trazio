@@ -61,7 +61,7 @@ export type Database = {
       }
       projects: {
         Row: {
-          color: string
+          color: string | null
           description: string | null
           icon: string | null
           id: string
@@ -75,7 +75,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          color: string
+          color?: string | null
           description?: string | null
           icon?: string | null
           id?: string
@@ -89,7 +89,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          color?: string
+          color?: string | null
           description?: string | null
           icon?: string | null
           id?: string

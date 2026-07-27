@@ -14,20 +14,18 @@ describe("resolveProjectColorHex", () => {
     expect(resolveProjectColorHex("verde", "dark")).toBe(PROJECT_COLORS.verde.dark);
   });
 
-  it("resuelve el azul de marca de la Bandeja según el tema", () => {
-    expect(resolveProjectColorHex("#283B56", "light")).toBe("#283B56");
-    expect(resolveProjectColorHex("#283B56", "dark")).toBe("#8CA3C9");
+  it("resuelve un color nulo (la Bandeja) al azul de marca según el tema", () => {
+    expect(resolveProjectColorHex(null, "light")).toBe("#283B56");
+    expect(resolveProjectColorHex(null, "dark")).toBe("#8CA3C9");
   });
 
-  it("nunca tira: cualquier valor inesperado cae al gris neutro", () => {
+  it("nunca tira: cualquier valor que no sea un id de la paleta ni nulo cae al gris neutro", () => {
     expect(() => resolveProjectColorHex("basura", "light")).not.toThrow();
     expect(() => resolveProjectColorHex("", "light")).not.toThrow();
     expect(() => resolveProjectColorHex(undefined as unknown as string, "light")).not.toThrow();
-    expect(() => resolveProjectColorHex(null as unknown as string, "light")).not.toThrow();
 
     expect(resolveProjectColorHex("basura", "light")).toBe("#5C6675");
     expect(resolveProjectColorHex("", "dark")).toBe("#94A3B8");
     expect(resolveProjectColorHex(undefined as unknown as string, "light")).toBe("#5C6675");
-    expect(resolveProjectColorHex(null as unknown as string, "dark")).toBe("#94A3B8");
   });
 });

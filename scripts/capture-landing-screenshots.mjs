@@ -115,7 +115,12 @@ async function rowBox(locator) {
  * es el exacto entre el techo del primer elemento y el piso del último,
  * con un margen chico.
  */
-async function clipBetween(page, topLocator, bottomLocator, { topPad = 12, bottomPad = 20 } = {}) {
+async function clipBetween(
+  page,
+  topLocator,
+  bottomLocator,
+  { topPad = 12, bottomPad = 20, capMultiLocator = null, capPad = 8 } = {},
+) {
   await topLocator.scrollIntoViewIfNeeded();
   const column = topLocator.locator(
     "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' max-w-content ')][1]",
@@ -124,37 +129,85 @@ async function clipBetween(page, topLocator, bottomLocator, { topPad = 12, botto
   const top = await rowBox(topLocator);
   const bottom = await rowBox(bottomLocator);
   const y = top.y - topPad;
-  return { x: columnBox.x, y, width: columnBox.width, height: bottom.y + bottom.height + bottomPad - y };
+  let height = bottom.y + bottom.height + bottomPad - y;
+  // Tope opcional (captura 6, subtareas): el `bottomPad` a ojo después de
+  // `bottomLocator` puede alcanzar a mostrar una porción del afiche
+  // "Agregar subtarea" que sigue, si el espacio entre uno y otro es
+  // angosto. Si se pasa `capMultiLocator`, el borde inferior nunca cruza
+  // el techo del afiche más cercano por debajo de `bottomLocator`, sin
+  // importar cuánto diga `bottomPad`.
+  if (capMultiLocator) {
+    const capBox = await nearestBelow(capMultiLocator, bottomLocator);
+    if (capBox) height = Math.min(height, capBox.y - capPad - y);
+  }
+  return { x: columnBox.x, y, width: columnBox.width, height };
+}
+
+/**
+ * De varias filas que matchean el mismo locator (cada sección o grupo de
+ * subtareas tiene su propio afiche "Agregar tarea"/"Agregar subtarea",
+ * todos con el mismo nombre accesible), la más cercana por debajo de una
+ * fila de referencia. Más robusto que `.first()`/`.nth(n)`: no depende de
+ * un índice fijo, que se corre si aparece, se reordena o desaparece
+ * cualquier otro elemento con el mismo nombre en la página (por ejemplo,
+ * el botón "Agregar" de la barra de navegación inferior, que en layout
+ * móvil comparte el nombre accesible "Agregar tarea").
+ *
+ * Usa la caja propia de cada afiche (`boundingBox()`, no `rowBox()`): un
+ * afiche "Agregar subtarea"/"Agregar tarea" de una tarea anidada vive
+ * dentro del `<li>` de esa tarea *padre*, no tiene uno propio — `rowBox()`
+ * ahí devolvería la caja del padre entero (empieza mucho más arriba que
+ * el afiche), no la del afiche.
+ */
+async function nearestBelow(multiLocator, referenceLocator) {
+  const referenceBox = await rowBox(referenceLocator);
+  const count = await multiLocator.count();
+  let best = null;
+  for (let i = 0; i < count; i++) {
+    const box = await multiLocator.nth(i).boundingBox();
+    if (box && box.y > referenceBox.y && (!best || box.y < best.y)) best = box;
+  }
+  return best;
 }
 
 /**
  * Recorte desde el techo de la página (o de un viewport ya reducido a un
- * ancho angosto) hasta justo antes de una fila que no tiene que entrar en
- * la captura (un afiche "Agregar tarea"/"Agregar subtarea", por ejemplo):
- * a diferencia de `clipBetween`, conserva el ancho completo del viewport
- * (panel lateral/barra inferior incluidos, no solo la columna de
- * contenido). El borde inferior sale del techo real de esa fila menos un
- * margen chico, no de un padding a ojo después de la última fila "buena"
- * — así no importa cuán apretado esté el espacio entre una cosa y la otra.
+ * ancho angosto) hasta justo antes del afiche (de entre varios con el
+ * mismo nombre accesible) más cercano por debajo de una fila de
+ * referencia: a diferencia de `clipBetween`, conserva el ancho completo
+ * del viewport (panel lateral/barra inferior incluidos, no solo la
+ * columna de contenido). El borde inferior sale del techo real de esa
+ * fila menos un margen chico, no de un padding a ojo después de la última
+ * fila "buena" — así no importa cuán apretado esté el espacio entre una
+ * cosa y la otra.
  */
-async function clipBeforeRow(page, locator, { pad = 8 } = {}) {
+async function clipBeforeRow(page, multiLocator, referenceLocator, { pad = 8 } = {}) {
   const viewport = page.viewportSize();
-  const box = await rowBox(locator);
+  const box = await nearestBelow(multiLocator, referenceLocator);
   return { x: 0, y: 0, width: viewport.width, height: box.y - pad };
 }
 
 /**
  * Recorte desde el techo de una fila (o encabezado) hasta el piso del
- * viewport, o hasta justo antes de otra fila si se pasa `bottomLocator`
- * (captura 5, prioridades y fechas: hay un afiche "Agregar tarea" propio
- * de la sección "Este mes" que, sin este segundo límite, entra en el
- * cuadro por abajo tan fácil como el de "Tareas" entraba por arriba).
+ * viewport, o hasta justo antes del afiche más cercano por debajo de
+ * `bottomReference` si se pasa `bottomMultiLocator` (captura 5,
+ * prioridades y fechas: hay un afiche "Agregar tarea" propio de la
+ * sección "Este mes" que, sin este segundo límite, entra en el cuadro por
+ * abajo tan fácil como el de "Tareas" entraba por arriba).
  */
-async function clipFromRow(page, locator, { pad = 12, bottomLocator = null, bottomPad = 8 } = {}) {
+async function clipFromRow(
+  page,
+  topLocator,
+  { pad = 12, bottomMultiLocator = null, bottomReference = null, bottomPad = 8 } = {},
+) {
   const viewport = page.viewportSize();
-  const box = await rowBox(locator);
-  const y = box.y - pad;
-  const bottom = bottomLocator ? (await rowBox(bottomLocator)).y - bottomPad : viewport.height;
+  const topBox = await rowBox(topLocator);
+  const y = topBox.y - pad;
+  let bottom = viewport.height;
+  if (bottomMultiLocator) {
+    const bottomBox = await nearestBelow(bottomMultiLocator, bottomReference ?? topLocator);
+    if (bottomBox) bottom = bottomBox.y - bottomPad;
+  }
   return { x: 0, y, width: viewport.width, height: bottom - y };
 }
 
@@ -182,9 +235,24 @@ async function main() {
     await gotoNavLink(page, "Hoy");
     results.push(await toWebp(await shoot(page, tmpDir, "today-hero"), "today-hero"));
 
-    // 2. Bandeja de entrada.
+    // 2. Bandeja de entrada. Recortada justo antes del afiche "Agregar
+    // tarea" más cercano por debajo de la última tarea real ("Averiguar
+    // precio de pasajes para las vacaciones"): sin este límite el afiche
+    // entra entero en el cuadro, debajo de las tres tareas sembradas.
+    // Acotado a `<main>` por la misma razón que las capturas 4 y 5: en
+    // este viewport de escritorio no hay barra de navegación inferior, así
+    // que en la práctica no cambia nada, pero mantiene el mismo patrón.
     await gotoNavLink(page, "Bandeja de entrada");
-    results.push(await toWebp(await shoot(page, tmpDir, "inbox"), "inbox"));
+    const inboxMain = page.locator("main");
+    const inboxClip = await clipBeforeRow(
+      page,
+      inboxMain.getByRole("button", { name: "Agregar tarea", exact: true }),
+      inboxMain.getByRole("button", {
+        name: "Averiguar precio de pasajes para las vacaciones",
+        exact: true,
+      }),
+    );
+    results.push(await toWebp(await shoot(page, tmpDir, "inbox", { clip: inboxClip }), "inbox"));
 
     // 3. Hoy, recorte más cerrado: un rectángulo real desde "Atrasadas"
     // hasta la última tarea de "Hoy", sin panel lateral ni encabezado de
@@ -201,17 +269,20 @@ async function main() {
     );
 
     // 4. Proyectos y secciones — árbol del panel lateral + Casa con sus
-    // secciones. Recortada justo antes del primer afiche "Agregar
-    // subtarea" que sigue a "Envolver la vajilla" (la última fila de
-    // contenido real): el espacio entre esa fila y el afiche es angosto,
-    // así que se corta contra el propio afiche en vez de adivinar un
-    // padding después de la fila buena. Acotado a `<main>` por la misma
-    // razón que la captura 5: no mezclar con controles del layout que
-    // compartan nombre accesible.
+    // secciones. Recortada justo antes del afiche "Agregar subtarea" más
+    // cercano por debajo de "Envolver la vajilla" (la última fila de
+    // contenido real; hay otro más, de "Organizar la mudanza", pero cae
+    // después): el espacio entre esa fila y el afiche es angosto, así que
+    // se corta contra el propio afiche en vez de adivinar un padding
+    // después de la fila buena. Acotado a `<main>` por la misma razón que
+    // la captura 5: no mezclar con controles del layout que compartan
+    // nombre accesible.
     await gotoNavLink(page, "Casa");
+    const projectsMain = page.locator("main");
     const projectsClip = await clipBeforeRow(
       page,
-      page.locator("main").getByRole("button", { name: "Agregar subtarea", exact: true }).first(),
+      projectsMain.getByRole("button", { name: "Agregar subtarea", exact: true }),
+      projectsMain.getByRole("button", { name: "Envolver la vajilla", exact: true }),
     );
     results.push(
       await toWebp(await shoot(page, tmpDir, "projects-sections", { clip: projectsClip }), "projects-sections"),
@@ -223,23 +294,22 @@ async function main() {
     // techo de la página: así queda afuera el bloque de tareas sin sección
     // ("Pasar la aspiradora" + su afiche "Agregar tarea"), que en este
     // viewport angosto cae dentro del cuadro si se empieza desde arriba.
-    // Termina justo antes del "Agregar tarea" propio de "Este mes" (el
-    // segundo de los tres "Agregar tarea" *de contenido* de esta página —
-    // el primero es el de "Tareas", ya afuera por el borde superior; el
-    // tercero es el de "Pendiente"), no en el piso del viewport: ese
-    // afiche entra en cuadro (por debajo de "Sacar turno para el
-    // dentista") si se deja el borde inferior libre. Acotado a `<main>`:
-    // por debajo de este ancho la barra de navegación inferior aparece, y
-    // su botón "Agregar" comparte el mismo nombre accesible ("Agregar
-    // tarea") — sin acotar, cuenta como un cuarto resultado y corre todos
-    // los índices.
+    // Termina justo antes del afiche "Agregar tarea" más cercano por
+    // debajo de "Sacar turno para el dentista" (el propio de "Este mes"),
+    // no en el piso del viewport: ese afiche entra en cuadro si se deja
+    // el borde inferior libre. Acotado a `<main>`: por debajo de este
+    // ancho la barra de navegación inferior aparece, y su botón "Agregar"
+    // comparte el mismo nombre accesible ("Agregar tarea").
     await page.setViewportSize(MOBILE_CROP);
     await settle(page);
     const main = page.locator("main");
     const prioritiesClip = await clipFromRow(
       page,
       main.getByRole("heading", { name: "Secciones", level: 2 }),
-      { bottomLocator: main.getByRole("button", { name: "Agregar tarea", exact: true }).nth(1) },
+      {
+        bottomMultiLocator: main.getByRole("button", { name: "Agregar tarea", exact: true }),
+        bottomReference: main.getByRole("button", { name: "Sacar turno para el dentista", exact: true }),
+      },
     );
     results.push(
       await toWebp(await shoot(page, tmpDir, "priorities-dates", { clip: prioritiesClip }), "priorities-dates"),
@@ -255,12 +325,19 @@ async function main() {
     // hasta "Contratar el flete": ese hermano va *antes* que "Embalar la
     // cocina" en el sembrado justamente para que el afiche "Agregar
     // subtarea" que sigue a los hijos de "Embalar la cocina" quede después
-    // del borde del recorte, no adentro.
+    // del borde del recorte, no adentro. `capMultiLocator` tapa además el
+    // propio afiche "Agregar subtarea" de "Embalar la cocina" (el que
+    // sigue a "Envolver la vajilla"): el espacio entre esa fila y el
+    // afiche es angosto, así que un `bottomPad` fijo alcanzaba a mostrar
+    // una porción cortada del texto.
     const subtasksClip = await clipBetween(
       page,
       page.getByRole("button", { name: "Organizar la mudanza", exact: true }),
       page.getByRole("button", { name: "Envolver la vajilla", exact: true }),
-      { bottomPad: 12 },
+      {
+        bottomPad: 12,
+        capMultiLocator: page.getByRole("button", { name: "Agregar subtarea", exact: true }),
+      },
     );
     results.push(await toWebp(await shoot(page, tmpDir, "subtasks", { clip: subtasksClip }), "subtasks"));
 
@@ -291,24 +368,28 @@ async function main() {
     await settle(pageA);
     await settle(pageB);
 
-    // Recorte hasta justo antes del afiche "Agregar tarea" de la lista sin
-    // sección (el primero de los dos "Agregar tarea" de la página: el otro
-    // es de "Sprint actual", más abajo): esa fila cae *entre* la tarea
-    // sincronizada y "Secciones", así que ningún borde inferior más abajo
-    // la deja afuera — hay que cortar antes de llegar a ella. Se sacrifica
-    // mostrar "Sprint actual" en esta captura para que ningún afiche quede
-    // dentro del cuadro; el contenido real de las secciones ya se ve en
-    // projects-sections.webp y subtasks.webp. Acotado a `<main>`: el panel
-    // B es angosto (390px, layout móvil), donde la barra de navegación
-    // inferior está presente y su botón "Agregar" comparte el mismo
-    // nombre accesible — sin acotar sería el primer resultado ahí.
-    const addTaskRowA = pageA.locator("main").getByRole("button", { name: "Agregar tarea", exact: true }).first();
-    const addTaskRowB = pageB.locator("main").getByRole("button", { name: "Agregar tarea", exact: true }).first();
+    // Recorte hasta justo antes del afiche "Agregar tarea" más cercano
+    // por debajo de la propia tarea sincronizada (el de la lista sin
+    // sección — el otro, de "Sprint actual", cae más abajo): esa fila cae
+    // *entre* la tarea sincronizada y "Secciones", así que ningún borde
+    // inferior más abajo la deja afuera — hay que cortar antes de llegar
+    // a ella. Se sacrifica mostrar "Sprint actual" en esta captura para
+    // que ningún afiche quede dentro del cuadro; el contenido real de las
+    // secciones ya se ve en projects-sections.webp y subtasks.webp.
+    // Acotado a `<main>`: el panel B es angosto (390px, layout móvil),
+    // donde la barra de navegación inferior está presente y su botón
+    // "Agregar" comparte el mismo nombre accesible.
+    const mainA = pageA.locator("main");
+    const mainB = pageB.locator("main");
+    const addTaskRowsA = mainA.getByRole("button", { name: "Agregar tarea", exact: true });
+    const addTaskRowsB = mainB.getByRole("button", { name: "Agregar tarea", exact: true });
+    const syncedTaskA = mainA.getByRole("button", { name: taskTitle, exact: true });
+    const syncedTaskB = mainB.getByRole("button", { name: taskTitle, exact: true });
     const shotA = await shoot(pageA, tmpDir, "sync-a", {
-      clip: await clipBeforeRow(pageA, addTaskRowA),
+      clip: await clipBeforeRow(pageA, addTaskRowsA, syncedTaskA),
     });
     const shotB = await shoot(pageB, tmpDir, "sync-b", {
-      clip: await clipBeforeRow(pageB, addTaskRowB),
+      clip: await clipBeforeRow(pageB, addTaskRowsB, syncedTaskB),
     });
 
     const imgA = sharp(shotA);

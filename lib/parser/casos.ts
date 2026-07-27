@@ -2,6 +2,7 @@ import {
   addDays,
   addMonths,
   addYears,
+  compareDates,
   formatDate,
   nextOccurrenceOfMonthDay,
   nextWeekday,
@@ -14,7 +15,7 @@ import type { ParserContext, ParserLabel, ParserProject } from "./types";
 /**
  * El contrato ejecutable del parser (E14, bloque 9.1): refleja 1 a 1 la
  * tabla de `docs/parser-test-cases.md`, un `CasoParser` por fila numerada
- * (56 filas — la fila 55 trae dos entradas, pero es una sola fila). El
+ * (59 filas — la fila 55 trae dos entradas, pero es una sola fila). El
  * `numero` es el de la tabla; si alguien edita la tabla sin tocar este
  * archivo o al revés, `parser.test.ts` lo detecta con el test que cuenta
  * los casos.
@@ -357,5 +358,44 @@ export const casos: CasoParser[] = [
     numero: 56,
     entrada: "Comprar pan mañ",
     esperar: () => ({ titulo: "Comprar pan mañ", ...SIN_ATRIBUTOS }),
+  },
+
+  // Listas de días en la recurrencia (57-59)
+  {
+    numero: 57,
+    entrada: "Gimnasio cada lunes, miércoles y viernes por 1h",
+    esperar: () => ({
+      titulo: "Gimnasio",
+      ...SIN_ATRIBUTOS,
+      durationMinutes: 60,
+      recurrenceRule: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+    }),
+  },
+  {
+    numero: 58,
+    entrada: "Yoga cada martes y jueves",
+    esperar: () => ({ titulo: "Yoga", ...SIN_ATRIBUTOS, recurrenceRule: "FREQ=WEEKLY;BYDAY=TU,TH" }),
+  },
+  {
+    numero: 59,
+    entrada: "Gimnasio cada lunes y jueves a las 8",
+    esperar: (ctx) => {
+      const hoy = hoyDe(ctx);
+      const proximoLunes = nextWeekday(hoy, 1, false);
+      const proximoJueves = nextWeekday(hoy, 4, false);
+      // E12 con varios días: el ancla es la ocurrencia más próxima entre todos
+      // los días de la lista, nunca la del primero que escribió el usuario.
+      const ancla = compareDates(proximoLunes, proximoJueves) <= 0 ? proximoLunes : proximoJueves;
+      return {
+        titulo: "Gimnasio",
+        dueDate: null,
+        dueAt: toDueAt(ancla, 8, 0, ctx.zonaHoraria),
+        durationMinutes: null,
+        priority: null,
+        recurrenceRule: "FREQ=WEEKLY;BYDAY=MO,TH",
+        labels: [],
+        project: null,
+      };
+    },
   },
 ];

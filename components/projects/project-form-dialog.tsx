@@ -68,7 +68,11 @@ export function ProjectFormDialog({
       project
         ? {
             name: project.name,
-            color: project.color,
+            // `project.color` es `ProjectColor | null` porque `ProjectRow`
+            // cubre también la Bandeja, pero este diálogo nunca se abre para
+            // editarla (project-header.tsx / project-tree.tsx la excluyen del
+            // menú "Editar"): el `??` es solo para conformar al tipo.
+            color: project.color ?? PROJECT_COLOR_IDS[0],
             icon: project.icon ?? undefined,
             description: project.description ?? undefined,
           }

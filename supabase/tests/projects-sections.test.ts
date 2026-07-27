@@ -115,6 +115,24 @@ describe("Protección de la Bandeja de entrada (bloque 6.7)", () => {
   });
 });
 
+describe("Color de proyecto (D27 — nulo solo para la Bandeja)", () => {
+  it("rechaza un color fuera de la paleta", async () => {
+    const { error } = await user.client
+      .from("projects")
+      .insert({ user_id: user.id, name: "Color inválido", color: "#283B56", position: 1000 });
+
+    expect(error).not.toBeNull();
+  });
+
+  it("rechaza que un proyecto normal tenga color nulo", async () => {
+    const { error } = await user.client
+      .from("projects")
+      .insert({ user_id: user.id, name: "Sin color", color: null, position: 1000 });
+
+    expect(error).not.toBeNull();
+  });
+});
+
 describe("Eliminar una sección (bloque 6.8/6.9)", () => {
   it("no borra sus tareas: quedan sin sección, en el mismo proyecto", async () => {
     const { data: project } = await createProject(user, "Proyecto con sección a borrar");

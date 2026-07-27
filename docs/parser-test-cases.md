@@ -4,7 +4,7 @@ Contrato canónico del alta rápida en lenguaje natural. Estos casos **son** la
 especificación: si el parser no los pasa, el parser está mal, no el caso.
 
 El criterio de aceptación de la fase 1 ya referencia este archivo por nombre en
-`docs/roadmap.md`: el parser tiene que pasar los **56 casos** de esta tabla.
+`docs/roadmap.md`: el parser tiene que pasar los **59 casos** de esta tabla.
 
 ---
 
@@ -94,6 +94,12 @@ Aclaraciones sobre reglas ya definidas, adoptadas después del contrato original
 - **Sobre la recurrencia y el ancla:** la recurrencia sola no fija fecha —los
   casos 31 a 37 siguen sin `due_date`—, pero la recurrencia acompañada de una
   hora sí fija `due_at` en la próxima ocurrencia, como muestra el caso 54.
+- **Sobre listas de días (casos 57-59):** `cada lunes, miércoles y viernes`
+  reconoce los tres días como una sola repetición, con `BYDAY` siempre en
+  orden canónico `MO,TU,WE,TH,FR,SA,SU` sin importar el orden en que se
+  escribieron. Con hora y varios días, "la próxima ocurrencia" del ancla (E12)
+  es la más próxima entre **todos** los días de la lista, no la del primero
+  que aparece en el texto — ver el caso 59.
 
 ---
 
@@ -220,6 +226,9 @@ casos existentes por número.
 | 54 | `Gimnasio cada lunes a las 8` | Gimnasio | RRULE `FREQ=WEEKLY;BYDAY=MO` y `due_at` = próximo lunes 08:00 (la hora 8 es AM por R3) | Es el caso mixto más común y no estaba. La hora reconocida no tiene dónde vivir salvo en `due_at`: si no se fija, el token "a las 8" se reconoce y se descarta en silencio |
 | 55 | `Comprar pan manana` y `Comprar pan MAÑANA` | Comprar pan (en los dos casos) | `due_date = hoy+1` | La comparación de palabras clave ignora acentos y mayúsculas |
 | 56 | `Comprar pan mañ` | Comprar pan mañ | **ninguno** | El parser corre en cada tecla, así que la mayor parte del tiempo ve texto incompleto; un prefijo no dispara reconocimiento |
+| 57 | `Gimnasio cada lunes, miércoles y viernes por 1h` | Gimnasio | RRULE `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `duration_minutes = 60` | Es el ejemplo de la demo de la landing: una lista de tres días con coma y "y" final, más una duración corta con "por". La lista se remueve del título de punta a punta (comas y "y" incluidos), no día por día |
+| 58 | `Yoga cada martes y jueves` | Yoga | RRULE `FREQ=WEEKLY;BYDAY=TU,TH` | Caso mínimo de lista: dos días unidos solo por "y", sin coma. Como no hay hora, la recurrencia no fija ancla (ídem 31-37) |
+| 59 | `Gimnasio cada lunes y jueves a las 8` | Gimnasio | RRULE `FREQ=WEEKLY;BYDAY=MO,TH` y `due_at` = la ocurrencia más próxima entre lunes y jueves, a las 08:00 | Lista de días con hora: con varios días, "la próxima ocurrencia" (E12) no es automáticamente la del primer día que escribió el usuario — es el día de la lista que caiga antes a partir de ahora, nunca hoy (R10). Con el reloj de referencia de la suite (`2026-07-26T18:00:00Z`), en `America/Argentina/Buenos_Aires` hoy es domingo 26/07 y el lunes 27/07 es lo más próximo (`due_at` = 2026-07-27 08:00 ART); en `Pacific/Kiritimati` (UTC+14) hoy ya es lunes 27/07, así que el próximo lunes salta a la semana siguiente (03/08) y el jueves 30/07 queda más cerca (`due_at` = 2026-07-30 08:00 Kiritimati) — el mismo texto ancla en un día de la semana distinto según la zona, que es justo lo que E13 quiere atrapar |
 
 ---
 

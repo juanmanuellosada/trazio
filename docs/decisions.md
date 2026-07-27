@@ -436,3 +436,40 @@ acción directa del usuario sigue bloqueado, con test dedicado en
 `supabase/tests/account-deletion.test.ts`. Cualquier cambio futuro a este
 trigger tiene que preservar la distinción entre las dos rutas: si se pierde,
 la eliminación de cuenta se vuelve a romper para todo el mundo.
+
+---
+
+## D27 — `projects.color` es nulo para la Bandeja de entrada, no el azul de marca
+
+**Fecha.** 2026-07-27
+
+**Contexto.** La migración `20260726013242_projects_color_allow_inbox_blue.sql`
+amplió `projects_color_check` para que el trigger de aprovisionamiento pudiera
+crear la Bandeja con el hex de marca `#283B56` en la misma columna que, para el
+resto de los proyectos, guarda un id de la paleta fija de diez colores
+(`lib/validation/colors.ts`). Eso mezcló dos vocabularios incompatibles en una
+sola columna `text`, y ya provocó un incidente real: código que indexaba
+`PROJECT_COLORS[project.color]` directamente obtenía `undefined` para la
+Bandeja y crasheaba. Se mitigó centralizando la resolución en
+`resolveProjectColorHex()`, que degradaba a gris ante cualquier valor
+inesperado — pero la causa de fondo, la columna mezclada, seguía ahí.
+
+**Decisión.** `projects.color` pasa a ser nulo para la Bandeja de entrada, y
+la interfaz dibuja su azul de marca fijo en vez de leerlo de la columna.
+Mismo criterio que ya se aplica a `icon` (también nulo para la Bandeja, por
+ser un proyecto especial que no se renombra, no se borra, no se archiva y no
+se recolorea desde la interfaz). Se descartó la alternativa de agregar un
+id reservado a la paleta porque habría que esconderlo del selector de color:
+más casos especiales, no menos. El constraint nuevo lo expresa a nivel de
+base de datos — no solo de aplicación — con `is_inbox` como discriminante:
+la Bandeja solo puede tener `color` nulo, y el resto de los proyectos solo
+uno de los diez ids de la paleta (nunca nulo, nunca el hex viejo).
+Migración: `20260727010000_projects_color_null_for_inbox.sql`.
+
+**Consecuencia.** `resolveProjectColorHex()` trata `null` como "es la
+Bandeja" y resuelve al azul de marca (`#283B56` en claro, `#8CA3C9` en
+oscuro, la variante accesible ya usada en el resto del sistema de color) en
+vez de degradar a gris — el gris neutro queda exclusivo para valores
+realmente inesperados. La paleta seleccionable (`PROJECT_COLOR_IDS`) sigue
+siendo exactamente los diez colores que el usuario puede elegir, sin un
+valor ajeno colado en el medio.

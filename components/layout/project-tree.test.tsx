@@ -6,17 +6,17 @@ import type { ProjectRow } from "@/lib/projects/use-projects";
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
 
-// La Bandeja de entrada guarda el azul de marca (`#283B56`), no un id de
-// `PROJECT_COLORS` — ver `lib/validation/colors.ts`. `ProjectMark` solo usa
-// `color`/`icon`, así que el resto de los campos no importa para este test.
+// La Bandeja de entrada guarda `color = null` (D27 en docs/decisions.md), no
+// un id de `PROJECT_COLORS`. `ProjectMark` solo usa `color`/`icon`, así que
+// el resto de los campos no importa para este test.
 const inboxProject = {
-  color: "#283B56",
+  color: null,
   icon: null,
   is_inbox: true,
 } as unknown as ProjectRow;
 
 describe("ProjectMark", () => {
-  it("renderiza el punto de la Bandeja de entrada sin tirar (color = azul de marca, no id de la paleta)", () => {
+  it("renderiza el punto de la Bandeja de entrada sin tirar (color = nulo, no id de la paleta)", () => {
     expect(() => render(<ProjectMark project={inboxProject} />)).not.toThrow();
   });
 

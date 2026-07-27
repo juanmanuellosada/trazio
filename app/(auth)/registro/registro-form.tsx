@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { registerSchema, type RegisterInput } from "@/lib/validation/auth";
@@ -29,6 +30,11 @@ export function RegistroForm({ siteUrl, next }: { siteUrl: string; next: string 
       setServerError(result.message);
       return;
     }
+    // Una de las cuatro métricas de la landing (bloque 12.12): el script de
+    // `<Analytics />` solo carga en `app/(marketing)/`, así que esta página
+    // monta su propia instancia (ver `page.tsx`) para que `track()` tenga
+    // adónde mandar el evento.
+    track("registro_completado");
     if (result.needsConfirmation) {
       setConfirmedEmail(values.email);
     } else {

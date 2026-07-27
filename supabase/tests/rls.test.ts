@@ -188,7 +188,7 @@ describe("Trigger de aprovisionamiento de cuenta (3.12)", () => {
       expect(inbox).toMatchObject({
         name: "Bandeja de entrada",
         is_inbox: true,
-        color: "#283B56",
+        color: null,
         icon: null,
         position: 0,
         parent_id: null,

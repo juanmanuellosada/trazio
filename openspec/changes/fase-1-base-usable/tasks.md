@@ -172,19 +172,19 @@ Los tests van con el primer commit del parser, escritos antes de la lógica. Los
 
 Va al final a propósito: necesita capturas del producto real.
 
-- [ ] 12.1 Definir el diseño de la landing con `ui-ux-pro-max`, móvil primero
-- [ ] 12.2 Hero con titular, subtítulo, un solo CTA, la línea "Gratis. Sin tarjeta." y la captura real de la vista Hoy
-- [ ] 12.3 Demo del parser en vivo como única isla cliente, importando la función pura y con listas de proyectos y etiquetas vacías
-- [ ] 12.4 Los cuatro ejemplos precargados, incluido el caso 53
-- [ ] 12.5 Sección del problema, en tres o cuatro líneas y sin hablar de productividad como valor moral
-- [ ] 12.6 Grilla de funcionalidades con seis bloques, ya con "Sincronización al instante" en lugar de los atajos, cada uno con su captura real
-- [ ] 12.7 Sección "Lo que viene" con hábitos, filtros, recordatorios, Google Calendar y atajos de teclado, presentados como hoja de ruta
-- [ ] 12.8 Cierre con el mismo CTA del hero, y pie con logo, año y links a términos y privacidad
-- [ ] 12.9 Páginas de términos y privacidad, con el texto que provee el dueño del proyecto como insumo externo; sin ese texto, esta tarea bloquea la publicación de la landing
-- [ ] 12.10 Metadatos completos con Open Graph, imagen y `lang="es-AR"`
-- [ ] 12.11 Optimización de imágenes: formato moderno, dimensiones declaradas y prioridad de carga en la del hero
-- [ ] 12.12 Vercel Analytics con las cuatro métricas, dos de ellas como eventos personalizados
-- [ ] 12.13 Verificar que no hay ningún `'use client'` en la landing fuera de la demo del parser
+- [x] 12.1 Definir el diseño de la landing con `ui-ux-pro-max`, móvil primero
+- [x] 12.2 Hero con titular, subtítulo, un solo CTA, la línea "Gratis. Sin tarjeta." y la captura real de la vista Hoy
+- [x] 12.3 Demo del parser en vivo como única isla cliente, importando la función pura y con listas de proyectos y etiquetas vacías
+- [x] 12.4 Los cuatro ejemplos precargados, incluido el caso 53
+- [x] 12.5 Sección del problema, en tres o cuatro líneas y sin hablar de productividad como valor moral
+- [x] 12.6 Grilla de funcionalidades con seis bloques, ya con "Sincronización al instante" en lugar de los atajos, cada uno con su captura real
+- [x] 12.7 Sección "Lo que viene" con hábitos, filtros, recordatorios, Google Calendar y atajos de teclado, presentados como hoja de ruta
+- [x] 12.8 Cierre con el mismo CTA del hero, y pie con logo, año y links a términos y privacidad
+- [x] 12.9 Páginas de términos y privacidad, con el texto que provee el dueño del proyecto como insumo externo; sin ese texto, esta tarea bloquea la publicación de la landing
+- [x] 12.10 Metadatos completos con Open Graph, imagen y `lang="es-AR"`
+- [x] 12.11 Optimización de imágenes: formato moderno, dimensiones declaradas y prioridad de carga en la del hero
+- [x] 12.12 Vercel Analytics con las cuatro métricas, dos de ellas como eventos personalizados
+- [x] 12.13 Verificar que no hay ningún `'use client'` en la landing fuera de la demo del parser
 
 ## 13. PWA
 

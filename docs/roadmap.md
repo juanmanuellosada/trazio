@@ -56,7 +56,7 @@ alguien más pueda registrarse y hacer lo mismo.
 
 - [ ] Una persona se registra, confirma el correo, olvida la contraseña, la
       recupera y vuelve a entrar. Sin intervención manual.
-- [ ] El parser reconoce correctamente los 56 casos de prueba de
+- [ ] El parser reconoce correctamente los 59 casos de prueba de
       `docs/parser-test-cases.md`, incluido "la mañana" ≠ "mañana".
 - [ ] Completar una tarea se ve instantáneo. Si el servidor falla, se revierte y
       se avisa.

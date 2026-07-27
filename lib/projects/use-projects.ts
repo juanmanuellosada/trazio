@@ -12,7 +12,7 @@ import type { ProjectColor } from "@/lib/validation/colors";
 export type ProjectRow = {
   id: string;
   name: string;
-  color: ProjectColor;
+  color: ProjectColor | null;
   icon: string | null;
   description: string | null;
   parent_id: string | null;

@@ -1,4 +1,4 @@
-import { nextWeekday, toDueAt, type CalendarDate } from "./dates";
+import { compareDates, nextWeekday, toDueAt, type CalendarDate } from "./dates";
 import type { Candidate } from "./recognizers";
 import type { ParseMatch, ParseResult } from "./types";
 
@@ -50,8 +50,14 @@ export function resolveCandidates(
     dueAt = toDueAt(winningDate.date, winningHour.hour, winningHour.minute, ctx.zonaHoraria);
   } else if (winningHour && winningRecurrence && !winningDate) {
     // E12: recurrencia + hora, sin fecha explícita → el ancla es la próxima ocurrencia de la regla, no "hoy".
+    // Con varios días (BYDAY con más de un código), el ancla es la más próxima de
+    // todas — no necesariamente la del primer día que escribió el usuario — pero
+    // nunca hoy (R10), igual que con un solo día.
+    const anchorCandidates = winningRecurrence.anchorWeekdays?.map((dow) => nextWeekday(ctx.hoy, dow, false)) ?? [];
     const anchor =
-      winningRecurrence.anchorWeekday != null ? nextWeekday(ctx.hoy, winningRecurrence.anchorWeekday, false) : ctx.hoy;
+      anchorCandidates.length > 0
+        ? anchorCandidates.reduce((earliest, date) => (compareDates(date, earliest) < 0 ? date : earliest))
+        : ctx.hoy;
     dueAt = toDueAt(anchor, winningHour.hour, winningHour.minute, ctx.zonaHoraria);
   } else if (winningHour && !winningDate) {
     dueAt = toDueAt(ctx.hoy, winningHour.hour, winningHour.minute, ctx.zonaHoraria);
