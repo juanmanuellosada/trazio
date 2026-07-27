@@ -117,7 +117,7 @@ function SectionItem({
             className="h-8 flex-1 text-sm font-medium"
           />
         ) : (
-          <span className="flex-1 truncate text-sm font-medium text-foreground">{section.name}</span>
+          <span className="flex-1 truncate text-sm font-semibold text-foreground">{section.name}</span>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -246,14 +246,10 @@ export function SectionList({
 
   return (
     <div className="space-y-2">
-      {sections.length === 0 ? (
-        <p className="text-sm text-text-secondary">
-          Este proyecto todavía no tiene secciones. Creá una para organizar las tareas en grupos.
-        </p>
-      ) : (
+      {sections.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-5">
               {sections.map((section) => (
                 <SectionItem key={section.id} section={section} projectId={projectId} allSections={sections} />
               ))}

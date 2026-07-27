@@ -82,11 +82,9 @@ describe("SectionList", () => {
     eq.mockResolvedValue({ error: null });
   });
 
-  it("muestra el estado vacío y ofrece la acción cuando no hay secciones", () => {
+  it("sin secciones, no anuncia la ausencia: solo ofrece la acción de agregar", () => {
     renderList([]);
-    expect(
-      screen.getByText(/todavía no tiene secciones. creá una para organizar las tareas/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/todavía no tiene secciones/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /agregar sección/i })).toBeInTheDocument();
   });
 

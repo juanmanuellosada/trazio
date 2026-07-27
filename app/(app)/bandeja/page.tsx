@@ -2,16 +2,20 @@ import { Inbox } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
+import { getSections } from "@/lib/sections/get-sections";
 import { getTasks } from "@/lib/tasks/get-tasks";
-import { TaskList } from "@/components/tasks/task-list";
+import { SectionedTasks } from "@/components/projects/sectioned-tasks";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
+import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
 
 /**
  * Bandeja de entrada (bloque 8.1): la Bandeja es un proyecto especial
- * (`is_inbox = true`, B3 del design), así que sus tareas son, ni más ni
- * menos, las tareas de ese proyecto — reutiliza `TaskList` tal cual, sin
- * secciones (acá no se ofrece crearlas). Lectura inicial en el servidor
- * (D1): siembra el caché de TanStack Query que usa `TaskList` en el cliente.
+ * (`is_inbox = true`, B3 del design), así que sus tareas y secciones son,
+ * ni más ni menos, las de ese proyecto (spec §3 "Bandeja de entrada": vista
+ * agrupada por sección) — reutiliza `SectionedTasks` tal cual, igual que
+ * cualquier proyecto. Lectura inicial en el servidor (D1): siembra el
+ * caché de TanStack Query que usan `SectionedTasks`/`TaskList`/`SectionList`
+ * en el cliente.
  */
 export default async function BandejaPage() {
   const user = await getCurrentUser();
@@ -26,7 +30,10 @@ export default async function BandejaPage() {
     return <p className="p-6 text-sm text-text-secondary">No encontramos tu bandeja de entrada.</p>;
   }
 
-  const initialTasks = await getTasks(inboxProjectId);
+  const [initialTasks, initialSections] = await Promise.all([
+    getTasks(inboxProjectId),
+    getSections(inboxProjectId),
+  ]);
 
   return (
     <div className="flex h-full flex-col">
@@ -37,16 +44,16 @@ export default async function BandejaPage() {
         </div>
       </header>
       <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6">
-        <TaskList
+        <SectionedTasks
           projectId={inboxProjectId}
-          sectionId={null}
-          parentId={null}
+          initialSections={initialSections}
           initialTasks={initialTasks}
           emptyState={
             <TaskListEmptyState
               icon={Inbox}
               title="Tu bandeja de entrada está vacía."
               description="Acá caen las tareas que no asignaste a ningún proyecto. Usá el botón de abajo para agregar una."
+              action={<TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} />}
             />
           }
         />
