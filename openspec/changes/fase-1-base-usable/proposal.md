@@ -62,7 +62,7 @@ Es la única fase que no se puede recortar. Sin auth, esquema con RLS, tareas y 
 - `tareas`: Ciclo de vida de tareas y subtareas, atributos, completado, duplicado, movimiento, reordenamiento y enlace directo.
 - `etiquetas`: Creación de una etiqueta por `#` desde el alta rápida, asignación a la tarea y chip visible; agregar o quitar etiquetas desde el detalle de la tarea, reemplazando el conjunto completo al editar. Sin administración de etiquetas, sin página propia por etiqueta, sin favoritas y sin acceso "Etiquetas" en el panel lateral: eso es fase 2.
 - `vistas-lista`: Bandeja de entrada, Hoy, Proyecto y Completado en modo lista, con sus reglas de composición, orden y contadores.
-- `parser-lenguaje-natural`: Extracción de atributos desde el título en español rioplatense según el contrato de 56 casos y sus reglas de desambiguación, más la superficie de alta rápida con resaltado reversible.
+- `parser-lenguaje-natural`: Extracción de atributos desde el título en español rioplatense según el contrato de `docs/parser-test-cases.md` y sus reglas de desambiguación, más la superficie de alta rápida con resaltado reversible.
 - `sincronizacion-tiempo-real`: Realtime por tabla filtrado por usuario, optimistic updates con reversión, y comportamiento de la app sin conexión.
 - `configuracion`: Preferencias de perfil, tema, zona horaria, formatos y día de inicio de semana.
 - `landing-publica`: Landing de conversión única con demo del parser en vivo, rendimiento y accesibilidad medidos.

@@ -1,12 +1,12 @@
 ## ADDED Requirements
 
-### Requirement: El contrato canónico de 53 casos
+### Requirement: El contrato canónico del parser
 
 El parser SHALL cumplir el contrato canónico de `docs/parser-test-cases.md`,
-53 casos numerados y 7 reglas de desambiguación: si el parser no pasa un caso
-de esa tabla, el parser está mal — no el caso. Este spec no duplica la tabla;
-la referencia es la fuente de verdad y cualquier cambio a un caso se hace
-primero ahí, según manda el propio archivo.
+sus casos numerados y sus reglas de desambiguación: si el parser no pasa un
+caso de esa tabla, el parser está mal — no el caso. Este spec no duplica la
+tabla; la referencia es la fuente de verdad y cualquier cambio a un caso se
+hace primero ahí, según manda el propio archivo.
 
 Las categorías del contrato son: fechas relativas, fechas puntuales, día de la
 semana suelto, horas, duraciones, repetición y símbolos. Cada una tiene que
@@ -532,8 +532,9 @@ en fase 1.
 
 `lib/parser/casos.ts` SHALL ser un módulo de datos que refleja 1 a 1 la tabla
 de `docs/parser-test-cases.md`, y `lib/parser/parser.test.ts` SHALL recorrer
-ese módulo. La suite SHALL incluir un test que verifique que la cantidad de
-casos es exactamente 53, para que el markdown y el código no puedan divergir
+ese módulo. La suite SHALL incluir un test que compare los números de fila de
+la tabla en `docs/parser-test-cases.md` con los `numero` de
+`lib/parser/casos.ts`, para que el markdown y el código no puedan divergir
 en silencio. Los tests SHALL escribirse con el primer commit del parser,
 antes de la lógica, empezando por los casos 44 a 52. R7 (resaltado
 reversible), al ser de interfaz y no de parsing, SHALL probarse aparte con
@@ -545,7 +546,8 @@ SHALL correr tanto en `America/Argentina/Buenos_Aires` como en
 
 - **WHEN** se agrega, quita o modifica un caso en `docs/parser-test-cases.md`
   sin actualizar `lib/parser/casos.ts` en consecuencia
-- **THEN** el test que verifica que la cantidad de casos es 53 SHALL fallar
+- **THEN** el test que compara los números de fila del markdown con los
+  `numero` de `casos.ts` SHALL fallar
 
 #### Scenario: La suite corre en dos zonas horarias con el reloj congelado
 

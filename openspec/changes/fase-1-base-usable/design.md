@@ -102,7 +102,7 @@ Se descarta el healthcheck periódico: gasta batería y pedidos para responder a
 
 ### E. El parser de lenguaje natural
 
-El contrato es `docs/parser-test-cases.md`: 56 casos y 8 reglas. La tabla manda. Todo lo de abajo son **reglas nuevas que el contrato no cubría** y que hacían falta para poder implementarlo. Si alguna se acepta, se escribe primero en el contrato y se anota en `docs/decisions.md`, como manda el propio archivo.
+El contrato es `docs/parser-test-cases.md`: la tabla completa de casos y sus reglas de desambiguación. La tabla manda. Todo lo de abajo son **reglas nuevas que el contrato no cubría** y que hacían falta para poder implementarlo. Si alguna se acepta, se escribe primero en el contrato y se anota en `docs/decisions.md`, como manda el propio archivo.
 
 **E0 — Principio rector, decidido por el dueño: ante ambigüedad, extraer menos.** Un atributo de menos lo corrige el usuario en dos segundos; uno de más lo descubre cuando le suena una notificación que no esperaba. Toda la sección se resuelve en esa dirección.
 
@@ -204,7 +204,7 @@ Propuesta: un service worker mínimo, sin manejador de `fetch` y sin caché de n
 
 **El alcance es grande y es una sola propuesta.** → Es lo que manda `CLAUDE.md` ("cada fase del roadmap es una propuesta"). Se mitiga con `tasks.md` en 12 bloques según el orden de `KICKOFF.md`, cada uno verificable por separado. Los bloques 1 a 3 son el camino crítico: nada se puede probar de verdad hasta que la auth funcione.
 
-**El parser puede irse de tiempo.** → Es el riesgo real de la fase. Se mitiga escribiendo los 56 casos como suite antes de la lógica, empezando por los críticos. El día que la suite pasa entera, el parser está listo; no hay criterio subjetivo.
+**El parser puede irse de tiempo.** → Es el riesgo real de la fase. Se mitiga escribiendo la suite completa del contrato antes de la lógica, empezando por los críticos. El día que la suite pasa entera, el parser está listo; no hay criterio subjetivo.
 
 **Tailwind v4 + shadcn/ui es terreno más nuevo que v3.** → Se acepta: nacer en v3 es nacer debiendo una migración. Si la instalación de shadcn se traba, se resuelve consultando `context7` y la skill `vercel:shadcn` antes que improvisando.
 

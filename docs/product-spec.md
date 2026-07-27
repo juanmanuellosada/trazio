@@ -332,10 +332,10 @@ Al escribir el título de una tarea, ciertas palabras se reconocen y se conviert
 en atributos. Lo reconocido queda **resaltado en el texto**, se puede desactivar con
 doble clic si no era la intención, y al confirmar se quita del título.
 
-El contrato canónico del parser vive en `docs/parser-test-cases.md`: 56 casos con
-su salida exacta y las reglas de desambiguación. Si el parser no pasa un caso de
-esa tabla, el error está en el parser, no en el caso. Acá se describen las
-categorías que reconoce; ahí están los ejemplos concretos.
+El contrato canónico del parser vive en `docs/parser-test-cases.md`: todos los
+casos con su salida exacta y las reglas de desambiguación. Si el parser no pasa
+un caso de esa tabla, el error está en el parser, no en el caso. Acá se
+describen las categorías que reconoce; ahí están los ejemplos concretos.
 
 **Fechas relativas:** hoy, mañana, pasado mañana, ayer, este fin de semana, próxima
 semana, próximo lunes, en 3 días / semanas / meses / años.
