@@ -4,7 +4,8 @@
 
 El manifest de la aplicación SHALL declarar `display: standalone`, íconos en 192px,
 512px y una variante `maskable`, todos derivados de `public/logo.png`, y
-`theme_color` igual al azul de marca `#283B56`.
+`theme_color` igual al azul de marca `#283B56`. Su `start_url` SHALL resolver a la
+aplicación misma, nunca a la landing pública de marketing.
 
 #### Scenario: El manifest declara modo standalone y el color de marca
 
@@ -17,6 +18,12 @@ El manifest de la aplicación SHALL declarar `display: standalone`, íconos en 1
 - **WHEN** se inspeccionan los íconos declarados en el manifest
 - **THEN** existe un ícono de 192x192, uno de 512x512 y uno marcado como `purpose: maskable`
 - **AND** los tres derivan visualmente de `public/logo.png`
+
+#### Scenario: Abrir la app instalada entra a la aplicación, no a la landing
+
+- **WHEN** una persona abre la aplicación instalada desde el ícono de su pantalla de inicio
+- **THEN** llega a la aplicación (su Bandeja de entrada, Hoy, o el login si no tiene sesión)
+- **AND** no ve la landing pública de marketing ("Creá tu cuenta gratis")
 
 ### Requirement: Instalación desde el navegador y apertura a pantalla completa
 
