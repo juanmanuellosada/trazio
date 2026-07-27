@@ -2,24 +2,24 @@
 
 Bloque bloqueante: los choques con `docs/product-spec.md` y `docs/decisions.md` (design.md, sección B) y las dependencias nuevas fuera de la lista cerrada de `AGENTS.md` (design.md, sección D1) se registran antes de tocar código.
 
-- [ ] 1.1 Registrar en `docs/decisions.md` (D28) el cambio del detalle de tarea de panel lateral a modal centrado, incluido que el ancho ya no se guarda en `localStorage`
-- [ ] 1.2 Registrar en `docs/decisions.md` (D29) la excepción de color personalizado en proyectos: convive con la paleta fija de D19 sin reemplazarla, y exige validación de contraste AA contra los fondos de los dos temas antes de guardarse
-- [ ] 1.3 Registrar en `docs/decisions.md` (D30) la exclusión de la fórmula matemática del editor de descripción (OQ1 de `design.md`), por el costo de la dependencia frente a un uso marginal
-- [ ] 1.4 Registrar en `docs/decisions.md` (D31) las dependencias nuevas fuera de la lista cerrada de `AGENTS.md`: las extensiones de Tiptap que cubren lo pedido (títulos, tachado, resaltado, código, listas de tareas, tabla, nota al pie, regla horizontal, destacado) y la fuente de datos de emojis categorizada; sumarlas a la tabla de librerías de `AGENTS.md`
-- [ ] 1.5 Actualizar `docs/product-spec.md` §3, sección "Detalle de tarea": reemplazar "Panel lateral redimensionable (recuerda el ancho elegido)" por el detalle como modal centrado por encima de la pantalla, manteniendo pantalla completa en teléfono
+- [x] 1.1 Registrar en `docs/decisions.md` (D28) el cambio del detalle de tarea de panel lateral a modal centrado, incluido que el ancho ya no se guarda en `localStorage`
+- [x] 1.2 Registrar en `docs/decisions.md` (D29) la excepción de color personalizado en proyectos: convive con la paleta fija de D19 sin reemplazarla, y exige validación de contraste AA contra los fondos de los dos temas antes de guardarse
+- [x] 1.3 Registrar en `docs/decisions.md` (D30) la exclusión de la fórmula matemática del editor de descripción (OQ1 de `design.md`), por el costo de la dependencia frente a un uso marginal
+- [x] 1.4 Registrar en `docs/decisions.md` (D31) las dependencias nuevas fuera de la lista cerrada de `AGENTS.md`: las extensiones de Tiptap que cubren lo pedido (títulos, tachado, resaltado, código, listas de tareas, tabla, nota al pie, regla horizontal, destacado) y la fuente de datos de emojis categorizada; sumarlas a la tabla de librerías de `AGENTS.md`
+- [x] 1.5 Actualizar `docs/product-spec.md` §3, sección "Detalle de tarea": reemplazar "Panel lateral redimensionable (recuerda el ancho elegido)" por el detalle como modal centrado por encima de la pantalla, manteniendo pantalla completa en teléfono
 
 ## 2. Primitivas
 
 Base de todo lo demás (design.md, sección A2): capas, diálogos, menús contextuales, selectores desplegables y confirmaciones.
 
-- [ ] 2.1 Consultar la skill `ui-ux-pro-max` para la identidad visual de las primitivas (diálogos, menús, popovers, confirmaciones) antes de construir la primera
-- [ ] 2.2 Primitiva de capa superpuesta compartida: monta sobre el resto del contenido y bloquea el scroll del fondo mientras está abierta
-- [ ] 2.3 Primitiva de diálogo propio sobre el `Dialog` de shadcn/ui: atrapa el foco, lo devuelve al elemento que lo abrió al cerrarse, cierra con `Escape`, y se anuncia a lectores de pantalla con rol y título
-- [ ] 2.4 Primitiva de menú contextual propio: abre con clic derecho o la tecla de menú, navega con las flechas, activa con `Enter`, cierra con `Escape` o clic afuera
-- [ ] 2.5 Primitiva de selector desplegable propio sobre `Popover`/`Command` de shadcn/ui: abre con `Enter` o `Espacio` estando enfocado, navega con flechas, anuncia la opción seleccionada
-- [ ] 2.6 Primitiva de confirmación propia sobre la primitiva de diálogo, para reemplazar `window.confirm`, `window.alert` y `window.prompt` en toda la app
-- [ ] 2.7 Reemplazar la confirmación de borrado de proyecto (hoy `window.confirm`, auditoría A1) por la confirmación propia, mostrando la acción y su consecuencia
-- [ ] 2.8 Verificar accesibilidad AA de las primitivas: cada control alcanzable solo con teclado, y foco visible en todas ellas
+- [x] 2.1 Consultar la skill `ui-ux-pro-max` para la identidad visual de las primitivas (diálogos, menús, popovers, confirmaciones) antes de construir la primera
+- [x] 2.2 Primitiva de capa superpuesta compartida: monta sobre el resto del contenido y bloquea el scroll del fondo mientras está abierta
+- [x] 2.3 Primitiva de diálogo propio sobre el `Dialog` de shadcn/ui: atrapa el foco, lo devuelve al elemento que lo abrió al cerrarse, cierra con `Escape`, y se anuncia a lectores de pantalla con rol y título
+- [x] 2.4 Primitiva de menú contextual propio: abre con clic derecho o la tecla de menú, navega con las flechas, activa con `Enter`, cierra con `Escape` o clic afuera
+- [x] 2.5 Primitiva de selector desplegable propio sobre `Popover`/`Command` de shadcn/ui: abre con `Enter` o `Espacio` estando enfocado, navega con flechas, anuncia la opción seleccionada
+- [x] 2.6 Primitiva de confirmación propia sobre la primitiva de diálogo, para reemplazar `window.confirm`, `window.alert` y `window.prompt` en toda la app
+- [x] 2.7 Reemplazar la confirmación de borrado de proyecto (hoy `window.confirm`, auditoría A1) por la confirmación propia, mostrando la acción y su consecuencia
+- [x] 2.8 Verificar accesibilidad AA de las primitivas: cada control alcanzable solo con teclado, y foco visible en todas ellas
 
 ## 3. Ancho adaptativo
 

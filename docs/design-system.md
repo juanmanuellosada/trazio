@@ -395,3 +395,112 @@ variable a un nombre de utilidad de Tailwind (`--color-background`,
 - Las prioridades sí son variables CSS (`--priority-*` arriba) porque son
   cuatro, fijas, y ya determinadas por la marca — no ameritan una tabla en
   runtime.
+
+---
+
+## 9. Primitivas de capa superpuesta (`components/primitives/`)
+
+Bloque 2 del cambio `interfaz-propia`. Base de todo diálogo, menú, selector y
+confirmación de la app (design.md sección A2). Cada primitiva se construye
+**sobre** un componente de `components/ui/` (shadcn/ui, ya instalado o
+agregado en este bloque) — el manejo de foco, teclado y anuncio a lectores de
+pantalla se delega siempre a esa base; la primitiva agrega solo la capa de
+identidad de Trazio y el contrato compartido. Ninguna primitiva reimplementa
+trampa de foco, cierre con `Escape` ni navegación con flechas: eso ya lo
+resuelve `@base-ui/react` (la librería detrás de `components.json`, estilo
+`base-nova`).
+
+| Primitiva | Archivo | Se construye sobre | Reemplaza / usa cuándo |
+| --- | --- | --- | --- |
+| Capa superpuesta | `overlay.ts` | — (contrato, no componente) | Lo importan todas las demás |
+| Diálogo | `dialog.tsx` (`AppDialog`) | `ui/dialog.tsx` | Formularios y contenido dentro de un modal (detalle de tarea, proyecto, configuración — bloques 6, 8, 9) |
+| Confirmación | `confirm-dialog.tsx` (`ConfirmDialog`) | `ui/alert-dialog.tsx` | Reemplaza `window.confirm`. Ya en uso: borrado de proyecto (`delete-project-dialog.tsx`, bloque 2.7) |
+| Menú contextual | `context-menu.tsx` (`AppContextMenu`) | `ui/context-menu.tsx` (instalado en este bloque, no existía) | Acciones por clic derecho o tecla de menú. Sin consumidor todavía — lo usa el menú del editor (bloque 7) |
+| Selector desplegable | `select-field.tsx` (`SelectField`) | `ui/popover.tsx` + `ui/command.tsx` | Elegir un valor de una lista buscable. Base de los selectores de fecha, prioridad, proyecto y color (bloques 4 y 8) |
+
+### 9.1 El contrato de capa superpuesta (`overlay.ts`)
+
+Toda superposición de Trazio se monta como capa **modal** de Base UI, que es
+quien resuelve con eso el montaje por encima del resto del contenido y el
+bloqueo del scroll de fondo mientras está abierta — no hay una capa propia
+que reimplemente portal o scroll-lock. `Dialog` y `Menu` (de donde salen
+`DropdownMenu` y `ContextMenu`) ya son modales por defecto en shadcn/ui.
+`Popover`, en cambio, es **no modal por defecto** — así es como
+`timezone-combobox.tsx` hoy no bloquea el scroll de fondo al abrirse.
+`overlay.ts` exporta `OVERLAY_MODAL = true`, que `AppDialog` y `SelectField`
+pasan explícitamente a su `Popover`/`Dialog` de base en vez de heredar el
+valor por defecto en silencio.
+
+`AlertDialog` y `ContextMenu` no exponen `modal` como prop configurable —
+ya son modales siempre por diseño de Base UI — así que no hay nada que fijar
+ahí con esta constante; queda documentado en el comentario de cada archivo.
+
+### 9.2 `AppDialog` — diálogo propio
+
+Envuelve `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle`/
+`DialogDescription`/`DialogFooter` de `ui/dialog.tsx`. Convenciones que
+agrega sobre la base:
+
+- **Título siempre presente** (prop obligatoria): un diálogo sin título es
+  mudo para un lector de pantalla, así que no es opcional en la API.
+- **Ancho como variante** (`size: "default" | "lg"`) en vez de una clase
+  suelta repetida en cada consumidor.
+- Foco atrapado, devuelto al cerrar, cierre con `Escape` y asociación de rol
+  y título: los resuelve `@base-ui/react/dialog`, verificado en
+  `dialog.test.tsx`.
+
+Radio (`rounded-xl`, 12px — el `--radius-lg` de la sección 5), borde en vez
+de sombra decorativa (`ring-1 ring-foreground/10`, no `box-shadow`) y
+transición de apertura (`duration-100`, fade + zoom) ya vienen del
+`components.json` de shadcn/ui y son consistentes con Flat Design (sección
+1.4 de este documento y del reporte de `ui-ux-pro-max`: "no shadows/
+gradients, clean transitions 150–200ms"): no hicieron falta cambios para
+alinearlos.
+
+### 9.3 `ConfirmDialog` — confirmación propia
+
+Reemplaza `window.confirm` en toda la app. Se construye sobre
+`ui/alert-dialog.tsx`, no sobre `AppDialog`: es la primitiva con el rol de
+accesibilidad correcto para una decisión que hay que tomar antes de seguir
+(`role="alertdialog"`), algo que el `role="dialog"` genérico de `AppDialog`
+no comunica. Comparte la misma identidad visual (mismo radio, mismo borde,
+mismo pie con fondo diferenciado) porque los dos parten del mismo
+`components.json`.
+
+Props: `title`, `description`, `confirmLabel`/`cancelLabel`, `destructive`
+(botón de confirmar en `--error`, nunca el rojo de marca — sección 1), y
+`confirmDisabled` para bloquear la confirmación mientras se está calculando
+la consecuencia de la acción (caso de uso real: contar las tareas que se
+van a perder antes de habilitar "Eliminar de forma permanente").
+
+Verificado a mano en el navegador sobre la confirmación de borrado de
+proyecto: título y descripción correctos, botón destructivo en carmine
+(`--error`, no rojo de marca), `Escape` cierra sin borrar y devuelve el
+foco —con anillo visible— al botón "…" que abrió el menú, `Tab` recorre
+Cancelar → Eliminar con foco visible, y confirmar borra de verdad.
+
+### 9.4 `AppContextMenu` — menú contextual propio
+
+Se construye sobre `ui/context-menu.tsx`, agregado en este bloque (no
+existía ningún menú de clic derecho en la app hasta ahora). Recibe un
+`trigger` y una lista de `items` (`{ label, onSelect, icon?, destructive?,
+disabled? }` o `{ type: "separator" }`) en vez de exponer las piezas
+compuestas sueltas: abre con clic derecho o la tecla de menú, navega con
+flechas y activa con `Enter` — todo resuelto por `@base-ui/react/menu`,
+verificado en `context-menu.test.tsx`. Sin consumidor todavía: lo usa el
+menú del editor de descripción (bloque 7).
+
+### 9.5 `SelectField` — selector desplegable propio
+
+Se construye sobre `ui/popover.tsx` + `ui/command.tsx`, el mismo patrón que
+ya usa `timezone-combobox.tsx` pero con la capa de identidad que a ese
+componente le falta: `modal` explícito (`overlay.ts`), así que a diferencia
+del combobox de zona horaria, bloquea el scroll de fondo al abrirse. El
+trigger es un botón nativo (`Enter`/`Espacio` ya lo abren sin código
+propio) y la lista de opciones es un `Command` (`cmdk`, que ya resuelve
+navegar con flechas y elegir con `Enter`) — nada de eso se reimplementa,
+verificado en `select-field.test.tsx`.
+
+Es la base de los selectores de fecha, fecha límite, prioridad (bloque 4) y
+color/proyecto padre (bloque 8) — todavía no tiene consumidor dentro de
+este bloque.

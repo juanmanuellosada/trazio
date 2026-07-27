@@ -40,7 +40,15 @@ El detalle completo del producto está en `docs/product-spec.md`.
 
 - **TanStack Query** — estado del servidor y optimistic updates.
 - **dnd-kit** — drag & drop (reordenar tareas, secciones, proyectos).
-- **Tiptap** — editor de texto enriquecido para la descripción de tareas y comentarios.
+- **Tiptap** — editor de texto enriquecido para la descripción de tareas y
+  comentarios. Además del `starter-kit`, `extension-highlight` (resaltado),
+  `extension-task-list` y `extension-task-item` (listas de tareas), y
+  `extension-table` + `extension-table-row` + `extension-table-cell` +
+  `extension-table-header` (tabla) — decisión D31.
+- **emojibase-data** — datos de emojis categorizados y con texto de búsqueda
+  en español, para el selector de emojis del modal de proyecto; se importa
+  solo el locale español y de forma diferida al abrir el selector —
+  decisión D31.
 - **Zod** — validación de entrada, compartida entre cliente y servidor.
 - **React Hook Form** — formularios, junto con Zod; el esquema se define una vez
   en `lib/validation/` y se comparte entre cliente y servidor.

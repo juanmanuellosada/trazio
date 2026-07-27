@@ -228,8 +228,8 @@ Sección desplegable con los archivados.
 
 ### Detalle de tarea
 
-Panel lateral redimensionable (recuerda el ancho elegido) o pantalla completa en
-teléfono. Título y descripción se guardan solos. Desde ahí: ir a la tarea padre,
+Modal centrado por encima de la pantalla, o pantalla completa en teléfono.
+Título y descripción se guardan solos. Desde ahí: ir a la tarea padre,
 cambiar fecha/hora/duración/recurrencia, fecha límite, prioridad, recordatorios,
 proyecto y etiquetas, agregar subtareas, y leer o escribir comentarios.
 

@@ -3,23 +3,15 @@
 import { useDeleteProject } from "@/lib/projects/mutations";
 import { useProjectSubtreeTaskCount } from "@/lib/projects/use-subtree-task-count";
 import type { ProjectRow } from "@/lib/projects/use-projects";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/primitives/confirm-dialog";
 
 /**
  * Confirmación de borrado de proyecto (bloque 6.5, criterio literal del
- * roadmap): muestra el conteo real de tareas del proyecto y de todo su
- * subárbol de subproyectos (`useProjectSubtreeTaskCount`), no un número
- * inventado. No hay deshacer: el spec de `proyectos-secciones` lo prohíbe
- * de forma explícita para esta acción en particular.
+ * roadmap; migrada a la confirmación propia en el bloque 2.7): muestra el
+ * conteo real de tareas del proyecto y de todo su subárbol de subproyectos
+ * (`useProjectSubtreeTaskCount`), no un número inventado. No hay deshacer:
+ * el spec de `proyectos-secciones` lo prohíbe de forma explícita para esta
+ * acción en particular.
  */
 export function DeleteProjectDialog({
   open,
@@ -44,25 +36,21 @@ export function DeleteProjectDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar “{project.name}”</AlertDialogTitle>
-          <AlertDialogDescription>
-            {isLoading
-              ? "Contando las tareas que se van a perder…"
-              : taskCount && taskCount > 0
-                ? `Se van a eliminar ${taskCount} ${taskCount === 1 ? "tarea" : "tareas"} de este proyecto y de sus subproyectos, junto con todas sus secciones. Esta acción no se puede deshacer.`
-                : "Este proyecto no tiene tareas. Se va a eliminar junto con sus secciones. Esta acción no se puede deshacer."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={isLoading} onClick={handleConfirm}>
-            Eliminar de forma permanente
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Eliminar “${project.name}”`}
+      description={
+        isLoading
+          ? "Contando las tareas que se van a perder…"
+          : taskCount && taskCount > 0
+            ? `Se van a eliminar ${taskCount} ${taskCount === 1 ? "tarea" : "tareas"} de este proyecto y de sus subproyectos, junto con todas sus secciones. Esta acción no se puede deshacer.`
+            : "Este proyecto no tiene tareas. Se va a eliminar junto con sus secciones. Esta acción no se puede deshacer."
+      }
+      confirmLabel="Eliminar de forma permanente"
+      destructive
+      confirmDisabled={isLoading}
+      onConfirm={handleConfirm}
+    />
   );
 }

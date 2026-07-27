@@ -473,3 +473,121 @@ vez de degradar a gris — el gris neutro queda exclusivo para valores
 realmente inesperados. La paleta seleccionable (`PROJECT_COLOR_IDS`) sigue
 siendo exactamente los diez colores que el usuario puede elegir, sin un
 valor ajeno colado en el medio.
+
+---
+
+## D28 — El detalle de tarea es modal centrado, no panel lateral
+
+**Fecha.** 2026-07-27
+
+**Contexto.** `docs/product-spec.md` §3 especificaba panel lateral
+redimensionable que recuerda el ancho elegido, o pantalla completa en
+teléfono. El dueño, al usar la app por primera vez, pidió que el detalle
+abra por encima de la pantalla en vez de a un costado.
+
+**Decisión.** El detalle de tarea pasa a modal centrado, sin ningún control
+para redimensionarlo. En teléfono sigue siendo pantalla completa, que ya
+estaba bien.
+
+**Consecuencia.** El ancho del panel, que se guardaba en `localStorage`,
+deja de tener sentido: un modal centrado no se redimensiona, así que esa
+persistencia se elimina en vez de migrarse. `docs/product-spec.md` §3 se
+actualiza en la misma tanda que esta decisión.
+
+---
+
+## D29 — El color personalizado de un proyecto convive con la paleta fija de D19
+
+**Fecha.** 2026-07-27
+
+**Contexto.** D19 cerró la paleta de proyectos y etiquetas a diez colores
+fijos porque un color libre produce proyectos con contraste ilegible y
+rompe el modo oscuro. El dueño pidió, además de la paleta, una opción de
+color personalizado en el modal de proyecto.
+
+**Decisión.** La paleta con nombre sigue siendo el camino principal y la
+primera opción del selector. El color personalizado se ofrece como salida
+al final de la lista, y **antes de guardarse valida contraste AA contra el
+fondo de superficie de los dos temas (claro y oscuro), rechazando cualquier
+color que no alcance el mínimo en cualquiera de los dos**. `projects.color`
+amplía su check constraint para admitir un color personalizado con formato
+válido, además de los diez identificadores de la paleta.
+
+**Consecuencia.** Esta validación es lo único que separa esta decisión de
+un retroceso sobre D19. Si en algún momento se afloja o se quita, vuelve
+exactamente el problema que D19 cerró: proyectos con contraste ilegible y
+modo oscuro roto. Cualquier cambio futuro al selector de color tiene que
+preservar la validación, tanto en el cliente (Zod) como en la base (check
+constraint).
+
+---
+
+## D30 — La fórmula matemática queda fuera del editor de descripción
+
+**Fecha.** 2026-07-27
+
+**Contexto.** La referencia visual del editor de descripción incluía una
+opción de fórmula matemática en la barra de herramientas y en el menú de
+insertar.
+
+**Decisión.** No se implementa. Requiere un motor de renderizado matemático
+completo, una dependencia grande para una función de uso marginal en un
+gestor de tareas personal.
+
+**Consecuencia.** El resto del editor —títulos, negrita, cursiva, tachado,
+resaltado, código, listas, citas, tablas y notas al pie— no depende de la
+fórmula matemática, así que se puede sumar más adelante, si aparece una
+necesidad real, sin rehacer nada de lo ya construido.
+
+---
+
+## D31 — Dependencias nuevas para el editor de descripción y el selector de emojis
+
+**Fecha.** 2026-07-27
+
+**Contexto.** `AGENTS.md` exige decisión explícita para agregar librerías
+fuera de la lista cerrada. El editor de descripción necesita ampliar su
+barra de herramientas y su menú de insertar, y el modal de proyecto
+necesita un selector de emojis categorizado y buscable.
+
+**Decisión — editor de descripción.** Se investigó qué trae hoy
+`@tiptap/starter-kit` (3.29.0) antes de fijar la lista, en vez de asumirlo:
+además de los títulos, ya incluye negrita, cursiva, **tachado**
+(`extension-strike`), **código en línea** (`extension-code`), **bloque de
+código** (`extension-code-block`), **regla horizontal**
+(`extension-horizontal-rule`) y **cita** (`extension-blockquote`); ninguna
+de esas seis hace falta instalarla de nuevo. Lo que falta y se agrega:
+
+- `@tiptap/extension-highlight` — resaltado, no viene en el starter kit.
+- `@tiptap/extension-task-list` y `@tiptap/extension-task-item` — listas de
+  tareas, tampoco vienen.
+- `@tiptap/extension-table`, `@tiptap/extension-table-row`,
+  `@tiptap/extension-table-cell` y `@tiptap/extension-table-header` —
+  tabla; en Tiptap v3 son cuatro extensiones separadas, no una sola.
+
+**Notas al pie y "destacado" no suman dependencia nueva.** Se buscó la
+extensión oficial de notas al pie y no existe como paquete libre: el
+soporte de Tiptap para notas al pie es parte de Tiptap Pages, un producto
+pago (`@tiptap-pro/...`), fuera de lo que este proyecto usa. Notas al pie y
+el bloque "destacado" del menú de insertar —que tampoco existe como
+extensión oficial— se construyen como nodos propios de Tiptap sobre
+`@tiptap/core`, que ya es una dependencia transitiva del starter kit, sin
+agregar ningún paquete nuevo.
+
+**Decisión — selector de emojis.** Se comparó `emojibase-data` contra
+`@emoji-mart/data` y `unicode-emoji-json`. Las tres traen datos
+categorizados, pero D4 fija que la app es español únicamente, y solo
+`emojibase-data` trae nombre y palabras de búsqueda (`tags`) traducidos al
+español por cada emoji (`es/compact.json`, ~556 KB) además de los nombres
+de categoría (`es/messages.json`); las otras dos solo traducen textos de
+interfaz genéricos —o nada— y dejan el nombre y las palabras clave de cada
+emoji en inglés. Se agrega **`emojibase-data`**, importando únicamente los
+archivos del locale español y no el paquete completo, que incluye decenas
+de locales.
+
+**Consecuencia.** Se agregan siete paquetes de Tiptap y `emojibase-data` a
+la lista de librerías decididas de `AGENTS.md`. El selector de emojis
+importa `emojibase-data/es/compact.json` y `emojibase-data/es/messages.json`
+con `import()` dinámico recién al abrirse el selector, nunca en el arranque
+de la aplicación: son miles de entradas y cargarlas con la app empeoraría
+el arranque.
