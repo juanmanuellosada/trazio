@@ -25,24 +25,24 @@ Base de todo lo demás (design.md, sección A2): capas, diálogos, menús contex
 
 Barato y cambia la percepción de todo lo que se prueba después (design.md, sección E).
 
-- [ ] 3.1 Consultar la skill `ui-ux-pro-max` para definir el tope máximo del ancho de contenido y el comportamiento intermedio (design.md, sección C1)
-- [ ] 3.2 Reemplazar el ancho fijo de 768px por el ancho adaptativo definido, en las vistas de lista (Bandeja de entrada, Hoy, Proyecto, Completado)
-- [ ] 3.3 Ajustar la metadata de una tarea (fecha, prioridad, etc.) para que acompañe al título en vez de pegarse al borde derecho en pantallas anchas
-- [ ] 3.4 Verificar visualmente en escritorio ancho, escritorio angosto y teléfono que el ancho de columna y la distancia título–metadata se comportan según lo especificado
+- [x] 3.1 Consultar la skill `ui-ux-pro-max` para definir el tope máximo del ancho de contenido y el comportamiento intermedio (design.md, sección C1)
+- [x] 3.2 Reemplazar el ancho fijo de 768px por el ancho adaptativo definido, en las vistas de lista (Bandeja de entrada, Hoy, Proyecto, Completado)
+- [x] 3.3 Ajustar la metadata de una tarea (fecha, prioridad, etc.) para que acompañe al título en vez de pegarse al borde derecho en pantallas anchas
+- [x] 3.4 Verificar visualmente en escritorio ancho, escritorio angosto y teléfono que el ancho de columna y la distancia título–metadata se comportan según lo especificado
 
 ## 4. Selectores de atributos
 
 Consumen las primitivas; los consume el componente de alta.
 
-- [ ] 4.1 Consultar la skill `ui-ux-pro-max` para el estilo de los selectores de fecha, fecha límite y prioridad
-- [ ] 4.2 Selector de fecha: campo de texto en lenguaje natural que delega en `lib/parser/`, sin implementar una segunda interpretación propia
-- [ ] 4.3 Selector de fecha: accesos rápidos (hoy, mañana, este fin de semana, próxima semana), mostrando junto a cada uno el día concreto al que corresponde
-- [ ] 4.4 Selector de fecha: calendario mensual navegable hacia meses anteriores y siguientes
-- [ ] 4.5 Selector de fecha: agregar hora (mueve el valor a `due_at` y deja `due_date` sin valor) y duración estimada (`duration_minutes`)
-- [ ] 4.6 Selector de fecha límite: mismo campo de texto, accesos rápidos y calendario, aplicados sobre `deadline`, con etiqueta y ubicación propias que lo distingan del selector de fecha
-- [ ] 4.7 Selector de prioridad: las cuatro prioridades con su color y su nombre, usando el rojo de marca `#EC1E2A` solo para Urgente
-- [ ] 4.8 Verificar que ninguno de los tres selectores renderiza `<input type="date">`, `<input type="time">` ni `<select>` nativo
-- [ ] 4.9 Tests: el selector de fecha resuelve lo mismo que el parser para los casos cubiertos por `docs/parser-test-cases.md`
+- [x] 4.1 Consultar la skill `ui-ux-pro-max` para el estilo de los selectores de fecha, fecha límite y prioridad
+- [x] 4.2 Selector de fecha: campo de texto en lenguaje natural que delega en `lib/parser/`, sin implementar una segunda interpretación propia
+- [x] 4.3 Selector de fecha: accesos rápidos (hoy, mañana, este fin de semana, próxima semana), mostrando junto a cada uno el día concreto al que corresponde
+- [x] 4.4 Selector de fecha: calendario mensual navegable hacia meses anteriores y siguientes
+- [x] 4.5 Selector de fecha: agregar hora (mueve el valor a `due_at` y deja `due_date` sin valor) y duración estimada (`duration_minutes`)
+- [x] 4.6 Selector de fecha límite: mismo campo de texto, accesos rápidos y calendario, aplicados sobre `deadline`, con etiqueta y ubicación propias que lo distingan del selector de fecha
+- [x] 4.7 Selector de prioridad: las cuatro prioridades con su color y su nombre, usando el rojo de marca `#EC1E2A` solo para Urgente
+- [x] 4.8 Verificar que ninguno de los tres selectores renderiza `<input type="date">`, `<input type="time">` ni `<select>` nativo
+- [x] 4.9 Tests: el selector de fecha resuelve lo mismo que el parser para los casos cubiertos por `docs/parser-test-cases.md`
 
 ## 5. Componente de alta de tareas
 

@@ -27,7 +27,13 @@ export function PriorityDot({ priority, className }: { priority: number; classNa
   );
 }
 
-/** Selector de prioridad del detalle de tarea (bloque 7.2): guarda al instante, sin paso de confirmación. */
+/**
+ * Selector de prioridad (bloque 4.7), reutilizado en el detalle de tarea y
+ * en el alta: guarda al instante, sin paso de confirmación. Ya se apoyaba en
+ * `DropdownMenu` (primitiva de menú de shadcn/ui, no un `<select>` nativo) y
+ * no tenía ningún acoplamiento al detalle de tarea, así que el bloque 4 lo
+ * muda a `selectors/` sin reescribirlo.
+ */
 export function PrioritySelect({
   value,
   onChange,

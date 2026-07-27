@@ -11,7 +11,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { DateSelect } from "@/components/selectors/date-select";
+import { DeadlineSelect } from "@/components/selectors/deadline-select";
+import { PrioritySelect } from "@/components/selectors/priority-select";
 import { toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useDeleteTask, useDuplicateTask, useUpdateTask, type TaskPatch } from "@/lib/tasks/mutations";
@@ -21,12 +24,10 @@ import type { TaskRow } from "@/lib/tasks/use-tasks";
 import { taskTitleSchema } from "@/lib/validation/tasks";
 import { LabelPicker } from "./label-picker";
 import { MoveTaskDialog } from "./move-task-dialog";
-import { PrioritySelect } from "./priority-select";
 import { TaskDescriptionEditor } from "./task-description-editor";
 import { TaskList } from "./task-list";
 
 const FIELD_LABEL_CLASS = "text-xs font-medium text-text-secondary";
-const DATE_INPUT_CLASS = "h-8 w-auto text-sm";
 
 /** `useDuplicateTask` solo necesita la forma de `TaskRow` (para calcular la posición de la copia): sin `description` ni `created_at`. */
 function toTaskRowShape(task: TaskDetail): TaskRow {
@@ -36,74 +37,8 @@ function toTaskRowShape(task: TaskDetail): TaskRow {
   return rest as TaskRow;
 }
 
-/** `datetime-local` opera en la hora local del navegador: convierte el `timestamptz` (UTC) guardado en `due_at` a ese formato. */
-function toDatetimeLocalValue(dueAt: string): string {
-  const date = new Date(dueAt);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/**
- * Fecha de vencimiento (bloque 7.2): `due_date` y `due_at` son excluyentes
- * (constraint de base) — acá se hace *imposible* mandar las dos a la vez,
- * como pide el prompt: el toggle "con hora" decide cuál de las dos columnas
- * se edita, y cada cambio limpia la otra explícitamente.
- */
-function DueDateField({
-  dueDate,
-  dueAt,
-  onChange,
-}: {
-  dueDate: string | null;
-  dueAt: string | null;
-  onChange: (patch: Pick<TaskPatch, "due_date" | "due_at">) => void;
-}) {
-  const [hasTime, setHasTime] = useState(dueAt != null);
-
-  return (
-    <div className="space-y-1">
-      <span id="due-date-label" className={FIELD_LABEL_CLASS}>
-        Vencimiento
-      </span>
-      <div className="flex items-center gap-2">
-        {hasTime ? (
-          <Input
-            aria-labelledby="due-date-label"
-            type="datetime-local"
-            value={dueAt ? toDatetimeLocalValue(dueAt) : ""}
-            onChange={(event) => {
-              const value = event.target.value;
-              onChange(value ? { due_date: null, due_at: new Date(value).toISOString() } : { due_date: null, due_at: null });
-            }}
-            className={DATE_INPUT_CLASS}
-          />
-        ) : (
-          <Input
-            aria-labelledby="due-date-label"
-            type="date"
-            value={dueDate ?? ""}
-            onChange={(event) => onChange({ due_date: event.target.value || null, due_at: null })}
-            className={DATE_INPUT_CLASS}
-          />
-        )}
-        <label className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <input
-            type="checkbox"
-            checked={hasTime}
-            onChange={(event) => {
-              setHasTime(event.target.checked);
-              onChange({ due_date: null, due_at: null });
-            }}
-            className="size-3.5 rounded border-input accent-primary"
-          />
-          Con hora
-        </label>
-      </div>
-    </div>
-  );
-}
-
 function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => void }) {
+  const preferences = useUserPreferences();
   const updateTask = useUpdateTask();
   const duplicateTask = useDuplicateTask();
   const deleteTask = useDeleteTask();
@@ -211,36 +146,18 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
             <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} />
           </div>
 
-          <DueDateField dueDate={task.due_date} dueAt={task.due_at} onChange={(fields) => patch(fields)} />
-
           <div className="space-y-1">
-            <Label htmlFor="task-duration" className={FIELD_LABEL_CLASS}>
-              Duración (min)
-            </Label>
-            <Input
-              id="task-duration"
-              type="number"
-              min={1}
-              value={task.duration_minutes ?? ""}
-              onChange={(event) => {
-                const raw = event.target.value;
-                patch({ duration_minutes: raw ? Number(raw) : null });
-              }}
-              className="h-8 w-24 text-sm"
+            <span className={FIELD_LABEL_CLASS}>Vencimiento</span>
+            <DateSelect
+              value={{ dueDate: task.due_date, dueAt: task.due_at, durationMinutes: task.duration_minutes }}
+              onChange={(next) => patch({ due_date: next.dueDate, due_at: next.dueAt, duration_minutes: next.durationMinutes })}
+              preferences={preferences}
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="task-deadline" className={FIELD_LABEL_CLASS}>
-              Fecha límite
-            </Label>
-            <Input
-              id="task-deadline"
-              type="date"
-              value={task.deadline ?? ""}
-              onChange={(event) => patch({ deadline: event.target.value || null })}
-              className={DATE_INPUT_CLASS}
-            />
+            <span className={FIELD_LABEL_CLASS}>Fecha límite</span>
+            <DeadlineSelect value={task.deadline} onChange={(deadline) => patch({ deadline })} preferences={preferences} />
           </div>
         </div>
 

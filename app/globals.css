@@ -162,8 +162,11 @@
   --radius-lg: 0.75rem;
   --radius-full: 9999px;
 
-  /* Ancho de columna de contenido (§5.1): genera la utilidad `max-w-content`. */
-  --container-content: 48rem;
+  /* Ancho de columna de contenido (§5.1): genera la utilidad `max-w-content`.
+     72rem/1152px (bloque 3 de interfaz-propia): el problema nunca fue el
+     ancho, era la distancia título-metadata (design.md sección C1), así que
+     el tope crece bastante en vez de quedarse en un número chico de prosa. */
+  --container-content: 72rem;
 
   /* Escala tipográfica exclusiva de la landing (§4.1 y docs/design-system.md
      §4.1): no toca la escala de la app (text-xs..text-4xl arriba). Fluida

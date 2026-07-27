@@ -35,7 +35,7 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
 import { useMounted } from "@/hooks/use-mounted";
 import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { MoveTaskDialog } from "./move-task-dialog";
-import { PriorityDot } from "./priority-select";
+import { PriorityDot } from "@/components/selectors/priority-select";
 import { useTaskDetail } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import { TaskQuickAddRow } from "./task-quick-add-row";
@@ -207,23 +207,31 @@ export function TaskRow({
 
         {task.priority !== DEFAULT_TASK_PRIORITY && <PriorityDot priority={task.priority} />}
 
+        {/* La metadata (etiquetas, fecha) vive DENTRO de este botón, pegada
+            al título, en vez de ser hermana suya en la fila (design.md
+            sección C1, bloque 3): así, aunque el botón siga siendo `flex-1`
+            —área de clic amplia, Fitts's law— el título y su metadata se
+            agrupan al inicio del botón y no se separan al crecer el ancho
+            de columna. El título tiene su propio tope (`max-w-lg`, ~60-75
+            caracteres — line-length-control de la skill `ui-ux-pro-max`)
+            para no dejar la metadata a kilómetros en un título larguísimo. */}
         <button
           type="button"
           onClick={() => open(task.id)}
           onKeyDown={isFlat ? undefined : handleTitleKeyDown}
           className={cn(
-            "min-w-0 flex-1 truncate rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-            isCompleted && "text-text-secondary line-through",
+            "flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            isCompleted && "text-text-secondary",
           )}
         >
-          {task.title}
+          <span className={cn("min-w-0 max-w-lg truncate", isCompleted && "line-through")}>{task.title}</span>
+
+          {task.labels.map((label) => (
+            <LabelChipView key={label.id} label={label} />
+          ))}
+
+          {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
         </button>
-
-        {task.labels.map((label) => (
-          <LabelChipView key={label.id} label={label} />
-        ))}
-
-        {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
 
         <DropdownMenu>
           <DropdownMenuTrigger

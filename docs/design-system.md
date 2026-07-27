@@ -222,22 +222,72 @@ de Tailwind es complejidad sin beneficio.
 
 ### 5.1 Ancho de columna de contenido
 
-Token `max-w-content` (`--container-content: 48rem` / 768px, mapeado en
-`@theme inline` de `app/globals.css`). Recomendación de la skill `ui-ux-pro-max`
-(dominio `ux`, categoría *Layout → Container Width*): limitar el ancho de una
-columna de contenido a 65-75 caracteres (`max-w-prose` / `max-w-3xl`) en vez de
-dejarla ocupar todo el viewport — 48rem es exactamente el valor de `max-w-3xl`
-de Tailwind, con nombre semántico propio para no repetirlo como número mágico
-en cada componente.
+Token `max-w-content` (`--container-content: 72rem` / 1152px, mapeado en
+`@theme inline` de `app/globals.css`). Historia corta: la fase 1 fijó acá
+48rem/768px (`max-w-3xl`, pensado para texto de prosa de 65-75 caracteres) para
+resolver que, en pantallas anchas, la fecha de una fila de tarea quedaba a
+1200px de su título, con un espacio muerto enorme entre los dos. Funcionó
+para eso, pero generó el problema contrario: en escritorio la app se veía con
+ancho de teléfono, desperdiciando la pantalla — la queja concreta fue "todo
+está hecho para celular".
 
-Corrige un bug real: sin este límite, una fila de tarea en una pantalla ancha
-(1440px+) deja el título a la izquierda y la fecha pegada al borde derecho,
-con un espacio muerto enorme entre los dos. Se aplica al encabezado y al
+**El diagnóstico original estaba mal.** Las dos observaciones son ciertas a
+la vez, y eso es la pista: el problema nunca fue el ancho de la columna, era
+**la distancia entre el título de una tarea y su metadata** (fecha,
+prioridad, etiquetas). Un tope de columna chico es una forma tosca de
+acortar esa distancia — funciona, pero paga con toda la pantalla, porque
+ancho de columna y distancia título-metadata son dos variables distintas que
+el límite fijo trataba como una sola. El bloque 3 de `interfaz-propia`
+(`openspec/changes/interfaz-propia/`) separa las dos: la columna crece, la
+distancia se resuelve aparte, en el componente de fila.
+
+**El tope crece a 72rem/1152px** (dominio `ux` de la skill `ui-ux-pro-max`,
+categoría *Layout & Responsive*: "Consistent max-width on desktop (`max-w-6xl`
+/ `max-w-7xl`)" — el valor documentado para contenido denso de aplicación,
+distinto del `max-w-prose`/`max-w-3xl` de texto corrido que fijó el tope
+anterior). 1152px es bastante mayor que 768px sin llegar a ocupar el
+viewport completo en un monitor ancho (1440px+), que es exactamente lo que la
+misma categoría de la skill pide evitar. Se aplica al encabezado y al
 contenido de las vistas de lista (Hoy, Bandeja de entrada, Proyecto,
 Completado) y al detalle de tarea en su ruta suelta (`app/(app)/tarea/[id]`)
 — no al panel lateral de detalle (`task-detail-panel.tsx`), que ya tiene su
 propio ancho acotado (320-720px, redimensionable), ni al panel lateral de
 navegación.
+
+**La metadata acompaña al título en vez de irse al borde derecho** — la parte
+que de verdad resuelve el problema que el ancho fijo chico venía a tapar. Si
+solo se agrandara el tope de arriba sin tocar la fila, el título de
+`TaskRow` (`components/tasks/task-row.tsx`) seguía teniendo `flex-1`
+(crece para llenar todo el ancho restante de la fila), así que agrandar la
+columna reintroducía exactamente la distancia de 1200px que el ancho fijo
+había tapado, solo que a un número más alto.
+
+La solución no es (a) achicar la columna de nuevo ni (b) darle a la
+metadata su propia columna de ancho fijo a la derecha: es sacar la metadata
+de ser *hermana* del título en el layout de flexbox y ponerla *dentro* del
+mismo elemento clickeable, inmediatamente después del texto truncado:
+
+```tsx
+<button className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden ...">
+  <span className="min-w-0 max-w-lg truncate ...">{task.title}</span>
+  {task.labels.map((label) => <LabelChipView key={label.id} label={label} />)}
+  {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
+</button>
+```
+
+El botón entero sigue siendo `flex-1` — mantiene el área de clic amplia
+(Fitts's law) que ya tenía antes, cómoda para abrir el detalle tocando
+cualquier punto de la fila. Pero adentro, el título ya no crece: tiene su
+propio tope (`max-w-lg`, 32rem/512px — el rango de 60-75 caracteres para
+texto de escritorio que la skill documenta en *Typography & Color*,
+`line-length-control`) y las etiquetas/fecha van justo después, con
+`shrink-0`. El resultado: el conjunto título+metadata se agrupa a la
+izquierda del botón, y el espacio que sobra hasta el tope de 1152px queda
+vacío pero sigue siendo parte del área clickeable — no hay una zona muerta
+visible, porque no hay nada dibujado ahí para empezar. Solo un título
+extremadamente largo (más de 512px de texto) trunca contra el tope, que es
+el único caso donde la metadata queda a una distancia notoria del final del
+texto, y es deliberado: preferible a dejar crecer el título sin límite.
 
 La columna va alineada a la izquierda (con el padding existente como margen),
 no centrada con `mx-auto` en el espacio restante. El panel lateral
@@ -254,6 +304,11 @@ estándar en apps de productividad con panel lateral fijo (Todoist, Linear,
 Notion). En mobile no hay diferencia visible: el panel lateral no está
 presente (`hidden md:flex`) y el viewport ya es más angosto que
 `max-w-content`.
+
+Si en el futuro alguien vuelve a ver la metadata lejos del título en una
+pantalla ancha, la corrección es revisar el `flex-1`/`max-w-lg` de
+`TaskRow`, no volver a achicar `--container-content` — eso repetiría el
+mismo diagnóstico equivocado que esta sección documenta.
 
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 
