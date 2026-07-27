@@ -20,9 +20,8 @@ function parseForLanding(text: string) {
  * Ejemplos tocables de la demo interactiva (`parser-demo.tsx`). El primero
  * es el caso completo de `docs/parser-test-cases.md` #53 (adaptado a
  * `@Trabajo`, que sí existe en `LANDING_DEMO_PROJECTS` — `@Proyectos` del
- * caso original no resolvería contra este contexto) y es también el texto
- * que se muestra ya congelado en el hero: el mismo campo, primero estático
- * y después interactivo al hidratar.
+ * caso original no resolvería contra este contexto): es el estado inicial
+ * de la demo, el más completo de los cuatro.
  */
 export const DEMO_EXAMPLES = [
   "Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Trabajo",
@@ -31,8 +30,14 @@ export const DEMO_EXAMPLES = [
   "Gimnasio cada lunes, miércoles y viernes por 1h",
 ] as const;
 
-/** Parseo congelado del hero (bloque 12.1): calculado una vez, en build time. */
-export const HERO_TEXT = DEMO_EXAMPLES[0];
+/**
+ * Frase congelada del hero (bloque 12.1), caso #27 de
+ * `docs/parser-test-cases.md`. Deliberadamente distinta de `DEMO_EXAMPLES`:
+ * el hero es la invitación (el campo con la frase, sin resultado) y la demo
+ * es donde se despliega el resultado completo — mostrar la misma frase en
+ * las dos secciones haría parecer que la página se repite.
+ */
+export const HERO_TEXT = "Llamar mañana a las 10";
 export const HERO_PARSE_RESULT = parseForLanding(HERO_TEXT);
 
 /**

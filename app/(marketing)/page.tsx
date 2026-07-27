@@ -9,9 +9,9 @@ import { RoadmapSection } from "@/components/marketing/roadmap-section";
 import { TransformationsSection } from "@/components/marketing/transformations-section";
 import { getSiteUrl } from "@/lib/site-url";
 
-const TITLE = "Trazio — Tu día entero, en una sola pantalla";
+const TITLE = "Trazio — Gestor de tareas personal para tu día entero";
 const DESCRIPTION =
-  "Escribí lo que tenés que hacer como se lo dirías a alguien. Trazio entiende la fecha, la hora y la prioridad solo. Gratis, sin tarjeta.";
+  "Escribí lo que tenés que hacer como se lo dirías a alguien. Trazio entiende la fecha, la hora y la prioridad solo. Gestor de tareas personal, gratis y sin tarjeta.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),

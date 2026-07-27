@@ -16,11 +16,11 @@ export function HeroSection() {
       <div className="mx-auto max-w-3xl space-y-8 text-center">
         <div className="space-y-5">
           <h1 className="text-landing-hero font-bold text-balance text-foreground">
-            Tu día entero, en una sola pantalla.
+            Tu gestor de tareas personal, para el día entero.
           </h1>
           <p className="mx-auto max-w-xl text-lg text-text-secondary">
             Escribí lo que tenés que hacer como se lo dirías a alguien. Trazio entiende la fecha, la
-            hora y la prioridad solo.
+            hora y la prioridad solo, y todo queda junto en una sola pantalla.
           </p>
         </div>
         <HeroParserPreview />

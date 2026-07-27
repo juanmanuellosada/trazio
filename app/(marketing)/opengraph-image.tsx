@@ -14,7 +14,7 @@ import { ImageResponse } from "next/og";
  * para una sola imagen — la familia `sans-serif` del sistema es una
  * degradación aceptable en una tarjeta que casi nadie mira de cerca.
  */
-export const alt = "Trazio — Tu día entero, en una sola pantalla";
+export const alt = "Trazio — Tu gestor de tareas personal";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -43,7 +43,7 @@ export default async function OpengraphImage() {
           <span style={{ fontSize: 104, fontWeight: 700, color: "#FFFFFF", letterSpacing: -2 }}>Trazio</span>
         </div>
         <span style={{ marginTop: 28, fontSize: 38, color: "#C7D2E3" }}>
-          Tu día entero, en una sola pantalla.
+          Tu gestor de tareas personal.
         </span>
       </div>
     ),

@@ -118,20 +118,28 @@ cosa.
 
 Sin captura de producto. Tres elementos:
 
-- **Titular** — el resultado, no la funcionalidad: *"Tu día entero, en una
-  sola pantalla."* En la escala tipográfica exclusiva de la landing
-  (`text-landing-hero`, `docs/design-system.md` §4.1): 44px a 76px según el
-  viewport, relación de 2,75× a 4,75× contra el cuerpo — antes topaba a 40px
-  y 2,5×.
-- **Subtítulo** — una línea de soporte: *"Escribí lo que tenés que hacer
-  como se lo dirías a alguien. Trazio entiende la fecha, la hora y la
-  prioridad solo."*
-- **El campo del parser, congelado** — el elemento visual principal,
-  reemplaza a la captura de pantalla. Es texto renderizado en el servidor
-  (`HeroParserPreview`, sin JavaScript): la oración de ejemplo con sus
-  tokens ya resaltados por tipo y los chips del resultado debajo, más un
-  cursor decorativo que parpadea con CSS (`.landing-caret`, apagado con
-  `prefers-reduced-motion`). Consecuencia técnica buscada: el LCP es texto,
+- **Titular** — el resultado, no la funcionalidad, y lo primero que hay que
+  entender: qué es Trazio antes que qué tiene de distinto. *"Tu gestor de
+  tareas personal, para el día entero."* En la escala tipográfica exclusiva
+  de la landing (`text-landing-hero`, `docs/design-system.md` §4.1): 44px a
+  76px según el viewport, relación de 2,75× a 4,75× contra el cuerpo — antes
+  topaba a 40px y 2,5×.
+- **Subtítulo** — recién acá entra el diferencial: *"Escribí lo que tenés
+  que hacer como se lo dirías a alguien. Trazio entiende la fecha, la hora y
+  la prioridad solo, y todo queda junto en una sola pantalla."*
+- **El campo del parser, congelado, sin resultado** — el elemento visual
+  principal, reemplaza a la captura de pantalla. Es texto renderizado en el
+  servidor (`HeroParserPreview`, sin JavaScript): una sola oración de
+  ejemplo con sus tokens ya resaltados por tipo, más un cursor decorativo
+  que parpadea con CSS (`.landing-caret`, apagado con
+  `prefers-reduced-motion`). A propósito **no** muestra los chips del
+  resultado — eso es lo que diferencia al hero de la demo (sección 2): acá
+  es la invitación (el campo con la frase), ahí es donde se despliega el
+  resultado completo y se puede escribir. Mostrar las dos cosas en el hero
+  haría que el visitante viera el mismo bloque resuelto dos veces seguidas
+  al bajar. La frase del hero (caso #27, `Llamar mañana a las 10`) es
+  además **distinta** de la que arranca la demo (caso #53): ningún ejemplo
+  se repite entre secciones. Consecuencia técnica buscada: el LCP es texto,
   no una imagen — se sacaron los 79 KB de captura que cargaban arriba del
   pliegue en la versión anterior.
 
@@ -143,15 +151,17 @@ logo a la izquierda y un "Iniciar sesión" discreto a la derecha.
 
 ### 2. La demo
 
-El mismo campo del hero, ahora interactivo: al hidratar, `ParserDemo` toma
-el control con el mismo marcado visual (mismos colores de token, mismos
-chips). Es la **única isla cliente de toda la página** — su estado inicial
+Un campo interactivo con el mismo marcado visual que el hero (mismos
+colores de token), pero acá sí con el resultado completo: al hidratar,
+`ParserDemo` toma el control y despliega los chips (`ParseResultChips`)
+debajo. Es la **única isla cliente de toda la página** — su estado inicial
 ya viene parseado (el primer ejemplo, calculado en el primer render), así
 que se entiende incluso antes de que el JavaScript termine de cargar.
 
-Cuatro ejemplos tocables, el primero compartido con el hero:
+Cuatro ejemplos tocables, ninguno igual al del hero:
 
 - `Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Trabajo`
+  (caso #53, el ejemplo inicial — el más completo de los cuatro)
 - `Llamar al contador mañana a las 10`
 - `Pagar el alquiler cada mes p1`
 - `Gimnasio cada lunes, miércoles y viernes por 1h`
@@ -186,11 +196,24 @@ etiqueta, repetición. Estática, renderizada en el servidor.
 
 ### 5. Y después de escribirla
 
-Todo lo que no es el parser, en una sola narrativa y no en grilla: la tarea
-cae en la Bandeja, aparece en Hoy, vive en un proyecto con secciones, se
-parte en subtareas, y está igual en la compu y en el teléfono. Un solo
-recorte de interfaz (`sync.webp`, ya recortado a los datos, no una pantalla
-completa) ilustra el último punto — el más difícil de creer sin verlo.
+Todo lo que no es el parser, en dos recursos de texto y CSS y no en grilla
+ni en captura de pantalla — el dueño del producto la sacó explícitamente de
+esta sección porque un recorte de pantalla completa no se lee metido en
+medio de una narrativa, sobre todo en el teléfono:
+
+- **El recorrido**, condición → destino: si no le pusiste nada más cae en
+  la Bandeja de entrada, si tiene fecha aparece en Hoy, si tiene proyecto
+  vive ahí, si es grande se parte en subtareas, y es igual en la compu y en
+  el teléfono. Cada destino es un chip (mismo lenguaje visual que
+  `ParseResultChips`), no una frase corrida.
+- **El árbol de la jerarquía** — la mitad del producto que la landing no
+  explicaba: las tareas se agrupan en proyectos, los proyectos tienen
+  secciones, los proyectos se anidan hasta tres niveles, y una tarea se
+  parte en subtareas sin límite. Una jerarquía es un árbol, y un árbol se
+  dibuja con HTML anidado (`<ul>`/`<li>`) e indentación — cero imágenes,
+  cero peso, coherente con que el resaltado de tokens ya es el sistema
+  gráfico de la página. El nodo de proyecto reutiliza el mismo color que
+  `@Proyecto` en el parser: es el mismo concepto en los dos lados.
 
 ### 6. Preguntas directas
 
@@ -240,7 +263,9 @@ tarjeta." — sin ninguna cláusula sobre el futuro.
 
 ## Sistema gráfico
 
-Sin imágenes generadas. Tres recursos, los tres en CSS:
+Sin imágenes. Ni una sola captura de producto en toda la página — es una
+dirección elegida, no una limitación: las capturas no son el recurso
+principal de esta landing. Cuatro recursos, los cuatro en CSS:
 
 - **El resaltado de tokens es el sistema gráfico de la página.** Colores
   sobre texto: pesa cero, escala infinito, y es el producto en sí. Se usa en
@@ -248,6 +273,8 @@ Sin imágenes generadas. Tres recursos, los tres en CSS:
   mismo tipo de dato (`docs/design-system.md` §2.1).
 - **Malla de fondo del hero** (`landing-hero-mesh` en `app/globals.css`):
   radiales en el azul de marca, sin ninguna imagen de fondo.
+- **El árbol de la jerarquía** (sección 5): HTML anidado con indentación y
+  líneas de `border-l`, sin una sola imagen — ver sección 5 para el detalle.
 - **Animación al scroll con CSS puro**: la galería de transformaciones
   aparece con una animación ligada a `animation-timeline: view()`, envuelta
   en `@supports` (degrada sola en navegadores sin soporte) y en
