@@ -182,12 +182,28 @@ en cada componente.
 
 Corrige un bug real: sin este límite, una fila de tarea en una pantalla ancha
 (1440px+) deja el título a la izquierda y la fecha pegada al borde derecho,
-con un espacio muerto enorme entre los dos. Se aplica, centrado con `mx-auto`,
-al encabezado y al contenido de las vistas de lista (Hoy, Bandeja de entrada,
-Proyecto, Completado) y al detalle de tarea en su ruta suelta
-(`app/(app)/tarea/[id]`) — no al panel lateral de detalle
-(`task-detail-panel.tsx`), que ya tiene su propio ancho acotado (320-720px,
-redimensionable), ni al panel lateral de navegación.
+con un espacio muerto enorme entre los dos. Se aplica al encabezado y al
+contenido de las vistas de lista (Hoy, Bandeja de entrada, Proyecto,
+Completado) y al detalle de tarea en su ruta suelta (`app/(app)/tarea/[id]`)
+— no al panel lateral de detalle (`task-detail-panel.tsx`), que ya tiene su
+propio ancho acotado (320-720px, redimensionable), ni al panel lateral de
+navegación.
+
+La columna va alineada a la izquierda (con el padding existente como margen),
+no centrada con `mx-auto` en el espacio restante. El panel lateral
+(`AppSidebar`) queda fijo contra el borde izquierdo del viewport; centrar la
+columna de contenido en el espacio que le queda a la derecha la separa
+visualmente del panel y la deja "flotando" en el medio de la pantalla, con
+una zona muerta todavía más grande del lado derecho — el mismo problema de
+espacio muerto que el límite de ancho ya venía a resolver, solo que
+desplazado. La skill `ui-ux-pro-max` no tiene una regla puntual para esta
+composición (panel fijo + columna con ancho máximo), pero sí para evitar
+zonas muertas y mantener una estructura predecible (dominio `ux`, categoría
+*Layout*); alinear a la izquierda, pegado al panel, es además el tratamiento
+estándar en apps de productividad con panel lateral fijo (Todoist, Linear,
+Notion). En mobile no hay diferencia visible: el panel lateral no está
+presente (`hidden md:flex`) y el viewport ya es más angosto que
+`max-w-content`.
 
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 

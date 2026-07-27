@@ -243,6 +243,17 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Plantillas de correo con identidad de marca (tarea 4.14). Esta configuración
+# solo aplica al Supabase local (`supabase start`): para el proyecto remoto hay
+# que pegar el HTML en el dashboard, ver supabase/templates/README.md.
+[auth.email.template.confirmation]
+subject = "Confirmá tu cuenta de Trazio"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Restablecé tu contraseña de Trazio"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

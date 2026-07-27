@@ -43,7 +43,7 @@ export function ProjectHeader({
 
   return (
     <header className="border-b border-border px-4 py-4 sm:px-6">
-      <div className="mx-auto flex w-full max-w-content items-start justify-between gap-3">
+      <div className="flex w-full max-w-content items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {project.is_inbox ? (
             <Inbox aria-hidden className="mt-0.5 size-6 text-primary" />

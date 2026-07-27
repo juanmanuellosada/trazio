@@ -407,3 +407,32 @@ descendente. Bandeja y Proyecto siguen con el orden manual.
 **Consecuencia.** El orden manual queda donde el usuario puede efectivamente
 arrastrar. Cuando la fase 2 traiga la barra de opciones de vista con orden
 configurable, estas dos vistas ya tienen un default que se explica solo.
+
+---
+
+## D26 — El trigger de la Bandeja distingue borrado directo de cascada de cuenta
+
+**Fecha.** 2026-07-27
+
+**Contexto.** `projects_protect_inbox()` (migración
+`20260726011604_projects_inbox_protection.sql`) rechaza cualquier `DELETE`
+sobre la Bandeja. Pero borrar la cuenta borra la fila de `auth.users`, y el
+`ON DELETE CASCADE` de `projects.user_id` intenta borrar también la Bandeja
+del usuario — el mismo `DELETE` que el trigger existe para rechazar. Con eso,
+la eliminación de cuenta fallaba entera para todos los usuarios.
+
+**Decisión.** El trigger permite el `DELETE` de la Bandeja cuando ya no
+existe fila en `auth.users` para ese `user_id`
+(`not exists (select 1 from auth.users where id = old.user_id)`), y sigue
+rechazándolo en cualquier otro caso. Se comprobó empíricamente en Postgres
+—no por deducción— que durante la cascada de `auth.users` la fila padre ya
+no está presente cuando el trigger de `projects` se dispara, a diferencia de
+un `DELETE` directo sobre `projects`, donde la fila de `auth.users` del
+usuario sigue existiendo. Migración:
+`20260727001408_projects_inbox_protection_allow_account_deletion.sql`.
+
+**Consecuencia.** Borrar, archivar o desmarcar `is_inbox` de la Bandeja por
+acción directa del usuario sigue bloqueado, con test dedicado en
+`supabase/tests/account-deletion.test.ts`. Cualquier cambio futuro a este
+trigger tiene que preservar la distinción entre las dos rutas: si se pierde,
+la eliminación de cuenta se vuelve a romper para todo el mundo.

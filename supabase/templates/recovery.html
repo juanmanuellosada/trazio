@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title>Restablecé tu contraseña de Trazio</title>
+    <!--[if mso]>
+    <noscript>
+      <xml>
+        <o:OfficeDocumentSettings>
+          <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+      </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+      @media (prefers-color-scheme: dark) {
+        .email-bg { background-color: #0f172a !important; }
+        .email-card { background-color: #1a2436 !important; border-color: #2a3547 !important; }
+        .email-heading { color: #f1f4f8 !important; }
+        .email-text,
+        .email-footer { color: #94a3b8 !important; }
+        .email-divider { border-color: #2a3547 !important; }
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f7f8fa;">
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#f7f8fa"
+      class="email-bg"
+      style="background-color: #f7f8fa; width: 100%;"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px;">
+          <table
+            role="presentation"
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            bgcolor="#ffffff"
+            class="email-card"
+            style="
+              background-color: #ffffff;
+              border: 1px solid #e2e5ea;
+              border-radius: 12px;
+              max-width: 600px;
+              width: 100%;
+            "
+          >
+            <tr>
+              <td style="padding: 32px 40px 24px 40px;" align="left">
+                <img
+                  src="https://trazio.com.ar/logo.png"
+                  width="40"
+                  height="40"
+                  alt="Trazio"
+                  style="display: block; border: 0; outline: none;"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 40px;" align="left">
+                <h1
+                  class="email-heading"
+                  style="
+                    margin: 0 0 16px 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 20px;
+                    line-height: 28px;
+                    font-weight: 600;
+                    color: #14181f;
+                  "
+                >
+                  Restablecé tu contraseña
+                </h1>
+                <p
+                  class="email-text"
+                  style="
+                    margin: 0 0 24px 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 16px;
+                    line-height: 24px;
+                    color: #5c6675;
+                  "
+                >
+                  Pediste restablecer la contraseña de tu cuenta de Trazio. Elegí una nueva desde este enlace.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 40px 24px 40px;" align="left">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td
+                      bgcolor="#283b56"
+                      style="background-color: #283b56; border-radius: 8px;"
+                      align="center"
+                    >
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 12px 24px;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 16px;
+                          font-weight: 500;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 8px;
+                        "
+                        >Restablecer contraseña</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 40px 32px 40px;" align="left">
+                <p
+                  class="email-text"
+                  style="
+                    margin: 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 14px;
+                    line-height: 20px;
+                    color: #5c6675;
+                  "
+                >
+                  Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br />
+                  <a href="{{ .ConfirmationURL }}" style="color: #283b56; word-break: break-all;"
+                    >{{ .ConfirmationURL }}</a
+                  >
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="email-divider"
+                style="padding: 24px 40px 32px 40px; border-top: 1px solid #e2e5ea;"
+                align="left"
+              >
+                <p
+                  class="email-footer"
+                  style="
+                    margin: 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 12px;
+                    line-height: 18px;
+                    color: #5c6675;
+                  "
+                >
+                  Si no pediste este cambio, podés ignorar este correo: tu contraseña actual sigue funcionando.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

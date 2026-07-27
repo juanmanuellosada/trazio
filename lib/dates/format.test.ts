@@ -27,7 +27,25 @@ describe("formatTaskDueLabel — lenguaje natural a menos de 7 días (8.7)", () 
   });
 });
 
-describe("formatTaskDueLabel — formato numérico a partir de 7 días o en el pasado", () => {
+describe("formatTaskDueLabel — lenguaje natural hacia atrás dentro de la ventana de 7 días", () => {
+  it("venció ayer: \"ayer\"", () => {
+    expect(formatTaskDueLabel({ due_date: "2026-07-25", due_at: null }, prefs())).toBe("ayer");
+  });
+
+  it("venció anteayer: \"anteayer\"", () => {
+    expect(formatTaskDueLabel({ due_date: "2026-07-24", due_at: null }, prefs())).toBe("anteayer");
+  });
+
+  it("venció hace 3 días: \"hace 3 días\"", () => {
+    expect(formatTaskDueLabel({ due_date: "2026-07-23", due_at: null }, prefs())).toBe("hace 3 días");
+  });
+
+  it("venció hace 6 días (todavía dentro de la ventana): \"hace 6 días\"", () => {
+    expect(formatTaskDueLabel({ due_date: "2026-07-20", due_at: null }, prefs())).toBe("hace 6 días");
+  });
+});
+
+describe("formatTaskDueLabel — formato numérico a partir de 7 días, en cualquiera de los dos sentidos", () => {
   it("vence en 7 días: fecha numérica, no día de la semana", () => {
     expect(formatTaskDueLabel({ due_date: "2026-08-02", due_at: null }, prefs())).toBe("02/08/2026");
   });
@@ -38,8 +56,14 @@ describe("formatTaskDueLabel — formato numérico a partir de 7 días o en el p
     ).toBe("2026-08-02");
   });
 
-  it("una fecha vencida (atrasada) siempre es numérica, aunque haya sido hace menos de 7 días", () => {
-    expect(formatTaskDueLabel({ due_date: "2026-07-24", due_at: null }, prefs())).toBe("24/07/2026");
+  it("venció hace 7 días: fecha numérica, no \"hace 7 días\"", () => {
+    expect(formatTaskDueLabel({ due_date: "2026-07-19", due_at: null }, prefs())).toBe("19/07/2026");
+  });
+
+  it("venció hace 7 días respetando date_format = yyyy-MM-dd", () => {
+    expect(
+      formatTaskDueLabel({ due_date: "2026-07-19", due_at: null }, prefs({ dateFormat: "yyyy-MM-dd" })),
+    ).toBe("2026-07-19");
   });
 });
 
