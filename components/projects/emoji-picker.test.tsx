@@ -51,6 +51,51 @@ describe("EmojiPicker", () => {
     expect(await screen.findByRole("option", { name: "cara sonriendo" })).toBeInTheDocument();
   });
 
+  it("el buscador encuentra por palabra clave sin relación léxica con el nombre, y no trae ruido del filtro difuso por defecto", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: /ícono/i }));
+    await screen.findByText("Emoticonos y emoción");
+
+    fireEvent.change(screen.getByPlaceholderText("Buscá un emoji…"), { target: { value: "trabajo" } });
+
+    // "profesional industrial" no tiene "trabajo" en el nombre, solo la tag
+    // "trabajador": encontrarlo depende de comparar por palabra, no de una
+    // coincidencia textual exacta.
+    expect(await screen.findByRole("option", { name: "profesional industrial" })).toBeInTheDocument();
+    // El filtro difuso por defecto de cmdk devolvía triángulos como mejor
+    // resultado para "trabajo" (subsecuencia de letras sin relación real).
+    expect(screen.queryByRole("option", { name: "triángulo hacia abajo" })).not.toBeInTheDocument();
+  });
+
+  it("el buscador encuentra sin tildes, igual que el parser", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: /ícono/i }));
+    await screen.findByText("Emoticonos y emoción");
+
+    fireEvent.change(screen.getByPlaceholderText("Buscá un emoji…"), { target: { value: "corazon" } });
+
+    expect(await screen.findByRole("option", { name: "corazón rojo" })).toBeInTheDocument();
+  });
+
+  it("el orden prioriza la coincidencia por nombre por sobre la que es solo por palabra clave", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: /ícono/i }));
+    await screen.findByText("Emoticonos y emoción");
+
+    fireEvent.change(screen.getByPlaceholderText("Buscá un emoji…"), { target: { value: "casa" } });
+
+    // "casa" se llama justo "casa"; "cabaña" solo tiene "casa" como tag.
+    await screen.findByRole("option", { name: "casa" });
+    const names = screen.getAllByRole("option").map((option) => option.getAttribute("aria-label"));
+    expect(names.indexOf("casa")).toBeLessThan(names.indexOf("cabaña"));
+  });
+
   it("elegir un emoji lo pasa a onChange y cierra el selector", async () => {
     const user = userEvent.setup();
     render(<Harness />);

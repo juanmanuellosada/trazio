@@ -1,21 +1,76 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Smile } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { OVERLAY_MODAL } from "@/components/primitives/overlay";
+import { normalize } from "@/lib/parser/normalize";
 
 type EmojiEntry = { unicode: string; label: string; tags: string[]; hexcode: string };
 type EmojiCategory = { key: string; label: string; order: number; emojis: EmojiEntry[] };
+type SearchIndex = { labelWords: string[]; tagWords: string[] };
 
 // "component" (tonos de piel, variantes de pelo) son piezas que modifican
 // otro emoji, no íconos con sentido propio: se excluyen del selector.
 const EXCLUDED_GROUP_KEY = "component";
 
+// Las palabras de las tags (sinónimos) valen menos que las del nombre
+// propio del emoji: si algo matchea por nombre, es más relevante.
+const TAG_WORD_WEIGHT = 0.75;
+
 function capitalize(text: string): string {
   return text.length === 0 ? text : text[0].toUpperCase() + text.slice(1);
+}
+
+function sharedPrefixLength(a: string, b: string): number {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+/**
+ * Puntaje de una palabra de búsqueda contra una palabra del emoji (ya
+ * normalizadas, sin tildes). Coincidencia exacta > empieza con la búsqueda
+ * > comparten un inicio largo (cubre variantes como "trabajo"/"trabajador",
+ * donde ninguna es prefijo exacta de la otra) > aparece en el medio. El
+ * principio de la palabra pesa más que el medio a propósito.
+ */
+function wordScore(word: string, searchWord: string): number {
+  if (word === searchWord) return 4;
+  if (word.startsWith(searchWord)) return 3;
+  const shared = sharedPrefixLength(searchWord, word);
+  if (shared >= 4 && shared / searchWord.length >= 0.75) return 2;
+  if (word.includes(searchWord)) return 1;
+  return 0;
+}
+
+function buildSearchIndex(label: string, tags: string[]): SearchIndex {
+  return {
+    labelWords: normalize(label).split(/\s+/).filter(Boolean),
+    tagWords: tags.flatMap((tag) => normalize(tag).split(/\s+/).filter(Boolean)),
+  };
+}
+
+/**
+ * Filtro propio del selector (en vez del filtro difuso por defecto de
+ * `cmdk`): con ~1900 entradas, ese filtro genérico matchea subsecuencias de
+ * letras en cualquier parte del nombre + tags concatenados, sin distinguir
+ * acentos, y devuelve resultados sin relación con lo escrito. Acá cada
+ * palabra de la búsqueda tiene que encontrar algo (si una no matchea nada,
+ * el emoji se descarta) y el puntaje total ordena el resto.
+ */
+function scoreAgainstIndex(searchWords: string[], index: SearchIndex): number {
+  let total = 0;
+  for (const searchWord of searchWords) {
+    let best = 0;
+    for (const word of index.labelWords) best = Math.max(best, wordScore(word, searchWord));
+    for (const word of index.tagWords) best = Math.max(best, wordScore(word, searchWord) * TAG_WORD_WEIGHT);
+    if (best === 0) return 0;
+    total += best;
+  }
+  return total;
 }
 
 /**
@@ -86,6 +141,30 @@ export function EmojiPicker({
     };
   }, [open, categories]);
 
+  // Se precalcula una sola vez por carga de datos (no en cada tecla): con
+  // ~1900 entradas, recalcular esto en cada filtrado sería el costo caro.
+  const searchIndexByHexcode = useMemo(() => {
+    const index = new Map<string, SearchIndex>();
+    if (!categories) return index;
+    for (const category of categories) {
+      for (const emoji of category.emojis) {
+        index.set(emoji.hexcode, buildSearchIndex(emoji.label, emoji.tags));
+      }
+    }
+    return index;
+  }, [categories]);
+
+  const filterEmoji = useMemo(
+    () => (hexcode: string, search: string) => {
+      const index = searchIndexByHexcode.get(hexcode);
+      if (!index) return 0;
+      const searchWords = normalize(search).split(/\s+/).filter(Boolean);
+      if (searchWords.length === 0) return 1;
+      return scoreAgainstIndex(searchWords, index);
+    },
+    [searchIndexByHexcode],
+  );
+
   return (
     <div className="space-y-1.5">
       <Label id={labelId}>Ícono (opcional)</Label>
@@ -98,7 +177,7 @@ export function EmojiPicker({
           {value ? <span aria-hidden>{value}</span> : <Smile aria-hidden className="size-4 text-text-secondary" />}
         </PopoverTrigger>
         <PopoverContent align="start" className="p-0">
-          <Command>
+          <Command filter={filterEmoji}>
             <CommandInput placeholder="Buscá un emoji…" aria-label="Buscar emoji" />
             <CommandList>
               {!categories ? (
@@ -107,23 +186,25 @@ export function EmojiPicker({
                 <>
                   <CommandEmpty>No encontramos ningún emoji con ese término.</CommandEmpty>
                   {categories.map((category) => (
-                    <CommandGroup key={category.key} heading={category.label}>
-                      <div className="grid grid-cols-8 gap-0.5 p-1">
-                        {category.emojis.map((emoji) => (
-                          <CommandItem
-                            key={emoji.hexcode}
-                            value={`${emoji.label} ${emoji.tags.join(" ")}`}
-                            aria-label={emoji.label}
-                            onSelect={() => {
-                              onChange(emoji.unicode);
-                              setOpen(false);
-                            }}
-                            className="flex size-8 items-center justify-center rounded-md p-0 text-base leading-none [&>svg]:hidden"
-                          >
-                            {emoji.unicode}
-                          </CommandItem>
-                        ))}
-                      </div>
+                    <CommandGroup
+                      key={category.key}
+                      heading={category.label}
+                      className="**:[[cmdk-group-items]]:grid **:[[cmdk-group-items]]:grid-cols-8 **:[[cmdk-group-items]]:gap-0.5 **:[[cmdk-group-items]]:p-1"
+                    >
+                      {category.emojis.map((emoji) => (
+                        <CommandItem
+                          key={emoji.hexcode}
+                          value={emoji.hexcode}
+                          aria-label={emoji.label}
+                          onSelect={() => {
+                            onChange(emoji.unicode);
+                            setOpen(false);
+                          }}
+                          className="flex size-8 items-center justify-center rounded-md p-0 text-base leading-none [&>svg]:hidden"
+                        >
+                          {emoji.unicode}
+                        </CommandItem>
+                      ))}
                     </CommandGroup>
                   ))}
                 </>

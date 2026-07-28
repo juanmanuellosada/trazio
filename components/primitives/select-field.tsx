@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -94,7 +94,6 @@ export function SelectField<T extends string>({
                 >
                   {option.icon}
                   {option.label}
-                  {option.value === value && <Check className="ml-auto size-3.5" aria-hidden />}
                 </CommandItem>
               ))}
             </CommandGroup>
