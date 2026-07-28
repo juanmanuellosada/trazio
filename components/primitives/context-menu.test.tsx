@@ -17,6 +17,21 @@ function Harness({ onSelectFirst }: { onSelectFirst: () => void }) {
   );
 }
 
+function SubmenuHarness({ onSelectNested }: { onSelectNested: () => void }) {
+  return (
+    <AppContextMenu
+      trigger={<div data-testid="target">Clic derecho acá</div>}
+      items={[
+        {
+          type: "submenu",
+          label: "Formato",
+          items: [{ label: "Negrita", onSelect: onSelectNested }],
+        },
+      ]}
+    />
+  );
+}
+
 describe("AppContextMenu", () => {
   it("abre con clic derecho y muestra las opciones", async () => {
     render(<Harness onSelectFirst={vi.fn()} />);
@@ -54,5 +69,20 @@ describe("AppContextMenu", () => {
 
     expect(onSelectFirst).not.toHaveBeenCalled();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("un submenú abre con las flechas y activa su opción con Enter (bloque 7, menú del editor)", async () => {
+    const onSelectNested = vi.fn();
+    const user = userEvent.setup();
+    render(<SubmenuHarness onSelectNested={onSelectNested} />);
+
+    fireEvent.contextMenu(screen.getByTestId("target"));
+    await screen.findByRole("menu");
+
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    expect(await screen.findByRole("menuitem", { name: "Negrita" })).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(onSelectNested).toHaveBeenCalledTimes(1);
   });
 });

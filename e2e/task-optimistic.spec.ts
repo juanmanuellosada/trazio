@@ -12,7 +12,9 @@ async function loginFreshUser(page: import("@playwright/test").Page, prefix: str
 }
 
 async function createTask(page: import("@playwright/test").Page, title: string) {
-  await page.getByRole("button", { name: "Agregar tarea" }).click();
+  // Scoped a `main`: el panel lateral tiene su propio botón homónimo
+  // "Agregar tarea" (bloque 10.2).
+  await page.getByRole("main").getByRole("button", { name: "Agregar tarea" }).click();
   const input = page.getByLabel("Título de la nueva tarea");
   await input.fill(title);
   await input.press("Enter");

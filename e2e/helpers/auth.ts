@@ -32,6 +32,10 @@ export async function login(page: Page, options: { email: string; password: stri
 }
 
 export async function logout(page: Page): Promise<void> {
-  await page.getByLabel("Cerrar sesión").click();
+  // Cerrar sesión vive dentro del menú de cuenta del pie del panel lateral
+  // (bloque 10.3), agrupado con Configuración y el cambio de tema en vez de
+  // suelto como antes.
+  await page.getByRole("button", { name: "Menú de cuenta" }).click();
+  await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
   await expect(page).toHaveURL(/\/$/);
 }

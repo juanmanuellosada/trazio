@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
@@ -303,5 +304,33 @@ describe("TaskList — abrir el detalle con doble clic, sin perder el camino por
     fireEvent.click(titleButton, { detail: 0 });
 
     expect(screen.getByTestId("open-task-id")).toHaveTextContent("t1");
+  });
+});
+
+describe("TaskList — alta de tareas (bloque 11.2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateError.current = null;
+    mock.updateCalls.length = 0;
+    mock.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
+  });
+
+  // `TaskList` monta la misma `TaskQuickAddRow` que usan Bandeja de entrada,
+  // Hoy y cada sección de un proyecto (única diferencia: los props de
+  // contexto que le pasa quien la monta) — cubrir el resaltado en vivo acá,
+  // dentro de la superficie real, prueba que sigue funcionando en las tres
+  // sin repetir los casos ya cubiertos en `task-quick-add-row.test.tsx`.
+  it("el resaltado en vivo del parser sigue funcionando en la fila de alta que TaskList monta al pie", async () => {
+    const user = userEvent.setup();
+    renderList([]);
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Comprar pan mañana");
+
+    await waitFor(() => {
+      const marks = document.querySelectorAll("mark");
+      expect(marks.length).toBe(1); // "mañana"
+    });
   });
 });

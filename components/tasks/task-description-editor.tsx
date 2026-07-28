@@ -1,50 +1,50 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import { Bold, Code, Italic, Link as LinkIcon, List, ListOrdered, Quote } from "lucide-react";
 import type { Json } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
+import { descriptionEditorExtensions } from "./description-editor/extensions";
+import { DescriptionEditorToolbar } from "./description-editor/toolbar";
+import { EditorContextMenu } from "./description-editor/editor-context-menu";
+import { LinkDialog } from "./description-editor/link-dialog";
 
 const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
-function ToolbarButton({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active?: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-      className={cn(
-        "flex size-7 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-        active && "bg-surface text-foreground",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+const EDITOR_CONTENT_CLASS = cn(
+  "min-h-32 text-base leading-relaxed outline-none",
+  "[&_p]:my-1",
+  "[&_h1]:mt-3 [&_h1]:mb-1 [&_h1]:text-xl [&_h1]:font-semibold",
+  "[&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-lg [&_h2]:font-semibold",
+  "[&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold",
+  "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
+  "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary",
+  "[&_code]:rounded [&_code]:bg-surface [&_code]:px-1 [&_code]:text-[0.85em]",
+  "[&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-surface [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
+  "[&_a]:text-primary [&_a]:underline",
+  "[&_hr]:my-4 [&_hr]:border-border",
+  "[&_mark]:rounded [&_mark]:bg-[color-mix(in_oklch,var(--priority-high),transparent_75%)] [&_mark]:px-0.5",
+  "[&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
+  "[&_th]:border [&_th]:border-border [&_th]:bg-surface [&_th]:p-1.5 [&_th]:text-left [&_th]:font-medium",
+  "[&_td]:border [&_td]:border-border [&_td]:p-1.5",
+  "[&_ul[data-type=taskList]]:list-none [&_ul[data-type=taskList]]:pl-0",
+  "[&_ul[data-type=taskList]_li]:flex [&_ul[data-type=taskList]_li]:items-start [&_ul[data-type=taskList]_li]:gap-1.5",
+  "[&_ul[data-type=taskList]_li>label]:mt-0.5",
+  "[&_ul[data-type=taskList]_li[data-checked=true]>div>p]:text-text-secondary [&_ul[data-type=taskList]_li[data-checked=true]>div>p]:line-through",
+);
 
 /**
- * Descripción de una tarea (bloque 7.3): Tiptap, guardada como jsonb, con
- * texto enriquecido (negrita, itálica, listas, links, código, citas — la
- * tabla de entidades de `docs/product-spec.md` §2). El autoguardado en sí
- * (debounce, no pisar lo que se está escribiendo) lo maneja
- * `task-detail-content.tsx`, que le pasa `onChange`; este componente solo
- * traduce el editor a jsonb.
+ * Descripción de una tarea (bloque 7): Tiptap, guardada como jsonb, con
+ * texto enriquecido — títulos, negrita, itálica, tachado, resaltado,
+ * código, listas (con viñetas, numeradas, de tareas), citas, tablas,
+ * notas al pie y destacado (`description-editor/`, decisión D31). Sin
+ * fórmula matemática (D30). El autoguardado en sí (debounce, no pisar lo
+ * que se está escribiendo) lo maneja `task-detail-content.tsx`, que le pasa
+ * `onChange`; este componente solo traduce el editor a jsonb — `content`
+ * se usa exclusivamente como valor inicial de `useEditor` (deps `[]`, la
+ * librería no reconstruye el editor cuando cambia esta prop), así que una
+ * invalidación de query o un evento de Realtime que actualice `content`
+ * mientras se edita nunca pisa lo que se está escribiendo.
  */
 export function TaskDescriptionEditor({
   content,
@@ -55,14 +55,16 @@ export function TaskDescriptionEditor({
   onChange: (json: Json) => void;
   disabled?: boolean;
 }) {
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+
   const editor = useEditor({
-    extensions: [StarterKit, Link.configure({ openOnClick: false })],
+    extensions: descriptionEditorExtensions(),
     content: (content as object | null) ?? EMPTY_DOC,
     editable: !disabled,
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: "min-h-24 text-base leading-relaxed outline-none [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary [&_code]:rounded [&_code]:bg-surface [&_code]:px-1 [&_a]:text-primary [&_a]:underline",
+        class: EDITOR_CONTENT_CLASS,
       },
     },
     onUpdate: ({ editor: current }) => onChange(current.getJSON() as Json),
@@ -74,47 +76,43 @@ export function TaskDescriptionEditor({
 
   if (!editor) return null;
 
-  function toggleLink() {
+  const linkInitialUrl = editor.isActive("link") ? (editor.getAttributes("link").href as string) : null;
+
+  function handleLinkConfirm(url: string) {
     if (!editor) return;
-    if (editor.isActive("link")) {
-      editor.chain().focus().unsetLink().run();
+    if (editor.state.selection.empty) {
+      editor
+        .chain()
+        .focus()
+        .insertContent({ type: "text", text: url, marks: [{ type: "link", attrs: { href: url } }] })
+        .run();
       return;
     }
-    const url = window.prompt("URL del link:");
-    if (!url) return;
-    editor.chain().focus().setLink({ href: url }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }
+
+  function handleLinkRemove() {
+    editor?.chain().focus().extendMarkRange("link").unsetLink().run();
   }
 
   return (
     <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border pb-1.5" role="toolbar" aria-label="Formato de la descripción">
-        <ToolbarButton label="Negrita" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
-          <Bold className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton label="Itálica" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
-          <Italic className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton label="Lista" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-          <List className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Lista numerada"
-          active={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      <DescriptionEditorToolbar editor={editor} onOpenLinkDialog={() => setLinkDialogOpen(true)} />
+      <EditorContextMenu editor={editor} onOpenLinkDialog={() => setLinkDialogOpen(true)}>
+        <div
+          data-testid="task-description-editor"
+          className="rounded-lg border border-border bg-background px-3 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
         >
-          <ListOrdered className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton label="Cita" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-          <Quote className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton label="Código" active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()}>
-          <Code className="size-3.5" />
-        </ToolbarButton>
-        <ToolbarButton label="Link" active={editor.isActive("link")} onClick={toggleLink}>
-          <LinkIcon className="size-3.5" />
-        </ToolbarButton>
-      </div>
-      <EditorContent editor={editor} />
+          <EditorContent editor={editor} />
+        </div>
+      </EditorContextMenu>
+      <LinkDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        initialUrl={linkInitialUrl}
+        onConfirm={handleLinkConfirm}
+        onRemove={linkInitialUrl ? handleLinkRemove : undefined}
+      />
     </div>
   );
 }

@@ -18,17 +18,9 @@ test.describe("14.11 — flujo completo del producto", () => {
     await createRootProject(page, projectName);
     await openProject(page, projectName);
 
-    // "mañana" en la zona horaria por defecto de la cuenta (B4:
-    // America/Argentina/Buenos_Aires), calculada en tiempo real porque el
-    // parser corre contra el reloj real de la app, no uno congelado.
-    const tomorrow = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Argentina/Buenos_Aires",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(Date.now() + 24 * 60 * 60 * 1000));
-
-    await page.getByRole("button", { name: "Agregar tarea" }).click();
+    // Scoped a `main`: el panel lateral tiene su propio botón homónimo
+    // "Agregar tarea" (bloque 10.2).
+    await page.getByRole("main").getByRole("button", { name: "Agregar tarea" }).click();
     const input = page.getByLabel("Título de la nueva tarea");
     await input.fill("Comprar café mañana p1");
     await input.press("Enter");
@@ -40,10 +32,23 @@ test.describe("14.11 — flujo completo del producto", () => {
     const checkbox = page.getByRole("checkbox", { name: `Completar ${cleanTitle}` });
     await expect(checkbox).toBeVisible();
 
-    await page.getByRole("button", { name: cleanTitle, exact: true }).click();
+    // Abrir el detalle pide un doble clic real de mouse desde el bloque 6
+    // (un clic simple ya no alcanza, para no competir con la selección de
+    // texto ni con arrastrar la fila): `.dblclick()`, no `.click()`. El
+    // nombre accesible del botón del título incluye la metadata (acá,
+    // "mañana") desde el bloque 3 (design.md C1: la fecha ahora vive
+    // pegada al título dentro del mismo botón, no como hermano suyo). Es
+    // "mañana" en la zona horaria por defecto de la cuenta (B4:
+    // America/Argentina/Buenos_Aires) sin necesidad de calcularlo a mano:
+    // el parser corre contra el reloj real, y a menos de una semana
+    // `formatTaskDueLabel` siempre usa lenguaje natural.
+    await page.getByRole("button", { name: `${cleanTitle} mañana`, exact: true }).dblclick();
+    // El detalle es un modal centrado (D28), no el panel lateral de antes:
+    // se verifica que abre como diálogo y que sus selectores propios (no
+    // `<input type="date">`) reflejan lo que reconoció el parser.
     const detail = page.getByRole("dialog", { name: "Detalle de la tarea" });
     await expect(detail.getByRole("button", { name: /Urgente/ })).toBeVisible();
-    await expect(detail.getByRole("textbox", { name: "Vencimiento" })).toHaveValue(tomorrow);
+    await expect(detail.getByRole("button", { name: "Fecha de vencimiento" })).toHaveText("mañana");
 
     await detail.getByRole("button", { name: "Cerrar detalle" }).click();
 

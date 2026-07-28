@@ -22,7 +22,9 @@ test.describe("14.5 — un cambio en una pestaña aparece en otra en menos de do
       const title = uniqueName("Sincronizada");
 
       const start = Date.now();
-      await pageA.getByRole("button", { name: "Agregar tarea" }).click();
+      // Scoped a `main`: el panel lateral tiene su propio botón homónimo
+      // "Agregar tarea" (bloque 10.2).
+      await pageA.getByRole("main").getByRole("button", { name: "Agregar tarea" }).click();
       const input = pageA.getByLabel("Título de la nueva tarea");
       await input.fill(title);
       await input.press("Enter");

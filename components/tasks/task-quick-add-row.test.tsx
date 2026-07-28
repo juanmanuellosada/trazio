@@ -372,6 +372,45 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(title).toHaveFocus();
   });
 
+  it("con defaultDueDate (bloque 8.2, vista Hoy), la tarea se crea con esa fecha si el título no reconoce ninguna", async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={TEST_PREFERENCES}>
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.due_date).toBe("2026-08-01");
+  });
+
+  it("con defaultDueDate, una fecha que el parser reconoce en el título le gana al valor por defecto", async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={TEST_PREFERENCES}>
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.due_date).not.toBeNull();
+    expect(insertedTask()!.due_date).not.toBe("2026-08-01");
+  });
+
   it("no muestra selector de proyecto destino al crear una subtarea: el proyecto es el de la tarea padre", async () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();

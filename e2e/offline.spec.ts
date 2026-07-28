@@ -12,7 +12,10 @@ test.describe("14.6 — sin internet avisa y no permite escribir", () => {
     await createConfirmedUser({ email, password: PASSWORD, fullName: uniqueName("Persona") });
     await login(page, { email, password: PASSWORD });
 
-    const addButton = page.getByRole("button", { name: "Agregar tarea" });
+    // Scoped a `main`: el panel lateral tiene su propio botón homónimo
+    // "Agregar tarea" (bloque 10.2), también dentro del mismo `inert` que
+    // envuelve toda la app (`OfflineBoundary` no distingue entre los dos).
+    const addButton = page.getByRole("main").getByRole("button", { name: "Agregar tarea" });
     await expect(addButton).toBeVisible();
 
     const banner = page.getByRole("alert").filter({ hasText: "Estás sin conexión" });

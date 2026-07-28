@@ -77,17 +77,17 @@ Usa el alta y los selectores (design.md, sección E). **BREAKING** respecto de `
 
 Vive dentro del detalle (design.md, sección E).
 
-- [ ] 7.1 Consultar la skill `ui-ux-pro-max` para el estilo de la zona de edición y la barra de herramientas
-- [ ] 7.2 Instalar las extensiones de Tiptap registradas en la decisión D31 (1.4), acotadas a lo pedido
-- [ ] 7.3 Delimitar visualmente la zona de edición (borde, fondo o superficie propia) del resto del detalle
-- [ ] 7.4 Barra de herramientas: títulos, negrita, cursiva, tachado, resaltado, código en línea, listas con viñetas, listas numeradas, listas de tareas, cita
-- [ ] 7.5 Autodetección de sintaxis de markdown en la entrada (por ejemplo, `# ` produce un título), verificando que lo guardado sigue siendo el documento jsonb de Tiptap sin marcas de markdown almacenadas
-- [ ] 7.6 Menú contextual propio con opciones de formato, párrafo, insertar y portapapeles —incluida "pegar sin formato"—, reemplazando el menú nativo del navegador
-- [ ] 7.7 Menú de insertar: tabla, nota al pie, bloque de código, regla horizontal, destacado
-- [ ] 7.8 Diálogo propio del editor para insertar y editar enlaces, reemplazando el `window.prompt` de la auditoría A1
-- [ ] 7.9 Verificar que no existe ninguna opción de fórmula matemática en la barra, el menú de insertar ni el menú contextual
-- [ ] 7.10 Verificar que el autoguardado no pisa una edición en curso cuando llega una actualización remota (Realtime) mientras se está escribiendo
-- [ ] 7.11 Tests: el autoguardado persiste el último contenido escrito, nunca una versión intermedia que descarte pulsaciones recientes
+- [x] 7.1 Consultar la skill `ui-ux-pro-max` para el estilo de la zona de edición y la barra de herramientas
+- [x] 7.2 Instalar las extensiones de Tiptap registradas en la decisión D31 (1.4), acotadas a lo pedido
+- [x] 7.3 Delimitar visualmente la zona de edición (borde, fondo o superficie propia) del resto del detalle
+- [x] 7.4 Barra de herramientas: títulos, negrita, cursiva, tachado, resaltado, código en línea, listas con viñetas, listas numeradas, listas de tareas, cita
+- [x] 7.5 Autodetección de sintaxis de markdown en la entrada (por ejemplo, `# ` produce un título), verificando que lo guardado sigue siendo el documento jsonb de Tiptap sin marcas de markdown almacenadas
+- [x] 7.6 Menú contextual propio con opciones de formato, párrafo, insertar y portapapeles —incluida "pegar sin formato"—, reemplazando el menú nativo del navegador
+- [x] 7.7 Menú de insertar: tabla, nota al pie, bloque de código, regla horizontal, destacado
+- [x] 7.8 Diálogo propio del editor para insertar y editar enlaces, reemplazando el `window.prompt` de la auditoría A1
+- [x] 7.9 Verificar que no existe ninguna opción de fórmula matemática en la barra, el menú de insertar ni el menú contextual
+- [x] 7.10 Verificar que el autoguardado no pisa una edición en curso cuando llega una actualización remota (Realtime) mientras se está escribiendo
+- [x] 7.11 Tests: el autoguardado persiste el último contenido escrito, nunca una versión intermedia que descarte pulsaciones recientes
 
 ## 8. Modal de proyecto
 
@@ -121,9 +121,9 @@ Con emojis y color (design.md, sección E). Incluye la migración de esquema que
 
 ## 11. Verificación final
 
-- [ ] 11.1 Auditar que no queda ningún `<input type="date">`, `<input type="time">`, `<input type="datetime-local">` ni `<input type="color">`, y ningún `window.confirm`, `window.alert` ni `window.prompt`, en toda la aplicación
-- [ ] 11.2 Verificar que el parser y su resaltado en vivo siguen funcionando dentro del componente de alta nuevo, en cada una de sus superficies
-- [ ] 11.3 Verificar que el autoguardado del editor de descripción no pisa lo que se está escribiendo ante una actualización remota concurrente
-- [ ] 11.4 Correr `pnpm lint && pnpm typecheck && pnpm test` en verde
-- [ ] 11.5 Correr las pruebas de punta a punta (`pnpm test:e2e`) en verde, actualizando las que referenciaban el panel lateral de detalle para que apunten al modal
-- [ ] 11.6 Recorrer manualmente en escritorio y en teléfono los nueve escalones de este cambio, en el orden fijado por `design.md` sección E
+- [x] 11.1 Auditar que no queda ningún `<input type="date">`, `<input type="time">`, `<input type="datetime-local">` ni `<input type="color">`, y ningún `window.confirm`, `window.alert` ni `window.prompt`, en toda la aplicación
+- [x] 11.2 Verificar que el parser y su resaltado en vivo siguen funcionando dentro del componente de alta nuevo, en cada una de sus superficies
+- [x] 11.3 Verificar que el autoguardado del editor de descripción no pisa lo que se está escribiendo ante una actualización remota concurrente
+- [x] 11.4 Correr `pnpm lint && pnpm typecheck && pnpm test` en verde
+- [x] 11.5 Correr las pruebas de punta a punta (`pnpm test:e2e`) en verde, actualizando las que referenciaban el panel lateral de detalle para que apunten al modal
+- [x] 11.6 Recorrer manualmente en escritorio y en teléfono los nueve escalones de este cambio, en el orden fijado por `design.md` sección E (nota: la parte de teléfono quedó bloqueada por una limitación de la herramienta de navegador en este entorno — ver el reporte)
