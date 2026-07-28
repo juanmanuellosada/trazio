@@ -77,4 +77,17 @@ describe("AppDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(document.activeElement).toBe(openButton);
   });
+
+  it("con `hideTitle`, el título sigue anunciándose al lector de pantalla pero no se ve, y `showCloseButton={false}` saca el botón nativo (bloque 6, detalle de tarea)", async () => {
+    render(
+      <AppDialog open onOpenChange={() => {}} title="Detalle de la tarea" hideTitle showCloseButton={false}>
+        <p>Contenido propio</p>
+      </AppDialog>,
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Detalle de la tarea" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText("Detalle de la tarea").parentElement).toHaveClass("sr-only");
+    expect(screen.queryByRole("button", { name: /close/i })).not.toBeInTheDocument();
+  });
 });

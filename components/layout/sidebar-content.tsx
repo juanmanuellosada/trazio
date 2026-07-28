@@ -1,8 +1,8 @@
-import { Inbox, Sun, CheckCircle2, Settings } from "lucide-react";
+import { Inbox, Sun, CheckCircle2 } from "lucide-react";
 import { NavLink } from "./nav-link";
+import { SidebarAddTask } from "./sidebar-add-task";
+import { AccountMenu } from "./account-menu";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
-import { ThemeToggle } from "./theme-toggle";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
@@ -46,6 +46,10 @@ export function SidebarContent({
   // del Server Component (`getSidebarProjects`): el bloque 6 no toca
   // `tasks`, así que ese número se actualiza recién con el bloque 7.
   const taskCounts = new Map(projects.map((p) => [p.id, p.taskCount]));
+  // Destino del acceso rápido de alta del bloque 10.2: la Bandeja de
+  // entrada ya viene en `initialProjects` (D27, siempre existe una por
+  // usuario), así que no hace falta un fetch aparte para resolverla.
+  const inboxProjectId = initialProjects.find((p) => p.is_inbox)?.id ?? null;
 
   return (
     <div className="flex h-full flex-col">
@@ -66,11 +70,15 @@ export function SidebarContent({
 
       <Separator />
 
-      <nav className="flex flex-col gap-0.5 p-2" aria-label="Navegación principal">
-        <NavLink href="/bandeja" label="Bandeja de entrada" icon={Inbox} collapsed={collapsed} />
-        <NavLink href="/hoy" label="Hoy" icon={Sun} collapsed={collapsed} count={todayCount} />
-        <NavLink href="/completado" label="Completado" icon={CheckCircle2} collapsed={collapsed} />
-      </nav>
+      <div className="flex flex-col gap-0.5 p-2">
+        <SidebarAddTask collapsed={collapsed} inboxProjectId={inboxProjectId} />
+        {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba. */}
+        <nav className="contents" aria-label="Navegación principal">
+          <NavLink href="/bandeja" label="Bandeja de entrada" icon={Inbox} collapsed={collapsed} />
+          <NavLink href="/hoy" label="Hoy" icon={Sun} collapsed={collapsed} count={todayCount} />
+          <NavLink href="/completado" label="Completado" icon={CheckCircle2} collapsed={collapsed} />
+        </nav>
+      </div>
 
       {!collapsed && (
         <>
@@ -82,14 +90,8 @@ export function SidebarContent({
       {collapsed && <div className="flex-1" />}
 
       <Separator />
-      <div className="flex flex-col gap-0.5 p-2">
-        <ThemeToggle collapsed={collapsed} />
-        <NavLink href="/configuracion" label="Configuración" icon={Settings} collapsed={collapsed} />
-        <LogoutButton
-          variant="ghost"
-          collapsed={collapsed}
-          className={cn("h-10 w-full justify-start gap-2.5 px-2.5 font-medium")}
-        />
+      <div className="p-2">
+        <AccountMenu collapsed={collapsed} />
       </div>
     </div>
   );

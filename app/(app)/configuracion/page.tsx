@@ -1,49 +1,32 @@
-import { redirect } from "next/navigation";
-import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/supabase/current-user";
-import { getSettingsData } from "@/lib/preferences/get-settings-data";
-import { ProfileSection } from "@/components/settings/profile-section";
-import { ThemeSection } from "@/components/settings/theme-section";
-import { GeneralSection } from "@/components/settings/general-section";
-import { InstallSection } from "@/components/settings/install-section";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Configuración — Trazio",
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSettings } from "@/components/settings/settings-context";
 
 /**
- * Pantalla de configuración (bloque 11): Perfil, Tema, General e
- * Instalación — las cuatro secciones de fase 1 del spec de
- * `openspec/changes/fase-1-base-usable/specs/configuracion/spec.md`.
- * Notificaciones y Calendarios son de fases posteriores y no van acá. No
- * hay selector de idioma (D4): Trazio es solo en español.
+ * Compatibilidad con enlaces existentes a `/configuracion` (bloque 9.2): la
+ * configuración pasó a ser un modal (`SettingsModal`, montado una sola vez
+ * en `app/(app)/layout.tsx`) en vez de una pantalla propia — spec de
+ * `configuracion`, "abre como una capa superpuesta, no como una pantalla
+ * nueva". Esta ruta ya no tiene contenido propio: abre el modal y vuelve a
+ * la bandeja, para que un enlace o marcador viejo a esta URL no quede roto
+ * en vez de simplemente desaparecer.
+ *
+ * El efecto que abre el modal y redirige corre recién después del primer
+ * pintado: por un instante no hay nada más que el layout alrededor de un
+ * `<main>` vacío. "Cargando…" en vez de `null` evita que ese instante se
+ * vea como una pantalla en blanco (mismo texto que ya usa `SettingsModal`
+ * mientras trae los datos).
  */
-export default async function ConfiguracionPage() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+export default function ConfiguracionPage() {
+  const router = useRouter();
+  const { open } = useSettings();
 
-  const data = await getSettingsData(user.id);
+  useEffect(() => {
+    open();
+    router.replace("/bandeja");
+  }, [open, router]);
 
-  return (
-    <div className="flex h-full flex-col">
-      <header className="border-b border-border px-4 py-4 sm:px-6">
-        <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
-      </header>
-      <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
-        <ProfileSection userId={data.userId} fullName={data.fullName} email={data.email} hasPassword={data.hasPassword} />
-        <ThemeSection />
-        <GeneralSection
-          userId={data.userId}
-          timezone={data.timezone}
-          dateFormat={data.dateFormat}
-          timeFormat={data.timeFormat}
-          weekStartsOn={data.weekStartsOn}
-          defaultView={data.defaultView}
-        />
-        <InstallSection />
-      </div>
-    </div>
-  );
+  return <p className="p-6 text-sm text-text-secondary">Cargando…</p>;
 }

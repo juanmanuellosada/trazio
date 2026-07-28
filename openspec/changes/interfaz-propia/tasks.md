@@ -65,13 +65,13 @@ Usa los selectores (design.md, sección E).
 
 Usa el alta y los selectores (design.md, sección E). **BREAKING** respecto de `docs/product-spec.md` §3 ya actualizado en 1.5.
 
-- [ ] 6.1 Consultar la skill `ui-ux-pro-max` para el diseño del modal de detalle centrado
-- [ ] 6.2 Migrar el detalle de tarea de panel lateral a modal centrado por encima de la pantalla, sin ningún control para redimensionarlo
-- [ ] 6.3 Mantener pantalla completa en teléfono
-- [ ] 6.4 Quitar la persistencia del ancho del panel en `localStorage`, que deja de tener sentido con el modal
-- [ ] 6.5 Reemplazar los tres campos nativos del detalle (`type="date"` en fecha de vencimiento y en fecha límite, `type="datetime-local"` en la hora) por los selectores propios de `selectores-de-atributos`
-- [ ] 6.6 Verificar que el título y la descripción se siguen autoguardando sin ninguna acción explícita de guardado
-- [ ] 6.7 Verificar que la ruta `app/(app)/tarea/[id]` y "abrir en ventana aparte" siguen funcionando igual que antes del cambio
+- [x] 6.1 Consultar la skill `ui-ux-pro-max` para el diseño del modal de detalle centrado
+- [x] 6.2 Migrar el detalle de tarea de panel lateral a modal centrado por encima de la pantalla, sin ningún control para redimensionarlo
+- [x] 6.3 Mantener pantalla completa en teléfono
+- [x] 6.4 Quitar la persistencia del ancho del panel en `localStorage`, que deja de tener sentido con el modal
+- [x] 6.5 Reemplazar los tres campos nativos del detalle (`type="date"` en fecha de vencimiento y en fecha límite, `type="datetime-local"` en la hora) por los selectores propios de `selectores-de-atributos` (ya resuelto en el bloque 4, `09bdfab`: verificado que no queda ninguno)
+- [x] 6.6 Verificar que el título y la descripción se siguen autoguardando sin ninguna acción explícita de guardado
+- [x] 6.7 Verificar que la ruta `app/(app)/tarea/[id]` y "abrir en ventana aparte" siguen funcionando igual que antes del cambio
 
 ## 7. Editor de descripción
 
@@ -106,18 +106,18 @@ Con emojis y color (design.md, sección E). Incluye la migración de esquema que
 
 ## 9. Configuración como modal
 
-- [ ] 9.1 Consultar la skill `ui-ux-pro-max` para el diseño del modal de configuración con secciones navegables
-- [ ] 9.2 Migrar la configuración de pantalla propia a modal por encima de la vista actual, con secciones navegables
-- [ ] 9.3 Verificar que en fase 1 solo aparecen las secciones Cuenta, General, Tema e Instalación, sin Notificaciones ni Calendarios
-- [ ] 9.4 Sección Cuenta: mostrar si el acceso se hizo con Google ofreciendo desvincularlo, sin ofrecer ningún flujo para vincular Google a una cuenta creada con correo y contraseña
-- [ ] 9.5 Verificar que ninguna sección se muestra deshabilitada, en gris, ni con aviso de "próximamente"
+- [x] 9.1 Consultar la skill `ui-ux-pro-max` para el diseño del modal de configuración con secciones navegables
+- [x] 9.2 Migrar la configuración de pantalla propia a modal por encima de la vista actual, con secciones navegables
+- [x] 9.3 Verificar que en fase 1 solo aparecen las secciones Cuenta, General, Tema e Instalación, sin Notificaciones ni Calendarios
+- [x] 9.4 Sección Cuenta: mostrar si el acceso se hizo con Google ofreciendo desvincularlo, sin ofrecer ningún flujo para vincular Google a una cuenta creada con correo y contraseña
+- [x] 9.5 Verificar que ninguna sección se muestra deshabilitada, en gris, ni con aviso de "próximamente"
 
 ## 10. Panel lateral
 
-- [ ] 10.1 Consultar la skill `ui-ux-pro-max` para el botón de agregar tarea y el menú de cuenta agrupado
-- [ ] 10.2 Agregar el botón de agregar tarea al panel lateral, abriendo el componente de alta de `alta-de-tareas`
-- [ ] 10.3 Agrupar cambiar tema, Configuración y cerrar sesión en un menú de cuenta al pie del panel, en vez de mostrarlos sueltos
-- [ ] 10.4 Verificar que el control de colapsar sigue siendo distinguible del resto de los accesos
+- [x] 10.1 Consultar la skill `ui-ux-pro-max` para el botón de agregar tarea y el menú de cuenta agrupado
+- [x] 10.2 Agregar el botón de agregar tarea al panel lateral, abriendo el componente de alta de `alta-de-tareas`
+- [x] 10.3 Agrupar cambiar tema, Configuración y cerrar sesión en un menú de cuenta al pie del panel, en vez de mostrarlos sueltos
+- [x] 10.4 Verificar que el control de colapsar sigue siendo distinguible del resto de los accesos
 
 ## 11. Verificación final
 

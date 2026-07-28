@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SidebarContent } from "./sidebar-content";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,24 @@ export function AppSidebar({
     });
   }
 
+  const toggleLabel = collapsed ? "Expandir panel lateral" : "Colapsar panel lateral";
+  // Antes este control solo tenía `aria-label` (invisible para quien usa el
+  // mouse) y un ícono de 14px casi pegado al borde: nada explicaba qué hacía
+  // antes de apretarlo. El `Tooltip` (mismo patrón que `NavLink` para sus
+  // accesos colapsados) lo pone en texto visible al pasar el mouse, y el
+  // ícono ya cambia de dirección según el estado — `PanelLeftOpen` "entra"
+  // al panel, `PanelLeftClose` "sale" de él.
+  const toggleButton = (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={toggleLabel}
+      className="absolute -right-3.5 top-16 flex size-7 items-center justify-center rounded-full border border-border bg-background text-text-secondary shadow-sm outline-none hover:border-ring hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+    </button>
+  );
+
   return (
     <aside
       className={cn(
@@ -64,14 +83,10 @@ export function AppSidebar({
         projects={projects}
         initialProjects={initialProjects}
       />
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={collapsed ? "Expandir panel lateral" : "Colapsar panel lateral"}
-        className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border border-border bg-background text-text-secondary shadow-sm outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        {collapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
-      </button>
+      <Tooltip>
+        <TooltipTrigger render={toggleButton} />
+        <TooltipContent side="right">{toggleLabel}</TooltipContent>
+      </Tooltip>
     </aside>
   );
 }

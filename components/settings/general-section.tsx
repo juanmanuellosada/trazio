@@ -85,7 +85,7 @@ export function GeneralSection({
   }
 
   return (
-    <section className="space-y-5 rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <section className="space-y-5">
       <h2 className="text-lg font-semibold text-foreground">General</h2>
 
       <div className="space-y-1.5">

@@ -39,7 +39,7 @@ export function ThemeSection() {
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <section className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground">Tema</h2>
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Elegí el tema de la interfaz</legend>

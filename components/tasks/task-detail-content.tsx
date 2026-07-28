@@ -45,8 +45,9 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
 
   // Estado local sembrado una sola vez (este componente remonta por
-  // `key={task.id}` en `task-detail-panel.tsx` y en la ruta `tarea/[id]`
-  // cada vez que cambia la tarea): así el autoguardado nunca pisa lo que la
+  // `key={task.id}` en `task-detail-panel.tsx` — modal en escritorio,
+  // pantalla completa en teléfono — y en la ruta `tarea/[id]` cada vez que
+  // cambia la tarea): así el autoguardado nunca pisa lo que la
   // persona está escribiendo con datos que vuelven a llegar del servidor
   // (por ejemplo, al invalidar la query después de guardar, o por un
   // evento de Realtime) mientras sigue editando la misma tarea.
@@ -192,12 +193,12 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
 }
 
 /**
- * Contenido del detalle de una tarea (bloque 7.10/7.11), compartido por el
- * panel lateral y la ruta `app/(app)/tarea/[id]`: título y descripción se
- * autoguardan, el resto de los campos guardan al instante. `initialData`
- * siembra el caché cuando viene de un Server Component (la ruta suelta);
- * el panel abierto desde dentro de la app no tiene esa siembra y arranca en
- * carga.
+ * Contenido del detalle de una tarea (bloque 6, antes 7.10/7.11), compartido
+ * por el modal de detalle (`task-detail-panel.tsx`) y la ruta
+ * `app/(app)/tarea/[id]`: título y descripción se autoguardan, el resto de
+ * los campos guardan al instante. `initialData` siembra el caché cuando
+ * viene de un Server Component (la ruta suelta); el modal abierto desde
+ * dentro de la app no tiene esa siembra y arranca en carga.
  */
 export function TaskDetailContent({
   taskId,

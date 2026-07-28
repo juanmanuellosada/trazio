@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { TaskDetailContent } from "./task-detail-content";
-import type { TaskDetail } from "@/lib/tasks/use-task";
+import { taskDetailQueryKey, type TaskDetail } from "@/lib/tasks/use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 
@@ -105,6 +105,7 @@ function renderDetail(task: TaskDetail = baseTask) {
       </PreferencesProvider>
     </QueryClientProvider>,
   );
+  return { queryClient };
 }
 
 describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => {
@@ -151,6 +152,39 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
 
     await waitFor(() =>
       expect(mock.updateCalls.some((c) => c.table === "tasks" && c.patch.priority === 1)).toBe(true),
+    );
+  });
+
+  it("no pisa el título en edición cuando llega una actualización del servidor a mitad de la escritura (invalidación o Realtime)", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderDetail();
+
+    const titleInput = screen.getByLabelText("Título de la tarea");
+    await user.clear(titleInput);
+    await user.type(titleInput, "Pagar el alquiler de");
+
+    // Simula lo que dispararía un evento de Realtime o una invalidación de
+    // query que llega mientras la persona todavía está escribiendo: el
+    // caché se actualiza con un valor de servidor distinto al que se está
+    // tipeando. El estado del título vive en `useState` sembrado una sola
+    // vez (ver el comentario en `task-detail-content.tsx`), así que no debe
+    // re-sincronizarse desde acá.
+    queryClient.setQueryData(taskDetailQueryKey(baseTask.id), {
+      ...baseTask,
+      title: "Un título distinto que llegó del servidor",
+    });
+
+    expect(titleInput).toHaveValue("Pagar el alquiler de");
+
+    await user.type(titleInput, " agosto");
+    expect(titleInput).toHaveValue("Pagar el alquiler de agosto");
+
+    await waitFor(
+      () =>
+        expect(
+          mock.updateCalls.some((c) => c.table === "tasks" && c.patch.title === "Pagar el alquiler de agosto"),
+        ).toBe(true),
+      { timeout: 2000 },
     );
   });
 });

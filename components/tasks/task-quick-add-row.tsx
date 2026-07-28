@@ -95,6 +95,7 @@ export function TaskQuickAddRow({
   parentId,
   indent,
   defaultDueDate,
+  defaultExpanded,
 }: {
   projectId: string;
   sectionId: string | null;
@@ -102,8 +103,10 @@ export function TaskQuickAddRow({
   indent?: boolean;
   /** Fecha (`yyyy-MM-dd`) precargada cuando el parser no reconoció ninguna (bloque 8.2: el alta rápida de Hoy). */
   defaultDueDate?: string;
+  /** Arranca ya desplegado en vez de mostrar primero el botón "Agregar tarea" (bloque 10.2: el diálogo del panel lateral no necesita ese clic extra, porque abrirlo ya es la acción de "quiero agregar una tarea"). Sin efecto sobre las demás superficies, que no la pasan y siguen arrancando colapsadas. */
+  defaultExpanded?: boolean;
 }) {
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(defaultExpanded ?? false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [disabledMatches, setDisabledMatches] = useState<Set<string>>(new Set());

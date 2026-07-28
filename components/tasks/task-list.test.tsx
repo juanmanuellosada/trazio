@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import * as toastModule from "@/lib/toast";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
-import { TaskDetailProvider } from "./task-detail-context";
+import { TaskDetailProvider, useTaskDetail } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
 
@@ -130,6 +130,27 @@ function renderList(tasks: TaskRow[]) {
   );
 }
 
+/** Expone `openTaskId` del contexto en el DOM, para verificar sin abrir el modal de verdad (bloque 6) si el título de una fila disparó `open()` o no. */
+function OpenTaskProbe() {
+  const { openTaskId } = useTaskDetail();
+  return <div data-testid="open-task-id">{openTaskId ?? ""}</div>;
+}
+
+function renderListWithProbe(tasks: TaskRow[]) {
+  mock.tableData.tasks = tasks;
+  const queryClient = new QueryClient();
+  render(
+    <QueryClientProvider client={queryClient}>
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <TaskDetailProvider>
+          <OpenTaskProbe />
+          <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
+        </TaskDetailProvider>
+      </PreferencesProvider>
+    </QueryClientProvider>,
+  );
+}
+
 describe("TaskList — completar con optimistic update (bloque 7.4)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -242,5 +263,45 @@ describe("TaskList — punto de prioridad (ruido en la prioridad por defecto)", 
 
     await screen.findByRole("button", { name: "Pagar el alquiler" });
     expect(document.querySelector(".rounded-full[aria-hidden]")).not.toBeNull();
+  });
+});
+
+describe("TaskList — abrir el detalle con doble clic, sin perder el camino por teclado (bloque 6)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateError.current = null;
+    mock.updateCalls.length = 0;
+    mock.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
+  });
+
+  it("un clic simple con el mouse no abre el detalle", async () => {
+    renderListWithProbe([task({ id: "t1", title: "Pagar el alquiler" })]);
+
+    const titleButton = await screen.findByRole("button", { name: "Pagar el alquiler" });
+    fireEvent.click(titleButton, { detail: 1 });
+
+    expect(screen.getByTestId("open-task-id")).toHaveTextContent("");
+  });
+
+  it("un doble clic con el mouse abre el detalle", async () => {
+    renderListWithProbe([task({ id: "t1", title: "Pagar el alquiler" })]);
+
+    const titleButton = await screen.findByRole("button", { name: "Pagar el alquiler" });
+    fireEvent.doubleClick(titleButton);
+
+    expect(screen.getByTestId("open-task-id")).toHaveTextContent("t1");
+  });
+
+  it("activar el título por teclado abre el detalle directo, sin necesitar un segundo Enter", async () => {
+    renderListWithProbe([task({ id: "t1", title: "Pagar el alquiler" })]);
+
+    const titleButton = await screen.findByRole("button", { name: "Pagar el alquiler" });
+    titleButton.focus();
+    // Un botón activado por teclado (Enter/Espacio) dispara `click` con
+    // `detail: 0`, a diferencia de un clic real de mouse (`detail >= 1`):
+    // es la señal que `handleTitleClick` usa en `task-row.tsx`.
+    fireEvent.click(titleButton, { detail: 0 });
+
+    expect(screen.getByTestId("open-task-id")).toHaveTextContent("t1");
   });
 });

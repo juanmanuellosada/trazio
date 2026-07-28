@@ -3,15 +3,14 @@
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMounted } from "@/hooks/use-mounted";
 import { updateThemePreference } from "@/lib/preferences/theme-action";
 import { toastError } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 const OPTIONS = [
   { value: "light", label: "Claro", icon: Sun },
@@ -20,12 +19,16 @@ const OPTIONS = [
 ] as const;
 
 /**
- * Selector de tema del pie del panel lateral (bloque 5.5). El cambio se ve
- * al instante vía `next-themes` (`setTheme`); la persistencia en
- * `user_preferences.theme` es la que permite que otro dispositivo herede
- * la preferencia en su primer ingreso.
+ * Submenú "Tema" del menú de cuenta del panel lateral (bloque 10.3):
+ * antes era su propio menú desplegable suelto al pie del panel
+ * (`AccountMenu`, `account-menu.tsx`, lo agrupa ahí junto con Configuración
+ * y cerrar sesión); acá solo cambió el envoltorio — de `DropdownMenu` raíz a
+ * `DropdownMenuSub`, que necesita un `DropdownMenu` ancestro (lo pone
+ * `AccountMenu`). El cambio de tema, su persistencia en
+ * `user_preferences.theme` y el fallback a "Sistema" antes de montar siguen
+ * igual que en el bloque 5.5.
  */
-export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
   // `theme` se lee de `localStorage` de forma síncrona en el cliente desde
@@ -49,26 +52,19 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label="Cambiar tema"
-        title={collapsed ? "Cambiar tema" : undefined}
-        className={cn(
-          "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-text-secondary outline-none hover:bg-surface hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          collapsed ? "w-9 justify-center px-0" : "w-full",
-        )}
-      >
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
         <ActiveIcon className="size-4 shrink-0" />
-        {!collapsed && <span>Tema: {active.label}</span>}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top">
+        <span>Tema: {active.label}</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
         {OPTIONS.map((option) => (
           <DropdownMenuItem key={option.value} onClick={() => handleSelect(option.value)}>
             <option.icon className="size-4" />
             {option.label}
           </DropdownMenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

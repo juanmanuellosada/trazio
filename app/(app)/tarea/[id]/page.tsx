@@ -5,11 +5,12 @@ import { getTask } from "@/lib/tasks/get-task";
 import { TaskDetailContent } from "@/components/tasks/task-detail-content";
 
 /**
- * Ruta de una tarea suelta (bloque 7.11, F3 del design): pantalla completa
+ * Ruta de una tarea suelta (bloque 6, antes 7.11): pantalla completa
  * con su propio `<title>`, destino de "copiar enlace directo" y de "abrir
  * en ventana aparte". Dentro de la app, el mismo contenido (`TaskDetailContent`)
- * se muestra como panel lateral (`task-detail-panel.tsx`); acá no hay
- * `onClose`, porque no hay nada que cerrar: es la página en sí.
+ * se muestra como modal centrado en escritorio o pantalla completa en
+ * teléfono (`task-detail-panel.tsx`, D28); acá no hay `onClose`, porque no
+ * hay nada que cerrar: es la página en sí.
  */
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;

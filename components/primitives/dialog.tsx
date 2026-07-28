@@ -34,6 +34,8 @@ export function AppDialog({
   footer,
   size = "default",
   className,
+  hideTitle = false,
+  showCloseButton = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,14 +43,24 @@ export function AppDialog({
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
-  /** `lg` para formularios con más campos (proyecto, configuración); `default` cubre el resto. */
-  size?: "default" | "lg";
+  /** `lg` para formularios con más campos (proyecto, configuración); `xl` para contenido rico con varios selectores en fila (detalle de tarea, bloque 6); `default` cubre el resto. */
+  size?: "default" | "lg" | "xl";
   className?: string;
+  /** El título sigue announced para el lector de pantalla (`aria-labelledby`), pero se oculta visualmente: lo usa un consumidor que ya muestra su propio encabezado rico (detalle de tarea) y no quiere repetirlo. Mismo patrón que `ui/command.tsx`. */
+  hideTitle?: boolean;
+  /** `false` cuando el consumidor ya trae su propio control de cierre en el encabezado y mostrar los dos sería redundante. */
+  showCloseButton?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={OVERLAY_MODAL}>
-      <DialogContent className={cn(size === "lg" ? "sm:max-w-lg" : "sm:max-w-md", className)}>
-        <DialogHeader>
+      <DialogContent
+        showCloseButton={showCloseButton}
+        className={cn(
+          size === "lg" ? "sm:max-w-lg" : size === "xl" ? "sm:max-w-2xl" : "sm:max-w-md",
+          className,
+        )}
+      >
+        <DialogHeader className={hideTitle ? "sr-only" : undefined}>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>

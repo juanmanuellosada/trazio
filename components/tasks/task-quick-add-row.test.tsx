@@ -350,6 +350,28 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(confirmButton).toHaveFocus();
   });
 
+  it("sin defaultExpanded arranca colapsado, mostrando el botón 'Agregar tarea' (comportamiento sin cambios en listas y secciones)", () => {
+    renderRow();
+
+    expect(screen.getByRole("button", { name: "Agregar tarea" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Título de la nueva tarea")).not.toBeInTheDocument();
+  });
+
+  it("con defaultExpanded arranca ya desplegado y con el foco en el título, sin necesitar el clic extra (bloque 10.2)", () => {
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={TEST_PREFERENCES}>
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultExpanded />
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    const title = screen.getByLabelText("Título de la nueva tarea");
+    expect(title).toBeInTheDocument();
+    expect(title).toHaveFocus();
+  });
+
   it("no muestra selector de proyecto destino al crear una subtarea: el proyecto es el de la tarea padre", async () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();

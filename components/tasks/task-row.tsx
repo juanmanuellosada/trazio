@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { useTheme } from "next-themes";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -78,6 +78,10 @@ function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
  * mismo pedido: cada tarea ahí es candidata por su propia fecha, no por
  * pertenecer al árbol de otra). El resto (completar, prioridad, etiquetas,
  * duplicar, mover, eliminar, copiar enlace) se mantiene igual.
+ *
+ * El detalle (bloque 6) abre con doble clic sobre el título, no con un
+ * clic simple — ver `handleTitleClick`/`onDoubleClick` más abajo. El menú
+ * de acciones conserva "Abrir detalle" como camino de un solo clic.
  */
 export function TaskRow({
   task,
@@ -163,6 +167,18 @@ export function TaskRow({
     navigator.clipboard.writeText(url).then(() => toastSuccess("Enlace copiado."));
   }
 
+  // El detalle abre con doble clic (bloque 6), no con un clic simple: un
+  // clic real de mouse llega con `detail >= 1`. Pero un botón activado por
+  // teclado (`Enter`/`Espacio` sobre el título enfocado) también dispara
+  // `click`, y ese sí llega con `detail === 0` — es la señal para distinguir
+  // los dos orígenes sin otro listener. Exigirle un doble `Enter` a quien
+  // navega por teclado sería un camino más largo que el que tiene el mouse,
+  // así que la activación por teclado abre directo (`.claude/rules/frontend.md`:
+  // todo control interactivo alcanzable por teclado).
+  function handleTitleClick(event: MouseEvent<HTMLButtonElement>) {
+    if (event.detail === 0) open(task.id);
+  }
+
   return (
     <li ref={setNodeRef} style={style} className={cn("group", isDragging && "opacity-50")}>
       <div style={{ paddingLeft: depth * 24 }} className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface">
@@ -217,7 +233,8 @@ export function TaskRow({
             para no dejar la metadata a kilómetros en un título larguísimo. */}
         <button
           type="button"
-          onClick={() => open(task.id)}
+          onClick={handleTitleClick}
+          onDoubleClick={() => open(task.id)}
           onKeyDown={isFlat ? undefined : handleTitleKeyDown}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",

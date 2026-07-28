@@ -11,10 +11,10 @@ type TaskDetailContextValue = {
 const TaskDetailContext = createContext<TaskDetailContextValue | null>(null);
 
 /**
- * Estado de "qué tarea está abierta en el panel de detalle" (bloque 7.10),
- * compartido por toda la app privada: cualquier fila de tarea, en
- * cualquier vista, puede abrir el mismo panel. Vive en el layout de
- * `app/(app)/`, junto al resto de los providers del bloque 5.
+ * Estado de "qué tarea está abierta en el modal de detalle" (bloque 6,
+ * antes panel lateral — D28), compartido por toda la app privada: cualquier
+ * fila de tarea, en cualquier vista, puede abrir el mismo modal. Vive en el
+ * layout de `app/(app)/`, junto al resto de los providers del bloque 5.
  */
 export function TaskDetailProvider({ children }: { children: ReactNode }) {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);

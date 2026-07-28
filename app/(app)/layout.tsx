@@ -16,6 +16,8 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
+import { SettingsProvider } from "@/components/settings/settings-context";
+import { SettingsModal } from "@/components/settings/settings-modal";
 
 /**
  * Layout de la app privada (bloque 5): panel lateral de escritorio, barra +
@@ -48,29 +50,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <PreferencesProvider preferences={preferences}>
         <RealtimeProvider userId={user.id}>
           <TaskDetailProvider>
-            <OfflineBanner />
-            <OfflineBoundary>
-              <div className="flex min-h-dvh">
-                <AppSidebar
-                  fullName={fullName}
-                  email={user.email}
-                  todayCount={todayCount}
-                  projects={projects}
-                  initialProjects={initialProjects}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <MobileNav
+            <SettingsProvider>
+              <OfflineBanner />
+              <OfflineBoundary>
+                <div className="flex min-h-dvh">
+                  <AppSidebar
                     fullName={fullName}
                     email={user.email}
                     todayCount={todayCount}
                     projects={projects}
                     initialProjects={initialProjects}
                   />
-                  <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <MobileNav
+                      fullName={fullName}
+                      email={user.email}
+                      todayCount={todayCount}
+                      projects={projects}
+                      initialProjects={initialProjects}
+                    />
+                    <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                  </div>
                 </div>
-              </div>
-              <TaskDetailPanel />
-            </OfflineBoundary>
+                <TaskDetailPanel />
+                <SettingsModal />
+              </OfflineBoundary>
+            </SettingsProvider>
           </TaskDetailProvider>
         </RealtimeProvider>
       </PreferencesProvider>
