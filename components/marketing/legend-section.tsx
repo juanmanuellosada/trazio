@@ -24,8 +24,8 @@ const ITEMS: Item[] = [
   { attr: "duration", title: "Duración", before: "Correr ", token: "1h30m" }, // caso 28
   { attr: "recurrence", title: "Repetición", before: "Gimnasio ", token: "cada lunes" }, // caso 36
   { attr: "priority", title: "Prioridad, de p1 a p4", before: "Llamar al contador ", token: "p1" }, // caso 38
-  { attr: "label", title: "Etiqueta", before: "Comprar leche ", token: "#compras" }, // caso 40
-  { attr: "project", title: "Proyecto", before: "Terminar informe ", token: "@Trabajo" }, // caso 41
+  { attr: "label", title: "Etiqueta", before: "Comprar leche ", token: "@compras" }, // caso 40
+  { attr: "project", title: "Proyecto", before: "Terminar informe ", token: "#Trabajo" }, // caso 41
 ];
 
 export function LegendSection() {

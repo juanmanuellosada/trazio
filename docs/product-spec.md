@@ -353,8 +353,8 @@ encontró nada más específico.
 **Repetición:** cada día, cada semana, cada mes, cada año, cada 2 semanas, cada
 lunes, cada día laborable.
 
-**Símbolos:** `p1` a `p4` asignan prioridad; `#` elige o crea una etiqueta; `@`
-elige proyecto o sección.
+**Símbolos:** `p1` a `p4` asignan prioridad; `#` elige proyecto o sección; `@`
+elige o crea una etiqueta.
 
 > **Regla crítica:** "la mañana", "a la mañana" y "de la mañana" son un momento
 > del día y no producen ningún atributo — quedan como texto del título. "Esta

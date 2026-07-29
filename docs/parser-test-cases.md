@@ -81,7 +81,7 @@ Aclaraciones sobre reglas ya definidas, adoptadas después del contrato original
   escrito a las 18:00 queda hoy 15:00 y vencida. Correr la fecha sería inventar
   intención.
 - **Sobre R5:** "primera" es primera en el texto, de izquierda a derecha, no en
-  orden de pasada del parser. Y `#` está exento de R5 porque las etiquetas son
+  orden de pasada del parser. Y `@` está exento de R5 porque las etiquetas son
   multivaluadas, como muestra el caso 43.
 - **Sobre R7:** se resalta lo que produjo un atributo, no lo que se consideró. Un
   candidato descartado por R4 —como el "lunes" del caso 21— no queda resaltado.
@@ -176,10 +176,10 @@ Aclaraciones sobre reglas ya definidas, adoptadas después del contrato original
 | --- | --- | --- | --- |
 | 38 | `Llamar al contador p1` | Llamar al contador | `priority = 1` (Urgente) |
 | 39 | `Ordenar el placard p4` | Ordenar el placard | `priority = 4` (Baja) |
-| 40 | `Comprar leche #compras` | Comprar leche | etiqueta `compras` |
-| 41 | `Terminar informe @Trabajo` | Terminar informe | proyecto `Trabajo` |
-| 42 | `Revisar diseño @Trabajo/En curso` | Revisar diseño | proyecto `Trabajo`, sección `En curso` |
-| 43 | `Comprar regalo #compras #urgente` | Comprar regalo | etiquetas `compras` y `urgente` |
+| 40 | `Comprar leche @compras` | Comprar leche | etiqueta `compras` |
+| 41 | `Terminar informe #Trabajo` | Terminar informe | proyecto `Trabajo` |
+| 42 | `Revisar diseño #Trabajo/En curso` | Revisar diseño | proyecto `Trabajo`, sección `En curso` |
+| 43 | `Comprar regalo @compras @urgente` | Comprar regalo | etiquetas `compras` y `urgente` |
 
 ## Casos críticos
 
@@ -201,7 +201,7 @@ Los que rompen la mayoría de los parsers. **Ninguno es opcional.**
 
 | # | Entrada |
 | --- | --- |
-| 53 | `Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Proyectos` |
+| 53 | `Reunión con Ana el próximo martes a las 3pm por 45min p2 @trabajo #Proyectos` |
 
 Resultado esperado:
 

@@ -251,13 +251,13 @@ export const casos: CasoParser[] = [
   },
   {
     numero: 40,
-    entrada: "Comprar leche #compras",
+    entrada: "Comprar leche @compras",
     contexto: { etiquetas: ETIQUETAS_VACIAS },
     esperar: () => ({ titulo: "Comprar leche", ...SIN_ATRIBUTOS, labels: ["compras"] }),
   },
   {
     numero: 41,
-    entrada: "Terminar informe @Trabajo",
+    entrada: "Terminar informe #Trabajo",
     contexto: { proyectos: [PROYECTO_TRABAJO] },
     esperar: () => ({
       titulo: "Terminar informe",
@@ -267,7 +267,7 @@ export const casos: CasoParser[] = [
   },
   {
     numero: 42,
-    entrada: "Revisar diseño @Trabajo/En curso",
+    entrada: "Revisar diseño #Trabajo/En curso",
     contexto: { proyectos: [PROYECTO_TRABAJO] },
     esperar: () => ({
       titulo: "Revisar diseño",
@@ -277,7 +277,7 @@ export const casos: CasoParser[] = [
   },
   {
     numero: 43,
-    entrada: "Comprar regalo #compras #urgente",
+    entrada: "Comprar regalo @compras @urgente",
     contexto: { etiquetas: ETIQUETAS_VACIAS },
     esperar: () => ({ titulo: "Comprar regalo", ...SIN_ATRIBUTOS, labels: ["compras", "urgente"] }),
   },
@@ -320,7 +320,7 @@ export const casos: CasoParser[] = [
   // El caso completo (53)
   {
     numero: 53,
-    entrada: "Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Proyectos",
+    entrada: "Reunión con Ana el próximo martes a las 3pm por 45min p2 @trabajo #Proyectos",
     contexto: { proyectos: [PROYECTO_PROYECTOS], etiquetas: ETIQUETAS_VACIAS },
     esperar: (ctx) => ({
       titulo: "Reunión con Ana",

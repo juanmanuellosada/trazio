@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * proyecto con sus secciones, un proyecto anidado hasta el tercer nivel y una
  * tarea con subtareas sin límite de profundidad. La indentación y las líneas
  * de `border-l` son el recurso gráfico; el punto de proyecto reutiliza el
- * mismo color que `@Proyecto` en el parser (`TOKEN_DOT_CLASS.project`), ya
+ * mismo color que `#Proyecto` en el parser (`TOKEN_DOT_CLASS.project`), ya
  * enseñado en la leyenda y la demo. Sin anotar cada nodo con su tipo — la
  * jerarquía ya se ve en la indentación, y "proyecto", "sección" y "subtarea"
  * quedan dichos una sola vez en el párrafo de arriba. Debajo del árbol, un

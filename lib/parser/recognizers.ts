@@ -463,7 +463,7 @@ export function recognizeRecurrence(normalized: string): Candidate[] {
 // ---------------------------------------------------------------------------
 
 const PRIORITY_RE = /\bp([1-4])\b/g;
-const LABEL_RE = /#([^\s#@]+)/g;
+const LABEL_RE = /@([^\s#@]+)/g;
 
 function normalizeLabelName(name: string): string {
   return normalize(name);
@@ -535,14 +535,14 @@ export function recognizeSymbols(original: string, normalized: string, ctx: Pars
 
   const paths = buildProjectPaths(ctx.proyectos);
   if (paths.length > 0) {
-    const atRe = /@/g;
-    for (const at of normalized.matchAll(atRe)) {
-      const start = at.index;
-      const afterAt = start + 1;
+    const hashRe = /#/g;
+    for (const hash of normalized.matchAll(hashRe)) {
+      const start = hash.index;
+      const afterHash = start + 1;
       for (const candidate of paths) {
-        const slice = normalized.slice(afterAt, afterAt + candidate.normalizedPath.length);
+        const slice = normalized.slice(afterHash, afterHash + candidate.normalizedPath.length);
         if (slice !== candidate.normalizedPath) continue;
-        const end = afterAt + candidate.normalizedPath.length;
+        const end = afterHash + candidate.normalizedPath.length;
         if (isWordChar(normalized[end])) continue; // no cortar un nombre más largo a la mitad
         candidates.push({
           attr: "project",

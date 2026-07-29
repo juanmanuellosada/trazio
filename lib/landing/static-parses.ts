@@ -19,12 +19,12 @@ function parseForLanding(text: string) {
 /**
  * Ejemplos tocables de la demo interactiva (`parser-demo.tsx`). El primero
  * es el caso completo de `docs/parser-test-cases.md` #53 (adaptado a
- * `@Trabajo`, que sí existe en `LANDING_DEMO_PROJECTS` — `@Proyectos` del
+ * `#Trabajo`, que sí existe en `LANDING_DEMO_PROJECTS` — `#Proyectos` del
  * caso original no resolvería contra este contexto): es el estado inicial
  * de la demo, el más completo de los cuatro.
  */
 export const DEMO_EXAMPLES = [
-  "Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Trabajo",
+  "Reunión con Ana el próximo martes a las 3pm por 45min p2 @trabajo #Trabajo",
   "Llamar al contador mañana a las 10",
   "Pagar el alquiler cada mes p1",
   "Gimnasio cada lunes, miércoles y viernes por 1h",
@@ -52,7 +52,7 @@ const GALLERY_TEXTS = [
   { text: "Reunión a las 3", capability: "hour", caso: 25 },
   { text: "Correr 1h30m", capability: "duration", caso: 28 },
   { text: "Llamar al contador p1", capability: "priority", caso: 38 },
-  { text: "Comprar leche #compras", capability: "label", caso: 40 },
+  { text: "Comprar leche @compras", capability: "label", caso: 40 },
   { text: "Gimnasio cada lunes, miércoles y viernes por 1h", capability: "recurrence", caso: 57 },
 ] as const;
 

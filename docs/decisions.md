@@ -591,3 +591,92 @@ importa `emojibase-data/es/compact.json` y `emojibase-data/es/messages.json`
 con `import()` dinámico recién al abrirse el selector, nunca en el arranque
 de la aplicación: son miles de entradas y cargarlas con la app empeoraría
 el arranque.
+
+---
+
+## D32 — Los símbolos del parser se invierten: `#` proyecto y sección, `@` etiqueta
+
+**Fecha.** 2026-07-28
+
+**Contexto.** El contrato fijaba lo contrario —`#` etiqueta, `@`
+proyecto— en los casos 40 a 43 y 53 de `docs/parser-test-cases.md`.
+
+**Decisión.** Se invierte: `#` elige proyecto y sección (coincidencia más
+larga, hasta 3 niveles), `@` elige o crea una etiqueta.
+
+**Por qué.** El público del producto viene de Todoist, que usa esa
+convención — `docs/landing.md` lo describe explícitamente. Que el símbolo
+haga lo que la persona espera vale más que la coherencia con el hashtag de
+internet, sobre todo porque el error se descubre recién después de haber
+creado la tarea mal.
+
+**Consecuencia.** Es un cambio de contrato, no de interfaz, así que viaja
+en cinco partes: el contrato (`docs/parser-test-cases.md`), el reconocedor
+del parser, `docs/product-spec.md` §6, el contrato ejecutable
+(`lib/parser/casos.ts`) y la demo de la landing. La multiplicidad se
+invierte junto con los símbolos: las etiquetas son varias por tarea, el
+proyecto es uno solo.
+
+---
+
+## D33 — Los nombres de prioridad pasan a `P<n> · Nombre`, y la prioridad 3 cambia de azul
+
+**Fecha.** 2026-07-28
+
+**Decisión.** Las prioridades se muestran como `P1 · Urgente`,
+`P2 · Alta`, `P3 · Media`, `P4 · Baja`. La prioridad 3 (Media) deja el azul
+de marca y pasa a un azul más visible.
+
+**Por qué.** El código corto es el que se tipea y el que la persona busca;
+el nombre es lo que hace entender qué significa sin deducirlo del orden.
+Solo el código obliga a saber de antemano si uno es lo más o lo menos
+urgente; solo el nombre pierde la conexión con lo que se escribe.
+
+**Consecuencia.** Hay que actualizar `docs/design-system.md` §3 y los
+specs archivados que fijan los nombres viejos. El hex concreto del nuevo
+azul de prioridad 3 se elige más adelante, con la validación de contraste
+de `lib/validation/colors.ts` ya existente, verificado en los dos temas
+(tarea 5.6 de `interfaz-refinada`).
+
+---
+
+## D34 — Se adelanta la administración de etiquetas; la página propia y las favoritas siguen en fase 2
+
+**Fecha.** 2026-07-28
+
+**Contexto.** D14 adelantó `labels` y `task_labels` a la fase 1 con
+alcance mínimo: crear una etiqueta por símbolo si no existe, asignarla,
+mostrar el chip. La administración completa —crear, renombrar, recolorear,
+eliminar— y el selector con búsqueda quedaban para la fase 2.
+
+**Decisión.** Se adelanta también la administración de etiquetas y el
+selector con búsqueda y selección múltiple en cada tarea.
+
+**Por qué.** La mitad ya estaba adelantada por D14, y terminar ahora
+cuesta menos que volver más adelante.
+
+**Consecuencia.** **La página propia por etiqueta y las etiquetas
+favoritas siguen en fase 2** — son navegación, no gestión, y no bloquean
+nada de lo que se adelanta acá.
+
+---
+
+## D35 — El centrado de la columna de contenido vuelve, con un piso de ancho
+
+**Fecha.** 2026-07-28
+
+**Contexto.** El contenido se centraba originalmente; se pasó a alineado
+a la izquierda (`docs/design-system.md` §5.1) porque centrado dejaba un
+hueco muerto entre el panel lateral y el contenido, cuando la columna
+medía 768px. Ahora la columna mide 1152px.
+
+**Decisión.** Centrado por encima de un umbral de ancho, alineado a la
+izquierda por debajo.
+
+**Por qué.** Las dos observaciones eran ciertas en su momento: centrado
+dejaba hueco cuando la columna medía 768px; con la columna en 1152px ese
+hueco casi no existe en pantallas grandes, pero sí en las medianas.
+
+**Consecuencia.** El umbral concreto lo define la skill `ui-ux-pro-max`
+(tarea 9.2 de `interfaz-refinada`) — lo que esta decisión fija es que no
+vuelva a resolverse con un número de columna fijo y chico.

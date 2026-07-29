@@ -135,12 +135,24 @@ dato.
 
 ## 3. Colores de prioridad
 
+Los nombres de prioridad se muestran con código y nombre juntos —
+`P1 · Urgente`, `P2 · Alta`, `P3 · Media`, `P4 · Baja` (decisión D33): el
+código es lo que se tipea y se busca, el nombre es lo que explica qué
+significa sin deducirlo del orden.
+
 | Prioridad | Color | Punto/ícono | Texto claro | Texto oscuro |
 | --- | --- | --- | --- | --- |
-| 1 — Urgente | Rojo de marca | `#EC1E2A` | `#A61B23` | `#FF6B6B` |
-| 2 — Alta | Naranja | `#F58220` | `#B34F00` | `#F58220` |
-| 3 — Media | Azul de marca | `#283B56` | `#283B56` | `#8CA3C9` |
-| 4 — Baja | Gris | `#8A94A0` | `#5C6675` | `#8A94A0` |
+| P1 · Urgente | Rojo de marca | `#EC1E2A` | `#A61B23` | `#FF6B6B` |
+| P2 · Alta | Naranja | `#F58220` | `#B34F00` | `#F58220` |
+| P3 · Media | Azul de marca (**provisorio**, ver nota) | `#283B56` | `#283B56` | `#8CA3C9` |
+| P4 · Baja | Gris | `#8A94A0` | `#5C6675` | `#8A94A0` |
+
+**Pendiente (D33).** P3 deja de compartir el azul de marca y pasa a un
+azul más visible; el hex de esta fila todavía no está elegido. Se define
+con la validación de contraste de `lib/validation/colors.ts`, verificado
+en los dos temas y confirmando que no se confunde con el azul de marca
+(`#283B56`) — tarea 5.6 de `interfaz-refinada`. Hasta entonces, los
+valores de la fila P3 siguen siendo los de marca.
 
 El punto/ícono de prioridad usa siempre el valor de marca de la sección 1,
 igual en los dos temas — es el que aparece en el selector de prioridad y en los
@@ -289,21 +301,48 @@ extremadamente largo (más de 512px de texto) trunca contra el tope, que es
 el único caso donde la metadata queda a una distancia notoria del final del
 texto, y es deliberado: preferible a dejar crecer el título sin límite.
 
-La columna va alineada a la izquierda (con el padding existente como margen),
-no centrada con `mx-auto` en el espacio restante. El panel lateral
-(`AppSidebar`) queda fijo contra el borde izquierdo del viewport; centrar la
-columna de contenido en el espacio que le queda a la derecha la separa
-visualmente del panel y la deja "flotando" en el medio de la pantalla, con
-una zona muerta todavía más grande del lado derecho — el mismo problema de
-espacio muerto que el límite de ancho ya venía a resolver, solo que
-desplazado. La skill `ui-ux-pro-max` no tiene una regla puntual para esta
-composición (panel fijo + columna con ancho máximo), pero sí para evitar
-zonas muertas y mantener una estructura predecible (dominio `ux`, categoría
-*Layout*); alinear a la izquierda, pegado al panel, es además el tratamiento
+**El criterio de centrado tuvo dos versiones antes de esta, y las dos
+respondían a una observación real (decisión D35).** La primera fue centrado
+simple, sin piso, con el tope de columna en 768px: centrar dejaba un hueco
+muerto entre el panel lateral y el contenido — el bloque de tareas quedaba
+"flotando" en el medio de la pantalla, separado del panel
+(`AppSidebar`, fijo contra el borde izquierdo del viewport), con una franja
+vacía todavía más grande del lado derecho. Pasar a alineado a la izquierda,
+pegado al panel, resolvía exactamente ese hueco: es además el tratamiento
 estándar en apps de productividad con panel lateral fijo (Todoist, Linear,
-Notion). En mobile no hay diferencia visible: el panel lateral no está
-presente (`hidden md:flex`) y el viewport ya es más angosto que
+Notion), y la skill `ui-ux-pro-max` respalda evitar zonas muertas y mantener
+una estructura predecible (dominio `ux`, categoría *Layout*) aunque no tenga
+una regla puntual para esta composición exacta (panel fijo + columna con
+ancho máximo).
+
+Esa segunda versión era correcta para una columna de 768px. Pero el tope
+creció a 1152px (más arriba en esta misma sección) para resolver el
+problema de distancia título-metadata, y a ese ancho alinear siempre a la
+izquierda deja de tener el mismo fundamento: en un monitor ancho (1440px+),
+1152px de columna pegada al panel ya deja poco margen residual del lado
+derecho — el hueco que motivó el alineado a la izquierda casi no existe a
+este ancho. Donde sí persiste es en pantallas medianas, donde 1152px
+todavía no llena el viewport pero el margen sobrante sigue siendo chico:
+ahí alinear a la izquierda no genera el problema original y centrar sí lo
+reproduce.
+
+**La respuesta no es volver a elegir entre las dos, es dejar que el ancho
+disponible decida (decisión D35).** Por encima de un umbral, centrado — el
+margen sobrante ya es suficiente para leerse como aire de diseño, no como
+columna torcida. Por debajo, alineado a la izquierda — el mismo tratamiento
+que resolvió el hueco original, para el rango de ancho donde ese hueco
+todavía se nota. El umbral concreto, junto con el comportamiento en el
+tramo intermedio, lo define la skill `ui-ux-pro-max` (tarea 9.2 de
+`interfaz-refinada`). En mobile no hay diferencia visible: el panel lateral
+no está presente (`hidden md:flex`) y el viewport ya es más angosto que
 `max-w-content`.
+
+Si en el futuro alguien vuelve a discutir centrado contra alineado a la
+izquierda como si fuera una sola decisión fija para siempre, la respuesta
+ya está acá: las dos versiones anteriores eran correctas para el ancho de
+columna que tenían en su momento (768px, y luego 1152px sin piso). El error
+nunca fue la elección, fue tratar un umbral variable como una constante —
+lo que hace falta no es volver a elegir un bando, es el umbral.
 
 Si en el futuro alguien vuelve a ver la metadata lejos del título en una
 pantalla ancha, la corrección es revisar el `flex-1`/`max-w-lg` de

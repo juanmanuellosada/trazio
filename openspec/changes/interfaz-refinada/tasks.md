@@ -1,20 +1,20 @@
 ## 1. Decisiones y documentación
 
-- [ ] 1.1 Registrar en `docs/decisions.md` la inversión de símbolos (`#` pasa a proyecto y sección, `@` a etiqueta) con el argumento de Todoist que la decide.
-- [ ] 1.2 Registrar en `docs/decisions.md` el cambio de nombres de prioridad al formato `P<n> · Nombre` y la decisión de mover P3/Media a un azul más visible (el hex concreto se elige y valida en la tarea 5.6).
-- [ ] 1.3 Registrar en `docs/decisions.md` el adelanto de administración de etiquetas desde fase 2, dejando explícito que la página propia por etiqueta y las favoritas siguen en fase 2.
-- [ ] 1.4 Registrar en `docs/decisions.md` el criterio de centrado con piso (F1): centrado por encima de un umbral de ancho, alineado a la izquierda por debajo.
-- [ ] 1.5 Actualizar `docs/product-spec.md` §6 (línea "Símbolos"): invertir a `#` elige proyecto o sección; `@` elige o crea una etiqueta.
-- [ ] 1.6 Actualizar `docs/design-system.md` §3 (colores de prioridad): nombres al formato `P<n> · Nombre` (el hex de P3/Media se actualiza en la tarea 5.6, una vez elegido).
-- [ ] 1.7 Reescribir `docs/design-system.md` §5.1 (ancho de columna de contenido): el documento hoy argumenta explícitamente a favor de alinear siempre a la izquierda y en contra de centrar con `mx-auto`; reemplazar ese argumento por el criterio de centrado con piso (F1) — centrado por encima de un umbral, alineado a la izquierda por debajo. El valor numérico concreto del umbral se documenta en la tarea 9.2.
+- [x] 1.1 Registrar en `docs/decisions.md` la inversión de símbolos (`#` pasa a proyecto y sección, `@` a etiqueta) con el argumento de Todoist que la decide.
+- [x] 1.2 Registrar en `docs/decisions.md` el cambio de nombres de prioridad al formato `P<n> · Nombre` y la decisión de mover P3/Media a un azul más visible (el hex concreto se elige y valida en la tarea 5.6).
+- [x] 1.3 Registrar en `docs/decisions.md` el adelanto de administración de etiquetas desde fase 2, dejando explícito que la página propia por etiqueta y las favoritas siguen en fase 2.
+- [x] 1.4 Registrar en `docs/decisions.md` el criterio de centrado con piso (F1): centrado por encima de un umbral de ancho, alineado a la izquierda por debajo.
+- [x] 1.5 Actualizar `docs/product-spec.md` §6 (línea "Símbolos"): invertir a `#` elige proyecto o sección; `@` elige o crea una etiqueta.
+- [x] 1.6 Actualizar `docs/design-system.md` §3 (colores de prioridad): nombres al formato `P<n> · Nombre` (el hex de P3/Media se actualiza en la tarea 5.6, una vez elegido).
+- [x] 1.7 Reescribir `docs/design-system.md` §5.1 (ancho de columna de contenido): el documento hoy argumenta explícitamente a favor de alinear siempre a la izquierda y en contra de centrar con `mx-auto`; reemplazar ese argumento por el criterio de centrado con piso (F1) — centrado por encima de un umbral, alineado a la izquierda por debajo. El valor numérico concreto del umbral se documenta en la tarea 9.2.
 
 ## 2. La inversión de símbolos completa
 
-- [ ] 2.1 Actualizar `docs/parser-test-cases.md`: reescribir los casos 40 a 43 y 53 con `#` y `@` invertidos.
-- [ ] 2.2 Actualizar el reconocedor de símbolos del parser para que `#` resuelva proyecto y sección (coincidencia más larga, hasta 3 niveles con `/`) y `@` resuelva etiqueta (hasta el primer espacio o símbolo).
-- [ ] 2.3 Actualizar `lib/parser/casos.ts` (el contrato ejecutable) para reflejar los casos 40 a 43 y 53 ya invertidos.
-- [ ] 2.4 Actualizar la demo de la landing (`lib/landing/static-parses.ts` y cualquier otro lugar de marketing que use `#` o `@` como ejemplo, incluido el caso 53 adaptado) para el nuevo significado de los símbolos.
-- [ ] 2.5 Confirmar la secuencia: mientras las tareas 2.1 a 2.4 no estén las cuatro completas, `lib/parser/parser.test.ts` (el test que compara contrato y código) SHALL estar en rojo — es la señal esperada de que la migración quedó a medias, no una regresión a investigar. El criterio de cierre de este bloque es que ese test vuelva a estar en verde con las cuatro tareas terminadas.
+- [x] 2.1 Actualizar `docs/parser-test-cases.md`: reescribir los casos 40 a 43 y 53 con `#` y `@` invertidos.
+- [x] 2.2 Actualizar el reconocedor de símbolos del parser para que `#` resuelva proyecto y sección (coincidencia más larga, hasta 3 niveles con `/`) y `@` resuelva etiqueta (hasta el primer espacio o símbolo).
+- [x] 2.3 Actualizar `lib/parser/casos.ts` (el contrato ejecutable) para reflejar los casos 40 a 43 y 53 ya invertidos.
+- [x] 2.4 Actualizar la demo de la landing (`lib/landing/static-parses.ts` y cualquier otro lugar de marketing que use `#` o `@` como ejemplo, incluido el caso 53 adaptado) para el nuevo significado de los símbolos.
+- [x] 2.5 Confirmar la secuencia: mientras las tareas 2.1 a 2.4 no estén las cuatro completas, `lib/parser/parser.test.ts` (el test que compara contrato y código) SHALL estar en rojo — es la señal esperada de que la migración quedó a medias, no una regresión a investigar. El criterio de cierre de este bloque es que ese test vuelva a estar en verde con las cuatro tareas terminadas.
 
 ## 3. Los menús del parser
 

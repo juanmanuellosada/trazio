@@ -191,7 +191,7 @@ describe("TaskQuickAddRow — resaltado en vivo y R7", () => {
     expect(task.due_date).not.toBeNull();
   });
 
-  it("sin @, el destino es el proyecto donde vive el campo (bloque 9.24)", async () => {
+  it("sin #, el destino es el proyecto donde vive el campo (bloque 9.24)", async () => {
     const user = userEvent.setup();
     renderRow();
 
@@ -203,12 +203,12 @@ describe("TaskQuickAddRow — resaltado en vivo y R7", () => {
     expect(insertedTask()!.project_id).toBe("p1");
   });
 
-  it("crea la etiqueta desde # si no existe todavía y la asigna a la tarea (bloque 9.21, OQ1)", async () => {
+  it("crea la etiqueta desde @ si no existe todavía y la asigna a la tarea (bloque 9.21, OQ1)", async () => {
     const user = userEvent.setup();
     renderRow();
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
-    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar leche #compras");
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar leche @compras");
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(insertedTask()).toBeDefined());

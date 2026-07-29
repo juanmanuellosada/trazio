@@ -12,7 +12,7 @@ type AllSectionRow = { id: string; project_id: string; name: string };
 const ALL_SECTIONS_QUERY_KEY = ["sections", "todas"] as const;
 
 /**
- * Todas las secciones del usuario, sin filtrar por proyecto: `@Proyecto/Sección`
+ * Todas las secciones del usuario, sin filtrar por proyecto: `#Proyecto/Sección`
  * (E7) tiene que poder resolver contra cualquier proyecto, no solo el que
  * está montado en la vista actual. Una sola consulta (RLS ya la acota al
  * usuario), no una por proyecto — el N+1 que prohíbe `.claude/rules/database.md`.

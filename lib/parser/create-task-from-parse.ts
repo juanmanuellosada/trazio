@@ -12,8 +12,8 @@ import type { ParseResult } from "./types";
 
 /**
  * `labels.color` no admite `null` (B4/OQ1) y acá no hay selector de color:
- * la etiqueta nace del `#` del alta rápida, sin que el usuario elija nada.
- * Determinístico por nombre (no random) para que crear "#compras" dos
+ * la etiqueta nace del `@` del alta rápida, sin que el usuario elija nada.
+ * Determinístico por nombre (no random) para que crear "@compras" dos
  * veces en momentos distintos —si por lo que sea no encontró la existente—
  * caiga siempre en el mismo color, en vez de uno distinto cada vez.
  */
@@ -35,7 +35,7 @@ export type CreateTaskFromParseVariables = {
   /**
    * Proyecto/sección final donde va a quedar la tarea (bloque 5.4/5.5 del
    * componente de alta): quien llama ya resolvió el destino —contexto de la
-   * vista, `@` reconocido por el parser, o el selector de destino explícito,
+   * vista, `#` reconocido por el parser, o el selector de destino explícito,
    * en ese orden de prioridad— así que acá no queda ninguna resolución
    * pendiente, solo el insert.
    */
@@ -53,7 +53,7 @@ export type CreateTaskFromParseVariables = {
 /**
  * Crea una tarea con todo lo que reconoció el parser (bloque 9.20/9.21):
  * arma el conjunto de etiquetas creando las que no existan (OQ1) y hace un
- * solo insert con título, proyecto/sección (el de `@` si lo hubo, si no el
+ * solo insert con título, proyecto/sección (el de `#` si lo hubo, si no el
  * de dónde vive el campo), fecha, hora, duración, prioridad y RRULE juntos.
  *
  * No reutiliza `useCreateTask` de `lib/tasks/mutations.ts`: esa mutación

@@ -65,14 +65,14 @@ export function ParseResultChips({ result, fallbackTitle }: { result: ParseResul
             className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-text-secondary"
           >
             <span className={cn("size-2 rounded-full", TOKEN_DOT_CLASS.label)} aria-hidden />
-            #{label.name}
+            @{label.name}
             {label.id === null ? " (se crea)" : ""}
           </span>
         ))}
         {result.project ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-text-secondary">
             <span className={cn("size-2 rounded-full", TOKEN_DOT_CLASS.project)} aria-hidden />
-            @{result.project.name}
+            #{result.project.name}
             {result.project.section ? `/${result.project.section.name}` : ""}
           </span>
         ) : null}
