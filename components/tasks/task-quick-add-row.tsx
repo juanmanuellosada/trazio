@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,30 @@ import { ParserMenu } from "./parser-menu";
 import { TaskDestinationSelect, type TaskDestination } from "./task-destination-select";
 
 const DEBOUNCE_MS = 120;
+
+/** Mismo texto de etiqueta que usa el detalle de tarea (`task-detail-content.tsx`) sobre cada selector, para que el tratamiento completo se sienta el mismo lenguaje visual (bloque 7.2). */
+const FIELD_LABEL_CLASS = "text-xs font-medium text-text-secondary";
+
+/**
+ * En el tratamiento `compact` (incrustado en una lista, sección o subtarea)
+ * cada acceso es un chip autoexplicativo, sin etiqueta encima — como ya
+ * funcionaba. En `full` (el modal completo del panel lateral, bloque 7.2)
+ * suma la misma etiqueta chiquita que usa el selector de fecha/prioridad del
+ * detalle de tarea, para que las dos superficies del alta hablen el mismo
+ * idioma visual que el detalle. Función de módulo, no un componente definido
+ * adentro de `TaskQuickAddRow`: si viviera adentro, cada tecla del título
+ * generaría una identidad de componente nueva y React remontaría los
+ * selectores (perdiendo popovers abiertos) en cada render.
+ */
+function AttributeField({ variant, label, children }: { variant: "compact" | "full"; label: string; children: ReactNode }) {
+  if (variant !== "full") return <>{children}</>;
+  return (
+    <div className="space-y-1">
+      <span className={FIELD_LABEL_CLASS}>{label}</span>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Descripción del alta a documento de Tiptap (bloque 5.2): el campo de acá
@@ -83,14 +107,15 @@ function mergeDestination(
 }
 
 /**
- * Alta de una tarea o subtarea (bloque 5): título con reconocimiento de
- * lenguaje natural en vivo (resaltado + doble clic para desactivar, R7, sin
- * tocar), más descripción y accesos a fecha, prioridad, fecha límite y
- * proyecto destino. Un solo componente, montado igual en Bandeja de
- * entrada, Hoy, Proyecto, dentro de cada sección y al crear una subtarea
- * (bloque 5.8-5.10) — lo que cambia entre superficies es únicamente el
- * contexto (`projectId`/`sectionId`/`parentId`/`defaultDueDate`), nunca la
- * implementación.
+ * Alta de una tarea o subtarea (bloque 5, ahora con las dos superficies del
+ * bloque 7): título con reconocimiento de lenguaje natural en vivo
+ * (resaltado + doble clic para desactivar, R7, sin tocar), más descripción y
+ * accesos a fecha, prioridad, fecha límite y proyecto destino. Un solo
+ * componente, montado igual en Bandeja de entrada, Hoy, Proyecto, dentro de
+ * cada sección, al crear una subtarea y en el diálogo del panel lateral — lo
+ * que cambia entre superficies es el contexto
+ * (`projectId`/`sectionId`/`parentId`/`defaultDueDate`) y la variante
+ * (`variant`), nunca la implementación (E2 del design).
  */
 export function TaskQuickAddRow({
   projectId,
@@ -99,6 +124,8 @@ export function TaskQuickAddRow({
   indent,
   defaultDueDate,
   defaultExpanded,
+  variant = "compact",
+  onCancel,
 }: {
   projectId: string;
   sectionId: string | null;
@@ -108,6 +135,17 @@ export function TaskQuickAddRow({
   defaultDueDate?: string;
   /** Arranca ya desplegado en vez de mostrar primero el botón "Agregar tarea" (bloque 10.2: el diálogo del panel lateral no necesita ese clic extra, porque abrirlo ya es la acción de "quiero agregar una tarea"). Sin efecto sobre las demás superficies, que no la pasan y siguen arrancando colapsadas. */
   defaultExpanded?: boolean;
+  /**
+   * `compact` (default): tratamiento incrustado en una lista, una sección o
+   * una subtarea — la tarjeta con borde de siempre, sin selector de proyecto
+   * ni de sección porque el contexto ya lo determina (E1/E2 del design,
+   * bloque 7.3). `full`: el modal completo del panel lateral — mismos
+   * campos más el selector de proyecto destino, sin la tarjeta propia
+   * porque ya vive dentro de un `AppDialog` (bloque 7.2).
+   */
+  variant?: "compact" | "full";
+  /** Solo lo usa `variant="full"`: cierra el diálogo que lo contiene en vez de solo colapsar el composer, porque acá no hay a qué colapsar (bloque 7.2). */
+  onCancel?: () => void;
 }) {
   const [adding, setAdding] = useState(defaultExpanded ?? false);
   const [title, setTitle] = useState("");
@@ -271,7 +309,15 @@ export function TaskQuickAddRow({
 
   function cancel() {
     resetComposer();
-    setAdding(false);
+    // En `full` no hay botón colapsado al que volver (bloque 7.2: el
+    // composer siempre está desplegado dentro del diálogo) — cancelar tiene
+    // que cerrar el diálogo, no dejarlo abierto mostrando un formulario
+    // vacío sin salida.
+    if (variant === "full") {
+      onCancel?.();
+    } else {
+      setAdding(false);
+    }
   }
 
   function submit() {
@@ -331,7 +377,18 @@ export function TaskQuickAddRow({
 
   return (
     <div
-      className={cn("max-w-xl space-y-2 rounded-lg border border-border bg-surface p-2.5", indent && "ml-6")}
+      className={
+        variant === "full"
+          ? // Sin tarjeta propia: el `AppDialog` que lo contiene ya trae su
+            // borde y su fondo (bloque 7.2) — repetirlos acá sería un marco
+            // doble.
+            "space-y-4"
+          : // Sin `max-w-xl`: al no mostrar el selector de proyecto/sección,
+            // el compacto aprovecha el ancho disponible de la lista o
+            // sección donde está incrustado (bloque 7.3) en vez de quedar
+            // angosto a propósito.
+            cn("space-y-2 rounded-lg border border-border bg-surface p-2.5", indent && "ml-6")
+      }
       onKeyDown={(event) => {
         if (event.key === "Escape") cancel();
       }}
@@ -445,18 +502,26 @@ export function TaskQuickAddRow({
         adelante es agregar un chip a esta misma fila, no rehacer el
         composer.
       */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
-        <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
-        <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
+      <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
+        <AttributeField variant={variant} label="Fecha">
+          <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
+        </AttributeField>
+        <AttributeField variant={variant} label="Fecha límite">
+          <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
+        </AttributeField>
+        <AttributeField variant={variant} label="Prioridad">
+          <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
+        </AttributeField>
         {/*
-          Sin selector de proyecto al crear una subtarea: el proyecto de una
-          subtarea es el de su tarea padre, ya fijado por quien abrió este
-          composer (bloque 5.10) — no es una elección de esta pantalla, y la
-          fila ya aparece anidada bajo esa tarea.
+          El selector de proyecto/sección solo existe en `full` (bloque 7.2,
+          E1/E2 del design): en `compact` — dentro de una lista, una sección
+          o una subtarea — el destino ya lo determina el contexto donde se
+          abrió el composer, y mostrarlo ahí es ruido.
         */}
-        {!parentId && (
-          <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
+        {variant === "full" && (
+          <AttributeField variant={variant} label="Proyecto">
+            <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
+          </AttributeField>
         )}
       </div>
 

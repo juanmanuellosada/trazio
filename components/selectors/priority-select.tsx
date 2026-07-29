@@ -28,6 +28,15 @@ export function PriorityDot({ priority, className }: { priority: number; classNa
 }
 
 /**
+ * Código y nombre juntos (decisión D33, tarea 5.5): `P1 · Urgente` en vez de
+ * solo `Urgente`. El código es lo que se tipea y se busca, el nombre es lo
+ * que explica qué significa sin deducirlo del orden.
+ */
+function priorityCodeLabel(priority: { value: number; label: string }): string {
+  return `P${priority.value} · ${priority.label}`;
+}
+
+/**
  * Selector de prioridad (bloque 4.7), reutilizado en el detalle de tarea y
  * en el alta: guarda al instante, sin paso de confirmación. Ya se apoyaba en
  * `DropdownMenu` (primitiva de menú de shadcn/ui, no un `<select>` nativo) y
@@ -56,13 +65,13 @@ export function PrioritySelect({
       >
         <Flag className="size-3.5 text-text-secondary" aria-hidden />
         <PriorityDot priority={value} />
-        {priorityLabel(value)}
+        {priorityCodeLabel({ value, label: priorityLabel(value) })}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {TASK_PRIORITIES.map((priority) => (
           <DropdownMenuItem key={priority.value} onClick={() => onChange(priority.value)}>
             <PriorityDot priority={priority.value} />
-            {priority.label}
+            {priorityCodeLabel(priority)}
             {priority.value === value && <Check className="ml-auto size-3.5" aria-hidden />}
           </DropdownMenuItem>
         ))}

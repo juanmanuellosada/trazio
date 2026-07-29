@@ -16,6 +16,7 @@ import { useUpdateProject } from "@/lib/projects/mutations";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
+import { useMounted } from "@/hooks/use-mounted";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 
@@ -35,15 +36,20 @@ export function ProjectHeader({
 }) {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
   const updateProject = useUpdateProject();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const hex = resolveProjectColorHex(project.color, resolvedTheme === "dark" ? "dark" : "light");
+  // `resolvedTheme` se resuelve en el cliente desde el primer render (lee
+  // `localStorage` de forma síncrona), antes de montar — puede no coincidir
+  // con lo que asumió el servidor. Hasta montar, forzar "light" (lo mismo
+  // que el servidor, que nunca conoce el tema real).
+  const hex = resolveProjectColorHex(project.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
 
   return (
     <header className="border-b border-border px-4 py-4 sm:px-6">
-      <div className="flex w-full max-w-content items-start justify-between gap-3">
+      <div className="flex w-full max-w-content items-start justify-between gap-3 @[90rem]:mx-auto">
         <div className="flex min-w-0 items-start gap-3">
           {project.is_inbox ? (
             <Inbox aria-hidden className="mt-0.5 size-6 text-primary" />

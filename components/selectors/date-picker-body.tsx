@@ -113,14 +113,14 @@ export function DatePickerBody({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {quickDates.map((option) => (
           <button
             key={option.key}
             type="button"
             onClick={() => selectDate(option.date)}
             className={cn(
-              "flex flex-col items-start rounded-lg border border-input px-2 py-1 text-left text-xs outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
+              "flex w-full flex-col items-start rounded-lg border border-input px-2 py-1 text-left text-xs outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
               option.date === selectedDate && "border-primary bg-primary/10",
             )}
           >

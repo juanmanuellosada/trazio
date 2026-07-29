@@ -46,6 +46,14 @@ const TaskListWithMarkdown = TaskList.extend({
  * Notas al pie y destacado no son extensiones instaladas (D31: no existen
  * como paquete libre) — son nodos propios en `footnote.ts` y `callout.ts`.
  *
+ * Autodetección en línea (bloque 8): negrita (`**`/`__`), cursiva (`*`/`_`),
+ * tachado (`~~`), código (backtick) y resaltado (`==`) no necesitan ninguna
+ * regla propia como la de `TaskListWithMarkdown` de arriba — `Bold`,
+ * `Italic`, `Strike` y `Code` del starter kit, y `Highlight`, ya traen su
+ * `addInputRules()` activado por defecto en cuanto la extensión se registra
+ * sin `false`. Un asterisco suelto ("2 * 3") no dispara nada porque las
+ * regex de negrita y cursiva exigen el par de marcadores completo.
+ *
  * Exportada como función (no array suelto) para que cada consumidor —el
  * editor y los tests de autodetección de markdown— construya su propia
  * instancia: las extensiones de Tiptap llevan estado interno y no se

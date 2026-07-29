@@ -95,6 +95,41 @@ const baseTask: TaskDetail = {
   labels: [],
 };
 
+/**
+ * Proyectos y secciones del selector del detalle (bloque 6): `p1` es la
+ * Bandeja de entrada (`color: null`, `is_inbox: true`, el mismo criterio de
+ * `resolveProjectColorHex` que la pinta con el azul de marca) y `p2` es un
+ * proyecto normal con una sección, para probar que el selector arma
+ * "Trabajo · En curso" igual que en el alta rápida.
+ */
+mock.tableData.projects = [
+  {
+    id: "p1",
+    name: "Bandeja de entrada",
+    color: null,
+    icon: null,
+    description: null,
+    parent_id: null,
+    is_inbox: true,
+    is_favorite: false,
+    is_archived: false,
+    position: 0,
+  },
+  {
+    id: "p2",
+    name: "Trabajo",
+    color: "azul",
+    icon: null,
+    description: null,
+    parent_id: null,
+    is_inbox: false,
+    is_favorite: false,
+    is_archived: false,
+    position: 1,
+  },
+];
+mock.tableData.sections = [{ id: "s1", project_id: "p2", name: "En curso" }];
+
 function renderDetail(task: TaskDetail = baseTask) {
   mock.tableData.tasks = [task];
   const queryClient = new QueryClient();
@@ -148,7 +183,7 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
     renderDetail();
 
     await user.click(screen.getByRole("button", { name: /baja/i }));
-    await user.click(await screen.findByRole("menuitem", { name: "Urgente" }));
+    await user.click(await screen.findByRole("menuitem", { name: "P1 · Urgente" }));
 
     await waitFor(() =>
       expect(mock.updateCalls.some((c) => c.table === "tasks" && c.patch.priority === 1)).toBe(true),
@@ -186,5 +221,69 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
         ).toBe(true),
       { timeout: 2000 },
     );
+  });
+
+  describe("selector de proyecto (bloque 6)", () => {
+    // El trigger lleva `aria-label="Proyecto destino"` (fijo, de
+    // `TaskDestinationSelect`), así que el nombre accesible del botón nunca
+    // es el proyecto seleccionado — hay que buscarlo por ese aria-label y
+    // revisar el texto visible aparte.
+    async function findProjectTrigger() {
+      return screen.findByRole("button", { name: "Proyecto destino" });
+    }
+
+    it("arranca precargado en el proyecto donde está la tarea, y la Bandeja de entrada se muestra bien", async () => {
+      renderDetail(); // baseTask vive en "p1", la Bandeja de entrada
+
+      // El trigger existe desde el primer render; su texto solo se actualiza
+      // una vez que `useParserContext` termina de traer los proyectos.
+      await waitFor(async () => expect(await findProjectTrigger()).toHaveTextContent("Bandeja de entrada"));
+    });
+
+    it("despliega los proyectos con sus secciones anidadas, Bandeja incluida", async () => {
+      const user = userEvent.setup();
+      renderDetail();
+
+      await user.click(await findProjectTrigger());
+
+      expect(await screen.findByRole("option", { name: "Bandeja de entrada" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Trabajo" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Trabajo · En curso" })).toBeInTheDocument();
+    });
+
+    it("la búsqueda filtra proyectos y secciones a la vez", async () => {
+      const user = userEvent.setup();
+      renderDetail();
+
+      await user.click(await findProjectTrigger());
+      await screen.findByRole("option", { name: "Trabajo" });
+
+      await user.type(screen.getByPlaceholderText("Buscar proyecto o sección…"), "curso");
+
+      expect(screen.getByRole("option", { name: "Trabajo · En curso" })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Bandeja de entrada" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Trabajo" })).not.toBeInTheDocument();
+    });
+
+    it("mover a una sección de otro proyecto deja la tarea y la sección coherentes", async () => {
+      const user = userEvent.setup();
+      renderDetail();
+
+      await user.click(await findProjectTrigger());
+      await user.click(await screen.findByRole("option", { name: "Trabajo · En curso" }));
+
+      await waitFor(() =>
+        expect(
+          mock.updateCalls.some(
+            (c) => c.table === "tasks" && c.patch.project_id === "p2" && c.patch.section_id === "s1",
+          ),
+        ).toBe(true),
+      );
+      // `parent_id` se resetea a null: mover desde este selector siempre deja
+      // la tarea de primer nivel en el destino, el mismo achatamiento que ya
+      // hace `MoveTaskDialog` con las subtareas.
+      const call = mock.updateCalls.find((c) => c.table === "tasks" && c.patch.section_id === "s1");
+      expect(call?.patch.parent_id).toBeNull();
+    });
   });
 });

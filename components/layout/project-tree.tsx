@@ -330,7 +330,12 @@ export function ProjectTree({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      id="project-tree"
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
       <ProjectTreeLevel projects={roots} all={visible} taskCounts={taskCounts} depth={0} />
     </DndContext>
   );

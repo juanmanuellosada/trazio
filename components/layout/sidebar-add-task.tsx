@@ -9,18 +9,22 @@ import { cn } from "@/lib/utils";
 
 /**
  * Acceso directo para agregar una tarea desde el panel lateral (bloque
- * 10.2): antes solo se podía crear una tarea desde dentro de una vista, y
- * es lo primero que busca alguien que quiere anotar algo rápido. Abre
- * `TaskQuickAddRow` (bloque 5, el mismo componente de alta que ya usan
- * Bandeja, Hoy, Proyecto y las secciones) dentro de un diálogo — sin una
- * segunda implementación acá. Se precarga con la Bandeja de entrada como
- * destino, igual que el resto de los accesos rápidos de alta.
+ * 10.2, ahora "el modal completo" del bloque 7): antes solo se podía crear
+ * una tarea desde dentro de una vista, y es lo primero que busca alguien
+ * que quiere anotar algo rápido. Abre `TaskQuickAddRow` (el mismo
+ * componente de alta que ya usan Bandeja, Hoy, Proyecto y las secciones,
+ * acá en `variant="full"`) dentro de un diálogo — sin una segunda
+ * implementación acá. Se precarga con la Bandeja de entrada como destino,
+ * igual que el resto de los accesos rápidos de alta.
  *
  * Se le pasa `defaultExpanded` para que el formulario aparezca ya
  * desplegado, con el foco en el título: abrir este diálogo ya es la acción
- * de "quiero agregar una tarea", así que no tiene sentido pedir un segundo
- * clic sobre el botón "Agregar tarea" que `TaskQuickAddRow` muestra por
- * defecto en el resto de las superficies.
+ * de "quiero agregar una tarea". `size="lg"` es la misma variante nombrada
+ * que ya usa `AppDialog` para "formularios con más campos" — acá los cuatro
+ * selectores en fila (fecha, fecha límite, prioridad, proyecto) la
+ * necesitan para no amontonarse. `onCancel` cierra el diálogo: en `full` no
+ * hay un botón colapsado al que volver, así que cancelar tiene que cerrarlo
+ * de verdad.
  */
 export function SidebarAddTask({
   collapsed,
@@ -58,8 +62,15 @@ export function SidebarAddTask({
         trigger
       )}
       {inboxProjectId && (
-        <AppDialog open={open} onOpenChange={setOpen} title="Nueva tarea">
-          <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultExpanded />
+        <AppDialog open={open} onOpenChange={setOpen} title="Nueva tarea" size="lg">
+          <TaskQuickAddRow
+            projectId={inboxProjectId}
+            sectionId={null}
+            parentId={null}
+            defaultExpanded
+            variant="full"
+            onCancel={() => setOpen(false)}
+          />
         </AppDialog>
       )}
     </>

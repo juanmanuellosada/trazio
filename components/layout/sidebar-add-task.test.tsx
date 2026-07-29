@@ -68,6 +68,29 @@ describe("SidebarAddTask", () => {
     expect(title).toHaveFocus();
   });
 
+  it("el modal completo del panel lateral ofrece el selector de proyecto destino, a diferencia del compacto de las listas (bloque 7.2)", async () => {
+    const user = userEvent.setup();
+    renderAddTask();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Nueva tarea" });
+    expect(within(dialog).getByRole("button", { name: "Proyecto destino" })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Descripción de la nueva tarea")).toBeInTheDocument();
+  });
+
+  it("cancelar cierra el diálogo en vez de dejarlo abierto sin formulario (bloque 7.2)", async () => {
+    const user = userEvent.setup();
+    renderAddTask();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await screen.findByRole("dialog", { name: "Nueva tarea" });
+
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("sin Bandeja de entrada resuelta, el botón queda deshabilitado en vez de abrir un diálogo roto", () => {
     renderAddTask(null);
 

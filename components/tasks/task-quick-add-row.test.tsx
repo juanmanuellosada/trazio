@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ComponentProps } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,13 +9,16 @@ import { PreferencesProvider } from "@/components/providers/preferences-provider
 import { TaskQuickAddRow } from "./task-quick-add-row";
 
 /**
- * Tests del componente de alta (bloque 5.12): además de R7 (resaltado en
- * vivo y doble clic, ya cubiertos desde `task-quick-add-row.tsx` original y
- * sin cambios acá), cubre lo nuevo del bloque 5 — que los selectores carguen
- * su atributo, que un selector tocado a mano le gane al parser, que el
- * destino se muestre y se respete, que cancelar no persista nada, que se
- * pueda cargar más de una tarea seguida sin tocar el mouse, y que todos los
- * controles del alta sean alcanzables solo con teclado.
+ * Tests del componente de alta (bloque 5.12, con las dos superficies del
+ * bloque 7): además de R7 (resaltado en vivo y doble clic), cubre que los
+ * selectores carguen su atributo, que un selector tocado a mano le gane al
+ * parser, que cancelar no persista nada, que se pueda cargar más de una
+ * tarea seguida sin tocar el mouse, que todos los controles del alta sean
+ * alcanzables solo con teclado, y — lo nuevo del bloque 7 — que `compact`
+ * (default, incrustada en listas/secciones/subtareas) conserve la
+ * descripción y omita el proyecto destino, mientras que `full` (el modal
+ * del panel lateral, probado también desde `sidebar-add-task.test.tsx`) lo
+ * ofrece.
  */
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -112,12 +116,12 @@ const mock = createSupabaseMock();
   auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-1" } } } }) },
 }));
 
-function renderRow() {
+function renderRow(overrides: Partial<ComponentProps<typeof TaskQuickAddRow>> = {}) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} />
+        <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} {...overrides} />
       </PreferencesProvider>
     </QueryClientProvider>,
   );
@@ -257,7 +261,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
 
-    await user.click(screen.getByRole("button", { name: "Baja" })); // default (4)
+    await user.click(screen.getByRole("button", { name: "P4 · Baja" })); // default (4)
     await user.click(await screen.findByRole("menuitem", { name: /Urgente/ }));
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
@@ -276,10 +280,10 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     // previa del selector ya muestra "Urgente" en cuanto el parser lo
     // reconoce (antes de tocarlo) — se espera esa actualización primero.
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan p1");
-    const priorityTrigger = await screen.findByRole("button", { name: "Urgente" });
+    const priorityTrigger = await screen.findByRole("button", { name: "P1 · Urgente" });
 
     await user.click(priorityTrigger);
-    await user.click(await screen.findByRole("menuitem", { name: "Baja" })); // elegir explícitamente Baja: le gana al "p1" del título
+    await user.click(await screen.findByRole("menuitem", { name: "P4 · Baja" })); // elegir explícitamente Baja: le gana al "p1" del título
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
 
@@ -287,13 +291,14 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(insertedTask()!.priority).toBe(4); // el selector explícito, no el "p1" del título
   });
 
-  it("el destino muestra el proyecto de contexto por defecto y respeta el que se elija a mano", async () => {
+  it("en variant=\"full\", el destino muestra el proyecto de contexto por defecto y respeta el que se elija a mano", async () => {
     const user = userEvent.setup();
-    renderRow();
-
-    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    renderRow({ variant: "full", defaultExpanded: true });
     const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
-    expect(destinationTrigger).toHaveTextContent("Bandeja de entrada"); // "p1", visible antes de confirmar
+    // `proyectos` tarda en resolver (mock async): espera a que el destino
+    // por defecto se pinte antes de leerlo, en vez de asumirlo ya listo en
+    // el primer render.
+    await waitFor(() => expect(destinationTrigger).toHaveTextContent("Bandeja de entrada")); // "p1", visible antes de confirmar
 
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
     await user.click(destinationTrigger);
@@ -340,7 +345,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(tasks[1].title).toBe("Segunda tarea");
   });
 
-  it("todos los controles del alta son alcanzables con Tab, en el orden esperado", async () => {
+  it("en compact (sin proyecto destino), todos los controles del alta son alcanzables con Tab, en el orden esperado", async () => {
     const user = userEvent.setup();
     renderRow();
 
@@ -350,8 +355,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     const description = screen.getByLabelText("Descripción de la nueva tarea");
     const dateTrigger = screen.getByRole("button", { name: "Fecha de vencimiento" });
     const deadlineTrigger = screen.getByRole("button", { name: "Fecha límite" });
-    const priorityTrigger = screen.getByRole("button", { name: "Baja" });
-    const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
+    const priorityTrigger = screen.getByRole("button", { name: "P4 · Baja" });
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
     const confirmButton = screen.getByRole("button", { name: "Agregar tarea" });
 
@@ -365,11 +369,24 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     await user.tab();
     expect(priorityTrigger).toHaveFocus();
     await user.tab();
-    expect(destinationTrigger).toHaveFocus();
-    await user.tab();
     expect(cancelButton).toHaveFocus();
     await user.tab();
     expect(confirmButton).toHaveFocus();
+  });
+
+  it("en variant=\"full\", el proyecto destino se suma al final del orden de Tab (bloque 7.2)", async () => {
+    const user = userEvent.setup();
+    renderRow({ variant: "full", defaultExpanded: true });
+
+    const priorityTrigger = screen.getByRole("button", { name: "P4 · Baja" });
+    const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
+    const cancelButton = screen.getByRole("button", { name: "Cancelar" });
+
+    priorityTrigger.focus();
+    await user.tab();
+    expect(destinationTrigger).toHaveFocus();
+    await user.tab();
+    expect(cancelButton).toHaveFocus();
   });
 
   it("sin defaultExpanded arranca colapsado, mostrando el botón 'Agregar tarea' (comportamiento sin cambios en listas y secciones)", () => {
@@ -453,6 +470,47 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(insertedTask()!.parent_id).toBe("task-parent");
     expect(insertedTask()!.project_id).toBe("p1");
+  });
+
+  it("compact (dentro de una sección) conserva la descripción y omite el selector de proyecto destino (bloque 7.3)", async () => {
+    const user = userEvent.setup();
+    renderRow({ projectId: "p2", sectionId: "sec1" }); // default variant="compact"
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    expect(screen.getByLabelText("Descripción de la nueva tarea")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Proyecto destino" })).not.toBeInTheDocument();
+  });
+
+  it("la tarea creada desde el compacto de una sección cae en esa sección (bloque 7.3)", async () => {
+    const user = userEvent.setup();
+    renderRow({ projectId: "p2", sectionId: "sec1" });
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Revisar informe");
+    await user.type(screen.getByLabelText("Descripción de la nueva tarea"), "Con más detalle");
+    // Click al botón, no Enter: el foco está en la descripción y Enter ahí
+    // agrega un salto de línea (multilínea, bloque 5.2), no somete el alta —
+    // eso solo lo hace Enter con el foco en el título.
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.project_id).toBe("p2");
+    expect(insertedTask()!.section_id).toBe("sec1");
+    expect(insertedTask()!.description).not.toBeNull(); // la descripción sí viajó (no se omite, solo el destino)
+  });
+
+  it("full y compact comparten el mismo reconocimiento del parser en vivo: es un solo componente, dos presentaciones (bloque 7.4)", async () => {
+    const user = userEvent.setup();
+    renderRow({ variant: "full", defaultExpanded: true });
+
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana");
+
+    await waitFor(() => {
+      const marks = document.querySelectorAll("mark");
+      expect(marks.length).toBe(1); // mismo resaltado en vivo que ya prueba el describe de arriba en compact
+      expect(marks[0].textContent).toBe("mañana");
+    });
   });
 });
 

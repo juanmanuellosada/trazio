@@ -38,12 +38,12 @@ export default async function BandejaPage() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="flex w-full max-w-content items-center gap-2">
+        <div className="flex w-full max-w-content items-center gap-2 @[90rem]:mx-auto">
           <Inbox aria-hidden className="size-5 text-primary" />
           <h1 className="text-2xl font-semibold text-foreground">Bandeja de entrada</h1>
         </div>
       </header>
-      <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6 @[90rem]:mx-auto">
         <SectionedTasks
           projectId={inboxProjectId}
           initialSections={initialSections}

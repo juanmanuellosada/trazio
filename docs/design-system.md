@@ -144,15 +144,27 @@ significa sin deducirlo del orden.
 | --- | --- | --- | --- | --- |
 | P1 · Urgente | Rojo de marca | `#EC1E2A` | `#A61B23` | `#FF6B6B` |
 | P2 · Alta | Naranja | `#F58220` | `#B34F00` | `#F58220` |
-| P3 · Media | Azul de marca (**provisorio**, ver nota) | `#283B56` | `#283B56` | `#8CA3C9` |
+| P3 · Media | Azul más visible (D33, ver nota) | `#3B6FF0` | `#1D4ED8` | `#7DA3FF` |
 | P4 · Baja | Gris | `#8A94A0` | `#5C6675` | `#8A94A0` |
 
-**Pendiente (D33).** P3 deja de compartir el azul de marca y pasa a un
-azul más visible; el hex de esta fila todavía no está elegido. Se define
-con la validación de contraste de `lib/validation/colors.ts`, verificado
-en los dos temas y confirmando que no se confunde con el azul de marca
-(`#283B56`) — tarea 5.6 de `interfaz-refinada`. Hasta entonces, los
-valores de la fila P3 siguen siendo los de marca.
+**Resuelto (D33, tarea 5.6 de `interfaz-refinada`).** P3 deja el azul de
+marca (`#283B56`) y pasa a `#3B6FF0`, un azul más saturado y vívido —
+elegido y verificado con `contrastRatio` de `lib/validation/colors.ts`
+contra el fondo (`--background`) y la superficie (`--surface`) de los dos
+temas:
+
+| Uso | Claro (vs. `#FFFFFF` / `#F7F8FA`) | Oscuro (vs. `#0F172A` / `#1A2436`) |
+| --- | --- | --- |
+| Punto/ícono `#3B6FF0` (mismo valor en los dos temas) | 4.45:1 / 4.19:1 | 4.01:1 / 3.50:1 |
+| Texto `#1D4ED8` (claro) / `#7DA3FF` (oscuro) | 6.70:1 vs. blanco | 7.27:1 vs. fondo oscuro |
+
+Los tres valores superan el mínimo de 3:1 para uso no textual y los dos de
+texto superan también 4.5:1 (AA texto). Ninguno coincide con el azul de
+marca `#283B56` (identidad, D5) ni con `#8CA3C9` (`--primary` en modo
+oscuro, la variante de marca usada como color primario de la interfaz):
+`#3B6FF0` y sus variantes de texto son un azul distinto, más saturado —
+"eléctrico" contra el navy desaturado de marca y contra el celeste pálido
+del primario — para que los tres se distingan de un vistazo.
 
 El punto/ícono de prioridad usa siempre el valor de marca de la sección 1,
 igual en los dos temas — es el que aparece en el selector de prioridad y en los
@@ -349,6 +361,43 @@ pantalla ancha, la corrección es revisar el `flex-1`/`max-w-lg` de
 `TaskRow`, no volver a achicar `--container-content` — eso repetiría el
 mismo diagnóstico equivocado que esta sección documenta.
 
+**El umbral de centrado es 90rem/1440px de ancho disponible** (tarea 9.2 de
+`interfaz-refinada`) — no de ventana: es el ancho que le queda a la columna
+una vez descontado el panel lateral (`AppSidebar`, `w-16` colapsado/`w-64`
+expandido), sin regla puntual de la skill para esta composición exacta,
+igual que ya pasaba con el alineado a la izquierda más arriba en esta misma
+sección. El valor concreto sale de la misma familia de breakpoints
+documentada que ya validó el tope de columna (dominio `ux`, categoría
+*Responsive*, resultado "Breakpoint Testing": "Do: Test at 320 375 414 768
+1024 1440" — fuente `ux-guidelines.csv`; la categoría *Layout & Responsive*
+del catálogo general coincide, listando 1440 como uno de los "systematic
+breakpoints" de referencia junto a 375/768/1024). 1440px es, además, el
+mismo punto que ya usaba el razonamiento de esta sección para el tope de
+columna: "en un monitor ancho (1440px+), 1152px de columna pegada al panel
+ya deja poco margen residual" — el umbral de centrado reutiliza ese mismo
+número en vez de inventar uno nuevo.
+
+No hay tratamiento intermedio: es un único breakpoint, centrado de un lado y
+alineado a la izquierda del otro, igual que la decisión D35 lo plantea (un
+umbral, no una transición gradual) — una franja de transición progresiva
+sumaría complejidad que ni el requisito ni la skill piden.
+
+Técnicamente, el umbral se resuelve con una *container query* de CSS en vez
+de JavaScript con un listener de resize: el panel lateral y la columna de
+contenido ya son hermanos dentro de un contenedor flex
+(`app/(app)/layout.tsx`), así que el ancho que le queda a la columna después
+de descontar el panel **ya es su ancho renderizado real** — no hace falta
+duplicar el ancho del panel en una variable sincronizada a mano. Ese
+contenedor flex lleva la clase `@container` (`app/(app)/layout.tsx`), y cada
+columna de contenido agrega `@[90rem]:mx-auto` junto a `max-w-content`: por
+debajo de 1440px de ancho disponible no hay margen automático (queda
+alineada a la izquierda, el comportamiento por defecto); por encima, el
+margen se centra solo. El colapso/expansión del panel (`w-16`/`w-64`,
+`components/layout/app-sidebar.tsx`) cambia el ancho disponible de la
+columna sin ningún cambio adicional, porque sigue siendo el mismo cálculo de
+layout flex de siempre — no una lectura de variable que haya que mantener
+sincronizada aparte.
+
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 
 | Token | Valor | Uso |
@@ -414,8 +463,8 @@ fuente de verdad para el mismo dato.
   --priority-urgent-text: #A61B23;
   --priority-high: #F58220;
   --priority-high-text: #B34F00;
-  --priority-medium: #283B56;
-  --priority-medium-text: #283B56;
+  --priority-medium: #3B6FF0;
+  --priority-medium-text: #1D4ED8;
   --priority-low: #8A94A0;
   --priority-low-text: #5C6675;
 
@@ -448,8 +497,8 @@ fuente de verdad para el mismo dato.
   --priority-urgent-text: #FF6B6B;
   --priority-high: #F58220;
   --priority-high-text: #F58220;
-  --priority-medium: #283B56;
-  --priority-medium-text: #8CA3C9;
+  --priority-medium: #3B6FF0;
+  --priority-medium-text: #7DA3FF;
   --priority-low: #8A94A0;
   --priority-low-text: #8A94A0;
 }

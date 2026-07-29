@@ -111,9 +111,72 @@ describe("DateSelect", () => {
     render(<ControlledDateSelect onChange={onChange} />);
 
     await user.click(screen.getByRole("button", { name: "Fecha de vencimiento" }));
-    await user.type(screen.getByLabelText("Duración estimada (min)"), "45");
+    await user.type(screen.getByLabelText("Duración estimada"), "45");
 
     expect(onChange).toHaveBeenCalledWith({ dueDate: null, dueAt: null, durationMinutes: 45 });
+  });
+
+  it("una duración escrita en horas se convierte y se guarda en minutos", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ControlledDateSelect onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Fecha de vencimiento" }));
+    await user.click(screen.getByRole("combobox", { name: "Unidad de duración" }));
+    await user.click(await screen.findByRole("option", { name: "h" }));
+    await user.type(screen.getByLabelText("Duración estimada"), "2");
+
+    expect(onChange).toHaveBeenCalledWith({ dueDate: null, dueAt: null, durationMinutes: 120 });
+  });
+
+  it("un acceso rápido de duración aplica exactamente los minutos que dice", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ControlledDateSelect onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Fecha de vencimiento" }));
+    await user.click(screen.getByRole("button", { name: "1 h" }));
+
+    expect(onChange).toHaveBeenCalledWith({ dueDate: null, dueAt: null, durationMinutes: 60 });
+  });
+
+  it("el campo de hora acepta escribirla directamente, además de elegirla de la lista", async () => {
+    const user = userEvent.setup();
+    const hoyStr = formatDate(today(AHORA, ZONA));
+    const onChange = vi.fn();
+
+    render(<ControlledDateSelect initial={{ dueDate: hoyStr, dueAt: null, durationMinutes: null }} onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Fecha de vencimiento" }));
+    await user.click(screen.getByLabelText("Agregar hora"));
+
+    const timeInput = screen.getByLabelText("Hora");
+    await user.clear(timeInput);
+    await user.type(timeInput, "23:15");
+    timeInput.blur();
+
+    const esperado = toDueAt(today(AHORA, ZONA), 23, 15, ZONA);
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith({ dueDate: null, dueAt: esperado, durationMinutes: null }));
+  });
+
+  it("una hora escrita que no se reconoce muestra un error y no guarda nada", async () => {
+    const user = userEvent.setup();
+    const hoyStr = formatDate(today(AHORA, ZONA));
+    const onChange = vi.fn();
+
+    render(<ControlledDateSelect initial={{ dueDate: hoyStr, dueAt: null, durationMinutes: null }} onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Fecha de vencimiento" }));
+    await user.click(screen.getByLabelText("Agregar hora"));
+    onChange.mockClear();
+
+    const timeInput = screen.getByLabelText("Hora");
+    await user.clear(timeInput);
+    await user.type(timeInput, "no es una hora");
+    timeInput.blur();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no reconocimos esa hora/i);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("los controles son alcanzables solo con teclado: abrir, escribir una fecha y confirmar", async () => {

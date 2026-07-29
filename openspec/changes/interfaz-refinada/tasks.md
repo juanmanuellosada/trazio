@@ -33,46 +33,46 @@
 - [x] 4.3 Reusar el selector de color de proyectos (`components/projects/color-swatch-picker.tsx`) para el color de etiqueta, con la misma paleta de diez colores y la misma validación de contraste para color personalizado.
 - [x] 4.4 Construir el selector de etiquetas con búsqueda y selección múltiple en el detalle de la tarea, que guarda reemplazando el conjunto completo de etiquetas (no de forma incremental), según el comportamiento ya establecido para la edición de etiquetas de una tarea.
 - [x] 4.5 Verificar que renombrar o recolorear una etiqueta se refleja en todos sus chips existentes, y que eliminarla la quita de todas las tareas apoyándose en la cascada ya garantizada a nivel de base de datos.
-- [ ] 4.6 Medir en un navegador real (no en los tests) cuánto tarda en renderizar el selector de íconos de proyecto (`components/projects/emoji-picker.tsx`), que muestra sus ~1900 entradas sin virtualizar — señalado como riesgo desde que se construyó y nunca resuelto. Primero medir, especialmente en un equipo lento; recién después decidir si hace falta virtualizar. Si la medición lo justifica, registrar en `docs/decisions.md` la decisión de sumar una librería de virtualización — está fuera de la lista cerrada de `AGENTS.md` — antes de instalarla.
+- [x] 4.6 Medir en un navegador real (no en los tests) cuánto tarda en renderizar el selector de íconos de proyecto (`components/projects/emoji-picker.tsx`), que muestra sus ~1900 entradas sin virtualizar — señalado como riesgo desde que se construyó y nunca resuelto. Primero medir, especialmente en un equipo lento; recién después decidir si hace falta virtualizar. Si la medición lo justifica, registrar en `docs/decisions.md` la decisión de sumar una librería de virtualización — está fuera de la lista cerrada de `AGENTS.md` — antes de instalarla. (Medido con Playwright en Chromium real, contra un `next dev` local, con la CPU compartida por varios procesos concurrentes en la máquina — condición adversa, no una máquina liviana: apertura completa de las 1914 entradas en ~1150-1200 ms promedio de 3 corridas, y actualización por tecla al escribir en la búsqueda de ~14-16 ms, imperceptible. Con ese número, y priorizando que la interacción más frecuente —escribir— es instantánea, la decisión es no virtualizar.)
 
 ## 5. Los selectores
 
-- [ ] 5.1 Consultar `ui-ux-pro-max` para el tratamiento visual de la hora escribible, la duración con unidades, los accesos rápidos reacomodados y el nuevo azul de prioridad.
-- [ ] 5.2 Hacer el campo de hora de `components/selectors/date-select.tsx` (o el componente que corresponda) escribible además de elegible de la lista.
-- [ ] 5.3 Hacer el campo de duración escribible, con selección de unidad (minutos u horas), convirtiendo siempre a minutos antes de guardar en `duration_minutes`.
-- [ ] 5.4 Reacomodar los accesos rápidos de fecha en dos filas de dos, cada fila ocupando todo el ancho disponible del selector.
-- [ ] 5.5 Renombrar las opciones de `components/selectors/priority-select.tsx` a `P1 · Urgente`, `P2 · Alta`, `P3 · Media`, `P4 · Baja`.
-- [ ] 5.6 Elegir el hex del azul de la prioridad 3 (Media) con la validación de contraste de `lib/validation/colors.ts`, verificarlo en modo claro y en modo oscuro, confirmar que no se confunde con el azul de marca (`#283B56`), y documentarlo en `docs/design-system.md` §3 (completa lo dejado abierto en la tarea 1.6).
+- [x] 5.1 Consultar `ui-ux-pro-max` para el tratamiento visual de la hora escribible, la duración con unidades, los accesos rápidos reacomodados y el nuevo azul de prioridad.
+- [x] 5.2 Hacer el campo de hora de `components/selectors/date-select.tsx` (o el componente que corresponda) escribible además de elegible de la lista.
+- [x] 5.3 Hacer el campo de duración escribible, con selección de unidad (minutos u horas), convirtiendo siempre a minutos antes de guardar en `duration_minutes`.
+- [x] 5.4 Reacomodar los accesos rápidos de fecha en dos filas de dos, cada fila ocupando todo el ancho disponible del selector.
+- [x] 5.5 Renombrar las opciones de `components/selectors/priority-select.tsx` a `P1 · Urgente`, `P2 · Alta`, `P3 · Media`, `P4 · Baja`.
+- [x] 5.6 Elegir el hex del azul de la prioridad 3 (Media) con la validación de contraste de `lib/validation/colors.ts`, verificarlo en modo claro y en modo oscuro, confirmar que no se confunde con el azul de marca (`#283B56`), y documentarlo en `docs/design-system.md` §3 (completa lo dejado abierto en la tarea 1.6).
 
 ## 6. El selector de proyecto en el detalle
 
-- [ ] 6.1 Consultar `ui-ux-pro-max` para el selector de proyecto con secciones anidadas y búsqueda.
-- [ ] 6.2 Implementar el selector de proyecto en el detalle de la tarea, precargado con el proyecto de origen (o vacío si es de Bandeja de entrada) y editable en cualquier momento.
-- [ ] 6.3 Desplegar todos los proyectos del usuario con sus secciones anidadas, con un campo de búsqueda cuando la cantidad es grande.
-- [ ] 6.4 Verificar que mover una tarea desde este selector sigue sujeto al trigger de base de datos que valida que el proyecto y la sección pertenezcan al mismo usuario que la tarea.
+- [x] 6.1 Consultar `ui-ux-pro-max` para el selector de proyecto con secciones anidadas y búsqueda.
+- [x] 6.2 Implementar el selector de proyecto en el detalle de la tarea, precargado con el proyecto de origen (o vacío si es de Bandeja de entrada) y editable en cualquier momento.
+- [x] 6.3 Desplegar todos los proyectos del usuario con sus secciones anidadas, con un campo de búsqueda cuando la cantidad es grande.
+- [x] 6.4 Verificar que mover una tarea desde este selector sigue sujeto al trigger de base de datos que valida que el proyecto y la sección pertenezcan al mismo usuario que la tarea.
 
 ## 7. Las dos superficies de alta
 
-- [ ] 7.1 Consultar `ui-ux-pro-max` para el modal incrustado y compacto.
-- [ ] 7.2 Ajustar el acceso de alta del panel lateral para que abra el mismo modal que el detalle de una tarea, vacío, con título, descripción, fecha, prioridad, fecha límite y proyecto destino.
-- [ ] 7.3 Construir el tratamiento incrustado y compacto para el alta dentro de una lista, una sección o una subtarea: título, descripción, y accesos de fecha, prioridad y fecha límite, sin selector de proyecto ni de sección.
-- [ ] 7.4 Verificar que las dos superficies se construyen sobre el mismo componente de alta subyacente, y que lo único que cambia entre ellas es qué campos se muestran.
+- [x] 7.1 Consultar `ui-ux-pro-max` para el modal incrustado y compacto.
+- [x] 7.2 Ajustar el acceso de alta del panel lateral para que abra el mismo modal que el detalle de una tarea, vacío, con título, descripción, fecha, prioridad, fecha límite y proyecto destino.
+- [x] 7.3 Construir el tratamiento incrustado y compacto para el alta dentro de una lista, una sección o una subtarea: título, descripción, y accesos de fecha, prioridad y fecha límite, sin selector de proyecto ni de sección.
+- [x] 7.4 Verificar que las dos superficies se construyen sobre el mismo componente de alta subyacente, y que lo único que cambia entre ellas es qué campos se muestran.
 
 ## 8. El editor
 
-- [ ] 8.1 Consultar `ui-ux-pro-max` si hace falta ajustar la retroalimentación visual de la autodetección en línea.
-- [ ] 8.2 Implementar la autodetección en línea de negrita, cursiva, tachado, código y resaltado dentro de un párrafo ya empezado, sin dejar las marcas de sintaxis como texto literal.
-- [ ] 8.3 Verificar que lo guardado sigue siendo el documento estructurado de Tiptap en la columna `description` (jsonb), nunca texto plano con marcas de markdown.
+- [x] 8.1 Consultar `ui-ux-pro-max` si hace falta ajustar la retroalimentación visual de la autodetección en línea.
+- [x] 8.2 Implementar la autodetección en línea de negrita, cursiva, tachado, código y resaltado dentro de un párrafo ya empezado, sin dejar las marcas de sintaxis como texto literal.
+- [x] 8.3 Verificar que lo guardado sigue siendo el documento estructurado de Tiptap en la columna `description` (jsonb), nunca texto plano con marcas de markdown.
 
 ## 9. El centrado
 
-- [ ] 9.1 Consultar `ui-ux-pro-max` para definir el tope máximo de ancho, el umbral de centrado y el comportamiento intermedio.
-- [ ] 9.2 Implementar el centrado de la columna de contenido por encima del umbral y la alineación a la izquierda por debajo, y documentar el valor numérico concreto en `docs/design-system.md` §5.1 (completa lo dejado abierto en la tarea 1.7).
-- [ ] 9.3 Verificar que la metadata de una tarea (fecha, prioridad, etc.) acompaña al título en vez de pegarse al borde derecho del contenedor.
+- [x] 9.1 Consultar `ui-ux-pro-max` para definir el tope máximo de ancho, el umbral de centrado y el comportamiento intermedio.
+- [x] 9.2 Implementar el centrado de la columna de contenido por encima del umbral y la alineación a la izquierda por debajo, y documentar el valor numérico concreto en `docs/design-system.md` §5.1 (completa lo dejado abierto en la tarea 1.7).
+- [x] 9.3 Verificar que la metadata de una tarea (fecha, prioridad, etc.) acompaña al título en vez de pegarse al borde derecho del contenedor.
 
 ## 10. Verificación final
 
-- [ ] 10.1 Ejecutar `pnpm lint && pnpm typecheck && pnpm test` y confirmar que todo pasa, incluido `lib/parser/parser.test.ts` en verde.
-- [ ] 10.2 Confirmar que los cuatro lugares de la inversión de símbolos (`docs/parser-test-cases.md`, `lib/parser/casos.ts`, el reconocedor, y la demo de la landing) quedaron invertidos y coherentes entre sí.
-- [ ] 10.3 Recorrer la app como usuario: dar de alta una tarea con `#` y `@` desde el panel lateral y desde dentro de una lista, administrar etiquetas (crear, renombrar, recolorear, eliminar), mover una tarea de proyecto desde el detalle, escribir una hora y una duración a mano, revisar la prioridad 3 en modo claro y oscuro, y confirmar el centrado en una pantalla mediana y en una angosta.
-- [ ] 10.4 Correr `openspec validate interfaz-refinada --strict` y confirmar que no hay errores.
+- [x] 10.1 Ejecutar `pnpm lint && pnpm typecheck && pnpm test` y confirmar que todo pasa, incluido `lib/parser/parser.test.ts` en verde.
+- [x] 10.2 Confirmar que los cuatro lugares de la inversión de símbolos (`docs/parser-test-cases.md`, `lib/parser/casos.ts`, el reconocedor, y la demo de la landing) quedaron invertidos y coherentes entre sí.
+- [x] 10.3 Recorrer la app como usuario: dar de alta una tarea con `#` y `@` desde el panel lateral y desde dentro de una lista, administrar etiquetas (crear, renombrar, recolorear, eliminar), mover una tarea de proyecto desde el detalle, escribir una hora y una duración a mano, revisar la prioridad 3 en modo claro y oscuro, y confirmar el centrado en una pantalla mediana y en una angosta. Encontrado y arreglado en el recorrido: `DateSelect` (`components/selectors/date-select.tsx`) componía cada cambio contra la prop `value` (el estado confirmado por el servidor), que tarda en volver porque la mutación es asíncrona — escribir la hora a mano y, sin esperar, escribir la duración, mandaba la segunda con el `due_at` todavía viejo y pisaba en silencio la hora recién tipeada. Se corrigió con un borrador local (`draft`) que se resincroniza con `value` solo mientras el popover está cerrado; mientras se edita, cada cambio se compone contra el propio borrador.
+- [x] 10.4 Correr `openspec validate interfaz-refinada --strict` y confirmar que no hay errores.

@@ -36,7 +36,7 @@ export function ProjectView({
   return (
     <div className="flex h-full flex-col">
       <ProjectHeader project={project} allProjects={allProjects} />
-      <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6 @[90rem]:mx-auto">
         <SectionedTasks
           projectId={projectId}
           initialSections={initialSections}
