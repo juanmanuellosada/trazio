@@ -313,8 +313,11 @@ nueva **R8** —la preposición o el artículo se consumen solo cuando son parte
 léxica de la locución que desambigua, y un determinante suelto delante de una fecha
 queda en el título— y las precisiones adoptadas: "primera" en R5 es primera en el
 texto de izquierda a derecha; `#` está exento de R5 porque las etiquetas son
-multivaluadas; un año de dos dígitos siempre es `20YY`; una hora ya pasada no se
-corre al día siguiente; y un candidato descartado no se resalta.
+multivaluadas (nota: D32 invierte los símbolos del parser — esa exención hoy
+corresponde a `@`, no a `#`; esta entrada queda como registro histórico de la
+decisión original y no se reescribe); un año de dos dígitos siempre es `20YY`;
+una hora ya pasada no se corre al día siguiente; y un candidato descartado no
+se resalta.
 
 **Consecuencia.** Sobre todas ellas manda un principio rector, **ante ambigüedad
 extraer menos** — un atributo de menos lo corrige el usuario en dos segundos, uno

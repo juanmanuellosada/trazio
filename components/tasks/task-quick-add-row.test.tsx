@@ -57,6 +57,17 @@ const PROJECTS = [
   },
 ];
 
+// Una sección de "Trabajo" (p2) y dos etiquetas existentes, para poder abrir
+// el menú de `#`/`@` (bloque 3) y ver algo más que la lista vacía. Ninguno
+// de estos nombres coincide con lo que tipean los demás tests de este
+// archivo (por ejemplo "compras", que otro test espera que el parser cree
+// recién al confirmar) para no pisar esos casos.
+const SECTIONS = [{ id: "sec1", project_id: "p2", name: "En curso" }];
+const LABELS = [
+  { id: "l1", name: "casa", color: "celeste" },
+  { id: "l2", name: "personal", color: "rojo" },
+];
+
 function chain(result: unknown) {
   const self: Record<string, unknown> = {
     eq: vi.fn(() => self),
@@ -70,11 +81,18 @@ function chain(result: unknown) {
   return self;
 }
 
+function dataFor(table: string): unknown {
+  if (table === "projects") return PROJECTS;
+  if (table === "sections") return SECTIONS;
+  if (table === "labels") return LABELS;
+  return [];
+}
+
 function createSupabaseMock() {
   const insertCalls: { table: string; payload: Record<string, unknown> }[] = [];
 
   const from = vi.fn((table: string) => ({
-    select: vi.fn(() => chain(table === "projects" ? { data: PROJECTS, error: null } : { data: [], error: null })),
+    select: vi.fn(() => chain({ data: dataFor(table), error: null })),
     insert: vi.fn((payload: Record<string, unknown>) => {
       insertCalls.push({ table, payload });
       if (table === "tasks") return chain({ data: { id: "new-task" }, error: null });
@@ -208,7 +226,11 @@ describe("TaskQuickAddRow — resaltado en vivo y R7", () => {
     renderRow();
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
-    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar leche @compras");
+    // Espacio final: cierra el token (bloque 3) antes del Enter, para que
+    // ese Enter someta la tarea y no confirme la opción del menú de @ que
+    // "compras" (sin coincidencias) también ofrece mientras el token sigue
+    // abierto — ese camino ya tiene su propio test en el bloque de abajo.
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar leche @compras ");
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
@@ -430,6 +452,190 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(insertedTask()!.parent_id).toBe("task-parent");
+    expect(insertedTask()!.project_id).toBe("p1");
+  });
+});
+
+describe("TaskQuickAddRow — menús de # y @ (bloque 3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.insertCalls.length = 0;
+  });
+
+  it("escribir #Trabajo de corrido, sin tocar el menú, reconoce el proyecto Trabajo", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Terminar informe #Trabajo ");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.title).toBe("Terminar informe");
+    expect(insertedTask()!.project_id).toBe("p2");
+  });
+
+  it("elegir 'Trabajo' del menú de # da el mismo resultado que escribirlo de corrido", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Terminar informe #Trab");
+    await user.click(await screen.findByRole("option", { name: "Trabajo" }));
+    // Mismo texto que si se hubiera tipeado "#Trabajo " entero, no un estado paralelo.
+    expect(input).toHaveValue("Terminar informe #Trabajo ");
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.title).toBe("Terminar informe"); // idéntico al del test anterior
+    expect(insertedTask()!.project_id).toBe("p2");
+  });
+
+  it("el menú nunca le roba el foco al campo de título, ni por mouse ni por teclado", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Nueva tarea #Trab");
+    expect(input).toHaveFocus();
+
+    await user.click(await screen.findByRole("option", { name: "Trabajo" }));
+    expect(input).toHaveFocus(); // seguir en el campo también después de clickear una opción con el mouse
+  });
+
+  it("escribir texto normal con el menú abierto sigue llegando al título (no lo intercepta)", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Nueva tarea #Tra");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    await user.type(input, "bajo urgente"); // sigue escribiendo sin mirar el menú
+    expect(input).toHaveValue("Nueva tarea #Trabajo urgente");
+  });
+
+  it("el menú se puede ignorar por completo: Escape lo cierra sin tocar el texto ni cancelar el alta", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Nueva tarea #Trab");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(input).toHaveValue("Nueva tarea #Trab"); // el texto no cambió
+    expect(screen.getByLabelText("Título de la nueva tarea")).toBeInTheDocument(); // el alta sigue abierta, no se canceló
+  });
+
+  it("el menú se puede ignorar por completo: clic afuera lo cierra sin tocar el texto", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Nueva tarea #Trab");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    await user.click(document.body);
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(input).toHaveValue("Nueva tarea #Trab");
+  });
+
+  it("el menú de # filtra a medida que se sigue escribiendo, sin distinguir mayúsculas ni acentos", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Archivar #BAND");
+
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["Bandeja de entrada"]);
+  });
+
+  it("el menú de # muestra las secciones anidadas debajo de su proyecto, y es navegable con flechas y Enter", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Reunión #Trab");
+
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["Trabajo", "En curso"]); // la sección, debajo de su proyecto
+
+    await user.keyboard("{ArrowDown}{Enter}"); // baja a "En curso" y la confirma
+    expect(input).toHaveValue("Reunión #Trabajo/En curso ");
+  });
+
+  it("el menú de @ filtra las etiquetas existentes sin distinguir mayúsculas ni acentos", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar @CA");
+
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["casa"]);
+  });
+
+  it("el menú de @ ofrece crear la etiqueta que no existe, y elegirla la crea y la asigna igual que tipeando de corrido", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Comprar leche @nueva");
+
+    const createOption = await screen.findByRole("option", { name: 'Crear etiqueta "nueva"' });
+    await user.click(createOption);
+    expect(input).toHaveValue("Comprar leche @nueva "); // mismo texto que tipeando "@nueva " entero
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.title).toBe("Comprar leche");
+    const labelInsert = mock.insertCalls.find((c) => c.table === "labels");
+    expect(labelInsert?.payload).toMatchObject({ name: "nueva" });
+    const taskLabelInsert = mock.insertCalls.find((c) => c.table === "task_labels");
+    expect(taskLabelInsert).toBeDefined();
+  });
+
+  it("el doble clic sigue desactivando un token elegido desde el menú, igual que uno tipeado de corrido (R7)", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    const input = screen.getByLabelText("Título de la nueva tarea");
+    await user.type(input, "Terminar informe #Trab");
+    await user.click(await screen.findByRole("option", { name: "Trabajo" }));
+    expect(input).toHaveValue("Terminar informe #Trabajo ");
+
+    const mark = await waitFor(() => {
+      const found = Array.from(document.querySelectorAll("mark")).find((m) => m.textContent === "#Trabajo");
+      if (!found) throw new Error("todavía no se resaltó '#Trabajo'");
+      return found;
+    });
+    fireEvent.doubleClick(mark);
+
+    await waitFor(() => {
+      expect(Array.from(document.querySelectorAll("mark")).some((m) => m.textContent === "#Trabajo")).toBe(false);
+    });
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    // El token desactivado queda como texto común, símbolo incluido; y como
+    // no se resolvió ningún proyecto, el destino es el de contexto (p1).
+    expect(insertedTask()!.title).toBe("Terminar informe #Trabajo");
     expect(insertedTask()!.project_id).toBe("p1");
   });
 });

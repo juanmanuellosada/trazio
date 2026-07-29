@@ -29,7 +29,7 @@ import { formatTaskDueLabel } from "@/lib/dates/format";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionForSwap } from "@/lib/tasks/tree";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
-import { PROJECT_COLORS } from "@/lib/validation/colors";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMounted } from "@/hooks/use-mounted";
@@ -43,16 +43,15 @@ import { TaskQuickAddRow } from "./task-quick-add-row";
 function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
-  // Indexar PROJECT_COLORS acá es seguro: es `label.color`, no
-  // `project.color`, y el check constraint de `labels` garantiza una de las
-  // diez claves de la paleta (sin la excepción del azul de marca que sí
-  // tiene `projects.color`). Ver `resolveProjectColorHex` en
-  // `lib/validation/colors.ts`.
+  // `label.color` ya no es siempre un id de la paleta: desde que
+  // `administracion-de-etiquetas` amplió `labels.color` al mismo hex
+  // personalizado que `projects.color` (D29), resolverlo pasa por
+  // `resolveProjectColorHex`, no por indexar `PROJECT_COLORS` a mano — ver
+  // el comentario de esa función en `lib/validation/colors.ts`.
   // Hasta montar, forzar "light" (lo mismo que asume el servidor):
   // `resolvedTheme` se resuelve en el cliente desde el primer render, antes
   // de montar, y puede no coincidir con el servidor.
-  const hex =
-    mounted && resolvedTheme === "dark" ? PROJECT_COLORS[label.color].dark : PROJECT_COLORS[label.color].light;
+  const hex = resolveProjectColorHex(label.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
   return (
     <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium text-white" style={{ backgroundColor: hex }}>
       {label.name}

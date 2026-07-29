@@ -18,21 +18,21 @@
 
 ## 3. Los menús del parser
 
-- [ ] 3.1 Consultar `ui-ux-pro-max` para el estilo del menú desplegable de `#` y `@` (proyectos con secciones anidadas, etiquetas).
-- [ ] 3.2 Implementar el menú que abre `#`, con los proyectos del usuario y sus secciones anidadas debajo de cada uno.
-- [ ] 3.3 Implementar el menú que abre `@`, con las etiquetas existentes y una opción para crear una etiqueta nueva cuando lo escrito no coincide con ninguna.
-- [ ] 3.4 Implementar el filtrado en vivo del menú a medida que se sigue escribiendo después de `#` o `@`, sin distinguir mayúsculas ni acentos (mismo criterio que E7).
-- [ ] 3.5 Implementar navegación por teclado (flechas para mover la selección, Enter o Tab para confirmar) y cierre sin elegir (Escape, escribir fuera del token, clic afuera), sin alterar el texto ya escrito.
-- [ ] 3.6 Asegurar que escribir un token de corrido sin tocar el menú produce el mismo resultado que elegirlo del menú, y que el menú nunca roba el foco del campo de texto ni intercepta la escritura normal.
-- [ ] 3.7 Verificar que el doble clic (R7) sigue desactivando un token completado desde el menú, igual que uno reconocido escribiendo de corrido.
+- [x] 3.1 Consultar `ui-ux-pro-max` para el estilo del menú desplegable de `#` y `@` (proyectos con secciones anidadas, etiquetas).
+- [x] 3.2 Implementar el menú que abre `#`, con los proyectos del usuario y sus secciones anidadas debajo de cada uno.
+- [x] 3.3 Implementar el menú que abre `@`, con las etiquetas existentes y una opción para crear una etiqueta nueva cuando lo escrito no coincide con ninguna.
+- [x] 3.4 Implementar el filtrado en vivo del menú a medida que se sigue escribiendo después de `#` o `@`, sin distinguir mayúsculas ni acentos (mismo criterio que E7).
+- [x] 3.5 Implementar navegación por teclado (flechas para mover la selección, Enter o Tab para confirmar) y cierre sin elegir (Escape, escribir fuera del token, clic afuera), sin alterar el texto ya escrito.
+- [x] 3.6 Asegurar que escribir un token de corrido sin tocar el menú produce el mismo resultado que elegirlo del menú, y que el menú nunca roba el foco del campo de texto ni intercepta la escritura normal.
+- [x] 3.7 Verificar que el doble clic (R7) sigue desactivando un token completado desde el menú, igual que uno reconocido escribiendo de corrido.
 
 ## 4. Las etiquetas
 
-- [ ] 4.1 Consultar `ui-ux-pro-max` para la pantalla de administración de etiquetas y el selector con búsqueda.
-- [ ] 4.2 Construir la pantalla de administración de etiquetas: crear, renombrar y eliminar, con confirmación antes de eliminar.
-- [ ] 4.3 Reusar el selector de color de proyectos (`components/projects/color-swatch-picker.tsx`) para el color de etiqueta, con la misma paleta de diez colores y la misma validación de contraste para color personalizado.
-- [ ] 4.4 Construir el selector de etiquetas con búsqueda y selección múltiple en el detalle de la tarea, que guarda reemplazando el conjunto completo de etiquetas (no de forma incremental), según el comportamiento ya establecido para la edición de etiquetas de una tarea.
-- [ ] 4.5 Verificar que renombrar o recolorear una etiqueta se refleja en todos sus chips existentes, y que eliminarla la quita de todas las tareas apoyándose en la cascada ya garantizada a nivel de base de datos.
+- [x] 4.1 Consultar `ui-ux-pro-max` para la pantalla de administración de etiquetas y el selector con búsqueda.
+- [x] 4.2 Construir la pantalla de administración de etiquetas: crear, renombrar y eliminar, con confirmación antes de eliminar.
+- [x] 4.3 Reusar el selector de color de proyectos (`components/projects/color-swatch-picker.tsx`) para el color de etiqueta, con la misma paleta de diez colores y la misma validación de contraste para color personalizado.
+- [x] 4.4 Construir el selector de etiquetas con búsqueda y selección múltiple en el detalle de la tarea, que guarda reemplazando el conjunto completo de etiquetas (no de forma incremental), según el comportamiento ya establecido para la edición de etiquetas de una tarea.
+- [x] 4.5 Verificar que renombrar o recolorear una etiqueta se refleja en todos sus chips existentes, y que eliminarla la quita de todas las tareas apoyándose en la cascada ya garantizada a nivel de base de datos.
 - [ ] 4.6 Medir en un navegador real (no en los tests) cuánto tarda en renderizar el selector de íconos de proyecto (`components/projects/emoji-picker.tsx`), que muestra sus ~1900 entradas sin virtualizar — señalado como riesgo desde que se construyó y nunca resuelto. Primero medir, especialmente en un equipo lento; recién después decidir si hace falta virtualizar. Si la medición lo justifica, registrar en `docs/decisions.md` la decisión de sumar una librería de virtualización — está fuera de la lista cerrada de `AGENTS.md` — antes de instalarla.
 
 ## 5. Los selectores

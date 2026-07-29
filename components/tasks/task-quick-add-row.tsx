@@ -11,12 +11,15 @@ import { DeadlineSelect } from "@/components/selectors/deadline-select";
 import { PrioritySelect } from "@/components/selectors/priority-select";
 import { applyDisabledMatches, matchKey } from "@/lib/parser/apply-disabled";
 import { useCreateTaskFromParse } from "@/lib/parser/create-task-from-parse";
+import { buildLabelMenuOptions, buildProjectMenuOptions, type ParserMenuOption } from "@/lib/parser/menu-options";
+import { findMenuTrigger, type MenuTrigger } from "@/lib/parser/menu-trigger";
 import { parse } from "@/lib/parser/parse";
 import type { ParseMatch, ParsedProject, ParseResult, ParserContext } from "@/lib/parser/types";
 import { useParserContext } from "@/lib/parser/use-parser-context";
 import type { Json } from "@/lib/supabase/database.types";
 import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { cn } from "@/lib/utils";
+import { ParserMenu } from "./parser-menu";
 import { TaskDestinationSelect, type TaskDestination } from "./task-destination-select";
 
 const DEBOUNCE_MS = 120;
@@ -133,7 +136,26 @@ export function TaskQuickAddRow({
   const [deadlineOverride, setDeadlineOverride] = useState<string | null | undefined>(undefined);
   const [destinationOverride, setDestinationOverride] = useState<TaskDestination | undefined>(undefined);
 
+  /**
+   * El menú de `#`/`@` (bloque 3, A3 del design): funcionalidad nueva que
+   * convive con el reconocimiento en vivo de arriba, no lo reemplaza.
+   * `menuTrigger` es `null` casi siempre — solo existe mientras el cursor
+   * está escribiendo un token sin cerrar, y se recalcula en cada tecla y
+   * cada movimiento de cursor (`onChange`/`onSelect` del `<input>` de
+   * abajo). `selectedIndex` es puramente de navegación por teclado (bloque
+   * 3.5): el resaltado del mouse es CSS, no toca este estado.
+   */
+  const [menuTrigger, setMenuTrigger] = useState<MenuTrigger | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  // Qué sesión de menú produjo el `selectedIndex` actual: cambia con cada
+  // símbolo o cada tecla del filtro. Comparado contra el trigger vigente
+  // durante el render (no en un efecto, para no encadenar otro render de
+  // más) para volver la selección al primer resultado apenas cambia lo que
+  // se está filtrando.
+  const [selectedIndexFor, setSelectedIndexFor] = useState<string | null>(null);
+
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleFieldRef = useRef<HTMLDivElement>(null);
 
   const preferences = useUserPreferences();
   const { proyectos, etiquetas } = useParserContext();
@@ -169,6 +191,67 @@ export function TaskQuickAddRow({
 
   const segments = useMemo(() => buildSegments(title, preview?.matches ?? []), [title, preview]);
 
+  const menuOptions: ParserMenuOption[] = useMemo(() => {
+    if (!menuTrigger) return [];
+    return menuTrigger.symbol === "#"
+      ? buildProjectMenuOptions(proyectos, menuTrigger.query)
+      : buildLabelMenuOptions(etiquetas, menuTrigger.query);
+  }, [menuTrigger, proyectos, etiquetas]);
+
+  // La selección por teclado vuelve al primer resultado cada vez que cambia
+  // lo que se está filtrando — si no, se podría confirmar con Enter una
+  // opción que ya no está en la lista filtrada. Ajuste durante el render,
+  // no en un efecto (evita el render extra que dispararía un `setState`
+  // dentro de `useEffect`): es el mismo patrón que React recomienda para
+  // "resetear el estado cuando cambia un prop".
+  const menuKey = menuTrigger ? `${menuTrigger.symbol}:${menuTrigger.query}` : null;
+  if (menuKey !== selectedIndexFor) {
+    setSelectedIndexFor(menuKey);
+    setSelectedIndex(0);
+  }
+
+  // "Clic afuera" cierra el menú sin tocar el texto (bloque 3.5): se
+  // escucha en `document` en vez de un `onBlur` del `<input>` porque
+  // clickear una opción del menú también le saca el foco al documento por
+  // un instante, y `onBlur` no distingue ese caso del de clickear afuera de
+  // verdad. El menú vive dentro de `titleFieldRef`, así que un clic ahí
+  // adentro (la opción, el propio `<input>`) no cuenta como "afuera".
+  useEffect(() => {
+    if (!menuTrigger) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (!titleFieldRef.current?.contains(event.target as Node)) setMenuTrigger(null);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [menuTrigger]);
+
+  /** Recalcula qué token se está escribiendo, si hay alguno, a partir del texto y la posición del cursor (bloque 3.2-3.4). */
+  function updateMenuTrigger(value: string, cursor: number) {
+    setMenuTrigger(findMenuTrigger(value, cursor));
+  }
+
+  /**
+   * Elegir una opción del menú (bloque 3.6): empalma el texto elegido en el
+   * título, en el mismo lugar donde está el token — nunca un estado
+   * paralelo — para que el parser lo vuelva a reconocer y resaltar
+   * exactamente como si se hubiera escrito de corrido. La etiqueta nueva
+   * (`isCreate`) no es distinta acá: su `insertText` es el nombre tal cual
+   * se escribió, así que el título queda igual que si nunca hubiera existido
+   * el menú, y la creación la sigue resolviendo el parser al confirmar
+   * (OQ1), no esta función.
+   */
+  function pickMenuOption(option: ParserMenuOption) {
+    if (!menuTrigger) return;
+    const tokenStart = menuTrigger.start + 1;
+    const tokenEnd = tokenStart + menuTrigger.query.length;
+    const insertion = `${option.insertText} `;
+    const nextTitle = title.slice(0, tokenStart) + insertion + title.slice(tokenEnd);
+    setTitle(nextTitle);
+    setMenuTrigger(null);
+    const cursor = tokenStart + insertion.length;
+    requestAnimationFrame(() => titleInputRef.current?.setSelectionRange(cursor, cursor));
+  }
+
   const previewDate = mergeDate(preview, dateOverride, defaultDueDate ?? null);
   const previewPriority = mergePriority(preview?.priority, priorityOverride);
   const previewDeadline = deadlineOverride !== undefined ? deadlineOverride : null; // el parser no reconoce fecha límite
@@ -183,6 +266,7 @@ export function TaskQuickAddRow({
     setPriorityOverride(undefined);
     setDeadlineOverride(undefined);
     setDestinationOverride(undefined);
+    setMenuTrigger(null);
   }
 
   function cancel() {
@@ -252,7 +336,7 @@ export function TaskQuickAddRow({
         if (event.key === "Escape") cancel();
       }}
     >
-      <div className="relative">
+      <div className="relative" ref={titleFieldRef}>
         {/*
           Capa de resaltado: el texto que de verdad se ve. `aria-hidden`
           porque el `<input>` de abajo ya expone el mismo texto de forma
@@ -287,8 +371,47 @@ export function TaskQuickAddRow({
           autoFocus
           value={title}
           placeholder="Título de la tarea"
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => {
+            const value = event.target.value;
+            setTitle(value);
+            updateMenuTrigger(value, event.target.selectionStart ?? value.length);
+          }}
+          onSelect={(event) => {
+            const el = event.currentTarget;
+            updateMenuTrigger(el.value, el.selectionStart ?? el.value.length);
+          }}
           onKeyDown={(event) => {
+            // Navegación del menú (bloque 3.5): solo estas teclas se
+            // interceptan, y solo mientras el menú está abierto — el resto
+            // sigue yendo derecho al `<input>` (bloque 3.6), sin lo cual
+            // escribir de corrido dejaría de funcionar.
+            if (menuTrigger && menuOptions.length > 0) {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setSelectedIndex((i) => (i + 1) % menuOptions.length);
+                return;
+              }
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setSelectedIndex((i) => (i - 1 + menuOptions.length) % menuOptions.length);
+                return;
+              }
+              if (event.key === "Enter" || event.key === "Tab") {
+                event.preventDefault();
+                pickMenuOption(menuOptions[selectedIndex]);
+                return;
+              }
+            }
+            if (menuTrigger && event.key === "Escape") {
+              // Cierra solo el menú, no todo el composer: sin el
+              // `stopPropagation` de acá, este mismo Escape seguiría
+              // subiendo hasta el `onKeyDown` del contenedor y cancelaría
+              // el alta completa (bloque 3.5).
+              event.preventDefault();
+              event.stopPropagation();
+              setMenuTrigger(null);
+              return;
+            }
             if (event.key === "Enter") {
               event.preventDefault();
               submit();
@@ -297,6 +420,14 @@ export function TaskQuickAddRow({
           aria-label={parentId ? "Título de la nueva subtarea" : "Título de la nueva tarea"}
           className="caret-foreground h-8 w-full text-sm text-transparent selection:bg-transparent"
         />
+        {menuTrigger && (
+          <ParserMenu
+            symbol={menuTrigger.symbol}
+            options={menuOptions}
+            selectedIndex={selectedIndex}
+            onPick={pickMenuOption}
+          />
+        )}
       </div>
 
       <Textarea

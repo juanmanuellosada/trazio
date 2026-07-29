@@ -27,19 +27,22 @@ export const PROJECT_COLOR_IDS = Object.keys(PROJECT_COLORS) as [
 /**
  * `projects.color` es nulo para la Bandeja de entrada (mismo patrón que su
  * `icon`, también nulo), un id de `PROJECT_COLORS` o un color personalizado
- * en formato hexadecimal (`#RRGGBB`, D29) para el resto. `labels.color` no
- * tiene esta excepción: siempre es un id de la paleta, así que indexar
- * `PROJECT_COLORS[label.color]` directamente ahí sigue siendo correcto (ver
- * `components/tasks/label-picker.tsx` y `task-row.tsx`).
+ * en formato hexadecimal (`#RRGGBB`, D29) para el resto. `labels.color`
+ * (nunca nulo) admite las mismas dos variantes desde que
+ * `administracion-de-etiquetas` extendió D29 a etiquetas (migración
+ * `20260729000000_labels_color_allow_custom_hex.sql`): ya no alcanza con
+ * indexar `PROJECT_COLORS[label.color]` a mano, hay que resolverlo acá
+ * también (ver `components/tasks/label-picker.tsx` y `task-row.tsx`).
  *
- * Esta es la única función que debe resolver un `projects.color` de la base a
- * un hex: nunca indexar `PROJECT_COLORS[projects.color]` a mano, porque rompe
- * con `undefined` para la Bandeja. Nunca tira: `null` resuelve al azul de
- * marca, un color personalizado válido se devuelve tal cual (mismo hex en
- * los dos temas: ya pasó la validación de contraste contra los dos antes de
- * guardarse, así que no hace falta una variante por tema), y cualquier otro
- * valor que no sea ninguna de las dos cosas cae al gris neutro de
- * `--text-secondary` (`docs/design-system.md`).
+ * Esta es la única función que debe resolver un `projects.color` o
+ * `labels.color` de la base a un hex: nunca indexar `PROJECT_COLORS[color]`
+ * a mano, porque rompe con `undefined` para la Bandeja o para un color
+ * personalizado. Nunca tira: `null` resuelve al azul de marca (solo posible
+ * en `projects.color`), un color personalizado válido se devuelve tal cual
+ * (mismo hex en los dos temas: ya pasó la validación de contraste contra
+ * los dos antes de guardarse, así que no hace falta una variante por
+ * tema), y cualquier otro valor que no sea ninguna de las dos cosas cae al
+ * gris neutro de `--text-secondary` (`docs/design-system.md`).
  */
 const INBOX_BLUE_HEX = "#283B56";
 const INBOX_BLUE_DARK_HEX = "#8CA3C9";

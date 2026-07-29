@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, MoreVertical, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogOut, MoreVertical, Settings, Tag } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ import { ThemeToggle } from "./theme-toggle";
  * esos atributos en silencio.
  */
 export function AccountMenu({ collapsed }: { collapsed: boolean }) {
+  const router = useRouter();
   const { open: openSettings } = useSettings();
   const { signOut, loading: loggingOut } = useSignOut();
 
@@ -56,6 +58,18 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
         <DropdownMenuItem onClick={openSettings}>
           <Settings className="size-4" />
           Configuración
+        </DropdownMenuItem>
+        {/* "Etiquetas" (bloque 4.5, `administracion-de-etiquetas`): el
+            requirement de fase 1 protege la lista PRINCIPAL de navegación
+            (Bandeja/Hoy/Completado + árbol de proyectos, en
+            `sidebar-content.tsx`) de un ítem "Etiquetas" — ese ítem llevaría
+            a la página propia por etiqueta, que todavía no existe. La
+            pantalla de administración que sí se suma acá no es esa página,
+            así que entra donde ya vive "Configuración": otro destino que
+            tampoco pertenece a esa lista principal. */}
+        <DropdownMenuItem onClick={() => router.push("/etiquetas")}>
+          <Tag className="size-4" />
+          Etiquetas
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} disabled={loggingOut}>

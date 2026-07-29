@@ -1,7 +1,13 @@
-import type { ProjectColor } from "@/lib/validation/colors";
-
-/** Etiqueta tal como se muestra en un chip (lista o detalle), sin más columnas que las que se usan. */
-export type LabelChip = { id: string; name: string; color: ProjectColor };
+/**
+ * Etiqueta tal como se muestra en un chip (lista o detalle), sin más
+ * columnas que las que se usan. `color` es `string`, no `ProjectColor`:
+ * desde que `administracion-de-etiquetas` extendió D29 a `labels.color`
+ * (`20260729000000_labels_color_allow_custom_hex.sql`), puede ser un id de
+ * la paleta o un hex personalizado — resolverlo pasa por
+ * `resolveProjectColorHex` (`lib/validation/colors.ts`), nunca por indexar
+ * `PROJECT_COLORS[color]` a mano.
+ */
+export type LabelChip = { id: string; name: string; color: string };
 
 /**
  * Fila de tarea para las vistas de lista (bloque 7): sin `description` (es
