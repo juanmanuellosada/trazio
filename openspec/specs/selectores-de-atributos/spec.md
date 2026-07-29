@@ -1,0 +1,117 @@
+# selectores-de-atributos Specification
+
+## Purpose
+TBD - created by archiving change interfaz-propia. Update Purpose after archive.
+## Requirements
+### Requirement: El selector de fecha combina texto en lenguaje natural, accesos rápidos y calendario
+
+El selector de fecha SHALL ofrecer un campo de texto que interpreta lenguaje natural, un conjunto de accesos rápidos (hoy, mañana, este fin de semana, próxima semana) y un calendario mensual navegable, como formas equivalentes de elegir la misma fecha.
+
+#### Scenario: Los accesos rápidos muestran a qué día caen
+
+- **WHEN** se abre el selector de fecha
+- **THEN** cada acceso rápido (hoy, mañana, este fin de semana, próxima semana) SHALL mostrar junto a su nombre el día concreto al que corresponde
+
+#### Scenario: El calendario mensual se navega hacia adelante y hacia atrás
+
+- **WHEN** se abre el calendario del selector de fecha
+- **THEN** SHALL poder navegarse a meses anteriores y siguientes
+- **AND** SHALL poder elegirse cualquier día visible como la fecha
+
+### Requirement: El campo de texto se apoya en el parser de lenguaje natural existente
+
+El campo de texto del selector de fecha SHALL interpretar lenguaje natural usando el parser de `lib/parser/` descrito en la capacidad `parser-lenguaje-natural`, y NUNCA SHALL implementar una segunda interpretación de fechas independiente de ese contrato.
+
+#### Scenario: El campo de texto reconoce lo mismo que el contrato del parser
+
+- **WHEN** se escribe en el campo de texto del selector de fecha una expresión cubierta por un caso del contrato de `docs/parser-test-cases.md` (por ejemplo "mañana" o "el lunes")
+- **THEN** la fecha resuelta SHALL coincidir con la que resuelve el parser para ese mismo caso
+
+#### Scenario: Ninguna lógica de fechas propia del selector contradice al parser
+
+- **WHEN** el selector de fecha necesita interpretar texto libre
+- **THEN** SHALL delegar esa interpretación al parser compartido
+- **AND** NUNCA SHALL implementar reglas de interpretación de fecha propias y distintas de las del parser
+
+### Requirement: El selector permite sumar hora y duración a la fecha elegida
+
+El selector de fecha SHALL permitir agregar una hora y una duración estimada a la fecha elegida, quedando la hora guardada en `due_at` en vez de `due_date` cuando se especifica.
+
+#### Scenario: Agregar hora mueve el valor a due_at
+
+- **WHEN** se elige una fecha sin hora y luego se le agrega una hora concreta desde el selector
+- **THEN** el valor SHALL guardarse en `due_at`
+- **AND** `due_date` SHALL quedar sin valor
+
+#### Scenario: Agregar una duración estimada
+
+- **WHEN** se agrega una duración estimada en minutos desde el selector de fecha
+- **THEN** el valor SHALL guardarse en `duration_minutes` de la tarea
+
+### Requirement: El selector de fecha límite usa el mismo lenguaje sobre una columna distinta
+
+El selector de fecha límite SHALL ofrecer el mismo campo de texto en lenguaje natural, los mismos accesos rápidos y el mismo calendario que el selector de fecha, aplicados sobre la columna `deadline` en vez de `due_date`/`due_at`.
+
+#### Scenario: Elegir una fecha límite no toca la fecha de vencimiento
+
+- **WHEN** se elige una fecha desde el selector de fecha límite de una tarea
+- **THEN** el valor SHALL guardarse en `deadline`
+- **AND** `due_date` y `due_at` de esa tarea SHALL permanecer sin cambios
+
+### Requirement: La fecha límite se distingue de la fecha de vencimiento de cara al usuario
+
+El selector de fecha límite SHALL mostrar una etiqueta y una ubicación distintas de las del selector de fecha de vencimiento, dejando claro que una es la fecha en la que se planea trabajar la tarea y la otra es el tope que no puede cruzarse.
+
+#### Scenario: Los dos selectores conviven sin confundirse
+
+- **WHEN** el detalle de una tarea muestra el selector de fecha de vencimiento y el selector de fecha límite al mismo tiempo
+- **THEN** cada uno SHALL mostrar una etiqueta propia que identifica cuál de las dos fechas representa
+- **AND** ambos SHALL poder tener valores distintos entre sí sin que uno sobrescriba al otro
+
+### Requirement: El selector de prioridad muestra las cuatro prioridades con su color y su nombre
+
+El selector de prioridad SHALL mostrar las cuatro prioridades (Urgente, Alta, Media, Baja), cada una con su color de marca y su nombre visible, permitiendo elegir una sola a la vez.
+
+#### Scenario: Cada opción muestra su color y su nombre
+
+- **WHEN** se abre el selector de prioridad
+- **THEN** SHALL mostrarse las cuatro opciones, cada una con el punto de color de la prioridad y el nombre correspondiente
+
+#### Scenario: El rojo de marca se usa legítimamente para Urgente, y solo ahí
+
+- **WHEN** se muestra la opción de prioridad Urgente en el selector
+- **THEN** SHALL usarse el rojo de marca (`#EC1E2A`) como color de esa opción
+- **AND** ese mismo rojo NUNCA SHALL usarse en el selector, ni en ningún otro componente de la aplicación, para indicar un error de formulario o una acción destructiva
+
+### Requirement: Los tres selectores se reutilizan en toda la aplicación
+
+Cada uno de los tres selectores —fecha, fecha límite y prioridad— SHALL ser un único componente reutilizado en el alta de tareas, en el detalle de tarea, y en cualquier otra superficie donde se elija ese atributo, sin una implementación distinta por superficie.
+
+#### Scenario: El mismo selector de fecha se usa en el alta y en el detalle
+
+- **WHEN** se elige la fecha de vencimiento desde el componente de alta de tareas y, por separado, desde el detalle de una tarea ya creada
+- **THEN** en los dos casos SHALL usarse la misma implementación del selector de fecha, con el mismo comportamiento
+
+#### Scenario: El mismo selector de prioridad se usa en el alta y en el detalle
+
+- **WHEN** se elige la prioridad desde el componente de alta de tareas y, por separado, desde el detalle de una tarea ya creada
+- **THEN** en los dos casos SHALL usarse la misma implementación del selector de prioridad
+
+### Requirement: Los tres selectores no usan controles nativos del navegador
+
+Ninguno de los tres selectores SHALL usar un `<input type="date">`, un `<input type="time">` ni un `<select>` nativo del navegador: el calendario, el selector de hora y la lista de prioridades SHALL ser componentes propios de la aplicación.
+
+#### Scenario: Ningún selector delega en un input nativo
+
+- **WHEN** se inspecciona la implementación de cualquiera de los tres selectores
+- **THEN** ninguno SHALL renderizar un `<input type="date">`, un `<input type="time">` ni un `<select>` nativo del navegador como el control con el que interactúa el usuario
+
+### Requirement: La zona horaria por tarea no entra en estos selectores
+
+El selector de fecha y el selector de fecha límite NUNCA SHALL ofrecer un control para elegir una zona horaria específica de la tarea: la zona horaria SHALL seguir siendo la preferencia de la cuenta, sin un campo equivalente en el modelo de datos de la tarea.
+
+#### Scenario: No hay ningún control de zona horaria en los selectores
+
+- **WHEN** se abre el selector de fecha o el selector de fecha límite de una tarea
+- **THEN** NUNCA SHALL mostrarse ningún control para elegir una zona horaria distinta de la de la cuenta
+

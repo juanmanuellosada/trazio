@@ -20,11 +20,16 @@ enriquecido.
 
 Una tarea SHALL poder crearse, editarse, completarse, descompletarse, duplicarse,
 moverse de proyecto o sección, reordenarse, eliminarse, y SHALL poder copiarse su
-enlace directo.
+enlace directo. La creación SHALL resolverse siempre a través del componente de
+alta rico definido por la capacidad `alta-de-tareas` —con título, descripción y
+accesos a fecha, prioridad, fecha límite y proyecto destino—: este requisito no
+repite esos campos, solo exige que crear una tarea pase por ese componente y
+quede con al menos un título.
 
-#### Scenario: Crear una tarea con un título
+#### Scenario: Crear una tarea desde el componente de alta
 
-- **WHEN** se crea una tarea indicando al menos un título
+- **WHEN** se confirma la creación de una tarea desde el componente de alta
+  definido por `alta-de-tareas`, indicando al menos un título
 - **THEN** la tarea queda creada, pendiente, en el proyecto de destino indicado
   (o en la Bandeja de entrada si no se indicó ninguno)
 
@@ -164,10 +169,10 @@ contexto.
 Una tarea SHALL tener una ruta propia en `app/(app)/tarea/[id]`, servida a
 pantalla completa y con su propio `<title>` de documento. Esta ruta SHALL ser el
 destino de "copiar enlace directo" y de "abrir en ventana aparte". Dentro de la
-app, el detalle de una tarea SHALL mostrarse como un panel lateral
-redimensionable que recuerda el ancho elegido, salvo en teléfono, donde SHALL
-mostrarse a pantalla completa. El título y la descripción del detalle SHALL
-autoguardarse, sin requerir una acción explícita de guardado.
+app, el detalle de una tarea SHALL mostrarse como un modal centrado por encima
+de la pantalla, salvo en teléfono, donde SHALL mostrarse a pantalla completa. El
+título y la descripción del detalle SHALL autoguardarse, sin requerir una
+acción explícita de guardado.
 
 #### Scenario: La ruta de tarea suelta tiene su propio título de documento
 
@@ -181,23 +186,22 @@ autoguardarse, sin requerir una acción explícita de guardado.
 - **WHEN** se usa la acción "abrir en ventana aparte" sobre una tarea
 - **THEN** se abre `app/(app)/tarea/[id]` con el `id` de esa tarea
 
-#### Scenario: El detalle es un panel lateral redimensionable en escritorio
+#### Scenario: El detalle es un modal centrado en escritorio
 
-- **WHEN** se abre el detalle de una tarea desde dentro de la app en una pantalla
-  de escritorio, y se cambia su ancho
-- **THEN** se muestra como panel lateral
-- **AND** al volver a abrir un detalle más tarde, el panel usa el último ancho
-  elegido
+- **WHEN** se abre el detalle de una tarea desde dentro de la app en una
+  pantalla de escritorio
+- **THEN** se muestra como un modal centrado por encima de la pantalla, sin
+  ningún control para redimensionarlo
 
 #### Scenario: El detalle es pantalla completa en teléfono
 
 - **WHEN** se abre el detalle de una tarea desde dentro de la app en una pantalla
   de teléfono
-- **THEN** se muestra a pantalla completa, no como panel lateral
+- **THEN** se muestra a pantalla completa, no como modal
 
 #### Scenario: Título y descripción se autoguardan
 
-- **WHEN** se edita el título o la descripción de una tarea desde el panel de
+- **WHEN** se edita el título o la descripción de una tarea desde el modal de
   detalle, sin usar ningún botón de guardar
 - **THEN** el cambio queda persistido
 
