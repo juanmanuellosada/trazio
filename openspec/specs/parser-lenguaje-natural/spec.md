@@ -53,7 +53,7 @@ comportarse según lo que la tabla define para sus casos.
 
 #### Scenario: Símbolos (categoría "símbolos", caso 42)
 
-- **WHEN** el texto es `Revisar diseño @Trabajo/En curso`
+- **WHEN** el texto es `Revisar diseño #Trabajo/En curso`
 - **THEN** el título SHALL quedar en `Revisar diseño`
 - **AND** el proyecto reconocido SHALL ser `Trabajo` y la sección `En curso`
 
@@ -380,8 +380,8 @@ el día resuelto.
 Cuando R5 dice "gana la primera reconocida", esa prioridad SHALL ser el
 orden de aparición del candidato en el texto, de izquierda a derecha, y no
 el orden en que corren los reconocedores internamente. R5 SHALL aplicar por
-atributo. La etiqueta (`#`) SHALL estar exenta de R5 porque las etiquetas son
-multivaluadas. El proyecto (`@`) NO SHALL estar exento: una sola tarea admite
+atributo. La etiqueta (`@`) SHALL estar exenta de R5 porque las etiquetas son
+multivaluadas. El proyecto (`#`) NO SHALL estar exento: una sola tarea admite
 un solo proyecto.
 
 #### Scenario: Gana el candidato que aparece primero en el texto
@@ -393,21 +393,21 @@ un solo proyecto.
 
 #### Scenario: Las etiquetas son multivaluadas y no compiten entre sí (caso 43)
 
-- **WHEN** el texto es `Comprar regalo #compras #urgente`
+- **WHEN** el texto es `Comprar regalo @compras @urgente`
 - **THEN** el título SHALL quedar en `Comprar regalo`
 - **AND** SHALL reconocerse las dos etiquetas, `compras` y `urgente`, sin que
   R5 descarte ninguna
 
 #### Scenario: El proyecto no es multivaluado
 
-- **WHEN** el texto contiene dos tokens `@` distintos
+- **WHEN** el texto contiene dos tokens `#` distintos
 - **THEN** el parser SHALL quedarse con el proyecto del primer token en el
-  texto, y el segundo `@` NO SHALL producir un segundo proyecto
+  texto, y el segundo `#` NO SHALL producir un segundo proyecto
 
 ### Requirement: Tokenización de `@` y `#` (E7)
 
-`#etiqueta` SHALL reconocerse desde el `#` hasta el primer espacio o símbolo.
-`@` SHALL resolverse por coincidencia más larga contra la lista real de
+`@etiqueta` SHALL reconocerse desde el `@` hasta el primer espacio o símbolo.
+`#` SHALL resolverse por coincidencia más larga contra la lista real de
 proyectos y secciones del usuario que el parser recibe como entrada (E1). `/`
 SHALL separar segmentos: primero se resuelve contra el árbol de proyectos (la
 ruta más larga que coincida, hasta 3 niveles), y el segmento sobrante se
@@ -415,15 +415,22 @@ busca como sección dentro de ese proyecto. Ante empate entre un proyecto y
 una sección con el mismo nombre, SHALL ganar el proyecto. La comparación
 SHALL hacerse sin distinguir mayúsculas ni acentos, en las dos direcciones.
 
+Es la inversión respecto del contrato original, donde `#` era etiqueta y `@`
+era proyecto (casos 40, 41, 42, 43 y 53). El público del producto viene de
+Todoist, que usa `#` para proyecto y sección y `@` para etiqueta; que el
+símbolo haga lo que la persona espera vale más que la coherencia con el
+hashtag de internet, sobre todo porque el error se descubre recién después de
+haber creado la tarea mal.
+
 #### Scenario: La etiqueta termina en el primer espacio (caso 40)
 
-- **WHEN** el texto es `Comprar leche #compras`
+- **WHEN** el texto es `Comprar leche @compras`
 - **THEN** el título SHALL quedar en `Comprar leche`
 - **AND** la etiqueta reconocida SHALL ser `compras`
 
 #### Scenario: Coincidencia más larga con espacio adentro del nombre (caso 42)
 
-- **WHEN** el texto es `Revisar diseño @Trabajo/En curso`
+- **WHEN** el texto es `Revisar diseño #Trabajo/En curso`
 - **AND** el proyecto `Trabajo` tiene una sección `En curso`
 - **THEN** el proyecto reconocido SHALL ser `Trabajo` y la sección `En curso`,
   incluyendo el espacio dentro del nombre de la sección
@@ -431,12 +438,12 @@ SHALL hacerse sin distinguir mayúsculas ni acentos, en las dos direcciones.
 #### Scenario: Empate entre proyecto y sección con el mismo nombre
 
 - **WHEN** el usuario tiene un proyecto y una sección (de otro proyecto) con
-  el mismo nombre, y el texto usa `@` seguido de ese nombre sin `/`
+  el mismo nombre, y el texto usa `#` seguido de ese nombre sin `/`
 - **THEN** el parser SHALL resolver el token como el proyecto, no la sección
 
 #### Scenario: Comparación sin mayúsculas ni acentos
 
-- **WHEN** el texto usa `@Trabajo` o `#trabajo` en cualquier combinación de
+- **WHEN** el texto usa `#Trabajo` o `@trabajo` en cualquier combinación de
   mayúsculas o con/sin acentos, y el usuario tiene un proyecto o etiqueta
   llamada `Trabajo`
 - **THEN** el parser SHALL reconocer la coincidencia sin importar
@@ -444,30 +451,18 @@ SHALL hacerse sin distinguir mayúsculas ni acentos, en las dos direcciones.
 
 ### Requirement: Las etiquetas se persisten en fase 1 (OQ1)
 
-El `#` SHALL persistir, no solo reconocerse: al confirmar la creación de la
+El `@` SHALL persistir, no solo reconocerse: al confirmar la creación de la
 tarea, si la etiqueta no existe todavía para el usuario (comparando sin
 acentos ni mayúsculas, según E7), el alta rápida SHALL crearla, SHALL
-asignarla a la tarea, y SHALL mostrar su chip. La administración de
-etiquetas — la página propia de cada etiqueta, marcarlas como favoritas, y el
-acceso "Etiquetas" del panel lateral — NO SHALL entrar en fase 1; el `#` del
-alta rápida es la única vía para crear y asignar una etiqueta en esta fase.
+asignarla a la tarea, y SHALL mostrar su chip.
 
-#### Scenario: `#` crea la etiqueta si no existe y la asigna (caso 40)
+#### Scenario: `@` crea la etiqueta si no existe y la asigna (caso 40)
 
-- **WHEN** el texto es `Comprar leche #compras`
+- **WHEN** el texto es `Comprar leche @compras`
 - **AND** el usuario no tiene todavía una etiqueta `compras`
 - **THEN** el título SHALL quedar en `Comprar leche`
 - **AND** la etiqueta `compras` SHALL crearse y asignarse a la tarea
 - **AND** su chip SHALL mostrarse en la tarea creada
-
-#### Scenario: La administración de etiquetas no es de fase 1
-
-- **WHEN** se navega a una página de administración de etiquetas, a la
-  página propia de una etiqueta, a marcar una etiqueta como favorita, o al
-  acceso "Etiquetas" del panel lateral
-- **THEN** ninguna de esas superficies SHALL existir en fase 1
-- **AND** la única vía para crear y asignar una etiqueta SHALL ser el `#` del
-  alta rápida
 
 ### Requirement: Año de dos dígitos siempre es 20YY (E8)
 
@@ -572,7 +567,7 @@ mientras el usuario escribe. Un doble clic sobre un resaltado SHALL
 desactivarlo: el atributo asociado SHALL descartarse y el token SHALL volver
 a ser texto común. Al confirmar la creación de la tarea, todo token
 reconocido y no desactivado SHALL quitarse del título. Cuando el texto no usa
-`@` para elegir un proyecto, el destino de la tarea SHALL ser el proyecto por
+`#` para elegir un proyecto, el destino de la tarea SHALL ser el proyecto por
 defecto configurado en las preferencias del usuario.
 
 #### Scenario: Resaltado en vivo mientras se escribe
@@ -595,9 +590,9 @@ defecto configurado en las preferencias del usuario.
 - **AND** SHALL incluir todo token que el usuario haya desactivado con doble
   clic
 
-#### Scenario: Sin `@`, el destino es el proyecto por defecto
+#### Scenario: Sin `#`, el destino es el proyecto por defecto
 
-- **WHEN** el texto no contiene ningún token `@`
+- **WHEN** el texto no contiene ningún token `#`
 - **THEN** la tarea SHALL crearse en el proyecto por defecto configurado en
   las preferencias del usuario
 

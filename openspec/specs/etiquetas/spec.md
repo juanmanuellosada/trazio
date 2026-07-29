@@ -17,34 +17,36 @@ ninguna otra columna que la ate a un proyecto o a una sección.
 
 ### Requirement: Creación implícita de etiquetas desde el alta rápida
 
-Al escribir `#` seguido de texto en el alta rápida, el parser SHALL reconocer un
+Al escribir `@` seguido de texto en el alta rápida, el parser SHALL reconocer un
 candidato de etiqueta hasta el primer espacio o símbolo. Al confirmar la tarea, el
 sistema SHALL comparar ese texto contra las etiquetas existentes del usuario sin
 distinguir mayúsculas ni acentos. Si hay una coincidencia, SHALL asignarse la
 etiqueta existente. Si no hay ninguna, SHALL crearse una etiqueta nueva con ese
-nombre y asignarse a la tarea.
+nombre y asignarse a la tarea. Esta no es la única forma de crear una etiqueta:
+también puede crearse explícitamente desde la pantalla de administración, según
+define `administracion-de-etiquetas`.
 
 #### Scenario: Escribir un nombre existente reutiliza la etiqueta
 
-- **WHEN** el usuario ya tiene una etiqueta llamada `Compras` y escribe `Comprar leche #compras` en el alta rápida
+- **WHEN** el usuario ya tiene una etiqueta llamada `Compras` y escribe `Comprar leche @compras` en el alta rápida
 - **THEN** la tarea se guarda con la etiqueta `Compras` existente
 - **AND** no se crea una segunda etiqueta
 
 #### Scenario: Un nombre con acentos o mayúsculas distintos sigue siendo la misma etiqueta
 
-- **WHEN** el usuario ya tiene una etiqueta llamada `Café` y escribe `#cafe` o `#CAFÉ` en el alta rápida
+- **WHEN** el usuario ya tiene una etiqueta llamada `Café` y escribe `@cafe` o `@CAFÉ` en el alta rápida
 - **THEN** se asigna la etiqueta `Café` existente
 - **AND** no se crea una etiqueta nueva
 
 #### Scenario: Escribir un nombre sin coincidencia crea la etiqueta
 
-- **WHEN** el usuario no tiene ninguna etiqueta que coincida (sin distinguir mayúsculas ni acentos) con el texto que sigue al `#`
+- **WHEN** el usuario no tiene ninguna etiqueta que coincida (sin distinguir mayúsculas ni acentos) con el texto que sigue al `@`
 - **THEN** se crea una etiqueta nueva con ese nombre para el usuario
 - **AND** la etiqueta nueva se asigna a la tarea recién creada
 
 #### Scenario: Varias etiquetas en la misma alta rápida se crean o reutilizan todas
 
-- **WHEN** el usuario escribe `Comprar regalo #compras #urgente` y ya tiene una etiqueta `compras` pero no `urgente`
+- **WHEN** el usuario escribe `Comprar regalo @compras @urgente` y ya tiene una etiqueta `compras` pero no `urgente`
 - **THEN** la tarea queda asignada a la etiqueta `compras` existente y a una etiqueta `urgente` recién creada
 
 ### Requirement: Asignar y quitar etiquetas desde el detalle de la tarea
@@ -95,17 +97,14 @@ campo como consecuencia de borrar una etiqueta.
 
 ### Requirement: Fuera de alcance en fase 1
 
-La página de administración de etiquetas, la página propia por etiqueta, marcar una etiqueta como favorita y el acceso "Etiquetas" del panel lateral MUST NOT implementarse en esta fase.
-Alcanza con crear una etiqueta implícitamente desde el alta rápida, asignarla o
-quitarla desde el detalle de una tarea, y mostrar su chip: es lo mínimo que
-sostiene el contrato del parser (los casos 40, 43 y 53 de
-`docs/parser-test-cases.md`) sin construir una superficie de administración que
-todavía no tiene consumidores.
-
-#### Scenario: No existe una pantalla de administración de etiquetas en fase 1
-
-- **WHEN** se navega la aplicación en fase 1
-- **THEN** no existe ninguna ruta que liste, edite o borre etiquetas fuera del detalle de una tarea
+La página propia por etiqueta, marcar una etiqueta como favorita y el acceso "Etiquetas" del panel lateral que llevaría a esa página propia MUST NOT implementarse todavía: siguen en fase 2, según ya fijaba el roadmap.
+La página de administración de etiquetas deja de estar fuera de alcance: la
+incorpora la capacidad `administracion-de-etiquetas`, que permite crear,
+renombrar, recolorear y eliminar etiquetas desde una pantalla propia, además de
+la creación implícita que ya existía desde el alta rápida.
+Sigue alcanzando con asignar y quitar etiquetas desde el detalle de una tarea y
+mostrar su chip, sin construir todavía la navegación por etiqueta individual ni
+el marcado de favoritas: son justamente lo que queda para la fase 2.
 
 #### Scenario: No existe una página propia por etiqueta ni el acceso del panel lateral
 
