@@ -28,6 +28,7 @@ const WEEK_STARTS_ON_LABELS: Record<number, string> = {
 const DEFAULT_VIEW_LABELS: Record<string, string> = {
   bandeja: "Bandeja de entrada",
   hoy: "Hoy",
+  proximos: "Próximos",
 };
 
 type LocalPreferences = {
@@ -35,7 +36,7 @@ type LocalPreferences = {
   dateFormat: DateFormatPreference;
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
-  defaultView: "bandeja" | "hoy";
+  defaultView: "bandeja" | "hoy" | "proximos";
 };
 
 /**
@@ -60,7 +61,7 @@ export function GeneralSection({
   dateFormat: DateFormatPreference;
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
-  defaultView: "bandeja" | "hoy";
+  defaultView: "bandeja" | "hoy" | "proximos";
 }) {
   const router = useRouter();
   const updatePreferences = useUpdatePreferences();
@@ -169,7 +170,7 @@ export function GeneralSection({
           items={DEFAULT_VIEW_LABELS}
           value={local.defaultView}
           onValueChange={(value) => {
-            const defaultView = value as "bandeja" | "hoy";
+            const defaultView = value as "bandeja" | "hoy" | "proximos";
             save("defaultView", defaultView, { default_view: defaultView });
           }}
         >

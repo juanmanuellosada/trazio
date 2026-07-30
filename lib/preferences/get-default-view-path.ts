@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 
 const GENERIC_FALLBACK = "/bandeja";
 
-/** Mapea `default_view` (B4) a la ruta real. Cualquier valor inesperado cae a Bandeja. */
+/** Mapea `default_view` (B4, ampliado en fase 2 con `proximos`) a la ruta real. Cualquier valor inesperado cae a Bandeja. */
 export function pathForDefaultView(defaultView: string | null | undefined): string {
-  return defaultView === "hoy" ? "/hoy" : "/bandeja";
+  if (defaultView === "hoy") return "/hoy";
+  if (defaultView === "proximos") return "/proximos";
+  return "/bandeja";
 }
 
 /**

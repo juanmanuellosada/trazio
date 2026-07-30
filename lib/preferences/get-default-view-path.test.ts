@@ -10,6 +10,10 @@ describe("pathForDefaultView (requirement «Pantalla por defecto al entrar», 11
     expect(pathForDefaultView("bandeja")).toBe("/bandeja");
   });
 
+  it("'proximos' resuelve a /proximos (fase 2, capacidad vista-proximos)", () => {
+    expect(pathForDefaultView("proximos")).toBe("/proximos");
+  });
+
   it("sin valor (cuenta recién creada, antes del trigger) cae a /bandeja, el default de B4", () => {
     expect(pathForDefaultView(null)).toBe("/bandeja");
     expect(pathForDefaultView(undefined)).toBe("/bandeja");

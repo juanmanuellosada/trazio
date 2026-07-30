@@ -31,7 +31,7 @@ export type PreferencesPatch = Partial<{
   date_format: DateFormatPreference;
   time_format: TimeFormatPreference;
   week_starts_on: 0 | 1 | 6;
-  default_view: "bandeja" | "hoy";
+  default_view: "bandeja" | "hoy" | "proximos";
 }>;
 
 /**

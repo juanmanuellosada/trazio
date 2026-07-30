@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useTheme } from "next-themes";
-import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { Pencil, Plus, Star, Tag, Trash2 } from "lucide-react";
 import { useMounted } from "@/hooks/use-mounted";
-import { useLabels } from "@/lib/labels/use-labels";
-import type { LabelChip } from "@/lib/tasks/use-tasks";
+import { useLabels, type Label } from "@/lib/labels/use-labels";
+import { useUpdateLabel } from "@/lib/labels/mutations";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { LabelFormDialog } from "./label-form-dialog";
@@ -23,23 +24,24 @@ import { DeleteLabelDialog } from "./delete-label-dialog";
  * mismo `TaskListEmptyState` que las cuatro vistas de tareas: un estado
  * vacío nunca es una pantalla en blanco (`.claude/rules/copy.md`).
  */
-export function LabelsView({ initialLabels }: { initialLabels: LabelChip[] }) {
+export function LabelsView({ initialLabels }: { initialLabels: Label[] }) {
   const { data: labels } = useLabels(initialLabels);
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
   const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
   const items = labels ?? [];
+  const updateLabel = useUpdateLabel();
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<LabelChip | undefined>(undefined);
-  const [deletingLabel, setDeletingLabel] = useState<LabelChip | null>(null);
+  const [editingLabel, setEditingLabel] = useState<Label | undefined>(undefined);
+  const [deletingLabel, setDeletingLabel] = useState<Label | null>(null);
 
   function openCreate() {
     setEditingLabel(undefined);
     setFormOpen(true);
   }
 
-  function openEdit(label: LabelChip) {
+  function openEdit(label: Label) {
     setEditingLabel(label);
     setFormOpen(true);
   }
@@ -82,6 +84,14 @@ export function LabelsView({ initialLabels }: { initialLabels: LabelChip[] }) {
                   style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
                 />
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{label.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={label.is_favorite ? `Quitar ${label.name} de favoritos` : `Marcar ${label.name} como favorita`}
+                  onClick={() => updateLabel.mutate({ id: label.id, patch: { is_favorite: !label.is_favorite } })}
+                >
+                  <Star className={cn("size-4", label.is_favorite && "fill-current text-primary")} />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"

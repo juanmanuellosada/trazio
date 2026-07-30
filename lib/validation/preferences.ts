@@ -49,7 +49,7 @@ export const timeFormatSchema = z.union([z.literal(24), z.literal(12)]);
 export const WEEK_STARTS_ON_OPTIONS = [1, 0, 6] as const;
 export const weekStartsOnSchema = z.union([z.literal(1), z.literal(0), z.literal(6)]);
 
-export const DEFAULT_VIEW_OPTIONS = ["bandeja", "hoy"] as const;
+export const DEFAULT_VIEW_OPTIONS = ["bandeja", "hoy", "proximos"] as const;
 export const defaultViewSchema = z.enum(DEFAULT_VIEW_OPTIONS);
 
 export const timezoneSchema = z.string().trim().min(1, "Elegí una zona horaria.");

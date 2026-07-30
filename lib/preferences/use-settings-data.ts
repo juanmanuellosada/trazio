@@ -20,7 +20,7 @@ export type SettingsData = {
   dateFormat: DateFormatPreference;
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
-  defaultView: "bandeja" | "hoy";
+  defaultView: "bandeja" | "hoy" | "proximos";
 };
 
 export function settingsDataQueryKey() {
@@ -66,7 +66,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     dateFormat: (preferences?.date_format as DateFormatPreference | undefined) ?? "dd-MM-yyyy",
     timeFormat: (preferences?.time_format as TimeFormatPreference | undefined) ?? 24,
     weekStartsOn: (preferences?.week_starts_on as 0 | 1 | 6 | undefined) ?? 1,
-    defaultView: (preferences?.default_view as "bandeja" | "hoy" | undefined) ?? "bandeja",
+    defaultView: (preferences?.default_view as "bandeja" | "hoy" | "proximos" | undefined) ?? "bandeja",
   };
 }
 

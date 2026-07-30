@@ -4,9 +4,8 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
 import type { LabelFormOutput } from "@/lib/validation/labels";
-import type { LabelChip } from "@/lib/tasks/use-tasks";
 import { reportLabelError } from "./errors";
-import { labelsQueryKey } from "./use-labels";
+import { labelsQueryKey, type Label } from "./use-labels";
 
 /**
  * `mutationKey` común a este módulo (bloque 4.2), mismo patrón D3 que
@@ -48,10 +47,10 @@ export function useCreateLabel() {
       const { data, error } = await supabase
         .from("labels")
         .insert({ user_id: session.user.id, name: input.name, color: input.color })
-        .select("id, name, color")
+        .select("id, name, color, is_favorite")
         .single();
       if (error) throw error;
-      return data as LabelChip;
+      return data as Label;
     },
     onSuccess: () => toastSuccess("Etiqueta creada."),
     onError: reportLabelError,
@@ -59,7 +58,7 @@ export function useCreateLabel() {
   });
 }
 
-export type LabelPatch = Partial<Pick<LabelChip, "name" | "color">>;
+export type LabelPatch = Partial<Pick<Label, "name" | "color" | "is_favorite">>;
 
 /**
  * Renombra o recolorea una etiqueta (bloque 4.2/4.5): camino optimista
@@ -79,8 +78,8 @@ export function useUpdateLabel() {
     },
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: labelsQueryKey });
-      const previous = queryClient.getQueryData<LabelChip[]>(labelsQueryKey);
-      queryClient.setQueryData<LabelChip[]>(labelsQueryKey, (old) =>
+      const previous = queryClient.getQueryData<Label[]>(labelsQueryKey);
+      queryClient.setQueryData<Label[]>(labelsQueryKey, (old) =>
         (old ?? []).map((l) => (l.id === id ? { ...l, ...patch } : l)),
       );
       return { previous };
@@ -114,8 +113,8 @@ export function useDeleteLabel() {
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: labelsQueryKey });
-      const previous = queryClient.getQueryData<LabelChip[]>(labelsQueryKey);
-      queryClient.setQueryData<LabelChip[]>(labelsQueryKey, (old) => (old ?? []).filter((l) => l.id !== id));
+      const previous = queryClient.getQueryData<Label[]>(labelsQueryKey);
+      queryClient.setQueryData<Label[]>(labelsQueryKey, (old) => (old ?? []).filter((l) => l.id !== id));
       return { previous };
     },
     onError: (error, _id, context) => {
