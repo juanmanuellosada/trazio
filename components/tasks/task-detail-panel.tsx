@@ -35,7 +35,7 @@ export function TaskDetailPanel() {
           side="right"
           showCloseButton={false}
           aria-label="Detalle de la tarea"
-          className="w-full gap-0 overflow-hidden p-0 sm:max-w-none"
+          className="w-full! gap-0 overflow-hidden p-0 sm:max-w-none"
         >
           {openTaskId && <TaskDetailContent taskId={openTaskId} onClose={close} />}
         </SheetContent>

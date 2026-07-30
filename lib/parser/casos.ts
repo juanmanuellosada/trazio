@@ -15,7 +15,7 @@ import type { ParserContext, ParserLabel, ParserProject } from "./types";
 /**
  * El contrato ejecutable del parser (E14, bloque 9.1): refleja 1 a 1 la
  * tabla de `docs/parser-test-cases.md`, un `CasoParser` por fila numerada
- * (59 filas — la fila 55 trae dos entradas, pero es una sola fila). El
+ * (63 filas — la fila 55 trae dos entradas, pero es una sola fila). El
  * `numero` es el de la tabla; si alguien edita la tabla sin tocar este
  * archivo o al revés, `parser.test.ts` lo detecta con el test que cuenta
  * los casos.
@@ -397,5 +397,27 @@ export const casos: CasoParser[] = [
         project: null,
       };
     },
+  },
+
+  // Repetición con intervalo en días, meses y años (60-63) — D-D de `openspec/changes/fase-2-potencia/design.md`
+  {
+    numero: 60,
+    entrada: "Regar las plantas cada 3 días",
+    esperar: () => ({ titulo: "Regar las plantas", ...SIN_ATRIBUTOS, recurrenceRule: "FREQ=DAILY;INTERVAL=3" }),
+  },
+  {
+    numero: 61,
+    entrada: "Renovar el seguro en 3 días",
+    esperar: (ctx) => conFecha("Renovar el seguro", addDays(hoyDe(ctx), 3)),
+  },
+  {
+    numero: 62,
+    entrada: "Pagar el seguro cada 2 meses",
+    esperar: () => ({ titulo: "Pagar el seguro", ...SIN_ATRIBUTOS, recurrenceRule: "FREQ=MONTHLY;INTERVAL=2" }),
+  },
+  {
+    numero: 63,
+    entrada: "Renovar la garantía cada 2 años",
+    esperar: () => ({ titulo: "Renovar la garantía", ...SIN_ATRIBUTOS, recurrenceRule: "FREQ=YEARLY;INTERVAL=2" }),
   },
 ];

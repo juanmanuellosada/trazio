@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import * as mediaQueryModule from "@/hooks/use-media-query";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { UndoProvider } from "@/components/providers/undo-provider";
 import { TaskDetailPanel } from "./task-detail-panel";
 import { TaskDetailProvider, useTaskDetail } from "./task-detail-context";
 import type { TaskDetail } from "@/lib/tasks/use-task";
@@ -79,29 +80,34 @@ const baseTask: TaskDetail = {
   completed_at: null,
   created_at: "2026-01-01T00:00:00Z",
   position: 1000,
+  recurrence_rule: null,
+  recurrence_ends_at: null,
+  recurrence_count: null,
   labels: [],
 };
 
 /** Botón de prueba que abre el modal a través del mismo contexto que usa cualquier fila de tarea real (`useTaskDetail`). */
-function OpenButton({ taskId }: { taskId: string }) {
+function OpenButton({ taskId, focusField }: { taskId: string; focusField?: "date" | "priority" }) {
   const { open } = useTaskDetail();
   return (
-    <button type="button" onClick={() => open(taskId)}>
+    <button type="button" onClick={() => open(taskId, focusField)}>
       Abrir tarea
     </button>
   );
 }
 
-function renderPanel(task: TaskDetail = baseTask) {
+function renderPanel(task: TaskDetail = baseTask, focusField?: "date" | "priority") {
   mock.tableData.tasks = [task];
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskDetailProvider>
-          <OpenButton taskId={task.id} />
-          <TaskDetailPanel />
-        </TaskDetailProvider>
+        <UndoProvider>
+          <TaskDetailProvider>
+            <OpenButton taskId={task.id} focusField={focusField} />
+            <TaskDetailPanel />
+          </TaskDetailProvider>
+        </UndoProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );
@@ -143,6 +149,42 @@ describe("TaskDetailPanel — modal centrado en escritorio (bloque 6, D28)", () 
   });
 });
 
+describe("TaskDetailPanel — abre con un selector ya enfocado (bloque 7.8, atajos `T`/`Y`)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (mediaQueryModule.useMediaQuery as ReturnType<typeof vi.fn>).mockReturnValue(false);
+  });
+
+  // Regresión: `Y` abría el detalle pero el selector de Prioridad quedaba
+  // cerrado (se veía "P4 · Baja" sin popover). El mecanismo es el mismo que
+  // `T`/fecha (`open(taskId, focusField)` → `TaskDetailForm` consume
+  // `pendingFocusField` al montar y clickea el trigger del selector), pero
+  // fallaba solo con prioridad: el efecto que lo hace corría dos veces
+  // (`consumeFocusField` cambia de identidad al llamarse) y el clic al
+  // trigger de Base UI podía perderse si caía antes de que esa primitiva
+  // terminara de conectar su propio manejo de clic. Este test cubre los dos
+  // campos para no volver a dejar sin probar el que falla.
+  it("Y: abre el detalle con el selector de prioridad ya desplegado", async () => {
+    const user = userEvent.setup();
+    renderPanel(baseTask, "priority");
+
+    await user.click(screen.getByRole("button", { name: "Abrir tarea" }));
+    await screen.findByRole("dialog");
+
+    expect(await screen.findByRole("menuitem", { name: "P1 · Urgente" })).toBeInTheDocument();
+  });
+
+  it("T: abre el detalle con el selector de vencimiento ya desplegado", async () => {
+    const user = userEvent.setup();
+    renderPanel(baseTask, "date");
+
+    await user.click(screen.getByRole("button", { name: "Abrir tarea" }));
+    await screen.findByRole("dialog");
+
+    expect(await screen.findByLabelText("Escribí la fecha de vencimiento")).toBeInTheDocument();
+  });
+});
+
 describe("TaskDetailPanel — pantalla completa en teléfono", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -158,7 +200,7 @@ describe("TaskDetailPanel — pantalla completa en teléfono", () => {
     await screen.findByRole("dialog");
     const sheetContent = document.querySelector('[data-slot="sheet-content"]');
     expect(sheetContent).toBeInTheDocument();
-    expect(sheetContent).toHaveClass("w-full");
+    expect(sheetContent).toHaveClass("w-full!");
     expect(document.querySelector('[data-slot="dialog-content"]')).not.toBeInTheDocument();
   });
 });

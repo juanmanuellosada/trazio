@@ -3,11 +3,22 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { UndoProvider } from "@/components/providers/undo-provider";
 import { useUpdateTask } from "@/lib/tasks/mutations";
 import { PROJECTS_MUTATION_KEY } from "@/lib/projects/mutations";
 import { SECTIONS_MUTATION_KEY } from "@/lib/sections/mutations";
+import { COMMENTS_MUTATION_KEY } from "@/lib/comments/mutations";
+import { REMINDERS_MUTATION_KEY } from "@/lib/reminders/mutations";
+import { FILTERS_MUTATION_KEY } from "@/lib/filters/mutations";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
-import { onProjectsRealtimeEvent, onSectionsRealtimeEvent, onTasksRealtimeEvent } from "./handlers";
+import {
+  onCommentsRealtimeEvent,
+  onFiltersRealtimeEvent,
+  onProjectsRealtimeEvent,
+  onRemindersRealtimeEvent,
+  onSectionsRealtimeEvent,
+  onTasksRealtimeEvent,
+} from "./handlers";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
@@ -45,14 +56,23 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     queryClient.setQueryData(tasksQueryKey("p1"), [task({ id: "t1" })]);
     queryClient.setQueryData(["projects"], []);
     queryClient.setQueryData(["sections", "p1"], []);
+    queryClient.setQueryData(["comments", "t1"], []);
+    queryClient.setQueryData(["reminders", "task", "t1"], []);
+    queryClient.setQueryData(["filters"], []);
 
     onTasksRealtimeEvent(queryClient);
     onProjectsRealtimeEvent(queryClient);
     onSectionsRealtimeEvent(queryClient);
+    onCommentsRealtimeEvent(queryClient);
+    onRemindersRealtimeEvent(queryClient);
+    onFiltersRealtimeEvent(queryClient);
 
     expect(queryClient.getQueryState(tasksQueryKey("p1"))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["projects"])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["sections", "p1"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["comments", "t1"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["reminders", "task", "t1"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["filters"])?.isInvalidated).toBe(true);
   });
 
   it("con una mutación de projects en vuelo, el evento de projects no invalida", () => {
@@ -73,6 +93,36 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     onSectionsRealtimeEvent(queryClient);
 
     expect(queryClient.getQueryState(["sections", "p1"])?.isInvalidated).toBe(false);
+  });
+
+  it("con una mutación de comments en vuelo, el evento de comments no invalida", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["comments", "t1"], []);
+    pendingMutation(queryClient, COMMENTS_MUTATION_KEY);
+
+    onCommentsRealtimeEvent(queryClient);
+
+    expect(queryClient.getQueryState(["comments", "t1"])?.isInvalidated).toBe(false);
+  });
+
+  it("con una mutación de reminders en vuelo, el evento de reminders no invalida", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["reminders", "task", "t1"], []);
+    pendingMutation(queryClient, REMINDERS_MUTATION_KEY);
+
+    onRemindersRealtimeEvent(queryClient);
+
+    expect(queryClient.getQueryState(["reminders", "task", "t1"])?.isInvalidated).toBe(false);
+  });
+
+  it("con una mutación de filters en vuelo, el evento de filters no invalida", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["filters"], []);
+    pendingMutation(queryClient, FILTERS_MUTATION_KEY);
+
+    onFiltersRealtimeEvent(queryClient);
+
+    expect(queryClient.getQueryState(["filters"])?.isInvalidated).toBe(false);
   });
 });
 
@@ -96,7 +146,11 @@ describe("onTasksRealtimeEvent — bloque 10.4, el test que justifica la regla D
 
   function wrapper(queryClient: QueryClient) {
     return function Wrapper({ children }: { children: React.ReactNode }) {
-      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+      return (
+        <QueryClientProvider client={queryClient}>
+          <UndoProvider>{children}</UndoProvider>
+        </QueryClientProvider>
+      );
     };
   }
 

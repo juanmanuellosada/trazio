@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import * as toastModule from "@/lib/toast";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { UndoProvider } from "@/components/providers/undo-provider";
 import { TaskDetailProvider, useTaskDetail } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
@@ -123,9 +124,11 @@ function renderList(tasks: TaskRow[]) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskDetailProvider>
-          <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
-        </TaskDetailProvider>
+        <UndoProvider>
+          <TaskDetailProvider>
+            <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
+          </TaskDetailProvider>
+        </UndoProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );
@@ -143,10 +146,12 @@ function renderListWithProbe(tasks: TaskRow[]) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskDetailProvider>
-          <OpenTaskProbe />
-          <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
-        </TaskDetailProvider>
+        <UndoProvider>
+          <TaskDetailProvider>
+            <OpenTaskProbe />
+            <TaskList projectId="p1" sectionId={null} parentId={null} initialTasks={tasks} />
+          </TaskDetailProvider>
+        </UndoProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

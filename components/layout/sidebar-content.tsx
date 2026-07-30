@@ -1,8 +1,9 @@
-import { Inbox, Sun, CheckCircle2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Inbox, Search, Sun } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { SidebarAddTask } from "./sidebar-add-task";
 import { AccountMenu } from "./account-menu";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
+import { LabelsCollapsibleList, FiltersCollapsibleList } from "./label-filter-lists";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
@@ -27,11 +28,14 @@ function getInitials(source: string): string {
 }
 
 /**
- * Contenido del panel lateral (bloque 5.3), compartido por la versión de
- * escritorio (`app-sidebar.tsx`, colapsable) y la hoja de teléfono
- * (`mobile-nav.tsx`, siempre expandida). De arriba a abajo, exactamente lo
- * que pide el requirement "Navegación de escritorio en fase 1": cuenta,
- * accesos principales, favoritos, árbol de proyectos y pie.
+ * Contenido del panel lateral (bloque 5.3, ampliado en el bloque 8 de fase
+ * 2), compartido por la versión de escritorio (`app-sidebar.tsx`, colapsable)
+ * y la hoja de teléfono (`mobile-nav.tsx`, siempre expandida). De arriba a
+ * abajo, el orden de "Panel lateral (escritorio)" en `docs/product-spec.md`:
+ * cuenta, accesos rápidos (agregar tarea, buscar), accesos principales
+ * (Bandeja, Hoy, Próximos, Completado — Hábitos es fase 3), Favoritos
+ * (proyectos, etiquetas y filtros marcados como tales), árbol de proyectos,
+ * listas colapsables de etiquetas y filtros, y pie.
  */
 export function SidebarContent({
   collapsed = false,
@@ -72,20 +76,27 @@ export function SidebarContent({
 
       <div className="flex flex-col gap-0.5 p-2">
         <SidebarAddTask collapsed={collapsed} inboxProjectId={inboxProjectId} />
+        <NavLink href="/buscar" label="Buscar" icon={Search} collapsed={collapsed} />
         {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba. */}
         <nav className="contents" aria-label="Navegación principal">
           <NavLink href="/bandeja" label="Bandeja de entrada" icon={Inbox} collapsed={collapsed} />
           <NavLink href="/hoy" label="Hoy" icon={Sun} collapsed={collapsed} count={todayCount} />
+          <NavLink href="/proximos" label="Próximos" icon={CalendarDays} collapsed={collapsed} />
           <NavLink href="/completado" label="Completado" icon={CheckCircle2} collapsed={collapsed} />
         </nav>
       </div>
 
       {!collapsed && (
-        <>
+        <div className="flex-1 overflow-y-auto">
           <FavoritesSection initialProjects={initialProjects} taskCounts={taskCounts} />
           <Separator />
           <ProjectsSection initialProjects={initialProjects} taskCounts={taskCounts} />
-        </>
+          <Separator />
+          <div className="flex flex-col gap-0.5 p-2">
+            <LabelsCollapsibleList />
+            <FiltersCollapsibleList />
+          </div>
+        </div>
       )}
       {collapsed && <div className="flex-1" />}
 

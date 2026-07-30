@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toastSuccess } from "@/lib/toast";
 import { formatTaskDueLabel } from "@/lib/dates/format";
+import { useShortcutScope } from "@/lib/shortcuts/context";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionForSwap } from "@/lib/tasks/tree";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMounted } from "@/hooks/use-mounted";
 import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
+import { SelectionCheckbox } from "@/components/selection/selection-checkbox";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "@/components/selectors/priority-select";
 import { useTaskDetail } from "./task-detail-context";
@@ -88,12 +90,27 @@ export function TaskRow({
   siblings,
   depth,
   variant = "list",
+  showDragHandle,
+  sortableData,
+  selectionOrderIds,
 }: {
   task: TaskRowData;
   allTasks: TaskRowData[];
   siblings: TaskRowData[];
   depth: number;
   variant?: "list" | "flat";
+  /** Por defecto, el mismo criterio de siempre (`variant === "list"`). El modo panel (`components/board/`) lo pasa explícitamente en `true` sobre `variant="flat"`, para arrastrar una tarjeta entre columnas sin heredar indentar/subtareas. */
+  showDragHandle?: boolean;
+  /** Datos que dnd-kit adjunta al evento de arrastre (bloque 6.7): el modo panel los usa para saber de qué columna salió la tarjeta. */
+  sortableData?: Record<string, unknown>;
+  /**
+   * Orden visual de las tareas de primer nivel de la pantalla que la
+   * contiene (bloque 7.10-7.13, capacidad `seleccion-multiple`), para
+   * `⇧clic` (rango). Solo lo pasan las seis pantallas con selección
+   * múltiple, y solo importa en `depth === 0`: sin esto, no se muestra el
+   * casillero de selección (ej. las subtareas del detalle de tarea).
+   */
+  selectionOrderIds?: string[];
 }) {
   const { open } = useTaskDetail();
   const preferences = useUserPreferences();
@@ -102,14 +119,18 @@ export function TaskRow({
   const duplicateTask = useDuplicateTask();
   const deleteTask = useDeleteTask();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [addingFirstSubtask, setAddingFirstSubtask] = useState(false);
   const now = useMemo(() => new Date(), []);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
   const isFlat = variant === "flat";
+  const dragHandleVisible = showDragHandle ?? !isFlat;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    data: sortableData,
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
   const children = isFlat ? [] : allTasks.filter((t) => t.parent_id === task.id);
   const hasChildren = children.length > 0;
   const isCompleted = task.completed_at != null;
@@ -166,6 +187,25 @@ export function TaskRow({
     navigator.clipboard.writeText(url).then(() => toastSuccess("Enlace copiado."));
   }
 
+  // Atajos del menú contextual de la tarea (bloque 7.8, capacidad
+  // `atajos-de-teclado`): activos solo mientras el menú "…" de esta fila
+  // está abierto (`enabled: menuOpen`), así que dos filas abiertas a la vez
+  // no compiten entre sí — solo puede haber una abierta por vez de todos
+  // modos (es el mismo `DropdownMenu`). `T` y `Y` abren el detalle con el
+  // selector correspondiente ya enfocado (`task-detail-context.tsx`), en vez
+  // de reimplementar un selector de fecha/prioridad inline acá.
+  useShortcutScope(
+    [
+      { combo: { key: "t" }, handler: () => open(task.id, "date") },
+      { combo: { key: "y" }, handler: () => open(task.id, "priority") },
+      { combo: { key: "v" }, handler: () => setMoveDialogOpen(true) },
+      { combo: { key: "c", ctrl: true, shift: true }, handler: copyLink },
+      { combo: { key: "n", ctrl: true, shift: true }, handler: () => window.open(`/tarea/${task.id}`, "_blank") },
+      { combo: { key: "Delete", shift: true }, handler: () => deleteTask.mutate({ id: task.id, projectId: task.project_id }) },
+    ],
+    { enabled: menuOpen },
+  );
+
   // El detalle abre con doble clic (bloque 6), no con un clic simple: un
   // clic real de mouse llega con `detail >= 1`. Pero un botón activado por
   // teclado (`Enter`/`Espacio` sobre el título enfocado) también dispara
@@ -181,7 +221,11 @@ export function TaskRow({
   return (
     <li ref={setNodeRef} style={style} className={cn("group", isDragging && "opacity-50")}>
       <div style={{ paddingLeft: depth * 24 }} className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface">
-        {!isFlat && (
+        {selectionOrderIds && depth === 0 && (
+          <SelectionCheckbox taskId={task.id} taskTitle={task.title} orderedIds={selectionOrderIds} />
+        )}
+
+        {dragHandleVisible && (
           <button
             type="button"
             {...attributes}
@@ -249,7 +293,7 @@ export function TaskRow({
           {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
         </button>
 
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger
             render={
               <Button

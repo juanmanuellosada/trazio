@@ -2,7 +2,9 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Copy, ExternalLink, Link2, MoreHorizontal, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { clickButtonByText, clickFirstButton } from "@/lib/shortcuts/dom";
+import { useShortcutScope } from "@/lib/shortcuts/context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,7 @@ import { DateSelect } from "@/components/selectors/date-select";
 import { DeadlineSelect } from "@/components/selectors/deadline-select";
 import { PrioritySelect } from "@/components/selectors/priority-select";
 import { useParserContext } from "@/lib/parser/use-parser-context";
+import { recurrenceEndsAtDay, recurrenceEndsAtOf } from "@/lib/recurrence/ends-at";
 import { toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask, type TaskPatch } from "@/lib/tasks/mutations";
@@ -25,10 +28,14 @@ import { useAutosave } from "@/lib/tasks/use-autosave";
 import { useTask, type TaskDetail } from "@/lib/tasks/use-task";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
 import { taskTitleSchema } from "@/lib/validation/tasks";
+import { CommentThread } from "@/components/comments/comment-thread";
+import { ReminderPicker } from "@/components/reminders/reminder-picker";
 import { LabelPicker } from "./label-picker";
+import { RecurrenceEditor, type RecurrenceValue } from "./recurrence-editor";
 import { TaskDescriptionEditor } from "./task-description-editor";
 import { TaskDestinationSelect, type TaskDestination } from "./task-destination-select";
 import { TaskList } from "./task-list";
+import { useTaskDetail } from "./task-detail-context";
 
 const FIELD_LABEL_CLASS = "text-xs font-medium text-text-secondary";
 
@@ -79,6 +86,26 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
     updateTask.mutate({ id: task.id, projectId: task.project_id, patch: fields });
   }
 
+  const recurrenceValue: RecurrenceValue = {
+    rule: task.recurrence_rule,
+    endsAt: task.recurrence_ends_at ? recurrenceEndsAtDay(task.recurrence_ends_at, preferences.timezone) : null,
+    count: task.recurrence_count,
+  };
+
+  /**
+   * `recurrence_ends_at` es `timestamptz` (D9): el editor solo elige un día
+   * de calendario, así que hay que anclarlo al final de ese día en la zona
+   * del usuario antes de guardarlo (ver `lib/recurrence/ends-at.ts`) — igual
+   * que `toDueAt` hace para `due_at`.
+   */
+  function patchRecurrence(next: RecurrenceValue) {
+    patch({
+      recurrence_rule: next.rule,
+      recurrence_ends_at: next.endsAt ? recurrenceEndsAtOf(next.endsAt, preferences.timezone) : null,
+      recurrence_count: next.count,
+    });
+  }
+
   function copyLink() {
     const url = `${window.location.origin}/tarea/${task.id}`;
     navigator.clipboard.writeText(url).then(() => toastSuccess("Enlace copiado."));
@@ -118,6 +145,65 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
       position,
     });
   }
+
+  // Atajos del detalle de tarea (bloque 7.6, capacidad `atajos-de-teclado`):
+  // los selectores (`DateSelect`, `PrioritySelect`, etc.) manejan su propio
+  // popover/menú sin una prop de apertura externa — abrirlos acá clickea su
+  // propio trigger (`lib/shortcuts/dom.ts`) en vez de sumarles esa prop a
+  // cada uno solo para este caso.
+  const dateFieldRef = useRef<HTMLDivElement>(null);
+  const deadlineFieldRef = useRef<HTMLDivElement>(null);
+  const priorityFieldRef = useRef<HTMLDivElement>(null);
+  const remindersFieldRef = useRef<HTMLDivElement>(null);
+  const destinationFieldRef = useRef<HTMLDivElement>(null);
+  const labelsFieldRef = useRef<HTMLDivElement>(null);
+  const subtasksFieldRef = useRef<HTMLDivElement>(null);
+
+  const { consumeFocusField } = useTaskDetail();
+
+  // El menú contextual de una tarea (`T`, `Y` — bloque 7.8) abre el detalle
+  // y de una vez su selector de fecha o de prioridad, en vez de solo abrir
+  // el detalle a secas: se consume una sola vez al montar, con la tarea ya
+  // resuelta (el `key={task.id}` de quien monta este formulario asegura que
+  // esto corre de nuevo si se abre otra tarea).
+  //
+  // Dos cuidados acá, los dos confirmados reproduciendo el bug de `Y` en un
+  // test antes de tocar nada:
+  //
+  // 1. `consumeFocusField` no entra en las dependencias (`exhaustive-deps`
+  //    deshabilitado a propósito): cambia de identidad cada vez que se lo
+  //    llama, porque consume `pendingFocusField` (lo deja en `null`). Si
+  //    entrara en las dependencias, este efecto se dispara una segunda vez
+  //    apenas se llama a sí mismo — con el campo ya consumido (`null`), sin
+  //    volver a clickear nada, pero sí corriendo la limpieza del `rAF` de
+  //    abajo antes de que llegue a disparar.
+  // 2. El click en sí se difiere un frame (`requestAnimationFrame`) en vez
+  //    de ser síncrono: el selector (`DateSelect`/`PrioritySelect`) recién
+  //    montó en este mismo commit, y su primitiva de menú/popover
+  //    (`@base-ui/react`) todavía no terminó de conectar su propio manejo
+  //    de clic — clickear en el mismo tick a veces cae en esa ventana y el
+  //    clic se pierde en silencio. Esperar un frame le da tiempo a esa
+  //    conexión antes de simular el clic, para los dos campos por igual.
+  useEffect(() => {
+    const focusField = consumeFocusField();
+    const frame = requestAnimationFrame(() => {
+      if (focusField === "date") clickFirstButton(dateFieldRef.current);
+      if (focusField === "priority") clickFirstButton(priorityFieldRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id]);
+
+  useShortcutScope([
+    { combo: { key: "s", ctrl: true }, handler: () => saveTitleNow() },
+    { combo: { key: "d" }, handler: () => clickFirstButton(dateFieldRef.current) },
+    { combo: { key: "l" }, handler: () => clickFirstButton(deadlineFieldRef.current) },
+    { combo: { key: "f" }, handler: () => clickFirstButton(priorityFieldRef.current) },
+    { combo: { key: "r" }, handler: () => clickFirstButton(remindersFieldRef.current) },
+    { combo: { key: "o" }, handler: () => clickFirstButton(destinationFieldRef.current) },
+    { combo: { key: "e" }, handler: () => clickFirstButton(labelsFieldRef.current) },
+    { combo: { key: "n" }, handler: () => clickButtonByText(subtasksFieldRef.current, "Agregar subtarea") },
+  ]);
 
   return (
     <div className="flex h-full flex-col">
@@ -176,7 +262,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-1">
+          <div ref={destinationFieldRef} className="space-y-1">
             <span className={FIELD_LABEL_CLASS}>Proyecto</span>
             <TaskDestinationSelect
               value={{ projectId: task.project_id, sectionId: task.section_id }}
@@ -185,12 +271,12 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
             />
           </div>
 
-          <div className="space-y-1">
+          <div ref={priorityFieldRef} className="space-y-1">
             <span className={FIELD_LABEL_CLASS}>Prioridad</span>
             <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} />
           </div>
 
-          <div className="space-y-1">
+          <div ref={dateFieldRef} className="space-y-1">
             <span className={FIELD_LABEL_CLASS}>Vencimiento</span>
             <DateSelect
               value={{ dueDate: task.due_date, dueAt: task.due_at, durationMinutes: task.duration_minutes }}
@@ -199,13 +285,23 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
             />
           </div>
 
-          <div className="space-y-1">
+          <div ref={deadlineFieldRef} className="space-y-1">
             <span className={FIELD_LABEL_CLASS}>Fecha límite</span>
             <DeadlineSelect value={task.deadline} onChange={(deadline) => patch({ deadline })} preferences={preferences} />
+          </div>
+
+          <div ref={remindersFieldRef} className="space-y-1">
+            <span className={FIELD_LABEL_CLASS}>Recordatorios</span>
+            <ReminderPicker taskId={task.id} dueAt={task.due_at} />
           </div>
         </div>
 
         <div className="space-y-1.5">
+          <span className={FIELD_LABEL_CLASS}>Repetición</span>
+          <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} />
+        </div>
+
+        <div ref={labelsFieldRef} className="space-y-1.5">
           <span className={FIELD_LABEL_CLASS}>Etiquetas</span>
           <LabelPicker taskId={task.id} projectId={task.project_id} assigned={task.labels} />
         </div>
@@ -218,9 +314,14 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div ref={subtasksFieldRef} className="space-y-1.5">
           <span className={FIELD_LABEL_CLASS}>Subtareas</span>
           <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className={FIELD_LABEL_CLASS}>Comentarios</span>
+          <CommentThread taskId={task.id} />
         </div>
       </div>
     </div>

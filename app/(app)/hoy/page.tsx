@@ -4,6 +4,7 @@ import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getHoyTasks } from "@/lib/tasks/get-hoy-tasks";
 import { todayInTimeZone } from "@/lib/dates/today";
+import { getViewPreferences } from "@/lib/view-options/get-view-preferences";
 import { HoyView } from "@/components/tasks/hoy-view";
 
 /**
@@ -20,9 +21,10 @@ export default async function HoyPage() {
   }
 
   const now = new Date();
-  const [preferences, inboxProjectId] = await Promise.all([
+  const [preferences, inboxProjectId, initialOptions] = await Promise.all([
     getUserPreferences(user.id),
     getInboxProjectId(user.id),
+    getViewPreferences(user.id, "hoy"),
   ]);
   const initialTasks = await getHoyTasks(user.id, preferences.timezone, now);
 
@@ -34,6 +36,7 @@ export default async function HoyPage() {
       initialTasks={initialTasks}
       nowIso={now.toISOString()}
       todayDate={todayInTimeZone(now, preferences.timezone)}
+      initialOptions={initialOptions}
     />
   );
 }

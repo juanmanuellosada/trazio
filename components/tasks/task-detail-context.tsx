@@ -2,10 +2,21 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
+/**
+ * Campo a enfocar apenas se abre el detalle (bloque 7.8, capacidad
+ * `atajos-de-teclado`): el menú contextual de una tarea (`T`, `Y`) abre el
+ * detalle y de una vez su selector de fecha o de prioridad, en vez de solo
+ * abrir el detalle a secas. `TaskDetailContent` lo consume una sola vez al
+ * montar y lo limpia (`consumeFocusField`).
+ */
+export type TaskDetailFocusField = "date" | "priority";
+
 type TaskDetailContextValue = {
   openTaskId: string | null;
-  open: (taskId: string) => void;
+  pendingFocusField: TaskDetailFocusField | null;
+  open: (taskId: string, focusField?: TaskDetailFocusField) => void;
   close: () => void;
+  consumeFocusField: () => TaskDetailFocusField | null;
 };
 
 const TaskDetailContext = createContext<TaskDetailContextValue | null>(null);
@@ -18,14 +29,23 @@ const TaskDetailContext = createContext<TaskDetailContextValue | null>(null);
  */
 export function TaskDetailProvider({ children }: { children: ReactNode }) {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [pendingFocusField, setPendingFocusField] = useState<TaskDetailFocusField | null>(null);
 
   const value = useMemo<TaskDetailContextValue>(
     () => ({
       openTaskId,
-      open: (taskId: string) => setOpenTaskId(taskId),
+      pendingFocusField,
+      open: (taskId: string, focusField?: TaskDetailFocusField) => {
+        setOpenTaskId(taskId);
+        setPendingFocusField(focusField ?? null);
+      },
       close: () => setOpenTaskId(null),
+      consumeFocusField: () => {
+        setPendingFocusField(null);
+        return pendingFocusField;
+      },
     }),
-    [openTaskId],
+    [openTaskId, pendingFocusField],
   );
 
   return <TaskDetailContext.Provider value={value}>{children}</TaskDetailContext.Provider>;

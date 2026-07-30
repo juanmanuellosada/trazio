@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Inbox, Sun, Plus } from "lucide-react";
+import { Menu, Inbox, Sun, CalendarDays, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "./sidebar-content";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
@@ -11,11 +11,12 @@ import type { ProjectRow } from "@/lib/projects/use-projects";
 import { cn } from "@/lib/utils";
 
 /**
- * Navegación de teléfono (bloque 5.4): una barra superior angosta con el
- * menú (abre el panel lateral completo en una hoja deslizable — "el resto
- * de las funciones ... se alcanza deslizando el panel lateral", spec de
- * `vistas-lista`) y la barra inferior con exactamente tres accesos. El
- * cuarto lugar queda vacío a propósito hasta que exista Próximos en fase 2.
+ * Navegación de teléfono (bloque 5.4, cuarto acceso sumado en el bloque 8 de
+ * fase 2): una barra superior angosta con el menú (abre el panel lateral
+ * completo en una hoja deslizable — "el resto de las funciones ... se
+ * alcanza deslizando el panel lateral", spec de `vistas-lista`) y la barra
+ * inferior con los cuatro accesos de "Barra inferior (teléfono)" en
+ * `docs/product-spec.md`: Bandeja de entrada, Hoy, Próximos, Agregar.
  */
 export function MobileNav({
   fullName,
@@ -69,6 +70,7 @@ export function MobileNav({
       >
         <MobileTabLink href="/bandeja" label="Bandeja" icon={Inbox} active={pathname === "/bandeja"} />
         <MobileTabLink href="/hoy" label="Hoy" icon={Sun} active={pathname === "/hoy"} count={todayCount} />
+        <MobileTabLink href="/proximos" label="Próximos" icon={CalendarDays} active={pathname === "/proximos"} />
         <button
           type="button"
           // TODO(bloque 9): abre el alta rápida con parseo de lenguaje natural.
@@ -78,8 +80,6 @@ export function MobileNav({
           <Plus className="size-5" />
           <span className="text-[11px] font-medium">Agregar</span>
         </button>
-        {/* Cuarto lugar vacío a propósito: es el de Próximos en fase 2. */}
-        <span aria-hidden className="block" />
       </nav>
     </>
   );

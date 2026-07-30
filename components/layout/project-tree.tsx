@@ -40,6 +40,8 @@ import { useMounted } from "@/hooks/use-mounted";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
 import { useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
+import { useLabels, type Label } from "@/lib/labels/use-labels";
+import { useFilters, type FilterRow } from "@/lib/filters/use-filters";
 import { MAX_PROJECT_DEPTH, positionForIndex, positionForSwap, projectDepth } from "@/lib/projects/tree";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
@@ -341,29 +343,52 @@ export function ProjectTree({
   );
 }
 
-/** Lista plana de favoritos (sección aparte, sin jerarquía ni chevrons). */
-export function FavoriteList({
-  initialProjects,
-  taskCounts,
-}: {
-  initialProjects: ProjectRow[];
-  taskCounts: Map<string, number>;
-}) {
-  const { data } = useProjects(initialProjects);
-  const favorites = (data ?? []).filter((p) => p.is_favorite && !p.is_archived && !p.is_inbox);
-
-  if (favorites.length === 0) {
-    return null;
-  }
+/** Fila de una etiqueta favorita en la sección Favoritos (bloque 8.1): mismo trazo visual que `ProjectLink`, con un punto de color en vez del ícono/color de proyecto. */
+function LabelFavoriteLink({ label }: { label: Label }) {
+  const pathname = usePathname();
+  const href = `/etiquetas/${label.id}`;
+  const active = pathname === href;
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const hex = resolveProjectColorHex(label.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
 
   return (
-    <ul className="flex flex-col gap-0.5">
-      {favorites.map((project) => (
-        <li key={project.id}>
-          <ProjectLink project={project} taskCount={taskCounts.get(project.id) ?? 0} />
-        </li>
-      ))}
-    </ul>
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        active
+          ? "bg-surface font-medium text-primary"
+          : "text-text-secondary hover:bg-surface hover:text-foreground",
+      )}
+    >
+      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} />
+      <span className="flex-1 truncate">{label.name}</span>
+    </Link>
+  );
+}
+
+/** Fila de un filtro favorito en la sección Favoritos (bloque 8.1): reusa `ProjectMark` porque un filtro tiene la misma forma `{ color, icon }` que un proyecto. */
+function FilterFavoriteLink({ filter }: { filter: FilterRow }) {
+  const pathname = usePathname();
+  const href = `/filtros/${filter.id}`;
+  const active = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        active
+          ? "bg-surface font-medium text-primary"
+          : "text-text-secondary hover:bg-surface hover:text-foreground",
+      )}
+    >
+      <ProjectMark project={filter} />
+      <span className="flex-1 truncate">{filter.name}</span>
+    </Link>
   );
 }
 
@@ -393,10 +418,14 @@ function NewProjectButton({ initialProjects }: { initialProjects: ProjectRow[] }
 }
 
 /**
- * Sección "Favoritos" del panel lateral (bloque 6.4): no se renderiza nada
- * (ni el separador ni el encabezado) cuando no hay ningún proyecto marcado
- * como favorito, y reacciona al instante cuando se marca o desmarca uno
- * porque lee del mismo caché de TanStack Query que la mutación actualiza.
+ * Sección "Favoritos" del panel lateral (bloque 6.4, unificada en el bloque
+ * 8.1 con etiquetas y filtros): no se renderiza nada (ni el separador ni el
+ * encabezado) cuando no hay ningún proyecto, etiqueta o filtro marcado como
+ * favorito, y reacciona al instante cuando se marca o desmarca uno porque lee
+ * del mismo caché de TanStack Query que cada mutación actualiza. Etiquetas y
+ * filtros se piden acá sin `initialData`: a diferencia de los proyectos, el
+ * layout del servidor (`app/(app)/layout.tsx`) no los siembra, así que
+ * arrancan con el primer fetch del cliente.
  */
 export function FavoritesSection({
   initialProjects,
@@ -405,8 +434,15 @@ export function FavoritesSection({
   initialProjects: ProjectRow[];
   taskCounts: Map<string, number>;
 }) {
-  const { data } = useProjects(initialProjects);
-  const hasFavorites = (data ?? []).some((p) => p.is_favorite && !p.is_archived && !p.is_inbox);
+  const { data: projects } = useProjects(initialProjects);
+  const { data: labels } = useLabels();
+  const { data: filters } = useFilters();
+
+  const favoriteProjects = (projects ?? []).filter((p) => p.is_favorite && !p.is_archived && !p.is_inbox);
+  const favoriteLabels = (labels ?? []).filter((l) => l.is_favorite);
+  const favoriteFilters = (filters ?? []).filter((f) => f.is_favorite);
+  const hasFavorites =
+    favoriteProjects.length > 0 || favoriteLabels.length > 0 || favoriteFilters.length > 0;
 
   if (!hasFavorites) return null;
 
@@ -417,13 +453,34 @@ export function FavoritesSection({
         <h2 className="px-2.5 py-1 text-xs font-semibold tracking-wide text-text-secondary uppercase">
           Favoritos
         </h2>
-        <FavoriteList initialProjects={initialProjects} taskCounts={taskCounts} />
+        <ul className="flex flex-col gap-0.5">
+          {favoriteProjects.map((project) => (
+            <li key={project.id}>
+              <ProjectLink project={project} taskCount={taskCounts.get(project.id) ?? 0} />
+            </li>
+          ))}
+          {favoriteLabels.map((label) => (
+            <li key={label.id}>
+              <LabelFavoriteLink label={label} />
+            </li>
+          ))}
+          {favoriteFilters.map((filter) => (
+            <li key={filter.id}>
+              <FilterFavoriteLink filter={filter} />
+            </li>
+          ))}
+        </ul>
       </div>
     </>
   );
 }
 
-/** Sección "Proyectos" del panel lateral: encabezado con "+ Nuevo proyecto" y el árbol. */
+/**
+ * Sección "Proyectos" del panel lateral: encabezado con "+ Nuevo proyecto" y
+ * el árbol. Ya no scrollea por sí sola (bloque 8): ahora es una más de las
+ * secciones dentro del contenedor scrolleable único de `sidebar-content.tsx`,
+ * junto a Favoritos y las listas colapsables de etiquetas y filtros.
+ */
 export function ProjectsSection({
   initialProjects,
   taskCounts,
@@ -432,7 +489,7 @@ export function ProjectsSection({
   taskCounts: Map<string, number>;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto p-2">
+    <div className="p-2">
       <div className="flex items-center justify-between px-2.5 py-1">
         <h2 className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Proyectos</h2>
         <NewProjectButton initialProjects={initialProjects} />

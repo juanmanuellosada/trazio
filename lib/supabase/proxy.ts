@@ -15,11 +15,19 @@ const PROTECTED_PREFIXES = [
   "/completado",
   "/etiquetas",
   "/filtros",
+  "/buscar",
   "/habitos",
   "/configuracion",
 ] as const;
 
-function isProtectedPath(pathname: string): boolean {
+/**
+ * `/etiquetas` y `/filtros` ya cubren sus rutas de detalle (`/etiquetas/<id>`,
+ * `/filtros/<id>`) por el `startsWith` de abajo, así que no hace falta un
+ * prefijo aparte para cada una (bloque 8.6, revisión de esta lista ahora que
+ * `/proximos`, `/filtros` y `/etiquetas/<id>` existen de verdad). `/buscar`
+ * faltaba en la lista: quedaba sin proteger pese a que la ruta ya existe.
+ */
+export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

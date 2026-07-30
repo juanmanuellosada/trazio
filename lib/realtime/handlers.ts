@@ -4,6 +4,9 @@ import type { QueryClient } from "@tanstack/react-query";
 import { TASKS_MUTATION_KEY } from "@/lib/tasks/mutations";
 import { PROJECTS_MUTATION_KEY } from "@/lib/projects/mutations";
 import { SECTIONS_MUTATION_KEY } from "@/lib/sections/mutations";
+import { COMMENTS_MUTATION_KEY } from "@/lib/comments/mutations";
+import { REMINDERS_MUTATION_KEY } from "@/lib/reminders/mutations";
+import { FILTERS_MUTATION_KEY } from "@/lib/filters/mutations";
 
 /**
  * Regla D3 (`design.md`, sección D — el corazón del bloque 10): nadie había
@@ -52,4 +55,34 @@ export function onProjectsRealtimeEvent(queryClient: QueryClient): void {
 /** 10.2: manejador de `sections`. */
 export function onSectionsRealtimeEvent(queryClient: QueryClient): void {
   invalidateUnlessMutating(queryClient, ["sections"], SECTIONS_MUTATION_KEY);
+}
+
+/**
+ * Bloque 4.5: manejador de `comments`, requirement "Comentarios en tiempo
+ * real entre pestañas y dispositivos". Todas las claves de
+ * `lib/comments/use-comments.ts` empiezan con `"comments"` (una por
+ * tarea), así que invalidar ese único prefijo alcanza.
+ */
+export function onCommentsRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["comments"], COMMENTS_MUTATION_KEY);
+}
+
+/**
+ * Bloque 4.10: manejador de `reminders`, para mantener sincronizados entre
+ * pestañas y dispositivos tanto la lista de recordatorios de una tarea
+ * (`lib/reminders/use-reminders.ts`, prefijo `["reminders", "task", id]`)
+ * como el conteo del badge (`lib/reminders/use-app-badge.ts`, clave
+ * `["reminders", "badge-count"]`) — las dos empiezan con `"reminders"`.
+ */
+export function onRemindersRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["reminders"], REMINDERS_MUTATION_KEY);
+}
+
+/**
+ * Bloque 2.12: manejador de `filters`. `filtersQueryKey`
+ * (`lib/filters/use-filters.ts`) es `["filters"]`, así que invalidar ese
+ * único prefijo alcanza para la lista y el panel lateral.
+ */
+export function onFiltersRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["filters"], FILTERS_MUTATION_KEY);
 }

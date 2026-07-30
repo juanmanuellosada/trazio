@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { defaultOptionsForViewKey } from "@/lib/view-options/schema";
 import { HoyView } from "./hoy-view";
 
 /**
@@ -17,6 +18,20 @@ vi.mock("@/lib/tasks/use-hoy-tasks", () => ({
   useHoyTasks: () => ({ data: [] }),
 }));
 
+// La barra de opciones de vista (bloque 6.5) necesita `QueryClientProvider`
+// y un cliente de Supabase real (usa TanStack Query y `useLabels`), ajenos
+// al propósito de este test — se reemplaza por un stub, igual que se
+// mockea `useHoyTasks` arriba.
+vi.mock("@/components/view-options/view-options-bar", () => ({
+  ViewOptionsBar: () => null,
+}));
+
+// `useViewOptions` también corre TanStack Query; sin mock, `HoyView` se
+// queda esperando un `QueryClientProvider` que este test no monta.
+vi.mock("@/lib/view-options/use-view-options", () => ({
+  useViewOptions: (_viewKey: string, initialOptions: unknown) => ({ options: initialOptions }),
+}));
+
 describe("HoyView — centrado condicional", () => {
   it("aplica @[90rem]:mx-auto junto con max-w-content al encabezado y al contenido", () => {
     const { container } = render(
@@ -27,6 +42,7 @@ describe("HoyView — centrado condicional", () => {
         initialTasks={[]}
         nowIso="2026-07-29T12:00:00.000Z"
         todayDate="2026-07-29"
+        initialOptions={defaultOptionsForViewKey("hoy")}
       />,
     );
 

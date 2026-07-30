@@ -6,6 +6,9 @@ vi.mock("./handlers", () => ({
   onTasksRealtimeEvent: vi.fn(),
   onProjectsRealtimeEvent: vi.fn(),
   onSectionsRealtimeEvent: vi.fn(),
+  onCommentsRealtimeEvent: vi.fn(),
+  onRemindersRealtimeEvent: vi.fn(),
+  onFiltersRealtimeEvent: vi.fn(),
 }));
 
 /** Mock mínimo de un `SupabaseClient` real: alcanza para probar el armado de canales sin Realtime de verdad. */
@@ -40,8 +43,8 @@ function createSupabaseMock() {
   return { channel, removeChannel, channels };
 }
 
-describe("subscribeToRealtime (10.1/10.2)", () => {
-  it("suscribe exactamente tasks, projects y sections, filtrados por user_id — ninguna otra tabla", () => {
+describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2)", () => {
+  it("suscribe exactamente tasks, projects, sections, comments, reminders y filters, filtrados por user_id — ninguna otra tabla", () => {
     const supabase = createSupabaseMock();
     const queryClient = new QueryClient();
     const onStatusChange = vi.fn();
@@ -49,7 +52,7 @@ describe("subscribeToRealtime (10.1/10.2)", () => {
     subscribeToRealtime(supabase as never, queryClient, "user-1", onStatusChange);
 
     const tables = supabase.channels.map((c) => (c.onArgs[1] as { table: string }).table);
-    expect(tables.sort()).toEqual(["projects", "sections", "tasks"]);
+    expect(tables.sort()).toEqual(["comments", "filters", "projects", "reminders", "sections", "tasks"]);
 
     for (const entry of supabase.channels) {
       const [event, config] = entry.onArgs as [string, { schema: string; filter: string }];
@@ -73,6 +76,9 @@ describe("subscribeToRealtime (10.1/10.2)", () => {
     expect(handlers.onTasksRealtimeEvent).toHaveBeenCalledWith(queryClient);
     expect(handlers.onProjectsRealtimeEvent).toHaveBeenCalledWith(queryClient);
     expect(handlers.onSectionsRealtimeEvent).toHaveBeenCalledWith(queryClient);
+    expect(handlers.onCommentsRealtimeEvent).toHaveBeenCalledWith(queryClient);
+    expect(handlers.onRemindersRealtimeEvent).toHaveBeenCalledWith(queryClient);
+    expect(handlers.onFiltersRealtimeEvent).toHaveBeenCalledWith(queryClient);
   });
 
   it("informa el status de cada canal al llamador", () => {
@@ -82,17 +88,20 @@ describe("subscribeToRealtime (10.1/10.2)", () => {
 
     subscribeToRealtime(supabase as never, queryClient, "user-1", onStatusChange);
 
-    expect(onStatusChange).toHaveBeenCalledTimes(3);
-    expect(onStatusChange).toHaveBeenCalledWith(expect.stringMatching(/tasks|projects|sections/), "SUBSCRIBED");
+    expect(onStatusChange).toHaveBeenCalledTimes(6);
+    expect(onStatusChange).toHaveBeenCalledWith(
+      expect.stringMatching(/tasks|projects|sections|comments|reminders|filters/),
+      "SUBSCRIBED",
+    );
   });
 
-  it("la limpieza da de baja los tres canales, sin dejar ninguno colgado", () => {
+  it("la limpieza da de baja los seis canales, sin dejar ninguno colgado", () => {
     const supabase = createSupabaseMock();
     const queryClient = new QueryClient();
 
     const cleanup = subscribeToRealtime(supabase as never, queryClient, "user-1", vi.fn());
     cleanup();
 
-    expect(supabase.removeChannel).toHaveBeenCalledTimes(3);
+    expect(supabase.removeChannel).toHaveBeenCalledTimes(6);
   });
 });

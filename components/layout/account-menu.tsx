@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, MoreVertical, Settings, Tag } from "lucide-react";
+import { Filter, LogOut, MoreVertical, Settings, Tag } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +70,14 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
         <DropdownMenuItem onClick={() => router.push("/etiquetas")}>
           <Tag className="size-4" />
           Etiquetas
+        </DropdownMenuItem>
+        {/* "Filtros" (capacidad `filtros-guardados`): mismo caso que
+            "Etiquetas" arriba — la página de administración de filtros
+            (`/filtros`) no es la lista principal de navegación ni la página
+            de un filtro puntual, así que entra en el mismo lugar. */}
+        <DropdownMenuItem onClick={() => router.push("/filtros")}>
+          <Filter className="size-4" />
+          Filtros
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} disabled={loggingOut}>

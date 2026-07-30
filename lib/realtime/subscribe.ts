@@ -2,20 +2,31 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import type { createClient } from "@/lib/supabase/client";
-import { onProjectsRealtimeEvent, onSectionsRealtimeEvent, onTasksRealtimeEvent } from "./handlers";
+import {
+  onCommentsRealtimeEvent,
+  onFiltersRealtimeEvent,
+  onProjectsRealtimeEvent,
+  onRemindersRealtimeEvent,
+  onSectionsRealtimeEvent,
+  onTasksRealtimeEvent,
+} from "./handlers";
 
 export type RealtimeStatus = "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR";
 
 /**
- * Las tres tablas con suscripción en fase 1 (spec `sincronizacion-tiempo-real`
- * y `docs/data-model.md` sección Realtime). `labels`, `task_labels` y el
- * resto tienen replicación habilitada en la base para fases posteriores,
- * pero fase 1 no las suscribe.
+ * Las tablas con suscripción: las tres de fase 1 (spec
+ * `sincronizacion-tiempo-real` y `docs/data-model.md` sección Realtime) más
+ * `comments`, `reminders` y `filters` de fase 2. `labels`, `task_labels` y
+ * el resto tienen replicación habilitada en la base para fases
+ * posteriores, pero todavía no las suscribe ningún cliente.
  */
 const REALTIME_TABLES = [
   { table: "tasks", onEvent: onTasksRealtimeEvent },
   { table: "projects", onEvent: onProjectsRealtimeEvent },
   { table: "sections", onEvent: onSectionsRealtimeEvent },
+  { table: "comments", onEvent: onCommentsRealtimeEvent },
+  { table: "reminders", onEvent: onRemindersRealtimeEvent },
+  { table: "filters", onEvent: onFiltersRealtimeEvent },
 ] as const;
 
 /**

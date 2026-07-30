@@ -5,10 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { UndoProvider } from "@/components/providers/undo-provider";
+import { ShortcutProvider } from "@/components/shortcuts/shortcut-provider";
 import { TaskDetailContent } from "./task-detail-content";
+import { TaskDetailProvider } from "./task-detail-context";
 import { taskDetailQueryKey, type TaskDetail } from "@/lib/tasks/use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/components/shortcuts/global-quick-add-dialog", () => ({ GlobalQuickAddDialog: () => null }));
 
 const TEST_PREFERENCES = {
   timezone: "America/Argentina/Buenos_Aires",
@@ -92,6 +97,9 @@ const baseTask: TaskDetail = {
   completed_at: null,
   created_at: "2026-01-01T00:00:00Z",
   position: 1000,
+  recurrence_rule: null,
+  recurrence_ends_at: null,
+  recurrence_count: null,
   labels: [],
 };
 
@@ -136,7 +144,31 @@ function renderDetail(task: TaskDetail = baseTask) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskDetailContent taskId={task.id} initialData={task} />
+        <UndoProvider>
+          <TaskDetailProvider>
+            <TaskDetailContent taskId={task.id} initialData={task} />
+          </TaskDetailProvider>
+        </UndoProvider>
+      </PreferencesProvider>
+    </QueryClientProvider>,
+  );
+  return { queryClient };
+}
+
+/** Igual que `renderDetail`, con `<ShortcutProvider>` montado: para los tests de los atajos del detalle (bloque 7.6), que necesitan el único listener de `lib/shortcuts/`. */
+function renderDetailWithShortcuts(task: TaskDetail = baseTask) {
+  mock.tableData.tasks = [task];
+  const queryClient = new QueryClient();
+  render(
+    <QueryClientProvider client={queryClient}>
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <UndoProvider>
+          <TaskDetailProvider>
+            <ShortcutProvider inboxProjectId={null}>
+              <TaskDetailContent taskId={task.id} initialData={task} />
+            </ShortcutProvider>
+          </TaskDetailProvider>
+        </UndoProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );
@@ -285,5 +317,69 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
       const call = mock.updateCalls.find((c) => c.table === "tasks" && c.patch.section_id === "s1");
       expect(call?.patch.parent_id).toBeNull();
     });
+  });
+});
+
+describe("TaskDetailContent — atajos del detalle de tarea (bloque 7.6)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateCalls.length = 0;
+  });
+
+  it("F abre el selector de prioridad", () => {
+    renderDetailWithShortcuts();
+    fireEvent.keyDown(window, { key: "f" });
+    expect(screen.getByText("P1 · Urgente")).toBeInTheDocument();
+  });
+
+  it("D abre el selector de fecha de vencimiento", () => {
+    renderDetailWithShortcuts();
+    fireEvent.keyDown(window, { key: "d" });
+    expect(screen.getByLabelText("Escribí la fecha de vencimiento")).toBeInTheDocument();
+  });
+
+  it("L abre el selector de fecha límite", () => {
+    renderDetailWithShortcuts();
+    fireEvent.keyDown(window, { key: "l" });
+    // `DeadlineSelect` reutiliza el mismo `DatePickerBody` que `DateSelect`: el input de texto es el que distingue que se abrió éste y no otro popover.
+    expect(screen.getAllByPlaceholderText("Ej: mañana, el martes, en 3 días…").length).toBeGreaterThan(0);
+  });
+
+  it("N agrega una subtarea nueva y vacía, lista para escribir su título", () => {
+    renderDetailWithShortcuts();
+    fireEvent.keyDown(window, { key: "n" });
+    expect(screen.getByLabelText("Título de la nueva subtarea")).toBeInTheDocument();
+  });
+
+  it("Ctrl+S guarda de inmediato un título recién editado, sin esperar el debounce del autoguardado", async () => {
+    const user = userEvent.setup();
+    renderDetailWithShortcuts();
+
+    const titleInput = screen.getByLabelText("Título de la tarea");
+    await user.clear(titleInput);
+    await user.type(titleInput, "Pagar el alquiler de agosto");
+    // La guarda de foco (bloque 7.2) no tiene más excepción que `Ctrl/Cmd+Z`:
+    // `Ctrl+S` tampoco se dispara con el foco todavía en el título, así que
+    // el gesto real es sacar el foco de ahí y recién ahí guardar.
+    titleInput.blur();
+
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+
+    await waitFor(() =>
+      expect(mock.updateCalls.some((c) => c.table === "tasks" && c.patch.title === "Pagar el alquiler de agosto")).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("ningún atajo del detalle se dispara con el foco en el título, incluido Ctrl+S", () => {
+    renderDetailWithShortcuts();
+    const titleInput = screen.getByLabelText("Título de la tarea");
+    titleInput.focus();
+    fireEvent.keyDown(titleInput, { key: "f" });
+    expect(screen.queryByText("P1 · Urgente")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(titleInput, { key: "s", ctrlKey: true });
+    expect(mock.updateCalls.some((c) => c.table === "tasks" && "title" in c.patch)).toBe(false);
   });
 });

@@ -390,10 +390,20 @@ function byDayList(dows: number[]): string {
 // suelto ("cada lunes") porque es la más específica de las dos: si el día
 // suelto fuera primero, se comería solo el primer día de la lista y dejaría
 // ", miércoles y viernes" sin reconocer.
+//
+// `daysInterval`/`monthsInterval`/`yearsInterval` (D-D de
+// `openspec/changes/fase-2-potencia/design.md`) siguen exactamente el estilo
+// de `weeksInterval`: intervalo puro, sin `BYDAY`, así que el ancla de la
+// próxima ocurrencia sale de la fecha de completado, no de vencimiento. No
+// compiten con "en N días/meses/años" (`recognizeRelativeDate`): esas
+// empiezan con "en", estas con "cada", nunca se solapan en el mismo texto.
 const RECURRENCE_RE = new RegExp(
   [
     "cada\\s+dia\\s+laborable",
+    "cada\\s+(?<daysInterval>\\d+)\\s+dias?",
     "cada\\s+(?<weeksInterval>\\d+)\\s+semanas?",
+    "cada\\s+(?<monthsInterval>\\d+)\\s+mes(?:es)?",
+    "cada\\s+(?<yearsInterval>\\d+)\\s+anos?",
     `cada\\s+(?<dayList>${DAY_ALT}(?:${DAY_LIST_SEP}${DAY_ALT})+)`,
     `cada\\s+(?<singleDay>${DAY_ALT})`,
     "cada\\s+dia\\b",
@@ -419,12 +429,36 @@ export function recognizeRecurrence(normalized: string): Candidate[] {
         rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
         anchorWeekdays: null,
       });
+    } else if (groups.daysInterval) {
+      candidates.push({
+        attr: "recurrence",
+        start,
+        end,
+        rrule: `FREQ=DAILY;INTERVAL=${groups.daysInterval}`,
+        anchorWeekdays: null,
+      });
     } else if (groups.weeksInterval) {
       candidates.push({
         attr: "recurrence",
         start,
         end,
         rrule: `FREQ=WEEKLY;INTERVAL=${groups.weeksInterval}`,
+        anchorWeekdays: null,
+      });
+    } else if (groups.monthsInterval) {
+      candidates.push({
+        attr: "recurrence",
+        start,
+        end,
+        rrule: `FREQ=MONTHLY;INTERVAL=${groups.monthsInterval}`,
+        anchorWeekdays: null,
+      });
+    } else if (groups.yearsInterval) {
+      candidates.push({
+        attr: "recurrence",
+        start,
+        end,
+        rrule: `FREQ=YEARLY;INTERVAL=${groups.yearsInterval}`,
         anchorWeekdays: null,
       });
     } else if (groups.dayList) {

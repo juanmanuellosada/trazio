@@ -37,16 +37,30 @@ import {
   useUpdateSection,
 } from "@/lib/sections/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
+import type { OrderOption, QuickFilters } from "@/lib/view-options/schema";
 import { cn } from "@/lib/utils";
+
+/** Opciones de vista que cada `TaskList` de sección necesita (bloque 6.6): mismo default "sin cambios" que ya define `TaskList`, para que un llamador sin barra de opciones (ninguno hoy) siga viendo el comportamiento anterior. */
+type SectionTaskListOptions = {
+  order?: OrderOption;
+  quickFilters?: QuickFilters;
+  showCompleted?: boolean;
+  timezone?: string;
+};
 
 function SectionItem({
   section,
   projectId,
   allSections,
+  taskListOptions,
+  selectionOrderIds,
 }: {
   section: SectionRow;
   projectId: string;
   allSections: SectionRow[];
+  taskListOptions?: SectionTaskListOptions;
+  /** Selección múltiple (bloque 7.10-7.13): mismo orden visual combinado que le pasa `SectionedTasks` a la lista de "sin sección" — acá se reparte igual a cada sección. */
+  selectionOrderIds?: string[];
 }) {
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(section.name);
@@ -145,7 +159,13 @@ function SectionItem({
       </div>
       {!section.is_collapsed && (
         <div className="pl-7">
-          <TaskList projectId={projectId} sectionId={section.id} parentId={null} />
+          <TaskList
+            projectId={projectId}
+            sectionId={section.id}
+            parentId={null}
+            {...taskListOptions}
+            selectionOrderIds={selectionOrderIds}
+          />
         </div>
       )}
     </li>
@@ -216,9 +236,15 @@ function AddSectionRow({ projectId }: { projectId: string }) {
 export function SectionList({
   projectId,
   initialSections,
+  taskListOptions,
+  selectionOrderIds,
 }: {
   projectId: string;
   initialSections: SectionRow[];
+  /** Orden, filtros rápidos y mostrar completadas de la barra de opciones de vista (bloque 6.6), aplicados a la lista de tareas de cada sección. */
+  taskListOptions?: SectionTaskListOptions;
+  /** Selección múltiple (bloque 7.10-7.13, capacidad `seleccion-multiple`): orden visual combinado de "sin sección" + cada sección, calculado por `SectionedTasks`. */
+  selectionOrderIds?: string[];
 }) {
   const { data } = useSections(projectId, initialSections);
   const moveSection = useMoveSection(projectId);
@@ -251,7 +277,14 @@ export function SectionList({
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-5">
               {sections.map((section) => (
-                <SectionItem key={section.id} section={section} projectId={projectId} allSections={sections} />
+                <SectionItem
+                  key={section.id}
+                  section={section}
+                  projectId={projectId}
+                  allSections={sections}
+                  taskListOptions={taskListOptions}
+                  selectionOrderIds={selectionOrderIds}
+                />
               ))}
             </ul>
           </SortableContext>
