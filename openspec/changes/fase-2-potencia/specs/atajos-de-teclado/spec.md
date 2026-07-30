@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Los atajos con modificador Ctrl o Cmd se disparan con el foco en un campo de texto; las teclas sueltas no
 
@@ -36,8 +36,6 @@ Un atajo cuyo binding requiere el modificador `Ctrl` o `Cmd` (`metaKey`) SHALL d
   `Ctrl/Cmd+Z`
 - **THEN** se dispara el deshacer de la última acción, según la capacidad
   `deshacer`
-
-## ADDED Requirements
 
 ### Requirement: Atajos generales de navegación y acceso rápido
 

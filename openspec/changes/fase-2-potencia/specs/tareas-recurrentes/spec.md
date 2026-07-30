@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Frecuencias de recurrencia reconocidas
 
@@ -17,8 +17,6 @@ El sistema SHALL interpretar correctamente, para calcular la siguiente ocurrenci
   cuya fecha de vencimiento era ese mismo viernes
 - **THEN** la siguiente instancia se agenda para el lunes siguiente, no para
   el sábado
-
-## ADDED Requirements
 
 ### Requirement: Generar la siguiente ocurrencia al completar una tarea recurrente
 
