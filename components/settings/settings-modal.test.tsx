@@ -104,17 +104,17 @@ describe("SettingsModal (bloque 9)", () => {
     expect(screen.getByRole("dialog", { name: "Configuración" })).toBeInTheDocument();
   });
 
-  it("solo muestra las cuatro secciones de fase 1, sin Notificaciones ni Calendarios", async () => {
+  it("muestra las cinco secciones de fase 2, con Notificaciones y sin Calendarios", async () => {
     await openModal();
 
     const nav = screen.getByRole("navigation", { name: "Secciones de configuración" });
     expect(within(nav).getByRole("button", { name: "Cuenta" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "General" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Notificaciones" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Tema" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Instalación" })).toBeInTheDocument();
-    expect(within(nav).getAllByRole("button")).toHaveLength(4);
+    expect(within(nav).getAllByRole("button")).toHaveLength(5);
 
-    expect(screen.queryByText(/notificaciones/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/calendarios/i)).not.toBeInTheDocument();
   });
 

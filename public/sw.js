@@ -13,5 +13,50 @@
 // desde caché violaría esa decisión, así que no se agrega ninguno, ni acá ni
 // en fase 2.
 //
-// En fase 2 este mismo archivo suma el manejador de `push` para las
-// notificaciones, y nada más.
+// En fase 2 este mismo archivo suma el manejador de `push` y el de
+// `notificationclick` (bloque 4.7) — nada más, ni un manejador de `fetch`
+// ni Cache API, para no reabrir D1.
+
+// El payload lo arma la edge function `supabase/functions/enviar-recordatorios/`:
+// `{ title, taskId }`. `title` es el título de la tarea, sin marcado — se
+// pasa tal cual a `showNotification`, que siempre lo muestra como texto
+// plano (D2): la API de notificaciones no interpreta HTML.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    return;
+  }
+
+  const title = String(payload.title ?? "");
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      data: { taskId: payload.taskId ?? null },
+    }),
+  );
+});
+
+// Tocar la notificación abre el detalle de esa tarea (spec "Entrega de la
+// notificación push"): si ya hay una pestaña de Trazio abierta, la enfoca
+// y navega ahí; si no, abre una nueva.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const taskId = event.notification.data && event.notification.data.taskId;
+  const url = taskId ? `/tarea/${taskId}` : "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsList) => {
+      for (const client of clientsList) {
+        if ("focus" in client) {
+          if ("navigate" in client) client.navigate(url);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    }),
+  );
+});
