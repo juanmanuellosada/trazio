@@ -26,11 +26,14 @@ export type TaskDetail = {
   completed_at: string | null;
   created_at: string;
   position: number;
+  recurrence_rule: string | null;
+  recurrence_ends_at: string | null;
+  recurrence_count: number | null;
   labels: LabelChip[];
 };
 
 const TASK_DETAIL_COLUMNS =
-  "id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, created_at, position, task_labels(labels(id, name, color))";
+  "id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, created_at, position, recurrence_rule, recurrence_ends_at, recurrence_count, task_labels(labels(id, name, color))";
 
 type TaskDetailRawRow = Omit<TaskDetail, "labels"> & {
   task_labels: { labels: LabelChip | null }[] | null;
