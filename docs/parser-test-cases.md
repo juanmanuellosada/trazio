@@ -4,7 +4,7 @@ Contrato canónico del alta rápida en lenguaje natural. Estos casos **son** la
 especificación: si el parser no los pasa, el parser está mal, no el caso.
 
 El criterio de aceptación de la fase 1 ya referencia este archivo por nombre en
-`docs/roadmap.md`: el parser tiene que pasar los **59 casos** de esta tabla.
+`docs/roadmap.md`: el parser tiene que pasar los **63 casos** de esta tabla.
 
 ---
 
@@ -229,6 +229,10 @@ casos existentes por número.
 | 57 | `Gimnasio cada lunes, miércoles y viernes por 1h` | Gimnasio | RRULE `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `duration_minutes = 60` | Es el ejemplo de la demo de la landing: una lista de tres días con coma y "y" final, más una duración corta con "por". La lista se remueve del título de punta a punta (comas y "y" incluidos), no día por día |
 | 58 | `Yoga cada martes y jueves` | Yoga | RRULE `FREQ=WEEKLY;BYDAY=TU,TH` | Caso mínimo de lista: dos días unidos solo por "y", sin coma. Como no hay hora, la recurrencia no fija ancla (ídem 31-37) |
 | 59 | `Gimnasio cada lunes y jueves a las 8` | Gimnasio | RRULE `FREQ=WEEKLY;BYDAY=MO,TH` y `due_at` = la ocurrencia más próxima entre lunes y jueves, a las 08:00 | Lista de días con hora: con varios días, "la próxima ocurrencia" (E12) no es automáticamente la del primer día que escribió el usuario — es el día de la lista que caiga antes a partir de ahora, nunca hoy (R10). Con el reloj de referencia de la suite (`2026-07-26T18:00:00Z`), en `America/Argentina/Buenos_Aires` hoy es domingo 26/07 y el lunes 27/07 es lo más próximo (`due_at` = 2026-07-27 08:00 ART); en `Pacific/Kiritimati` (UTC+14) hoy ya es lunes 27/07, así que el próximo lunes salta a la semana siguiente (03/08) y el jueves 30/07 queda más cerca (`due_at` = 2026-07-30 08:00 Kiritimati) — el mismo texto ancla en un día de la semana distinto según la zona, que es justo lo que E13 quiere atrapar |
+| 60 | `Regar las plantas cada 3 días` | Regar las plantas | RRULE `FREQ=DAILY;INTERVAL=3` | Faltaba el equivalente en días de `cada 2 semanas` (caso 35). Es además el ejemplo literal de D-D (`design.md` de `fase-2-potencia`): al ser intervalo puro, sin `BYDAY`, ancla en la fecha de completado, no en la de vencimiento |
+| 61 | `Renovar seguro en 3 días` sigue sin repetición | Renovar seguro | `due_date = hoy+3` (caso 8, sin cambios) | No hay conflicto entre "cada 3 días" (repetición) y "en 3 días" (fecha relativa): son locuciones distintas, una empieza con "cada" y la otra con "en", y ninguna se solapa con la duración estimada (que solo reconoce horas/minutos, nunca días) |
+| 62 | `Pagar el seguro cada 2 meses` | Pagar el seguro | RRULE `FREQ=MONTHLY;INTERVAL=2` | Por simetría con el intervalo de semanas y de días |
+| 63 | `Renovar la garantía cada 2 años` | Renovar la garantía | RRULE `FREQ=YEARLY;INTERVAL=2` | Ídem, por simetría |
 
 ---
 

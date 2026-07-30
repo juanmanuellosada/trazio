@@ -683,3 +683,50 @@ hueco casi no existe en pantallas grandes, pero sí en las medianas.
 **Consecuencia.** El umbral concreto lo define la skill `ui-ux-pro-max`
 (tarea 9.2 de `interfaz-refinada`) — lo que esta decisión fija es que no
 vuelva a resolverse con un número de columna fijo y chico.
+
+---
+
+## D36 — El índice GIN de `search_vector` no lo usa el planner bajo RLS; se acepta
+
+**Fecha.** 2026-07-29
+
+**Contexto.** `tasks_search_vector_idx` (GIN, creado en
+`20260729120018_tasks_search_vector.sql`) existe para que
+`search_vector @@ tsquery` sea rápido. Medido con `EXPLAIN (ANALYZE,
+BUFFERS)` contra el Docker local con 580.000 filas: sin RLS, el planner usa
+el GIN y la consulta tarda 0,2ms. Con RLS activa, como rol `authenticated`,
+el planner **no** lo usa — recurre al btree `tasks_user_id_due_at_idx` para
+acotar por `user_id` y aplica el `tsquery` como `Filter` fila por fila. Con
+80.000 tareas propias eso da 18ms.
+
+La causa es `pg_proc.proleakproof`: `ts_match_vq`, la función detrás de
+`@@`, no está marcada `LEAKPROOF`. Para un rol no-superusuario con RLS
+activa, Postgres no empuja un operador no-leakproof como condición de
+índice antes de aplicar la política de fila — hacerlo evaluaría el operador
+sobre filas que el usuario no puede ver, justo lo que RLS existe para
+impedir.
+
+**Decisión.** Se acepta el comportamiento. El índice GIN queda: sostiene la
+columna generada (D-B de `openspec/changes/fase-2-potencia/design.md` —
+`unaccent()` no es `IMMUTABLE`, la configuración `spanish_unaccent` sí lo
+es) y sirve igual si algún día una consulta corre sin RLS. El fallback por
+`user_id` ya acota el conjunto, y un usuario real de una app de tareas
+personales tiene cientos o pocos miles de tareas, no ochenta mil — a esa
+escala el filtro fila por fila no se nota.
+
+**Alternativas descartadas.**
+
+- Marcar `ts_match_vq` como `LEAKPROOF`. Es una función del sistema, no de
+  este proyecto: es un cambio de seguridad global de Postgres, no algo que
+  este proyecto deba tocar, y probablemente ni sea posible en Supabase
+  hosteado, donde no hay superusuario.
+- Hacer `buscar_tareas` `SECURITY DEFINER` para que el operador corra sin
+  RLS activa y el planner sí empuje el GIN. Tira abajo la defensa en
+  profundidad que fijó D-A: `SECURITY INVOKER` es la que garantiza que la
+  RLS queda como última línea de defensa aunque el AST compilado tenga un
+  error. Ganar milisegundos a costa de esa garantía no vale la pena.
+
+**Consecuencia.** El índice GIN sigue en las migraciones aunque el planner
+no lo elija bajo RLS — no se dropea, porque sostiene la columna generada.
+Si algún día la cantidad de tareas por usuario deja de ser "cientos o pocos
+miles", esta decisión se revisa con un `EXPLAIN` nuevo en la mano.

@@ -351,7 +351,7 @@ encontró nada más específico.
 **Duraciones:** 1h30m, por 45min, 2 horas.
 
 **Repetición:** cada día, cada semana, cada mes, cada año, cada 2 semanas, cada
-lunes, cada día laborable.
+3 días, cada 2 meses, cada 2 años, cada lunes, cada día laborable.
 
 **Símbolos:** `p1` a `p4` asignan prioridad; `#` elige proyecto o sección; `@`
 elige o crea una etiqueta.
@@ -449,8 +449,10 @@ agrega una sección; `Escape` cierra menús y ventanas emergentes.
 **Menú contextual de tarea:** `T` fecha, `Y` prioridad, `V` mover a, `⇧Ctrl+C`
 copiar enlace, `Ctrl⇧N` abrir en ventana nueva, `⇧Supr` eliminar.
 
-Ningún atajo se dispara mientras el foco está en un campo de texto, con la única
-excepción de `Ctrl/Cmd+Z`.
+Un atajo con modificador `Ctrl`/`Cmd` (por ejemplo `Ctrl+S`, `⇧Ctrl+C`,
+`Ctrl⇧N` o `Ctrl/Cmd+Z`) se dispara aunque el foco esté en un campo de texto.
+Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con
+`Shift` sola, como `⇧Supr`— no se dispara en esa misma situación.
 
 ---
 

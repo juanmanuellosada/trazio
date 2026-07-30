@@ -44,10 +44,11 @@ alguien más pueda registrarse y hacer lo mismo.
 - Vistas: Bandeja de entrada, Hoy, Proyecto, Completado.
 - Modo lista (el panel y el calendario quedan para después).
 - Alta rápida con parseo de lenguaje natural en español.
-- Etiquetas, con alcance acotado: crear por `#` desde el alta rápida, asignar,
-  mostrar el chip, agregar o quitar desde el detalle de la tarea. La
-  administración completa, la página propia por etiqueta y las favoritas quedan
-  para la fase 2.
+- Etiquetas: crear por `#` desde el alta rápida, asignar, mostrar el chip,
+  agregar o quitar desde el detalle de la tarea, y administración completa desde
+  una pantalla propia (implementada en el refinamiento de interfaz, capacidad
+  `administracion-de-etiquetas`). La página propia por etiqueta y las favoritas
+  quedan para la fase 2.
 - Configuración: perfil, tema, zona horaria, formatos, día de inicio de semana.
 - Realtime entre pestañas y dispositivos.
 - Optimistic updates en completar, editar, mover y reordenar.
@@ -78,7 +79,8 @@ alguien más pueda registrarse y hacer lo mismo.
 
 ### Alcance
 
-- Etiquetas: administración completa, página por etiqueta, favoritas.
+- Etiquetas: página propia por etiqueta y favoritas. La administración completa
+  ya se implementó en la fase 1.
 - Filtros: lenguaje de consulta, parser, errores en español, vista previa de
   coincidencias, favoritos.
 - Vista Próximos, en lista y en panel.
@@ -89,23 +91,36 @@ alguien más pueda registrarse y hacer lo mismo.
   el conteo del día.
 - Atajos de teclado completos.
 - Selección múltiple con acciones en lote.
-- Deshacer con `Ctrl/Cmd+Z` y toasts con opción de deshacer.
+- Deshacer: ya existe el toast con opción de deshacer al eliminar una tarea
+  (`lib/tasks/mutations.ts`, con snapshot del subárbol en `lib/tasks/subtree.ts`
+  y restauración en `lib/tasks/restore.ts`). Falta el atajo `Ctrl/Cmd+Z`, la
+  pila de acciones, extenderlo al resto de las acciones destructivas, y que la
+  restauración incluya las etiquetas (`task_labels`), que hoy no restaura.
 - Barra de opciones de vista, con memoria por pantalla.
-- Tareas recurrentes con RRULE.
+- Tareas recurrentes con RRULE. Las columnas `recurrence_rule`,
+  `recurrence_ends_at` y `recurrence_count` ya existen en `tasks`, y el parser
+  ya arma un RRULE válido y lo guarda. Falta interpretarlo (nada lo lee
+  todavía; la dependencia `rrule` está instalada pero sin usar) y la interfaz
+  para editar la recurrencia.
 
 ### Criterios de aceptación
 
-- [ ] `(priority:1,2 & due:next7days) & !label:espera` devuelve exactamente lo
+- [x] `(priority:1,2 & due:next7days) & !label:espera` devuelve exactamente lo
       esperado, y un error de sintaxis se explica en español señalando la posición.
 - [ ] Un recordatorio programado llega una vez, a horario, en todos los
-      dispositivos suscritos. No llega dos veces.
-- [ ] Completar una tarea recurrente genera la siguiente con todos los atributos
+      dispositivos suscritos. No llega dos veces. (Solo se verificó localmente
+      que `claim_due_reminders()` entrega una sola vez ante ejecuciones
+      solapadas del cron; la entrega real por push queda pendiente de una
+      prueba en producción con un dispositivo real.)
+- [x] Completar una tarea recurrente genera la siguiente con todos los atributos
       heredados.
-- [ ] Eliminar una tarea y hacer `Ctrl+Z` la restaura completa: subtareas,
+- [x] Eliminar una tarea y hacer `Ctrl+Z` la restaura completa: subtareas,
       etiquetas, comentarios.
 - [ ] Todos los atajos funcionan y ninguno se dispara escribiendo en un campo de
-      texto (salvo deshacer).
-- [ ] La búsqueda encuentra "reunión" buscando "reunion".
+      texto (salvo deshacer). (Ya se verificó la tabla completa, incluido el
+      menú contextual de tarea y `⇧S`, y la guarda de foco nueva; falta corregir
+      que `Y` abre el detalle pero no el selector de prioridad.)
+- [x] La búsqueda encuentra "reunión" buscando "reunion".
 
 ---
 
