@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useUndoStack } from "@/components/providers/undo-provider";
+import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
 import type { Json } from "@/lib/supabase/database.types";
@@ -8,6 +10,7 @@ import { duplicateTaskTree } from "./duplicate";
 import { reportTaskError } from "./errors";
 import { snapshotTaskSubtree, restoreTaskSnapshot } from "./restore";
 import {
+  SIBLING_SPACING,
   needsRebalance,
   nextSiblingPositionInContext,
   positionAfterOriginal,
@@ -134,6 +137,9 @@ export type TaskPatch = Partial<{
   duration_minutes: number | null;
   deadline: string | null;
   completed_at: string | null;
+  recurrence_rule: string | null;
+  recurrence_ends_at: string | null;
+  recurrence_count: number | null;
 }>;
 
 /** `description` no es columna de `TaskRow` (las listas no la traen, ver `use-tasks.ts`): se descarta al parchear la caché de lista. */
@@ -141,6 +147,34 @@ function listPatchOf(patch: TaskPatch): Partial<TaskRow> {
   const rest: TaskPatch = { ...patch };
   delete rest.description;
   return rest;
+}
+
+/**
+ * El parche inverso de una edición (bloque 5.11, D-F): para cada campo que
+ * cambió, el valor que tenía antes, leído de lo que ya había en caché
+ * (`previousDetail` trae todo, incluida `description`; `previousRow` cubre
+ * el resto cuando no había detalle cacheado — ej. completar desde una fila
+ * de lista sin abrir el panel). `null` si falta el valor anterior de algún
+ * campo: sin un valor confiable, no se arma un deshacer que rompa algo.
+ */
+function inversePatchOf(patch: TaskPatch, previousDetail?: TaskDetail, previousRow?: TaskRow): TaskPatch | null {
+  const detail = previousDetail as unknown as Record<string, unknown> | undefined;
+  const row = previousRow as unknown as Record<string, unknown> | undefined;
+  const inverse: Record<string, unknown> = {};
+  for (const key of Object.keys(patch)) {
+    if (detail && key in detail) inverse[key] = detail[key];
+    else if (row && key in row) inverse[key] = row[key];
+    else return null;
+  }
+  return inverse as TaskPatch;
+}
+
+/** Etiqueta en español de la pila de deshacer (bloque 5.11/5.12), según qué cambió el parche. */
+function describePatch(patch: TaskPatch): string {
+  if ("completed_at" in patch) {
+    return patch.completed_at ? "Tarea completada." : "Tarea marcada como pendiente.";
+  }
+  return "Tarea editada.";
 }
 
 /**
@@ -152,12 +186,28 @@ function listPatchOf(patch: TaskPatch): Partial<TaskRow> {
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { push } = useUndoStack();
 
   return useMutation({
     mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ id, patch }: { id: string; projectId: string; patch: TaskPatch }) => {
       const { error } = await supabase.from("tasks").update(patch).eq("id", id);
       if (error) throw error;
+
+      // Bloque 5.4: completar una tarea recurrente (patch.completed_at
+      // truthy, nunca al descompletar) crea la siguiente instancia. Un
+      // error acá no revierte la tarea ya completada — solo se avisa, y
+      // `nextOccurrence` queda en `null` para que el deshacer (más abajo, en
+      // `onSuccess`) sepa que no hay nada para borrar.
+      let nextOccurrence: NextOccurrence | null = null;
+      if (patch.completed_at) {
+        try {
+          nextOccurrence = await createNextRecurringOccurrence(supabase, id);
+        } catch (recurrenceError) {
+          reportTaskError(recurrenceError);
+        }
+      }
+      return { nextOccurrence };
     },
     onMutate: async ({ id, projectId, patch }) => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKey(projectId) });
@@ -187,7 +237,9 @@ export function useUpdateTask() {
         old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
       );
 
-      return { previousList, previousDetail, previousHoy, previousCompleted, projectId, id };
+      const inversePatch = inversePatchOf(patch, previousDetail, previousList?.find((t) => t.id === id));
+
+      return { previousList, previousDetail, previousHoy, previousCompleted, projectId, id, inversePatch };
     },
     onError: (error, _vars, context) => {
       if (context?.previousList) queryClient.setQueryData(tasksQueryKey(context.projectId), context.previousList);
@@ -195,6 +247,46 @@ export function useUpdateTask() {
       context?.previousHoy?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       context?.previousCompleted?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       reportTaskError(error);
+    },
+    onSuccess: (data, { id, projectId, patch }, context) => {
+      // Bloque 5.11: empuja completar/descompletar y cualquier edición de
+      // campos a la pila de deshacer. Sin toast acá (`.claude/rules/frontend.md`
+      // solo lo exige para acciones destructivas) — el toast de eliminar ya
+      // vive en `useDeleteTask`.
+      if (!context?.inversePatch) return;
+      const inversePatch = context.inversePatch;
+      const nextOccurrence = data?.nextOccurrence ?? null;
+      push({
+        label: describePatch(patch),
+        undo: async () => {
+          const { error } = await supabase.from("tasks").update(inversePatch).eq("id", id);
+          if (error) {
+            reportTaskError(error);
+            return;
+          }
+          // Deshacer completar una recurrente también borra la instancia
+          // que ese completado generó (deshacer es volver al estado
+          // anterior, y una instancia huérfana lo contradice). Pero solo si
+          // nadie la tocó todavía: si ya la editaron o la completaron, su
+          // `updated_at` cambió (trigger `tasks_set_updated_at_trigger`,
+          // migración `20260729160000`) y no coincide con el que tenía
+          // recién creada — en ese caso, conservador, no se borra: sería
+          // destruir trabajo del usuario.
+          if (nextOccurrence) {
+            const { data: current } = await supabase
+              .from("tasks")
+              .select("updated_at")
+              .eq("id", nextOccurrence.id)
+              .maybeSingle();
+            if (current?.updated_at === nextOccurrence.updatedAt) {
+              await supabase.from("tasks").delete().eq("id", nextOccurrence.id);
+            }
+          }
+          queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) });
+          invalidateCrossViewCaches(queryClient);
+        },
+      });
     },
     onSettled: (_data, _error, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
@@ -355,6 +447,7 @@ export function useDuplicateTask() {
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { push, undoById } = useUndoStack();
 
   return useMutation({
     mutationKey: TASKS_MUTATION_KEY,
@@ -378,16 +471,25 @@ export function useDeleteTask() {
       reportTaskError(error);
     },
     onSuccess: (snapshot, { projectId }) => {
+      // Bloque 5.11/5.12: el mismo descriptor alimenta la pila de deshacer
+      // y el toast — deshacer desde el toast pasa por `undoById`, que la
+      // saca de la pila en el mismo paso (no queda disponible una segunda
+      // vez para `Ctrl/Cmd+Z`).
+      const restore = () =>
+        restoreTaskSnapshot(supabase, snapshot)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
+            toastSuccess("Tarea restaurada.");
+          })
+          .catch(reportTaskError);
+
+      const undoId = push({ label: "Tarea eliminada.", undo: restore });
+
       toastSuccess("Tarea eliminada.", {
         action: {
           label: "Deshacer",
           onClick: () => {
-            restoreTaskSnapshot(supabase, snapshot)
-              .then(() => {
-                queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
-                toastSuccess("Tarea restaurada.");
-              })
-              .catch(reportTaskError);
+            void undoById(undoId);
           },
         },
       });
@@ -451,6 +553,284 @@ export function useReplaceTaskLabels() {
     onSettled: (_data, _error, { taskId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
       queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(taskId) });
+      invalidateCrossViewCaches(queryClient);
+    },
+  });
+}
+
+/**
+ * Una tarea seleccionada, con el proyecto al que pertenece (bloque 7.10-7.13,
+ * capacidad `seleccion-multiple`): la selección puede cruzar proyectos (Hoy,
+ * Próximos, Etiqueta y Filtro muestran tareas de cualquier proyecto a la
+ * vez), así que las mutaciones en lote no pueden cerrar un solo `projectId`
+ * como hook — cada tarea trae el suyo, igual que ya hace `useUpdateTask` por
+ * variable de mutación en vez de argumento del hook.
+ */
+export type BulkTaskRef = { id: string; projectId: string };
+
+function pluralTareas(count: number): string {
+  return count === 1 ? "tarea" : "tareas";
+}
+
+/** Etiqueta en español de la pila de deshacer para una acción en lote (bloque 7.12): una sola entrada por lote, sin importar cuántas tareas afecte. */
+function describeBulkPatch(patch: TaskPatch, count: number): string {
+  const plural = pluralTareas(count);
+  if ("priority" in patch) return `Prioridad cambiada en ${count} ${plural}.`;
+  if ("due_date" in patch || "due_at" in patch) return `Fecha cambiada en ${count} ${plural}.`;
+  return `${count} ${plural} editadas.`;
+}
+
+/**
+ * Aplica el mismo parche a varias tareas a la vez (bloque 7.11: cambiar
+ * prioridad o cambiar fecha en lote, con Hoy/Mañana/Sin fecha), como **una
+ * sola** entrada de deshacer (bloque 7.12, requirement "Las acciones en
+ * lote son deshacibles como una sola acción") — deshacerla revierte el
+ * parche inverso de cada tarea en un solo paso, no una vez por tarea.
+ */
+export function useBulkUpdateTasks() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+  const { push } = useUndoStack();
+
+  return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
+    mutationFn: async ({ tasks, patch }: { tasks: BulkTaskRef[]; patch: TaskPatch }) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update(patch)
+        .in(
+          "id",
+          tasks.map((t) => t.id),
+        );
+      if (error) throw error;
+    },
+    onMutate: async ({ tasks, patch }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      await Promise.all(projectIds.map((pid) => queryClient.cancelQueries({ queryKey: tasksQueryKey(pid) })));
+
+      const previousLists = new Map(projectIds.map((pid) => [pid, listSnapshot(queryClient, pid)]));
+      const idSet = new Set(tasks.map((t) => t.id));
+      const listPatch = listPatchOf(patch);
+
+      for (const pid of projectIds) {
+        queryClient.setQueryData<TaskRow[]>(tasksQueryKey(pid), (old) =>
+          (old ?? []).map((t) => (idSet.has(t.id) ? { ...t, ...listPatch } : t)),
+        );
+      }
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY }, (old) =>
+        old?.map((t) => (idSet.has(t.id) ? { ...t, ...listPatch } : t)),
+      );
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY }, (old) =>
+        old?.map((t) => (idSet.has(t.id) ? { ...t, ...listPatch } : t)),
+      );
+
+      return { previousLists, projectIds };
+    },
+    onError: (error, _vars, context) => {
+      context?.previousLists.forEach((list, pid) => {
+        if (list) queryClient.setQueryData(tasksQueryKey(pid), list);
+      });
+      reportTaskError(error);
+    },
+    onSuccess: (_data, { tasks, patch }, context) => {
+      if (!context) return;
+      const inverses = tasks
+        .map((t) => {
+          const previousRow = context.previousLists.get(t.projectId)?.find((row) => row.id === t.id);
+          const inversePatch = inversePatchOf(patch, undefined, previousRow);
+          return inversePatch ? { id: t.id, patch: inversePatch } : null;
+        })
+        .filter((entry): entry is { id: string; patch: TaskPatch } => entry != null);
+      if (inverses.length === 0) return;
+
+      push({
+        label: describeBulkPatch(patch, tasks.length),
+        undo: async () => {
+          await Promise.all(inverses.map(({ id, patch: inversePatch }) => supabase.from("tasks").update(inversePatch).eq("id", id)));
+          context.projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+          invalidateCrossViewCaches(queryClient);
+        },
+      });
+    },
+    onSettled: (_data, _error, { tasks }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+      invalidateCrossViewCaches(queryClient);
+    },
+  });
+}
+
+/**
+ * Mueve varias tareas al mismo proyecto y sección (bloque 7.11: "mover a
+ * otro proyecto o sección"), todas a primer nivel del destino (igual que
+ * `moveTo` del detalle de tarea achata una subtarea movida) y en una sola
+ * entrada de deshacer. No es optimista para el `project_id`/`section_id`
+ * (a diferencia de `useMoveTask`, que sí lo es para un solo arrastre): acá
+ * el lote puede ser grande y cruzar varios proyectos de origen, así que se
+ * invalida en vez de parchear cada caché a mano.
+ */
+export function useBulkMoveTasks() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+  const { push } = useUndoStack();
+
+  return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
+    onMutate: async ({ tasks }: { tasks: BulkTaskRef[]; toProjectId: string; toSectionId: string | null }) => {
+      // Foto de "de dónde vino" cada tarea (proyecto, sección, padre y
+      // posición) antes de moverla: es lo que el deshacer necesita para
+      // devolverla exactamente a su lugar, no solo a su proyecto de origen.
+      const previousRows = new Map<string, Pick<TaskRow, "project_id" | "section_id" | "parent_id" | "position">>();
+      for (const t of tasks) {
+        const row = listSnapshot(queryClient, t.projectId)?.find((r) => r.id === t.id);
+        if (row) {
+          previousRows.set(t.id, {
+            project_id: row.project_id,
+            section_id: row.section_id,
+            parent_id: row.parent_id,
+            position: row.position,
+          });
+        }
+      }
+      return { previousRows };
+    },
+    mutationFn: async ({
+      tasks,
+      toProjectId,
+      toSectionId,
+    }: {
+      tasks: BulkTaskRef[];
+      toProjectId: string;
+      toSectionId: string | null;
+    }) => {
+      const destinationList = listSnapshot(queryClient, toProjectId) ?? [];
+      const base = nextSiblingPositionInContext(destinationList, {
+        projectId: toProjectId,
+        sectionId: toSectionId,
+        parentId: null,
+      });
+
+      for (const [index, task] of tasks.entries()) {
+        const { error } = await supabase
+          .from("tasks")
+          .update({
+            project_id: toProjectId,
+            section_id: toSectionId,
+            parent_id: null,
+            position: base + index * SIBLING_SPACING,
+          })
+          .eq("id", task.id);
+        if (error) throw error;
+
+        // Igual que `useMoveTask`: si cruza de proyecto, cascadea `project_id`
+        // a todo el subárbol (una tarea no puede quedar en un proyecto
+        // distinto del de su padre) — la selección múltiple solo ofrece
+        // casillero en tareas de primer nivel (bloque 7.10), así que una
+        // tarea movida en lote puede traer subtareas propias sin seleccionar.
+        if (task.projectId !== toProjectId) {
+          const originList = listSnapshot(queryClient, task.projectId) ?? [];
+          const descendantIds = taskSubtreeIds(originList, task.id).filter((id) => id !== task.id);
+          if (descendantIds.length > 0) {
+            const { error: cascadeError } = await supabase
+              .from("tasks")
+              .update({ project_id: toProjectId, section_id: null })
+              .in("id", descendantIds);
+            if (cascadeError) throw cascadeError;
+          }
+        }
+      }
+    },
+    onSuccess: (_data, { tasks }, context) => {
+      push({
+        label: `${tasks.length} ${pluralTareas(tasks.length)} movidas.`,
+        undo: async () => {
+          await Promise.all(
+            tasks.map((t) => {
+              const previous = context?.previousRows.get(t.id);
+              if (!previous) return Promise.resolve();
+              return supabase.from("tasks").update(previous).eq("id", t.id);
+            }),
+          );
+          const projectIds = new Set(tasks.map((t) => t.projectId));
+          context?.previousRows.forEach((row) => projectIds.add(row.project_id));
+          projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+          invalidateCrossViewCaches(queryClient);
+        },
+      });
+    },
+    onError: reportTaskError,
+    onSettled: (_data, _error, { tasks, toProjectId }) => {
+      const projectIds = new Set([...tasks.map((t) => t.projectId), toProjectId]);
+      projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+      invalidateCrossViewCaches(queryClient);
+    },
+  });
+}
+
+/**
+ * Elimina varias tareas a la vez (bloque 7.11 "eliminar", bloque 7.12): una
+ * sola entrada de deshacer restaura las doce de una vez, no una por una
+ * (requirement "Deshacer una eliminación en lote de 12 tareas la revierte
+ * de una vez"). Cada tarea guarda su propia foto (subtareas, etiquetas y
+ * comentarios) con `snapshotTaskSubtree`, igual que `useDeleteTask`.
+ */
+export function useBulkDeleteTasks() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+  const { push, undoById } = useUndoStack();
+
+  return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
+    mutationFn: async ({ tasks }: { tasks: BulkTaskRef[] }) => {
+      const snapshots = await Promise.all(tasks.map((t) => snapshotTaskSubtree(supabase, t.id)));
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .in(
+          "id",
+          tasks.map((t) => t.id),
+        );
+      if (error) throw error;
+      return snapshots;
+    },
+    onMutate: async ({ tasks }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      await Promise.all(projectIds.map((pid) => queryClient.cancelQueries({ queryKey: tasksQueryKey(pid) })));
+      const previousLists = new Map(projectIds.map((pid) => [pid, listSnapshot(queryClient, pid)]));
+      const idSet = new Set(tasks.map((t) => t.id));
+      for (const pid of projectIds) {
+        queryClient.setQueryData<TaskRow[]>(tasksQueryKey(pid), (old) => (old ?? []).filter((t) => !idSet.has(t.id)));
+      }
+      return { previousLists };
+    },
+    onError: (error, _vars, context) => {
+      context?.previousLists.forEach((list, pid) => {
+        if (list) queryClient.setQueryData(tasksQueryKey(pid), list);
+      });
+      reportTaskError(error);
+    },
+    onSuccess: (snapshots, { tasks }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      const restore = async () => {
+        for (const snapshot of snapshots) await restoreTaskSnapshot(supabase, snapshot);
+        projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+        toastSuccess(`${tasks.length} ${pluralTareas(tasks.length)} restauradas.`);
+      };
+
+      const undoId = push({ label: `${tasks.length} ${pluralTareas(tasks.length)} eliminadas.`, undo: restore });
+
+      toastSuccess(`${tasks.length} ${pluralTareas(tasks.length)} eliminadas.`, {
+        action: {
+          label: "Deshacer",
+          onClick: () => {
+            void undoById(undoId);
+          },
+        },
+      });
+    },
+    onSettled: (_data, _error, { tasks }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
       invalidateCrossViewCaches(queryClient);
     },
   });

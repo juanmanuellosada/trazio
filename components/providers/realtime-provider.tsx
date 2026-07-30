@@ -33,13 +33,18 @@ function networkOutcomeOf(event: QueryCacheNotifyEvent | MutationCacheNotifyEven
 }
 
 /**
- * Bloque 10: monta la suscripción de Realtime de las tres tablas de fase 1
+ * Bloque 10: monta la suscripción de Realtime de las tablas de fase 1 y 2
  * (`lib/realtime/subscribe.ts`) una sola vez por sesión de layout, con
  * cleanup al desmontar — que es lo que pasa al cerrar sesión, porque
  * `app/(app)/layout.tsx` deja de montarse. También combina las tres
  * señales de D4 (`lib/realtime/connectivity.ts`) y expone el resultado por
  * `useConnectivity()` para el cartel (`OfflineBanner`) y el límite
  * `inert` (`OfflineBoundary`).
+ *
+ * `realtimeConnected` es "al menos uno de los canales está `SUBSCRIBED`"
+ * (D4), no "todos". Con seis tablas en vez de tres, esto sigue significando
+ * que el canal caído de una tabla secundaria (p. ej. `filters`) no hace
+ * que la app se muestre como desconectada mientras algún otro siga arriba.
  */
 export function RealtimeProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const queryClient = useQueryClient();
