@@ -69,17 +69,3 @@ la capacidad `etiquetas` para eliminar una etiqueta.
 - **WHEN** el usuario elige eliminar una etiqueta desde la pantalla de administración
 - **THEN** el sistema SHALL pedir confirmación antes de eliminarla
 
-### Requirement: La página propia por etiqueta y las etiquetas favoritas quedan fuera de esta capacidad
-
-La página propia por etiqueta y la posibilidad de marcar una etiqueta como favorita MUST NOT implementarse como parte de esta capacidad.
-
-#### Scenario: No existe una ruta que muestre todas las tareas de una etiqueta en particular
-
-- **WHEN** se revisan las rutas de la aplicación que introduce esta capacidad
-- **THEN** no SHALL existir una ruta que muestre todas las tareas de una etiqueta particular
-
-#### Scenario: No hay ningún control para marcar una etiqueta como favorita
-
-- **WHEN** se revisa la pantalla de administración de etiquetas
-- **THEN** no SHALL existir ningún control para marcar una etiqueta como favorita
-

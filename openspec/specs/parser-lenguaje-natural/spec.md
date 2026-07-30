@@ -509,8 +509,11 @@ un `due_date` ni un `due_at`. Cuando el texto combina una regla de
 recurrencia con una hora reconocida, el parser SHALL fijar `due_at` en la
 próxima ocurrencia que cumple la regla, porque descartar la hora en silencio
 sería perder un atributo ya reconocido, y eso el contrato no lo permite. El
-RRULE SHALL guardarse en `recurrence_rule` sin que nada lo interprete todavía
-en fase 1.
+RRULE SHALL guardarse en `recurrence_rule`. Que el parser no fije
+`due_date`/`due_at` a partir de la recurrencia sola no significa que nadie
+interprete esa regla: la capacidad `tareas-recurrentes` SHALL leerla al
+completar una tarea recurrente para generar su siguiente ocurrencia, según el
+ancla que determina el propio RRULE.
 
 #### Scenario: Recurrencia sola no inventa ancla (caso 36)
 
@@ -595,4 +598,28 @@ defecto configurado en las preferencias del usuario.
 - **WHEN** el texto no contiene ningún token `#`
 - **THEN** la tarea SHALL crearse en el proyecto por defecto configurado en
   las preferencias del usuario
+
+### Requirement: El RRULE determina el ancla de la recurrencia (D-D)
+
+El RRULE que produce el parser SHALL determinar también el ancla desde la que
+se calcula la siguiente ocurrencia de una tarea recurrente, sin ninguna
+columna ni control adicional. Una regla anclada al calendario —que declara
+`BYDAY`, `BYMONTHDAY` o `BYMONTH`— SHALL anclarse en la fecha de vencimiento
+original de la tarea. Una regla de intervalo puro —`FREQ` con `INTERVAL` y
+sin ningún componente `BY*`— SHALL anclarse en la fecha en la que se
+completó la tarea.
+
+#### Scenario: Una regla anclada al calendario usa el vencimiento como ancla
+
+- **WHEN** una tarea recurrente tiene el RRULE `FREQ=WEEKLY;BYDAY=MO` ("cada
+  lunes")
+- **THEN** la siguiente ocurrencia SHALL calcularse desde la fecha de
+  vencimiento original de la tarea, no desde la fecha en la que se completó
+
+#### Scenario: Una regla de intervalo puro usa la fecha de completado como ancla
+
+- **WHEN** una tarea recurrente tiene el RRULE `FREQ=DAILY;INTERVAL=3` ("cada
+  3 días", sin ningún componente `BY*`)
+- **THEN** la siguiente ocurrencia SHALL calcularse desde la fecha en la que
+  se completó la tarea, no desde su fecha de vencimiento original
 

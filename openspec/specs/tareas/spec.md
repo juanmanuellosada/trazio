@@ -24,7 +24,11 @@ enlace directo. La creación SHALL resolverse siempre a través del componente d
 alta rico definido por la capacidad `alta-de-tareas` —con título, descripción y
 accesos a fecha, prioridad, fecha límite y proyecto destino—: este requisito no
 repite esos campos, solo exige que crear una tarea pase por ese componente y
-quede con al menos un título.
+quede con al menos un título. Completar una tarea que tiene `recurrence_rule`
+SHALL además disparar la generación automática de su siguiente ocurrencia,
+según la mecánica de herencia, ancla y fin de serie que define la capacidad
+`tareas-recurrentes`; este requisito solo establece que ese disparo forma
+parte del ciclo de vida de completar, no repite esa mecánica.
 
 #### Scenario: Crear una tarea desde el componente de alta
 
@@ -45,6 +49,13 @@ quede con al menos un título.
 - **THEN** su `completed_at` deja de ser `null`
 - **WHEN** se descompleta esa misma tarea
 - **THEN** su `completed_at` vuelve a ser `null`
+
+#### Scenario: Completar una tarea recurrente dispara la generación de la siguiente ocurrencia
+
+- **WHEN** se completa una tarea que tiene `recurrence_rule`
+- **THEN** además de quedar completada, se dispara la generación de su
+  siguiente ocurrencia, según el comportamiento que define la capacidad
+  `tareas-recurrentes`
 
 #### Scenario: Mover una tarea de proyecto o de sección
 
@@ -250,42 +261,6 @@ color y administración de las etiquetas en sí son de la capacidad `etiquetas`.
   `#nombre-etiqueta`
 - **THEN** la tarea creada queda con esa etiqueta asignada
 
-### Requirement: Capacidades fuera de alcance de tareas en fase 1
-
-En esta fase, una tarea NUNCA SHALL tener comentarios, NUNCA SHALL poder
-configurarse un recordatorio, y la recurrencia NUNCA SHALL ejecutarse: si el
-parser de lenguaje natural emite una regla RRULE, esta SHALL guardarse tal
-cual en `recurrence_rule`, pero ningún proceso de la fase 1 SHALL leer esa
-columna para generar la siguiente ocurrencia. Las vistas de tareas de esta
-fase NUNCA SHALL ofrecer selección múltiple ni deshacer con `Ctrl/Cmd+Z`. De
-etiquetas, quedan fuera de fase 1 la página de administración de etiquetas, la
-página propia por etiqueta y las etiquetas favoritas (son de la capacidad
-`etiquetas`); la relación entre una tarea y sus etiquetas sí es de fase 1.
-
-#### Scenario: No hay comentarios en el detalle de una tarea
-
-- **WHEN** se abre el detalle de una tarea en esta fase
-- **THEN** no se ofrece ningún hilo de comentarios
-
-#### Scenario: No hay forma de configurar un recordatorio
-
-- **WHEN** se abre el detalle de una tarea en esta fase
-- **THEN** no existe ningún control para agregarle un recordatorio
-
-#### Scenario: recurrence_rule se guarda pero nada la ejecuta
-
-- **WHEN** una tarea se crea con una regla de recurrencia emitida por el parser
-  de lenguaje natural
-- **THEN** el valor queda guardado en `tasks.recurrence_rule`
-- **AND** al completar esa tarea no se genera automáticamente ninguna ocurrencia
-  siguiente
-
-#### Scenario: No hay selección múltiple ni deshacer con Ctrl/Cmd+Z
-
-- **WHEN** se interactúa con cualquier vista de tareas de esta fase
-- **THEN** no existe ninguna barra de selección múltiple de tareas
-- **AND** presionar `Ctrl/Cmd+Z` no revierte ninguna acción sobre una tarea
-
 ### Requirement: Selector de proyecto en el detalle de una tarea
 
 El detalle de una tarea SHALL ofrecer un selector de proyecto, precargado
@@ -331,4 +306,26 @@ completa.
   secciones
 - **THEN** el selector de proyecto del detalle ofrece un campo de búsqueda
   para encontrar el destino sin recorrer la lista completa
+
+### Requirement: Una tarea tiene un hilo de comentarios y cero o más recordatorios, ambos en cascada
+
+Una tarea SHALL poder tener un hilo de comentarios (tabla `comments`) y cero
+o más recordatorios (tabla `reminders`), ambos asociados por `task_id`. Al
+eliminar una tarea, SHALL eliminarse en cascada todos sus comentarios y todos
+sus recordatorios.
+
+#### Scenario: Una tarea nueva no tiene comentarios ni recordatorios
+
+- **WHEN** se crea una tarea nueva
+- **THEN** nace sin ningún comentario y sin ningún recordatorio, ambos opcionales
+
+#### Scenario: Eliminar una tarea elimina sus comentarios en cascada
+
+- **WHEN** se elimina una tarea que tiene comentarios en su hilo
+- **THEN** todos esos comentarios se eliminan junto con la tarea
+
+#### Scenario: Eliminar una tarea elimina sus recordatorios en cascada
+
+- **WHEN** se elimina una tarea que tiene recordatorios configurados
+- **THEN** todos esos recordatorios se eliminan junto con la tarea
 
