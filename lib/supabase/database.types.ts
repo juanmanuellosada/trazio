@@ -9,6 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      comments: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      filters: {
+        Row: {
+          color: string
+          icon: string | null
+          id: string
+          is_favorite: boolean
+          name: string
+          query: string
+          user_id: string
+        }
+        Insert: {
+          color: string
+          icon?: string | null
+          id?: string
+          is_favorite?: boolean
+          name: string
+          query: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          icon?: string | null
+          id?: string
+          is_favorite?: boolean
+          name?: string
+          query?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       labels: {
         Row: {
           color: string
@@ -107,6 +172,68 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          delivered_at: string | null
+          id: string
+          offset_minutes: number | null
+          remind_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          delivered_at?: string | null
+          id?: string
+          offset_minutes?: number | null
+          remind_at: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          delivered_at?: string | null
+          id?: string
+          offset_minutes?: number | null
+          remind_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sections: {
         Row: {
           id: string
@@ -181,6 +308,7 @@ export type Database = {
           created_at: string
           deadline: string | null
           description: Json | null
+          description_text: string | null
           due_at: string | null
           due_date: string | null
           duration_minutes: number | null
@@ -192,6 +320,7 @@ export type Database = {
           recurrence_count: number | null
           recurrence_ends_at: string | null
           recurrence_rule: string | null
+          search_vector: unknown
           section_id: string | null
           title: string
           updated_at: string
@@ -202,6 +331,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: Json | null
+          description_text?: string | null
           due_at?: string | null
           due_date?: string | null
           duration_minutes?: number | null
@@ -213,6 +343,7 @@ export type Database = {
           recurrence_count?: number | null
           recurrence_ends_at?: string | null
           recurrence_rule?: string | null
+          search_vector?: unknown
           section_id?: string | null
           title: string
           updated_at?: string
@@ -223,6 +354,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: Json | null
+          description_text?: string | null
           due_at?: string | null
           due_date?: string | null
           duration_minutes?: number | null
@@ -234,6 +366,7 @@ export type Database = {
           recurrence_count?: number | null
           recurrence_ends_at?: string | null
           recurrence_rule?: string | null
+          search_vector?: unknown
           section_id?: string | null
           title?: string
           updated_at?: string
@@ -304,11 +437,66 @@ export type Database = {
           },
         ]
       }
+      view_preferences: {
+        Row: {
+          options: Json
+          user_id: string
+          view_key: string
+        }
+        Insert: {
+          options?: Json
+          user_id: string
+          view_key: string
+        }
+        Update: {
+          options?: Json
+          user_id?: string
+          view_key?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      ast_matches: {
+        Args: { ast: Json; t: Database["public"]["Tables"]["tasks"]["Row"] }
+        Returns: boolean
+      }
+      ast_mentions_completed: { Args: { ast: Json }; Returns: boolean }
+      buscar_tareas: {
+        Args: { ast: Json }
+        Returns: {
+          completed_at: string | null
+          created_at: string
+          deadline: string | null
+          description: Json | null
+          description_text: string | null
+          due_at: string | null
+          due_date: string | null
+          duration_minutes: number | null
+          id: string
+          parent_id: string | null
+          position: number
+          priority: number
+          project_id: string
+          recurrence_count: number | null
+          recurrence_ends_at: string | null
+          recurrence_rule: string | null
+          search_vector: unknown
+          section_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       rebalance_project_positions: {
         Args: { p_parent_id?: string }
         Returns: undefined
