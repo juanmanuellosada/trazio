@@ -44,23 +44,23 @@
 
 ## 3. Eventos *(paralelo tras el grupo 2)*
 
-- [ ] 3.1 `lib/calendar/events.ts`: leer eventos por rango de los calendarios habilitados
-- [ ] 3.2 Caché en memoria del servidor, 60 segundos, por usuario, calendario y rango (decisión D-C)
-- [ ] 3.3 Los eventos **no** se guardan en la base: verificar que no hay ninguna tabla ni columna que los persista
-- [ ] 3.4 Crear, editar y eliminar eventos
-- [ ] 3.5 Las tres formas de aplicar un cambio sobre una serie recurrente: esta ocurrencia, esta y las siguientes, todas — cada una es una llamada distinta
-- [ ] 3.6 El diálogo que pregunta cuál aplicar, sin opción por defecto silenciosa, diciendo a cuántas ocurrencias afecta
-- [ ] 3.7 Degradación cuando la API falla: se muestran tareas y hábitos y se avisa que los eventos no cargaron. Nunca pantalla en blanco ni spinner infinito
-- [ ] 3.8 Verificar que ninguna tarea ni hábito de Trazio se publica en Google
-- [ ] 3.9 Tests de las tres formas de editar una serie, con la API simulada
+- [x] 3.1 `lib/calendar/events.ts`: leer eventos por rango de los calendarios habilitados
+- [x] 3.2 Caché en memoria del servidor, 60 segundos, por usuario, calendario y rango (decisión D-C)
+- [x] 3.3 Los eventos **no** se guardan en la base: verificar que no hay ninguna tabla ni columna que los persista — automatizado en `lib/calendar/events-not-persisted.test.ts`, que escanea `supabase/migrations/`
+- [x] 3.4 Crear, editar y eliminar eventos
+- [x] 3.5 Las tres formas de aplicar un cambio sobre una serie recurrente: esta ocurrencia, esta y las siguientes, todas — cada una es una llamada distinta. "Esta y las siguientes" no tiene endpoint propio en la API de Google: se implementó partiendo la serie en dos eventos (truncar el maestro con `UNTIL`/`COUNT` + crear una serie nueva que continúa desde ahí), el mismo mecanismo que usa el cliente web de Google Calendar — **sin verificar contra Google real** (grupo 0 pendiente), solo contra la documentación de la API y la API simulada (`lib/calendar/recurrence-scope.test.ts`, `lib/calendar/events.test.ts`)
+- [x] 3.6 El diálogo que pregunta cuál aplicar, sin opción por defecto silenciosa, diciendo a cuántas ocurrencias afecta — `components/calendar/recurrence-scope-dialog.tsx`; el alcance se explica en texto (no con un número, que no existe para una serie sin fin)
+- [x] 3.7 Degradación cuando la API falla: se muestran tareas y hábitos y se avisa que los eventos no cargaron. Nunca pantalla en blanco ni spinner infinito — resuelto a nivel de datos (`getEventsForRange` nunca lanza por una falla esperada de Google, devuelve un estado explícito); la pantalla que lo consuma (grupo 5/7) todavía no existe
+- [x] 3.8 Verificar que ninguna tarea ni hábito de Trazio se publica en Google — automatizado en `lib/calendar/tasks-and-habits-never-publish-to-google.test.ts`, que escanea que nada bajo `lib/tasks/`, `lib/habits/`, `components/tasks/` o `components/habits/` importe de `lib/calendar/`
+- [x] 3.9 Tests de las tres formas de editar una serie, con la API simulada — cubre además 429, 500 y token vencido en cada forma
 
 ## 4. Administración de calendarios *(paralelo tras el grupo 2)*
 
-- [ ] 4.1 `lib/calendar/calendars.ts`: crear, renombrar, recolorear y eliminar
-- [ ] 4.2 Interfaz de administración en la sección Calendarios de Configuración
-- [ ] 4.3 El color sale de lo que Google admite, no de la paleta fija de Trazio — anotar la tensión con D19
-- [ ] 4.4 Eliminar pide confirmación advirtiendo que **el calendario se borra de la cuenta de Google entera**, no solo de Trazio
-- [ ] 4.5 Verificar contra la API real que `calendars.delete` hace exactamente eso antes de escribir esa advertencia
+- [x] 4.1 `lib/calendar/calendars.ts`: crear, renombrar, recolorear y eliminar
+- [x] 4.2 Interfaz de administración en la sección Calendarios de Configuración
+- [x] 4.3 El color sale de lo que Google admite, no de la paleta fija de Trazio — anotar la tensión con D19
+- [x] 4.4 Eliminar pide confirmación advirtiendo que **el calendario se borra de la cuenta de Google entera**, no solo de Trazio
+- [ ] 4.5 Verificar contra la API real que `calendars.delete` hace exactamente eso antes de escribir esa advertencia — **sin verificar todavía**: no hay credenciales de Google cargadas (grupo 0 pendiente, `.env.local` no tiene `GOOGLE_CLIENT_ID` ni relacionadas). Se verificó contra la documentación oficial de `calendars.delete` ("Deletes a secondary calendar. Use calendars.clear for clearing all events on primary calendars.") y de `calendarList.patch`/`colors` para el color, no contra la API real. Falta repetir esta verificación con una cuenta de Google real en cuanto el grupo 0 cargue las credenciales.
 
 ## 5. La grilla del calendario *(tras los grupos 3 y 4)*
 
