@@ -74,6 +74,109 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_completions: {
+        Row: {
+          completed_on: string
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completed_on: string
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completed_on?: string
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completions_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_schedule_overrides: {
+        Row: {
+          date: string
+          habit_id: string
+          scheduled_time: string
+          user_id: string
+        }
+        Insert: {
+          date: string
+          habit_id: string
+          scheduled_time: string
+          user_id: string
+        }
+        Update: {
+          date?: string
+          habit_id?: string
+          scheduled_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_schedule_overrides_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          color: string
+          created_at: string
+          days_of_week: number[] | null
+          duration_minutes: number
+          frequency_type: string
+          icon: string
+          id: string
+          is_archived: boolean
+          name: string
+          scheduled_time: string | null
+          times_per_week: number | null
+          user_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          days_of_week?: number[] | null
+          duration_minutes: number
+          frequency_type: string
+          icon: string
+          id?: string
+          is_archived?: boolean
+          name: string
+          scheduled_time?: string | null
+          times_per_week?: number | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          days_of_week?: number[] | null
+          duration_minutes?: number
+          frequency_type?: string
+          icon?: string
+          id?: string
+          is_archived?: boolean
+          name?: string
+          scheduled_time?: string | null
+          times_per_week?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       labels: {
         Row: {
           color: string
@@ -460,13 +563,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      ast_matches: {
-        Args: { ast: Json; t: Database["public"]["Tables"]["tasks"]["Row"] }
-        Returns: boolean
-      }
       ast_mentions_completed: { Args: { ast: Json }; Returns: boolean }
+      ast_to_sql: {
+        Args: { ast: Json; at: string; tz: string }
+        Returns: string
+      }
       buscar_tareas: {
-        Args: { ast: Json }
+        Args: { ast: Json; at?: string }
         Returns: {
           completed_at: string | null
           created_at: string
@@ -496,6 +599,22 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      calcular_racha_habito: {
+        Args: { at?: string; p_habit_id: string }
+        Returns: {
+          best_streak: number
+          current_streak: number
+        }[]
+      }
+      claim_due_reminders: {
+        Args: { p_limit?: number }
+        Returns: {
+          id: string
+          task_id: string
+          title: string
+          user_id: string
+        }[]
       }
       rebalance_project_positions: {
         Args: { p_parent_id?: string }
