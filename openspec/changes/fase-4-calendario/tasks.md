@@ -75,16 +75,16 @@
 
 ## 6. Arrastrar y redimensionar *(tras el grupo 5)*
 
-- [ ] 6.1 Arrastrar un bloque cambia su horario, con ajuste a 15 minutos
-- [ ] 6.2 Estirar el borde cambia la duración, con el mismo ajuste
-- [ ] 6.3 Cada tipo traduce el movimiento a su propia mutación: evento a Google, tarea a `tasks`, hábito a `habit_schedule_overrides`
-- [ ] 6.4 Mover una tarea sin hora a una hora concreta la pasa de `due_date` a `due_at`, que son excluyentes (D9)
-- [ ] 6.5 Ampliar `assertAppliesOnDate` en `lib/habits/` para que acepte cualquier día en que el hábito toque, no solo hoy (decisión D-H)
-- [ ] 6.6 Chips de hábitos sin horario, programables por arrastre, escribiendo un override de **ese** día
-- [ ] 6.7 Arrastrar sobre espacio vacío pregunta si se crea un evento o una tarea
-- [ ] 6.8 **Camino alternativo para cada acción**, según la tabla de la decisión D-G: nada disponible solo por arrastre (D24)
-- [ ] 6.9 Optimistic update al mover, con reversión y aviso si el servidor falla
-- [ ] 6.10 Tests del ajuste a 15 minutos y de la traducción de cada tipo a su mutación
+- [x] 6.1 Arrastrar un bloque cambia su horario, con ajuste a 15 minutos — `lib/calendar/drag.ts` (`moveBlockToPosition`/`snapToQuarterHour`), mecánica de arrastre en `components/calendar/draggable-timed-block.tsx` + `time-grid.tsx` + `all-day-row.tsx` (una tarea de todo el día también se puede arrastrar hacia la grilla). Verificado a mano: mover una tarea con hora y una tarea sin hora contra el Docker local.
+- [x] 6.2 Estirar el borde cambia la duración, con el mismo ajuste — manija de redimensionar en `draggable-timed-block.tsx` (seguimiento nativo de puntero, no `@dnd-kit`: estirar no es "soltar sobre un contenedor"). Verificado a mano: 30 minutos → 60 minutos, persistido en `duration_minutes`.
+- [x] 6.3 Cada tipo traduce el movimiento a su propia mutación — `lib/calendar/block-drag-translate.ts` (`taskDragPatch`/`habitDragOverride`/`eventDragChanges`), funciones puras que quien monte la pantalla (grupo 7) llama según `block.type`. Tarea y hábito verificados de punta a punta contra el Docker local; evento solo cubierto por el traductor puro + `lib/calendar/use-create-event.ts` (sin credenciales de Google, ver nota de la tarea 6.8).
+- [x] 6.4 Mover una tarea sin hora a una hora concreta la pasa de `due_date` a `due_at` — `taskDragPatch` en `block-drag-translate.ts`, reusando `useUpdateTask` (ya optimista). Verificado a mano contra el Docker local: `due_date` queda en `null`, `due_at` con el instante correcto.
+- [x] 6.5 Ampliar `assertAppliesOnDate` en `lib/habits/schedule-overrides.ts` para que acepte cualquier día en que el hábito toque (D-H): ahora también rechaza un día anterior a la creación y un hábito archivado, no solo la frecuencia. Tests en `lib/habits/schedule-overrides.test.ts` y verificado a mano (aceptó un día futuro válido, rechazó uno anterior a la creación).
+- [x] 6.6 Chips de hábitos sin horario, programables por arrastre — `components/calendar/unscheduled-habits-row.tsx`, escribe un override del día puntual vía `useSetHabitScheduleOverride`. Verificado a mano contra el Docker local, con toast de confirmación.
+- [x] 6.7 Arrastrar sobre espacio vacío pregunta si se crea un evento o una tarea — selección por puntero en `time-grid.tsx` + `components/calendar/create-block-choice-dialog.tsx` (sin default silencioso). Verificado a mano: el rango mostrado coincide con el arrastrado, y "Tarea"/"Evento" no crean nada hasta elegir uno.
+- [x] 6.8 Camino alternativo para cada acción (D-G/D24): mover y duración ya existían (`DateSelect`, tareas 4.2-4.5); "programar un hábito" se amplió en `components/habits/habit-card.tsx` (`RescheduleHabitControl`, con selector de día — antes solo ofrecía hoy, lo que habría dejado la reprogramación a otro día disponible solo por arrastre); "crear" se cubre con el alta rápida de tareas y el nuevo `components/calendar/create-event-dialog.tsx` para eventos (respalda también el futuro botón del grupo 7, tarea 7.6). Los cuatro verificados a mano.
+- [x] 6.9 Optimistic update al mover, con reversión y aviso si el servidor falla — ya lo tenía `useUpdateTask` (tareas); se agregó a `useSetHabitScheduleOverride`/`useRemoveHabitScheduleOverride` (hábitos), que no lo tenían.
+- [x] 6.10 Tests del ajuste a 15 minutos y de la traducción de cada tipo a su mutación — `lib/calendar/drag.test.ts`, `lib/calendar/block-drag-translate.test.ts`, `lib/habits/schedule-overrides.test.ts`.
 
 ## 7. Integración *(dueño único de los archivos compartidos)*
 

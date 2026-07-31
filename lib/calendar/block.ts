@@ -36,6 +36,20 @@ export type CalendarBlock = {
   isPreview?: boolean;
 };
 
+/**
+ * Hábito sin horario fijo (tarea 6.6, requirement "aparece como un chip
+ * suelto fuera de la grilla horaria"): a diferencia de `CalendarBlock`, no
+ * tiene `start`/`end` propios — no ocupa ningún horario hasta que se
+ * arrastra a la grilla o se programa desde el menú de su tarjeta, y en los
+ * dos casos lo que se escribe es un override puntual, nunca un horario
+ * fijo nuevo (D-H).
+ */
+export type UnscheduledHabitChip = {
+  id: string;
+  title: string;
+  color: string;
+};
+
 export const CALENDAR_FORMATS = ["dia", "cuatro-dias", "semana", "mes"] as const;
 export type CalendarFormat = (typeof CALENDAR_FORMATS)[number];
 

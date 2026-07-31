@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useTheme } from "next-themes";
+import { formatInTimeZone } from "date-fns-tz";
 import { Clock, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,56 +33,81 @@ import {
 import { HabitMiniMap } from "./habit-mini-map";
 
 /**
- * Reprogramar el horario de hoy desde la tarjeta (tarea 3.11). Sin
- * calendario todavía (fase 4, non-goal de `design.md`), "hoy" es el único
- * día puntual al que se puede llegar desde esta pantalla — coincide,
- * además, con el único día en que `assertAppliesOnDate` deja pasar la
- * mutación, así que solo se ofrece cuando el hábito toca hoy.
+ * Reprogramar el horario de un día puntual desde la tarjeta (tarea 3.11,
+ * ampliado en 6.5/6.8): camino sin arrastre de D-G para "programar un
+ * hábito sin horario" — antes solo ofrecía el día de hoy porque
+ * `assertAppliesOnDate` solo dejaba pasar hoy; ahora que la guarda acepta
+ * cualquier día que le toque al hábito (D-H), el campo de fecha viaja
+ * junto con la hora para que este camino siga siendo una alternativa real
+ * al arrastre en el calendario, no una versión recortada de él (D24: nada
+ * queda disponible solo por arrastre).
  */
-function RescheduleTodayControl({
+function RescheduleHabitControl({
   habit,
   todayDate,
-  overrideTime,
+  timezone,
 }: {
-  habit: Pick<Habit, "id" | "name" | "frequency_type" | "days_of_week">;
+  habit: Pick<Habit, "id" | "name" | "frequency_type" | "days_of_week" | "created_at" | "is_archived">;
   todayDate: string;
-  overrideTime: string | null | undefined;
+  timezone: string;
 }) {
+  const dateId = useId();
   const timeId = useId();
   const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(todayDate);
   const [value, setValue] = useState("");
+  const { data: overrideTime } = useHabitScheduleOverride(habit.id, date);
   const setOverride = useSetHabitScheduleOverride();
   const removeOverride = useRemoveHabitScheduleOverride();
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
-    if (next) setValue(overrideTime ?? "");
+    if (next) {
+      setDate(todayDate);
+      setValue(overrideTime ?? "");
+    }
+  }
+
+  function handleDateChange(nextDate: string) {
+    setDate(nextDate);
+    setValue("");
   }
 
   function handleSave(event: FormEvent) {
     event.preventDefault();
     if (!value) return;
     setOverride.mutate(
-      { habitId: habit.id, habit, date: todayDate, scheduledTime: value },
+      { habitId: habit.id, habit, date, scheduledTime: value, timezone },
       { onSuccess: () => setOpen(false) },
     );
   }
 
   function handleRemove() {
-    removeOverride.mutate({ habitId: habit.id, date: todayDate }, { onSuccess: () => setOpen(false) });
+    removeOverride.mutate({ habitId: habit.id, date }, { onSuccess: () => setOpen(false) });
   }
+
+  const createdDate = formatInTimeZone(habit.created_at, timezone, "yyyy-MM-dd");
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange} modal={OVERLAY_MODAL}>
       <PopoverTrigger
-        aria-label={`Reprogramar el horario de hoy de ${habit.name}`}
+        aria-label={`Reprogramar el horario de ${habit.name}`}
         className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-secondary outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <Clock aria-hidden className="size-3.5" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-60">
         <form onSubmit={handleSave} className="space-y-2">
-          <Label htmlFor={timeId}>Horario de hoy</Label>
+          <Label htmlFor={dateId}>Día</Label>
+          <input
+            id={dateId}
+            type="date"
+            value={date}
+            min={createdDate}
+            onChange={(event) => handleDateChange(event.target.value)}
+            className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
+          />
+          <Label htmlFor={timeId}>Horario</Label>
           <input
             id={timeId}
             type="time"
@@ -171,7 +197,13 @@ export function HabitCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          {dueToday && <RescheduleTodayControl habit={habit} todayDate={todayDate} overrideTime={overrideTime} />}
+          {/* Sin `dueToday &&`, a diferencia del casillero de abajo (tarea 6.8,
+              D24): el selector de día interno ya elige cualquier fecha que le
+              toque al hábito, así que restringir el botón a "hoy" dejaría sin
+              camino sin arrastre a un hábito de días específicos que no toca
+              hoy pero sí toca, por ejemplo, el jueves que viene en el
+              calendario. */}
+          <RescheduleHabitControl habit={habit} todayDate={todayDate} timezone={timezone} />
 
           {dueToday && (
             <button

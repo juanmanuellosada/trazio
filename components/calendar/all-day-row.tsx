@@ -1,11 +1,41 @@
 "use client";
 
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { layoutAllDayRow } from "@/lib/calendar/layout";
 import type { CalendarBlock } from "@/lib/calendar/block";
+import { cn } from "@/lib/utils";
 import { CalendarBlockChip } from "./calendar-block-chip";
+import { MOVE_BLOCK_DRAG_PREFIX } from "./draggable-timed-block";
 import { dayColumnsTemplate, GUTTER_WIDTH_PX } from "./grid-metrics";
 
 const ROW_HEIGHT_PX = 26;
+
+/**
+ * Un bloque de todo el día, arrastrable hacia la grilla horaria (tarea
+ * 6.4, requirement "una tarea de todo el día pasa a tener hora"): mismo
+ * prefijo e igual forma de `data` que `DraggableTimedBlock`, así
+ * `CalendarView.handleDragEnd` no necesita distinguir de dónde salió el
+ * arrastre — un bloque es un bloque, caiga donde caiga (D-F).
+ */
+function DraggableAllDayChip({ block, onSelectBlock }: { block: CalendarBlock; onSelectBlock?: (block: CalendarBlock) => void }) {
+  const { listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `${MOVE_BLOCK_DRAG_PREFIX}${block.id}`,
+    data: { kind: "move-block" as const, block },
+    disabled: block.isPreview,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      className={cn(isDragging && "z-20 opacity-60")}
+      {...(block.isPreview ? {} : listeners)}
+    >
+      <CalendarBlockChip block={block} variant="bar" onSelect={onSelectBlock} className={cn(!block.isPreview && "touch-none")} />
+    </div>
+  );
+}
 
 /**
  * Fila de eventos, tareas y hábitos de todo el día (tarea 5.1, requirement
@@ -47,7 +77,7 @@ export function AllDayRow({
             className="min-w-0 px-0.5 py-0.5"
             style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: rowIndex + 1 }}
           >
-            <CalendarBlockChip block={block} variant="bar" onSelect={onSelectBlock} />
+            <DraggableAllDayChip block={block} onSelectBlock={onSelectBlock} />
           </div>
         ))}
       </div>

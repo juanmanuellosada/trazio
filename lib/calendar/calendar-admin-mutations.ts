@@ -60,7 +60,8 @@ function invalidateGoogleCalendars(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: googleCalendarsQueryKey });
 }
 
-async function requestJson<T>(url: string, method: string, body?: unknown): Promise<T> {
+/** Exportado para que otros módulos de `lib/calendar/` (p. ej. `use-create-event.ts`, tarea 6.7/6.8) reusen el mismo mapeo de códigos de error de las rutas bajo `app/api/calendar/` en vez de duplicarlo. */
+export async function requestJson<T>(url: string, method: string, body?: unknown): Promise<T> {
   const response = await fetch(url, {
     method,
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,

@@ -18,6 +18,16 @@ const MENSAJES = {
     porQue: "ese día no le corresponde al hábito según su frecuencia",
     queHacer: "Elegí un día que sí le toque al hábito.",
   },
+  overrideAntesDeCreacion: {
+    quePaso: "No pudimos reprogramar el horario",
+    porQue: "ese día es anterior a la creación del hábito",
+    queHacer: "Elegí un día a partir de cuando creaste el hábito.",
+  },
+  overrideArchivado: {
+    quePaso: "No pudimos reprogramar el horario",
+    porQue: "ese hábito está archivado",
+    queHacer: "Desarchivalo para poder reprogramarlo.",
+  },
   network: {
     quePaso: "No pudimos guardar el cambio",
     porQue: "se cortó la conexión",
@@ -32,6 +42,8 @@ const MENSAJES = {
 
 function classify(message: string): keyof typeof MENSAJES {
   if (/solo se puede marcar o desmarcar el día de hoy/i.test(message)) return "soloHoy";
+  if (/anterior a la creación del hábito/i.test(message)) return "overrideAntesDeCreacion";
+  if (/hábito está archivado/i.test(message)) return "overrideArchivado";
   if (/no le corresponde al hábito/i.test(message)) return "overrideInvalido";
   if (/fetch|network/i.test(message)) return "network";
   return "desconocido";
