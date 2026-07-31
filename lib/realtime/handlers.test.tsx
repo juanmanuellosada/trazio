@@ -10,10 +10,14 @@ import { SECTIONS_MUTATION_KEY } from "@/lib/sections/mutations";
 import { COMMENTS_MUTATION_KEY } from "@/lib/comments/mutations";
 import { REMINDERS_MUTATION_KEY } from "@/lib/reminders/mutations";
 import { FILTERS_MUTATION_KEY } from "@/lib/filters/mutations";
+import { HABITS_MUTATION_KEY } from "@/lib/habits/mutations";
+import { habitsQueryKey } from "@/lib/habits/use-habits";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
 import {
   onCommentsRealtimeEvent,
   onFiltersRealtimeEvent,
+  onHabitCompletionsRealtimeEvent,
+  onHabitsRealtimeEvent,
   onProjectsRealtimeEvent,
   onRemindersRealtimeEvent,
   onSectionsRealtimeEvent,
@@ -59,6 +63,7 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     queryClient.setQueryData(["comments", "t1"], []);
     queryClient.setQueryData(["reminders", "task", "t1"], []);
     queryClient.setQueryData(["filters"], []);
+    queryClient.setQueryData(habitsQueryKey(), []);
 
     onTasksRealtimeEvent(queryClient);
     onProjectsRealtimeEvent(queryClient);
@@ -66,6 +71,8 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     onCommentsRealtimeEvent(queryClient);
     onRemindersRealtimeEvent(queryClient);
     onFiltersRealtimeEvent(queryClient);
+    onHabitsRealtimeEvent(queryClient);
+    onHabitCompletionsRealtimeEvent(queryClient);
 
     expect(queryClient.getQueryState(tasksQueryKey("p1"))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["projects"])?.isInvalidated).toBe(true);
@@ -73,6 +80,7 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     expect(queryClient.getQueryState(["comments", "t1"])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["reminders", "task", "t1"])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["filters"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(habitsQueryKey())?.isInvalidated).toBe(true);
   });
 
   it("con una mutación de projects en vuelo, el evento de projects no invalida", () => {
@@ -123,6 +131,26 @@ describe("invalidateUnlessMutating — mecanismo de la regla D3 (bloque 10.3)", 
     onFiltersRealtimeEvent(queryClient);
 
     expect(queryClient.getQueryState(["filters"])?.isInvalidated).toBe(false);
+  });
+
+  it("con una mutación de habits en vuelo, el evento de habits no invalida", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(habitsQueryKey(), []);
+    pendingMutation(queryClient, HABITS_MUTATION_KEY);
+
+    onHabitsRealtimeEvent(queryClient);
+
+    expect(queryClient.getQueryState(habitsQueryKey())?.isInvalidated).toBe(false);
+  });
+
+  it("con una mutación de habits en vuelo, el evento de habit_completions tampoco invalida — comparten el mismo prefijo de caché", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(habitsQueryKey(), []);
+    pendingMutation(queryClient, HABITS_MUTATION_KEY);
+
+    onHabitCompletionsRealtimeEvent(queryClient);
+
+    expect(queryClient.getQueryState(habitsQueryKey())?.isInvalidated).toBe(false);
   });
 });
 

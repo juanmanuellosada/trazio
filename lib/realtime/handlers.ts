@@ -7,6 +7,7 @@ import { SECTIONS_MUTATION_KEY } from "@/lib/sections/mutations";
 import { COMMENTS_MUTATION_KEY } from "@/lib/comments/mutations";
 import { REMINDERS_MUTATION_KEY } from "@/lib/reminders/mutations";
 import { FILTERS_MUTATION_KEY } from "@/lib/filters/mutations";
+import { HABITS_MUTATION_KEY } from "@/lib/habits/mutations";
 
 /**
  * Regla D3 (`design.md`, sección D — el corazón del bloque 10): nadie había
@@ -85,4 +86,24 @@ export function onRemindersRealtimeEvent(queryClient: QueryClient): void {
  */
 export function onFiltersRealtimeEvent(queryClient: QueryClient): void {
   invalidateUnlessMutating(queryClient, ["filters"], FILTERS_MUTATION_KEY);
+}
+
+/**
+ * Tarea 2.9 (fase 3): manejador de `habits`. `habitsQueryKey()`
+ * (`lib/habits/use-habits.ts`) es `["habits"]`, la misma clave que
+ * `HABITS_MUTATION_KEY` protege de la regla D3.
+ */
+export function onHabitsRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["habits"], HABITS_MUTATION_KEY);
+}
+
+/**
+ * Tarea 2.9: manejador de `habit_completions`. Sus marcas viajan embebidas
+ * en la misma consulta de `["habits"]` (`completed_today`, ver
+ * `lib/habits/habit-columns.ts`), así que un evento de esta tabla invalida
+ * el mismo prefijo que `onHabitsRealtimeEvent` — no hay una clave separada
+ * para las marcas.
+ */
+export function onHabitCompletionsRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["habits"], HABITS_MUTATION_KEY);
 }
