@@ -15,13 +15,16 @@ persona hace clic.
 
 ## Qué vamos a obtener
 
-Tres valores que terminan en las variables de entorno:
+Tres valores de la consola de Google que terminan en variables de entorno:
 
 ```
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 ```
+
+Más una cuarta variable que no sale de Google: la clave con la que se cifra el
+refresh token antes de guardarlo. Se genera en la propia máquina — ver el paso 5.
 
 ---
 
@@ -62,18 +65,22 @@ Es lo que ve el usuario cuando le pedimos permiso.
 
 ### Permisos (scopes)
 
-En la pantalla de permisos, agregar exactamente estos dos:
+En la pantalla de permisos, agregar exactamente este:
 
 ```
-https://www.googleapis.com/auth/calendar.events
-https://www.googleapis.com/auth/calendar.calendarlist.readonly
+https://www.googleapis.com/auth/calendar
 ```
 
-El primero permite leer y escribir eventos. El segundo permite listar los
-calendarios del usuario para que elija cuáles mostrar.
+Es el scope de acceso total a Google Calendar: leer y escribir eventos, y también
+crear, renombrar, recolorear y eliminar calendarios enteros.
 
-**No agregar** `https://www.googleapis.com/auth/calendar` a secas: da acceso total y
-hace la revisión de Google mucho más pesada. Pedir lo mínimo.
+**Esto es a propósito, no un descuido.** La fase 4 implementa el ABM completo de
+calendarios, y eso no lo permiten los scopes acotados (`calendar.events` para
+eventos, `calendar.calendarlist.readonly` para solo listar) — ninguno de los dos
+alcanza para crear o borrar un calendario. Pedir el scope amplio es la decisión
+correcta para lo que hace falta, con un costo conocido: la revisión de Google es
+más pesada que con permisos acotados y puede llevar semanas en vez de días. Ver
+"Publicar la app" al final de este documento para cómo se gestiona ese costo.
 
 ### Usuarios de prueba
 
@@ -112,19 +119,31 @@ volver a ver después, pero conviene copiarlo ahora.
 
 ## Paso 5 — Cargar las variables
 
+Además de las tres de Google, hace falta la clave de cifrado del refresh token
+(decisión D-A de `openspec/changes/fase-4-calendario/design.md`). Se genera una
+vez, con 32 bytes al azar en base64:
+
+```
+openssl rand -base64 32
+```
+
 En `.env.local` para desarrollo:
 
 ```
 GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+CALENDAR_REFRESH_TOKEN_ENCRYPTION_KEY=xxxxx
 ```
 
-En Vercel → Settings → Environment Variables, las mismas tres con la URL de
-producción en el redirect.
+En Vercel → Settings → Environment Variables, las mismas cuatro, con la URL de
+producción en el redirect. La clave de cifrado puede generarse una vez por
+entorno (desarrollo y producción no comparten conexiones guardadas).
 
-> El secreto **nunca** va en una variable `NEXT_PUBLIC_*`. Solo se usa del lado
-> servidor.
+> El secreto de cliente y la clave de cifrado **nunca** van en una variable
+> `NEXT_PUBLIC_*`. Se usan solo del lado servidor. Si la clave de cifrado se
+> pierde, no hay forma de recuperar los refresh tokens ya guardados: cada usuario
+> tiene que reconectar su calendario.
 
 ---
 
@@ -133,7 +152,7 @@ producción en el redirect.
 1. `pnpm dev`
 2. Ir a Configuración → Calendarios → Conectar Google Calendar.
 3. Debería abrirse la pantalla de Google pidiendo permiso, mostrando el nombre
-   "Trazio" y los dos permisos.
+   "Trazio" y el permiso de acceso total a Google Calendar.
 4. Aceptar. Vuelve a la app con la conexión activa.
 
 ### Si algo falla
@@ -164,6 +183,14 @@ Mientras esté en "Prueba", solo funciona con los usuarios de prueba y los refre
 tokens caducan a los siete días. Para uso real hay que pasarla a "En producción" en
 la pantalla de consentimiento.
 
-Con los dos scopes elegidos acá, Google puede pedir verificación. Es un trámite que
-lleva días o semanas. **Conviene iniciarlo apenas la fase 4 esté funcionando en
-desarrollo**, no cuando ya quieras lanzar.
+Con el scope de acceso total elegido acá, Google casi con seguridad va a pedir
+verificación: un formulario detallado sobre el uso que se le da al permiso, y
+puede pedir un video mostrando el flujo dentro de la app. Es un trámite que lleva
+semanas, más que con un scope acotado. Es el costo conocido de haber elegido
+acceso total para poder crear y borrar calendarios — no hay forma de evitarlo sin
+resignar esa funcionalidad.
+
+Por eso **conviene iniciar la verificación apenas la fase 4 esté funcionando en
+desarrollo**, no cuando ya quieras lanzar: el trámite corre en paralelo al resto
+del trabajo, y llegar al lanzamiento esperando semanas por Google es evitable si
+se arranca temprano.
