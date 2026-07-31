@@ -64,14 +64,14 @@
 
 ## 5. La grilla del calendario *(tras los grupos 3 y 4)*
 
-- [ ] 5.1 `components/calendar/`: grilla de 24 horas con la fila de todo el día arriba y la línea de la hora actual
-- [ ] 5.2 Los cuatro formatos: día, cuatro días, semana y mes
-- [ ] 5.3 El layout se adapta por ancho, sin prohibir formatos por dispositivo (decisión D-E)
-- [ ] 5.4 Modelo común de bloque para tareas, hábitos y eventos: la grilla no conoce sus dominios (decisión D-F)
-- [ ] 5.5 Los tres tipos se distinguen **por forma**, no solo por color
-- [ ] 5.6 Solapamientos: dos bloques a la misma hora se reparten el ancho sin taparse
-- [ ] 5.7 Bloques de vista previa de repeticiones futuras, acotados al rango visible y no interactivos
-- [ ] 5.8 Tests de la disposición: solapamientos, eventos de todo el día, y un evento que cruza la medianoche
+- [x] 5.1 `components/calendar/`: grilla de 24 horas con la fila de todo el día arriba y la línea de la hora actual
+- [x] 5.2 Los cuatro formatos: día, cuatro días, semana y mes
+- [x] 5.3 El layout se adapta por ancho, sin prohibir formatos por dispositivo (decisión D-E) — verificado a mano en escritorio y en 390px con los cuatro formatos
+- [x] 5.4 Modelo común de bloque para tareas, hábitos y eventos: la grilla no conoce sus dominios (decisión D-F) — `lib/calendar/block.ts`
+- [x] 5.5 Los tres tipos se distinguen **por forma**, no solo por color — verificado a mano con los tres tipos forzados al mismo color
+- [x] 5.6 Solapamientos: dos bloques a la misma hora se reparten el ancho sin taparse
+- [x] 5.7 Bloques de vista previa de repeticiones futuras, acotados al rango visible y no interactivos
+- [x] 5.8 Tests de la disposición: solapamientos, eventos de todo el día, y un evento que cruza la medianoche — `lib/calendar/layout.test.ts`
 
 ## 6. Arrastrar y redimensionar *(tras el grupo 5)*
 
@@ -97,6 +97,7 @@
 - [ ] 7.7 Banner global de reconexión cuando la conexión está en `needs_reauth`, sin usar el rojo de marca (D5)
 - [ ] 7.8 Los eventos del día aparecen en Hoy, en el orden del spec: atrasadas, tareas, hábitos, eventos, completadas
 - [ ] 7.9 Sacar Google Calendar de la lista de "próximamente" de la landing
+- [ ] 7.10 Botón para conectar Google en la sección Calendarios (dispara `/api/auth/google`) y botón para desconectar (`/api/auth/google/disconnect`), con el estado de la conexión siempre visible — hoy la ruta de conexión existe pero nada la dispara desde la interfaz
 
 ## 8. Verificación de la fase
 

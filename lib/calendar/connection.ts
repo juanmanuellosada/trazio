@@ -131,19 +131,42 @@ async function refreshAndHandleReauth(
   }
 }
 
-/** Lista los calendarios de Google del usuario junto con los que ya tiene habilitados (tarea 2.7). */
-export async function listUserCalendars(
+/**
+ * Devuelve un access token vigente para el usuario junto con los
+ * calendarios que tiene habilitados, refrescando contra Google si hace
+ * falta (tarea 2.5). Si no hay conexión, lanza `GoogleConnectionNotFoundError`;
+ * si el refresh token ya no sirve, lanza `GoogleReauthRequiredError` —sin
+ * llamar a Google si la conexión ya estaba marcada `needs_reauth` de antes,
+ * porque un refresh token ya sabido inválido no va a empezar a andar—. Una
+ * falla transitoria de Google se propaga tal cual.
+ *
+ * La usa `listUserCalendars` acá mismo, `lib/calendar/calendars.ts` (ABM de
+ * calendarios) y `lib/calendar/events-access.ts`, que envuelve estos throws
+ * en el estado `ConnectionState` que necesita `events.ts`.
+ */
+export async function getValidAccessToken(
   userId: string,
-): Promise<{ calendars: GoogleCalendarSummary[]; enabledCalendarIds: string[] }> {
+): Promise<{ accessToken: string; enabledCalendarIds: string[] }> {
   const supabase = await createClient();
   const connection = await loadConnection(supabase, userId);
   if (!connection) {
     throw new GoogleConnectionNotFoundError("Este usuario no tiene una conexión de Google Calendar.");
   }
+  if (connection.status === "needs_reauth") {
+    throw new GoogleReauthRequiredError("La conexión de Google Calendar necesita reautorización.");
+  }
 
   const refreshTokenPlain = decryptRefreshToken(connection.refresh_token);
   const enabledCalendarIds = connection.enabled_calendar_ids ?? [];
   const { accessToken } = await refreshAndHandleReauth(supabase, userId, refreshTokenPlain);
+  return { accessToken, enabledCalendarIds };
+}
+
+/** Lista los calendarios de Google del usuario junto con los que ya tiene habilitados (tarea 2.7). */
+export async function listUserCalendars(
+  userId: string,
+): Promise<{ calendars: GoogleCalendarSummary[]; enabledCalendarIds: string[] }> {
+  const { accessToken, enabledCalendarIds } = await getValidAccessToken(userId);
 
   try {
     const calendars = await listCalendars(accessToken);
@@ -152,9 +175,9 @@ export async function listUserCalendars(
     if (!(error instanceof GoogleAccessTokenExpiredError)) throw error;
     // Poco común —recién se pidió un access token nuevo—, pero si Google lo
     // rechaza igual, un único reintento con un refresh nuevo alcanza.
-    const retried = await refreshAndHandleReauth(supabase, userId, refreshTokenPlain);
+    const retried = await getValidAccessToken(userId);
     const calendars = await listCalendars(retried.accessToken);
-    return { calendars, enabledCalendarIds };
+    return { calendars, enabledCalendarIds: retried.enabledCalendarIds };
   }
 }
 
