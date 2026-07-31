@@ -24,12 +24,12 @@
 
 ## 1. Esquema y cifrado (bloqueante)
 
-- [ ] 1.1 Migración `calendar_connections` con su RLS en el mismo archivo: `user_id` como PK, `provider`, `refresh_token`, `enabled_calendar_ids`, `status`
-- [ ] 1.2 `lib/calendar/crypto.ts`: cifrar y descifrar con AES-256-GCM, guardando nonce y tag junto al ciphertext
-- [ ] 1.3 Tests del cifrado: ida y vuelta, y que un ciphertext manipulado **falla** en vez de devolver basura
-- [ ] 1.4 Que la clave se lea solo del lado servidor, y un test que falle si alguien la expone en una variable pública
-- [ ] 1.5 Regenerar tipos con `pnpm db:types:local` (nunca `db:types`, que apunta al remoto)
-- [ ] 1.6 Tests de RLS de `calendar_connections`: un usuario no ve ni escribe la conexión de otro
+- [x] 1.1 Migración `calendar_connections` con su RLS en el mismo archivo: `user_id` como PK, `provider`, `refresh_token`, `enabled_calendar_ids`, `status`
+- [x] 1.2 `lib/calendar/crypto.ts`: cifrar y descifrar con AES-256-GCM, guardando nonce y tag junto al ciphertext
+- [x] 1.3 Tests del cifrado: ida y vuelta, y que un ciphertext manipulado **falla** en vez de devolver basura
+- [x] 1.4 Que la clave se lea solo del lado servidor, y un test que falle si alguien la expone en una variable pública
+- [x] 1.5 Regenerar tipos con `pnpm db:types:local` (nunca `db:types`, que apunta al remoto)
+- [x] 1.6 Tests de RLS de `calendar_connections`: un usuario no ve ni escribe la conexión de otro
 
 ## 2. OAuth y cliente de Google *(tras el grupo 1)*
 

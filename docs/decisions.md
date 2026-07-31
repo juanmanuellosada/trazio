@@ -779,3 +779,40 @@ cliente que se suscriba filtrando por una columna que no es la PK tiene que
 recordar `replica identity full` en la misma migración — si no, el mismo bug en
 silencio se repite. `e2e/realtime-sync.spec.ts` ahora también cubre borrar, para
 que quede como regresión y no solo como decisión escrita.
+
+## D38 — El refresh token de Google se cifra en la aplicación con AES-256-GCM
+
+**Fecha.** 2026-07-31
+
+**Contexto.** `calendar_connections.refresh_token` (fase 4) es el primer secreto
+de larga vida y por usuario que Trazio guarda: un valor que, si se filtra, le da a
+quien lo tenga acceso de lectura y escritura al calendario de Google de esa
+persona hasta que se revoque. El proyecto no tenía hasta ahora ninguna decisión
+registrada sobre cifrado de datos en reposo.
+
+**Decisión.** El refresh token se cifra en `lib/calendar/crypto.ts` con
+AES-256-GCM antes de guardarse, usando una clave de 32 bytes que vive en la
+variable de entorno de servidor `CALENDAR_REFRESH_TOKEN_ENCRYPTION_KEY`
+(`docs/setup-google-calendar.md`). Se guarda un único valor en base64 con el
+nonce, el tag de autenticación y el ciphertext concatenados. Descifrar ocurre
+solo del lado servidor, en el momento de refrescar el access token. La clave no
+se guarda en la base: si se pierde, cada usuario reconecta.
+
+**Por qué.** GCM y no CBC porque autentica: un ciphertext manipulado falla al
+descifrar en vez de devolver basura en silencio, lo cual importa para un secreto
+que habilita acceso a una cuenta de terceros.
+
+**Alternativas descartadas.**
+
+- El Vault de Supabase, como los secretos del cron de fase 2. Está pensado para
+  secretos del proyecto, pocos y estables, no para un secreto por usuario que se
+  crea y se revoca con cada conexión.
+- `pgsodium` con cifrado transparente de columna. Supabase lo está
+  discontinuando, y ata el cifrado a una extensión de la base en vez de dejarlo
+  en código que se puede leer y testear.
+
+**Consecuencia.** Cualquier tabla futura que guarde un secreto por usuario sigue
+este mismo patrón: cifrado en aplicación con AES-256-GCM y clave de servidor, no
+Vault ni cifrado de columna. Perder la clave de cifrado invalida todas las
+conexiones existentes — documentado para que nadie la mueva a la base "para no
+perderla".
