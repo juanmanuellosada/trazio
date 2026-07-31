@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { fetchHabits, habitsQueryKey } from "@/lib/habits/use-habits";
+import { countHabitsPendingToday } from "@/lib/habits/pending-today";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 
 export const appBadgeQueryKey = ["reminders", "badge-count"] as const;
 
@@ -30,25 +33,35 @@ async function fetchTodayPendingReminderCount(): Promise<number> {
 }
 
 /**
- * Badge del ícono de la aplicación (bloque 4.16) con los recordatorios de
- * hoy aún no entregados. Punto de extensión para fase 3: cuando existan
- * hábitos pendientes del día, sumar su conteo acá, al lado del de
- * recordatorios, antes de llamar a `setAppBadge` — no antes.
+ * Badge del ícono de la aplicación (bloque 4.16, ampliado en fase 3) con los
+ * recordatorios de hoy aún no entregados más los hábitos pendientes de hoy
+ * (`lib/habits/pending-today.ts`, D-H de `design.md`: este badge es un
+ * camino de código independiente del contador de Hoy en el panel lateral,
+ * pero comparte con él la misma definición de "pendiente"). La query de
+ * hábitos usa `habitsQueryKey()`, la misma clave que `useHabits`, para
+ * compartir caché con el resto de la app en vez de duplicar el fetch.
  */
 export function useAppBadge(): void {
+  const { timezone } = useUserPreferences();
   const { data: reminderCount } = useQuery({
     queryKey: appBadgeQueryKey,
     queryFn: fetchTodayPendingReminderCount,
     refetchInterval: 60_000,
   });
+  const { data: habits } = useQuery({
+    queryKey: habitsQueryKey(),
+    queryFn: () => fetchHabits(timezone),
+    refetchInterval: 60_000,
+  });
 
   useEffect(() => {
     if (!("setAppBadge" in navigator)) return;
-    const total = reminderCount ?? 0; // + conteo de hábitos pendientes (fase 3)
+    const pendingHabits = habits ? countHabitsPendingToday(habits, timezone, new Date()) : 0;
+    const total = (reminderCount ?? 0) + pendingHabits;
     if (total > 0) {
       void navigator.setAppBadge(total).catch(() => {});
     } else {
       void navigator.clearAppBadge?.().catch(() => {});
     }
-  }, [reminderCount]);
+  }, [reminderCount, habits, timezone]);
 }

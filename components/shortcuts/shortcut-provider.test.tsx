@@ -183,11 +183,11 @@ describe("ShortcutProvider — el acorde G", () => {
     expect(push).toHaveBeenCalledWith("/hoy");
   });
 
-  it("G seguido de A (Hábitos) no navega a ningún lado (bloque 7.5, fase 3)", () => {
+  it("G seguido de A navega a Hábitos (tarea 5.5)", () => {
     renderHarness();
     fireEvent.keyDown(window, { key: "g" });
     fireEvent.keyDown(window, { key: "a" });
-    expect(push).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/habitos");
   });
 
   it("Escape cancela el acorde pendiente sin navegar", () => {

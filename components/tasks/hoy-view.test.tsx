@@ -18,6 +18,20 @@ vi.mock("@/lib/tasks/use-hoy-tasks", () => ({
   useHoyTasks: () => ({ data: [] }),
 }));
 
+// El bloque de hábitos (fase 3, tarea 4.1) también usa TanStack Query
+// (`useHabits`), ajeno al propósito de este test — mismo criterio que
+// `useHoyTasks` arriba.
+vi.mock("@/lib/habits/use-habits", () => ({
+  useHabits: () => ({ data: [] }),
+}));
+
+// Overrides de hoy (tarea 4.1, hora efectiva de un hábito reprogramado):
+// mismo criterio que `useHabits` arriba, sin `QueryClientProvider` ni
+// cliente de Supabase real en este test.
+vi.mock("@/lib/habits/schedule-overrides", () => ({
+  useHabitScheduleOverridesForDate: () => ({ data: {} }),
+}));
+
 // La barra de opciones de vista (bloque 6.5) necesita `QueryClientProvider`
 // y un cliente de Supabase real (usa TanStack Query y `useLabels`), ajenos
 // al propósito de este test — se reemplaza por un stub, igual que se
@@ -40,6 +54,7 @@ describe("HoyView — centrado condicional", () => {
         timezone="America/Argentina/Buenos_Aires"
         inboxProjectId={null}
         initialTasks={[]}
+        initialHabits={[]}
         nowIso="2026-07-29T12:00:00.000Z"
         todayDate="2026-07-29"
         initialOptions={defaultOptionsForViewKey("hoy")}

@@ -120,10 +120,13 @@ export function EmojiPicker({
   value,
   onChange,
   error,
+  label = "Ícono (opcional)",
 }: {
   value: string | undefined;
   onChange: (value: string | undefined) => void;
   error?: string;
+  /** Configurable porque quien lo usa decide si el ícono es obligatorio: en proyectos es opcional, en hábitos no (`components/habits/habit-form-dialog.tsx`). */
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<EmojiCategory[] | null>(null);
@@ -167,7 +170,7 @@ export function EmojiPicker({
 
   return (
     <div className="space-y-1.5">
-      <Label id={labelId}>Ícono (opcional)</Label>
+      <Label id={labelId}>{label}</Label>
       <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
         <PopoverTrigger
           aria-labelledby={labelId}

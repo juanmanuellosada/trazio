@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/supabase/current-user";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getHoyTasks } from "@/lib/tasks/get-hoy-tasks";
+import { getHabits } from "@/lib/habits/get-habits";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { getViewPreferences } from "@/lib/view-options/get-view-preferences";
 import { HoyView } from "@/components/tasks/hoy-view";
@@ -13,6 +14,9 @@ import { HoyView } from "@/components/tasks/hoy-view";
  * viaja como ISO string al cliente: el bucketing de bloques tiene que usar
  * el mismo instante en el primer render del cliente que ya usó el servidor,
  * para no divergir en la hidratación por el simple paso del reloj.
+ *
+ * `getHabits` (fase 3, tarea 4.1) siembra el mismo caché `["habits"]` que
+ * usa `/habitos` — es la misma consulta, sin una versión propia para Hoy.
  */
 export default async function HoyPage() {
   const user = await getCurrentUser();
@@ -26,7 +30,10 @@ export default async function HoyPage() {
     getInboxProjectId(user.id),
     getViewPreferences(user.id, "hoy"),
   ]);
-  const initialTasks = await getHoyTasks(user.id, preferences.timezone, now);
+  const [initialTasks, initialHabits] = await Promise.all([
+    getHoyTasks(user.id, preferences.timezone, now),
+    getHabits(user.id, preferences.timezone, now),
+  ]);
 
   return (
     <HoyView
@@ -34,6 +41,7 @@ export default async function HoyPage() {
       timezone={preferences.timezone}
       inboxProjectId={inboxProjectId}
       initialTasks={initialTasks}
+      initialHabits={initialHabits}
       nowIso={now.toISOString()}
       todayDate={todayInTimeZone(now, preferences.timezone)}
       initialOptions={initialOptions}

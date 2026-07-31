@@ -4,8 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { SettingsProvider, useSettings } from "./settings-context";
 import { SettingsModal } from "./settings-modal";
+
+const PREFERENCES: UserPreferences = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd-MM-yyyy",
+  timeFormat: 24,
+  weekStartsOn: 1,
+};
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -65,10 +74,14 @@ function renderModal() {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <OpenButton />
-        <SettingsModal />
-      </SettingsProvider>
+      {/* `AppBadgeSync`, montado dentro de `SettingsModal`, necesita el contexto
+          de preferencias (tarea 5.3, fase 3) igual que en `app/(app)/layout.tsx`. */}
+      <PreferencesProvider preferences={PREFERENCES}>
+        <SettingsProvider>
+          <OpenButton />
+          <SettingsModal />
+        </SettingsProvider>
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }

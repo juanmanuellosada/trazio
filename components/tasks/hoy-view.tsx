@@ -12,6 +12,8 @@ import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
+import type { Habit } from "@/lib/habits/habit-columns";
+import { HabitsTodayBlock } from "@/components/habits/habits-today-block";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
@@ -35,12 +37,22 @@ const VIEW_KEY = "hoy";
  * control "mostrar completadas" de la barra reemplaza al botón propio que
  * tenía antes esta vista para el bloque de completadas de hoy — ahora
  * persiste en `view_preferences` en vez de resetear al recargar.
+ *
+ * Bloque de hábitos del día (fase 3, tareas 4.1-4.5, spec `vistas-lista`
+ * "Vista Hoy"): entre las tareas de hoy y las completadas, detrás del
+ * control "mostrar hábitos" (`options.showHabits`, ya existente en el
+ * esquema desde la fase 2). `HabitsTodayBlock` trae su propio hook y se
+ * devuelve `null` sola si no hay ningún hábito para hoy, así que acá solo
+ * hace falta el `if` de la opción. Un hábito no participa de la selección
+ * múltiple (tarea 4.4): no usa `SelectionCheckbox` ni entra en
+ * `candidateTasks`.
  */
 export function HoyView({
   userId,
   timezone,
   inboxProjectId,
   initialTasks,
+  initialHabits,
   nowIso,
   todayDate,
   initialOptions,
@@ -49,6 +61,7 @@ export function HoyView({
   timezone: string;
   inboxProjectId: string | null;
   initialTasks: TaskRowData[];
+  initialHabits: Habit[];
   nowIso: string;
   todayDate: string;
   initialOptions: ViewOptions;
@@ -116,6 +129,10 @@ export function HoyView({
                 </section>
               )}
             </>
+          )}
+
+          {options.showHabits && (
+            <HabitsTodayBlock timezone={timezone} now={now} todayDate={todayDate} initialHabits={initialHabits} />
           )}
 
           {completedToday.length > 0 && (

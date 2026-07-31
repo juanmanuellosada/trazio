@@ -1,8 +1,7 @@
 /**
  * El acorde `G` (bloque 7.3/7.4, D-G): 1,5 s de ventana para la segunda
- * tecla. `habitos` (`G A`) no navega a ningún lado en esta fase (bloque
- * 7.5, fase 3) — se reconoce igual que el resto para no romper el acorde,
- * pero su destino queda en `null` a propósito.
+ * tecla. `habitos` (`G A`) navega a `/habitos` desde la tarea 5.5 de la
+ * fase 3, que construyó la pantalla.
  */
 export const CHORD_TIMEOUT_MS = 1500;
 
@@ -16,13 +15,13 @@ const CHORD_MAP: Record<string, ChordDestination> = {
   a: "habitos",
 };
 
-/** Ruta de cada destino del acorde. `habitos` no tiene pantalla todavía (fase 3): `null` a propósito, nunca un `router.push` fantasma. */
+/** Ruta de cada destino del acorde. */
 export const CHORD_ROUTES: Record<ChordDestination, string | null> = {
   bandeja: "/bandeja",
   hoy: "/hoy",
   proximos: "/proximos",
   completado: "/completado",
-  habitos: null,
+  habitos: "/habitos",
 };
 
 /** La segunda tecla del acorde, o `null` si no es ninguna de las reconocidas (`G` seguido de cualquier otra tecla cancela el acorde sin disparar nada, requirement "Una tecla ajena al acorde lo cancela"). */

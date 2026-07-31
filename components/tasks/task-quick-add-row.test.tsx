@@ -431,23 +431,31 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
   });
 
   it("con defaultDueDate, una fecha que el parser reconoce en el título le gana al valor por defecto", async () => {
-    const queryClient = new QueryClient();
-    const user = userEvent.setup();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PreferencesProvider preferences={TEST_PREFERENCES}>
-          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
-        </PreferencesProvider>
-      </QueryClientProvider>,
-    );
+    // El reloj se congela (`vi.setSystemTime`) para que "mañana" resuelva
+    // siempre al día siguiente de una fecha fija, nunca al 2026-08-01 del
+    // `defaultDueDate` — si no, el test depende de en qué día corre.
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+    try {
+      const queryClient = new QueryClient();
+      const user = userEvent.setup();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <PreferencesProvider preferences={TEST_PREFERENCES}>
+            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+          </PreferencesProvider>
+        </QueryClientProvider>,
+      );
 
-    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
-    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana");
-    await user.keyboard("{Enter}");
+      await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+      await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana");
+      await user.keyboard("{Enter}");
 
-    await waitFor(() => expect(insertedTask()).toBeDefined());
-    expect(insertedTask()!.due_date).not.toBeNull();
-    expect(insertedTask()!.due_date).not.toBe("2026-08-01");
+      await waitFor(() => expect(insertedTask()).toBeDefined());
+      expect(insertedTask()!.due_date).not.toBeNull();
+      expect(insertedTask()!.due_date).not.toBe("2026-08-01");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("no muestra selector de proyecto destino al crear una subtarea: el proyecto es el de la tarea padre", async () => {

@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   List,
   Layers,
+  Repeat,
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -77,8 +78,10 @@ function countActiveQuickFilters(quickFilters: ViewOptions["quickFilters"]): num
 
 /**
  * Barra de opciones de vista (bloque 6.3/6.5, capacidad
- * `opciones-de-vista`): forma de ver, mostrar completadas, días adelante,
- * orden, agrupar por, filtros rápidos y restablecer. Un único componente
+ * `opciones-de-vista`): forma de ver, mostrar completadas, mostrar hábitos
+ * (tarea 5.7 de fase 3 — el de repeticiones futuras sigue reservado, sin
+ * control propio, es de fase 4), días adelante, orden, agrupar por, filtros
+ * rápidos y restablecer. Un único componente
  * para las seis pantallas (`.claude/rules/frontend.md`: consultar
  * `ui-ux-pro-max` antes de crear un componente visual nuevo — acá se
  * decidió por control binario para forma de ver, menús desplegables para
@@ -149,6 +152,18 @@ export function ViewOptionsBar({
       >
         {options.showCompleted ? <Eye className="size-3.5" aria-hidden /> : <EyeOff className="size-3.5" aria-hidden />}
         {options.showCompleted ? "Completadas" : "Sin completadas"}
+      </Button>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-pressed={options.showHabits}
+        onClick={() => setOption("showHabits", !options.showHabits)}
+        className={cn(options.showHabits && "text-foreground")}
+      >
+        <Repeat className="size-3.5" aria-hidden />
+        Hábitos
       </Button>
 
       {showDaysAhead && (

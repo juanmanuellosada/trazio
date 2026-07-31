@@ -19,11 +19,11 @@ describe("chordDestinationFor", () => {
     expect(chordDestinationFor("Escape")).toBeNull();
   });
 
-  it("G A (Hábitos) no tiene ruta todavía: fase 3 (bloque 7.5)", () => {
-    expect(CHORD_ROUTES.habitos).toBeNull();
+  it("G A (Hábitos) navega a /habitos (tarea 5.5)", () => {
+    expect(CHORD_ROUTES.habitos).toBe("/habitos");
   });
 
-  it("el resto de los destinos sí tiene ruta", () => {
+  it("el resto de los destinos también tiene ruta", () => {
     expect(CHORD_ROUTES.bandeja).toBe("/bandeja");
     expect(CHORD_ROUTES.hoy).toBe("/hoy");
     expect(CHORD_ROUTES.proximos).toBe("/proximos");
