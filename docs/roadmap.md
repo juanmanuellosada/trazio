@@ -139,11 +139,11 @@ alguien más pueda registrarse y hacer lo mismo.
 
 ### Criterios de aceptación
 
-- [ ] Las rachas son correctas en los tres tipos, incluidos los bordes: cambio de
+- [x] Las rachas son correctas en los tres tipos, incluidos los bordes: cambio de
       semana, día en curso con margen de gracia, hábito creado a mitad de semana.
-- [ ] Un hábito no aparece en fechas anteriores a su creación.
-- [ ] Archivar conserva el historial completo; desarchivar lo devuelve intacto.
-- [ ] Las rachas se calculan, no se guardan denormalizadas.
+- [x] Un hábito no aparece en fechas anteriores a su creación.
+- [x] Archivar conserva el historial completo; desarchivar lo devuelve intacto.
+- [x] Las rachas se calculan, no se guardan denormalizadas.
 
 ---
 
