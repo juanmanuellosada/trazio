@@ -33,14 +33,14 @@
 
 ## 2. OAuth y cliente de Google *(tras el grupo 1)*
 
-- [ ] 2.1 `app/api/auth/google/route.ts`: inicio del flujo con `access_type=offline` y `prompt=consent`, sin los cuales Google no devuelve refresh token
-- [ ] 2.2 `app/api/auth/google/callback/route.ts`: intercambiar el código por tokens, cifrar el refresh token y guardar la conexión
-- [ ] 2.3 Protección contra CSRF en el flujo con el parámetro `state`
-- [ ] 2.4 `lib/calendar/google-client.ts`: llamadas con `fetch`, sin `googleapis` (decisión D-B)
-- [ ] 2.5 Refresco del access token, y marcar la conexión como `needs_reauth` cuando el refresh falla
-- [ ] 2.6 Desconectar la cuenta: borra la conexión y **no** toca ningún dato de Trazio
-- [ ] 2.7 Listar los calendarios del usuario y guardar cuáles se muestran en `enabled_calendar_ids`
-- [ ] 2.8 Tests del cliente con la API de Google simulada: token vencido, refresh fallido, 429 y 500
+- [x] 2.1 `app/api/auth/google/route.ts`: inicio del flujo con `access_type=offline` y `prompt=consent`, sin los cuales Google no devuelve refresh token
+- [x] 2.2 `app/api/auth/google/callback/route.ts`: intercambiar el código por tokens, cifrar el refresh token y guardar la conexión
+- [x] 2.3 Protección contra CSRF en el flujo con el parámetro `state`
+- [x] 2.4 `lib/calendar/google-client.ts`: llamadas con `fetch`, sin `googleapis` (decisión D-B)
+- [x] 2.5 Refresco del access token, y marcar la conexión como `needs_reauth` cuando el refresh falla
+- [x] 2.6 Desconectar la cuenta: borra la conexión y **no** toca ningún dato de Trazio
+- [x] 2.7 Listar los calendarios del usuario y guardar cuáles se muestran en `enabled_calendar_ids`
+- [x] 2.8 Tests del cliente con la API de Google simulada: token vencido, refresh fallido, 429 y 500
 
 ## 3. Eventos *(paralelo tras el grupo 2)*
 
