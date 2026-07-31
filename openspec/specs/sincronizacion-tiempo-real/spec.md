@@ -29,22 +29,18 @@ La implementación de fase 1 NO SHALL incorporar ninguna librería de estado glo
 
 ### Requirement: Suscripción Realtime por tabla filtrada por usuario
 
-La aplicación SHALL mantener una suscripción de Realtime por cada una de las
-tablas `tasks`, `projects`, `sections`, `comments`, `reminders` y `filters`, y
-cada suscripción SHALL estar filtrada por el `user_id` de la sesión activa.
-Las demás tablas de `docs/data-model.md` pertenecen a fases posteriores y no
-tienen suscripción todavía.
+La aplicación SHALL mantener una suscripción de Realtime, con su manejador de eventos correspondiente, por cada una de las tablas `tasks`, `projects`, `sections`, `comments`, `reminders`, `filters`, `habits` y `habit_completions`, y cada suscripción SHALL estar filtrada por el `user_id` de la sesión activa. `labels` y `task_labels` siguen sin suscripción propia, `habit_schedule_overrides` queda deliberadamente fuera de Realtime según `docs/data-model.md`, y `calendar_connections` pertenece a la fase 4 y todavía no tiene suscripción.
 
-#### Scenario: Suscripción activa sobre tasks, projects, sections, comments, reminders y filters
+#### Scenario: Suscripción activa sobre tasks, projects, sections, comments, reminders, filters, habits y habit_completions
 
 - **WHEN** el usuario tiene una sesión iniciada
-- **THEN** la aplicación mantiene una suscripción de Realtime sobre `tasks`, `projects`, `sections`, `comments`, `reminders` y `filters`
+- **THEN** la aplicación mantiene una suscripción de Realtime, con su manejador de eventos, sobre `tasks`, `projects`, `sections`, `comments`, `reminders`, `filters`, `habits` y `habit_completions`
 - **AND** cada una de esas suscripciones está filtrada por el `user_id` del usuario
 
-#### Scenario: Sin suscripción a tablas de fases posteriores
+#### Scenario: Sin suscripción a labels, task_labels, habit_schedule_overrides ni calendar_connections
 
 - **WHEN** se audita la configuración de Realtime de esta fase
-- **THEN** no existe ninguna suscripción a `labels`, `task_labels`, `habits`, `habit_completions` ni `habit_schedule_overrides`
+- **THEN** no existe ninguna suscripción a `labels`, `task_labels`, `habit_schedule_overrides` ni `calendar_connections`
 
 ### Requirement: Invalidación de Realtime y convivencia con mutaciones optimistas en vuelo
 Al recibir un evento de Realtime sobre `tasks`, `projects` o `sections`, el manejador SHALL consultar si hay una mutación en vuelo sobre las claves afectadas. Si no hay ninguna, SHALL invalidar la query correspondiente de inmediato. Si hay una mutación en vuelo sobre esa misma clave, el manejador NO SHALL invalidar en el acto: SHALL marcar la clave como sucia y dejar que el `onSettled` de esa mutación sea quien invalide. En ningún caso el manejador muta el caché a mano.

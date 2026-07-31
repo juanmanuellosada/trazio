@@ -53,14 +53,17 @@ La barra SHALL ofrecer el control "cuántos días adelante mostrar" únicamente 
 
 ### Requirement: Los controles de hábitos y repeticiones futuras quedan reservados, sin exponerse
 
-Las claves de opciones para mostrar hábitos y para mostrar repeticiones futuras de una tarea recurrente SHALL existir en el esquema de opciones persistido, como punto de extensión, pero la barra MUST NOT mostrarlas como controles interactivos en fase 2: los hábitos son fase 3 y las repeticiones futuras son una opción del modo calendario, que es fase 4.
+La clave de opción para mostrar repeticiones futuras de una tarea recurrente SHALL seguir existiendo en el esquema de opciones persistido, como punto de extensión, pero la barra MUST NOT mostrarla como control interactivo todavía: es una opción del modo calendario, que es fase 4. La clave de opción para mostrar hábitos SHALL exponerse como control interactivo en la barra, en las pantallas donde la barra existe.
 
-#### Scenario: Ningún control de hábitos ni de repeticiones futuras es visible
+#### Scenario: El control de repeticiones futuras sigue sin exponerse
 
-- **WHEN** el usuario abre la barra de opciones de vista en cualquiera de
-  las seis pantallas donde existe
-- **THEN** no ve ningún control para mostrar u ocultar hábitos
-- **AND** no ve ningún control para mostrar u ocultar repeticiones futuras
+- **WHEN** el usuario abre la barra de opciones de vista en cualquiera de las seis pantallas donde existe
+- **THEN** no ve ningún control para mostrar u ocultar repeticiones futuras
+
+#### Scenario: El control de mostrar hábitos es visible
+
+- **WHEN** el usuario abre la barra de opciones de vista
+- **THEN** ve un control para mostrar u ocultar hábitos
 
 ### Requirement: Orden configurable
 
