@@ -287,3 +287,11 @@ Habilitar replicación en: `tasks`, `projects`, `sections`, `labels`, `task_labe
 Cada cliente se suscribe filtrando por su `user_id`. Al recibir un evento, invalidar
 la query de TanStack Query correspondiente en lugar de mutar el caché a mano: es más
 lento en microsegundos y muchísimo más difícil de romper.
+
+Las ocho tablas que un cliente suscribe con ese filtro (todas menos `labels` y
+`task_labels`, ver `lib/realtime/subscribe.ts`) necesitan además
+`replica identity full`: con el `default` de Postgres, un DELETE solo manda la
+primary key al WAL, y como esa fila no trae `user_id`, Realtime no puede evaluar
+el filtro y descarta el evento en silencio (D37). Si se agrega una suscripción
+nueva por `user_id` a `labels` o `task_labels`, hay que sumarlas a la lista de
+`replica identity full` en la misma migración.

@@ -730,3 +730,52 @@ escala el filtro fila por fila no se nota.
 no lo elija bajo RLS — no se dropea, porque sostiene la columna generada.
 Si algún día la cantidad de tareas por usuario deja de ser "cientos o pocos
 miles", esta decisión se revisa con un `EXPLAIN` nuevo en la mano.
+
+---
+
+## D37 — `replica identity full` en las tablas que Realtime filtra por `user_id`
+
+**Fecha.** 2026-07-31
+
+**Contexto.** Ningún borrado se propagaba por Realtime, en ninguna tabla, desde
+fase 1. `lib/realtime/subscribe.ts` suscribe ocho tablas (`tasks`, `projects`,
+`sections`, `comments`, `reminders`, `filters`, `habits`, `habit_completions`) con
+`filter: user_id=eq.<uuid>`. Con `replica identity default` —el default de
+Postgres—, la fila vieja que un DELETE manda al WAL trae solo la primary key, sin
+`user_id`. Realtime no puede evaluar el filtro contra esa fila y descarta el
+evento sin avisar: ni error, ni log, nada. Crear y editar funcionaban bien porque
+un INSERT y un UPDATE sí llevan la fila completa.
+
+El bug pasó dos fases sin detectarse porque el único test de Realtime que existía,
+`e2e/realtime-sync.spec.ts`, probaba crear una tarea, no borrar nada. Se destapó
+al desmarcar un hábito completado en una pestaña y ver que no desaparecía de la
+otra.
+
+**Decisión.** `replica identity full` en las ocho tablas que un cliente suscribe
+con filtro por `user_id` (migración
+`20260731000000_realtime_replica_identity_full.sql`). `labels` y `task_labels`
+quedan afuera: están en la publicación `supabase_realtime` desde fase 1 mirando a
+fases futuras, pero ningún cliente se suscribe a ellas todavía, así que no hay
+filtro que el DELETE necesite poder evaluar.
+
+**Por qué.** Es la recomendación estándar de Supabase para Realtime filtrado por
+una columna que no es la PK: manda la fila vieja completa (no solo la PK) en cada
+UPDATE y DELETE, así el filtro por `user_id` se puede evaluar siempre. El costo es
+más bytes en el WAL por cada UPDATE/DELETE — para el volumen de escritura de una
+app personal, despreciable.
+
+**Alternativas descartadas.**
+
+- Filtrar del lado del cliente en vez de con `filter` de Realtime (suscribirse a
+  toda la tabla y descartar lo que no es del usuario). Manda a cada cliente los
+  cambios de todos los usuarios y depende de que el filtrado en el navegador nunca
+  tenga un bug — la RLS ya no protegería nada en esa capa.
+- `replica identity` por índice único en `user_id` en lugar de `full`. No aplica:
+  `replica identity index` exige que el índice sea único, y `user_id` no lo es en
+  ninguna de estas tablas (varias filas por usuario).
+
+**Consecuencia.** El próximo que agregue una tabla a `supabase_realtime` con un
+cliente que se suscriba filtrando por una columna que no es la PK tiene que
+recordar `replica identity full` en la misma migración — si no, el mismo bug en
+silencio se repite. `e2e/realtime-sync.spec.ts` ahora también cubre borrar, para
+que quede como regresión y no solo como decisión escrita.
