@@ -116,10 +116,8 @@ alguien más pueda registrarse y hacer lo mismo.
       heredados.
 - [x] Eliminar una tarea y hacer `Ctrl+Z` la restaura completa: subtareas,
       etiquetas, comentarios.
-- [ ] Todos los atajos funcionan y ninguno se dispara escribiendo en un campo de
-      texto (salvo deshacer). (Ya se verificó la tabla completa, incluido el
-      menú contextual de tarea y `⇧S`, y la guarda de foco nueva; falta corregir
-      que `Y` abre el detalle pero no el selector de prioridad.)
+- [x] Todos los atajos funcionan y ninguno se dispara escribiendo en un campo de
+      texto (salvo deshacer).
 - [x] La búsqueda encuentra "reunión" buscando "reunion".
 
 ---
