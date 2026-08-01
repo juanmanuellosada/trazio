@@ -1,31 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
-  ArrowDownUp,
   CalendarClock,
   CalendarDays,
   Check,
-  Columns3,
   Eye,
   EyeOff,
-  Filter,
   LayoutGrid,
   List,
-  Layers,
   Repeat,
   RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLabels } from "@/lib/labels/use-labels";
 import { TASK_PRIORITIES, priorityLabel } from "@/lib/validation/tasks";
 import { PriorityDot } from "@/components/selectors/priority-select";
@@ -34,10 +24,14 @@ import {
   DEADLINE_FILTER_OPTIONS,
   GROUP_BY_OPTIONS,
   ORDER_OPTIONS,
+  VIEW_SHAPE_OPTIONS,
+  defaultOptionsForViewKey,
   type DeadlineFilterOption,
   type GroupByOption,
   type OrderOption,
+  type QuickFilters,
   type ViewOptions,
+  type ViewShape,
 } from "@/lib/view-options/schema";
 import { CALENDAR_FORMATS, CALENDAR_FORMAT_LABELS } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
@@ -61,17 +55,76 @@ const DEADLINE_FILTER_LABELS: Record<DeadlineFilterOption, string> = {
   sin: "Sin fecha límite",
 };
 
+const VIEW_SHAPE_ICONS: Record<ViewShape, typeof List> = {
+  lista: List,
+  panel: LayoutGrid,
+  calendario: CalendarDays,
+};
+
+const VIEW_SHAPE_LABELS: Record<ViewShape, string> = {
+  lista: "Lista",
+  panel: "Panel",
+  calendario: "Calendario",
+};
+
 /** Presets del control "días adelante" (bloque 6.3, solo en Próximos): entre una semana y tres meses (D-J), sin exigir un número libre en la barra. */
 const DAYS_AHEAD_PRESETS = [7, 14, 30, 60, 90] as const;
 
-function triggerClassName(active: boolean) {
-  return cn(
-    "flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-    active && "border-primary/40 bg-primary/5 text-primary",
+/** Fila de una sola opción (radio): usada para orden, agrupar, filtros rápidos, formato de calendario y días adelante. */
+function OptionRow({ label, selected, onClick, icon }: { label: string; selected: boolean; onClick: () => void; icon?: ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onClick}
+      className={cn(
+        "flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
+        selected && "bg-surface font-medium text-foreground",
+      )}
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      {selected && <Check className="size-3.5 shrink-0 text-primary" aria-hidden />}
+    </button>
   );
 }
 
-function countActiveQuickFilters(quickFilters: ViewOptions["quickFilters"]): number {
+/** Fila de interruptor (completadas, hábitos, repeticiones futuras): mismo lenguaje visual que `OptionRow`, con una marca a la derecha en vez del check de selección única. */
+function SwitchRow({ label, checked, onClick, icon }: { label: string; checked: boolean; onClick: () => void; icon: ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onClick}
+      className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      <span
+        aria-hidden
+        className={cn(
+          "flex h-4 w-7 shrink-0 items-center rounded-full border border-input px-0.5 transition-colors",
+          checked ? "justify-end bg-primary/15" : "justify-start",
+        )}
+      >
+        <span className={cn("size-3 rounded-full bg-text-secondary transition-colors", checked && "bg-primary")} />
+      </span>
+    </button>
+  );
+}
+
+/** Sub-encabezado de un grupo de opciones dentro de una sección (p. ej. "Ordenar por" dentro de Orden). Mismo estilo que ya usaba el popover de filtros de la barra plana. */
+function OptionGroupLabel({ children }: { children: ReactNode }) {
+  return <p className="px-2 pt-1 pb-1 text-xs font-medium text-text-secondary">{children}</p>;
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h3 className="px-2 text-sm font-semibold text-foreground">{children}</h3>;
+}
+
+function countActiveQuickFilters(quickFilters: QuickFilters): number {
   let count = 0;
   if (quickFilters.deadline !== "cualquiera") count += 1;
   if (quickFilters.priority != null) count += 1;
@@ -80,25 +133,29 @@ function countActiveQuickFilters(quickFilters: ViewOptions["quickFilters"]): num
 }
 
 /**
- * Barra de opciones de vista (bloque 6.3/6.5, capacidad
- * `opciones-de-vista`): forma de ver, mostrar completadas, mostrar hábitos
- * (tarea 5.7 de fase 3), días adelante, orden, agrupar por, filtros rápidos
- * y restablecer. Un único componente para las seis pantallas
- * (`.claude/rules/frontend.md`: consultar `ui-ux-pro-max` antes de crear un
- * componente visual nuevo — acá se decidió por control binario para forma
- * de ver, menús desplegables para orden/agrupar, y un popover de
- * divulgación progresiva para los filtros rápidos, en vez de tres controles
- * sueltos siempre visibles).
+ * Disparador y panel de opciones de vista (capacidad `opciones-de-vista`,
+ * decisión **D-A** de `openspec/changes/interfaz-descubrible/design.md`).
  *
- * Fase 4 (bloque 7.1/7.3, D-E): con la forma de ver "calendario" aparecen
- * dos controles más, antes reservados sin control propio — formato de
- * calendario (día/cuatro días/semana/mes) y repeticiones futuras—, y
- * desaparecen apenas se vuelve a "lista" o "panel".
+ * Antes era una tira plana de siete controles sueltos que en 390px ya se
+ * envolvía. Pasa a ser un único disparador que abre un panel (`Sheet`) con
+ * tres secciones — **Vista** (forma de ver, formato de calendario solo en
+ * calendario, completadas, hábitos), **Orden** (agrupar por, ordenar por) y
+ * **Filtro** (fecha límite, prioridad, etiqueta) — y restablecer al pie.
+ * Nada cambia en qué hacen las opciones ni en cómo se persisten:
+ * `useViewOptions`/`view_preferences` siguen iguales.
+ *
+ * El disparador tiene que indicar cuándo hay opciones activas distintas de
+ * las por defecto de la pantalla (spec `opciones-de-vista`, "El disparador
+ * indica cuándo hay opciones activas..."): sin eso, agrupar los controles en
+ * un panel esconde estado y la lista se ve distinta sin explicación visible.
+ * `hasActiveOptions` compara contra `defaultOptionsForViewKey(viewKey)` en
+ * orden, agrupación, filtros rápidos, completadas y hábitos — exactamente
+ * las opciones que la spec fija, ni la forma de ver ni el formato de
+ * calendario ni días adelante, que no cuentan para esta indicación.
  *
  * `showViewShape` y `showDaysAhead` acotan qué controles aparecen según la
  * pantalla (`specs/opciones-de-vista`: forma de ver solo donde existe modo
  * panel — Bandeja, Proyecto y Próximos —, días adelante solo en Próximos).
- * El resto de los controles es igual en las seis pantallas.
  */
 export function ViewOptionsBar({
   viewKey,
@@ -113,266 +170,221 @@ export function ViewOptionsBar({
 }) {
   const { options, setOption, setQuickFilters, reset } = useViewOptions(viewKey, initialOptions);
   const { data: labels } = useLabels();
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeQuickFilters = countActiveQuickFilters(options.quickFilters);
+  const [open, setOpen] = useState(false);
+
+  const defaults = defaultOptionsForViewKey(viewKey);
+  const hasActiveOptions =
+    options.order !== defaults.order ||
+    options.groupBy !== defaults.groupBy ||
+    options.showCompleted !== defaults.showCompleted ||
+    options.showHabits !== defaults.showHabits ||
+    countActiveQuickFilters(options.quickFilters) > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6" role="toolbar" aria-label="Opciones de vista">
-      {showViewShape && (
-        <div className="flex items-center rounded-lg border border-input p-0.5" role="radiogroup" aria-label="Forma de ver">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={options.viewShape === "lista"}
-            aria-label="Ver en lista"
-            onClick={() => setOption("viewShape", "lista")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              options.viewShape === "lista" && "bg-surface text-foreground",
-            )}
-          >
-            <List className="size-3.5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={options.viewShape === "panel"}
-            aria-label="Ver en panel"
-            onClick={() => setOption("viewShape", "panel")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              options.viewShape === "panel" && "bg-surface text-foreground",
-            )}
-          >
-            <LayoutGrid className="size-3.5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={options.viewShape === "calendario"}
-            aria-label="Ver en calendario"
-            onClick={() => setOption("viewShape", "calendario")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              options.viewShape === "calendario" && "bg-surface text-foreground",
-            )}
-          >
-            <CalendarDays className="size-3.5" aria-hidden />
-          </button>
-        </div>
-      )}
-
-      {showViewShape && options.viewShape === "calendario" && (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<button type="button" aria-label="Formato de calendario" className={triggerClassName(false)} />}>
-            <CalendarClock className="size-3.5 text-text-secondary" aria-hidden />
-            {CALENDAR_FORMAT_LABELS[options.formato_calendario]}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Formato de calendario</DropdownMenuLabel>
-              {CALENDAR_FORMATS.map((format) => (
-                <DropdownMenuItem key={format} onClick={() => setOption("formato_calendario", format)}>
-                  {CALENDAR_FORMAT_LABELS[format]}
-                  {format === options.formato_calendario && <Check className="ml-auto size-3.5" aria-hidden />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-pressed={options.showCompleted}
-        onClick={() => setOption("showCompleted", !options.showCompleted)}
-        className={cn(options.showCompleted && "text-foreground")}
-      >
-        {options.showCompleted ? <Eye className="size-3.5" aria-hidden /> : <EyeOff className="size-3.5" aria-hidden />}
-        {options.showCompleted ? "Completadas" : "Sin completadas"}
-      </Button>
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-pressed={options.showHabits}
-        onClick={() => setOption("showHabits", !options.showHabits)}
-        className={cn(options.showHabits && "text-foreground")}
-      >
-        <Repeat className="size-3.5" aria-hidden />
-        Hábitos
-      </Button>
-
-      {showViewShape && options.viewShape === "calendario" && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-pressed={options.showFutureRecurrences}
-          onClick={() => setOption("showFutureRecurrences", !options.showFutureRecurrences)}
-          className={cn(options.showFutureRecurrences && "text-foreground")}
-        >
-          <CalendarClock className="size-3.5" aria-hidden />
-          Repeticiones futuras
-        </Button>
-      )}
-
-      {showDaysAhead && (
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<button type="button" className={triggerClassName(false)} />}>
-            <Columns3 className="size-3.5 text-text-secondary" aria-hidden />
-            {options.daysAhead} días
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Días adelante</DropdownMenuLabel>
-              {DAYS_AHEAD_PRESETS.map((days) => (
-                <DropdownMenuItem key={days} onClick={() => setOption("daysAhead", days)}>
-                  {days} días
-                  {days === options.daysAhead && <Check className="ml-auto size-3.5" aria-hidden />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<button type="button" className={triggerClassName(options.order !== "manual")} />}>
-          <ArrowDownUp className="size-3.5 text-text-secondary" aria-hidden />
-          {ORDER_LABELS[options.order]}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Orden</DropdownMenuLabel>
-            {ORDER_OPTIONS.map((order) => (
-              <DropdownMenuItem key={order} onClick={() => setOption("order", order)}>
-                {ORDER_LABELS[order]}
-                {order === options.order && <Check className="ml-auto size-3.5" aria-hidden />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<button type="button" className={triggerClassName(options.groupBy !== "nada")} />}>
-          <Layers className="size-3.5 text-text-secondary" aria-hidden />
-          Agrupar: {GROUP_BY_LABELS[options.groupBy]}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Agrupar por</DropdownMenuLabel>
-            {GROUP_BY_OPTIONS.map((groupBy) => (
-              <DropdownMenuItem key={groupBy} onClick={() => setOption("groupBy", groupBy)}>
-                {GROUP_BY_LABELS[groupBy]}
-                {groupBy === options.groupBy && <Check className="ml-auto size-3.5" aria-hidden />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <PopoverTrigger className={triggerClassName(activeQuickFilters > 0)}>
-          <Filter className="size-3.5 text-text-secondary" aria-hidden />
-          Filtrar
-          {activeQuickFilters > 0 && (
-            <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[0.65rem] font-medium text-primary-foreground">
-              {activeQuickFilters}
-            </span>
+    <div className="flex items-center border-b border-border px-4 py-2 sm:px-6">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger render={<Button type="button" variant="ghost" size="sm" />}>
+          <SlidersHorizontal className="size-3.5" aria-hidden />
+          Formato
+          {hasActiveOptions && (
+            <>
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+              <span className="sr-only">, con opciones activas</span>
+            </>
           )}
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-64">
-          <div className="space-y-1">
-            <p className="px-0.5 text-xs font-medium text-text-secondary">Fecha límite</p>
-            <div className="flex flex-col gap-0.5">
-              {DEADLINE_FILTER_OPTIONS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setQuickFilters({ deadline: value })}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                    value === options.quickFilters.deadline && "bg-surface font-medium text-foreground",
-                  )}
-                >
-                  {DEADLINE_FILTER_LABELS[value]}
-                </button>
-              ))}
-            </div>
-          </div>
+        </SheetTrigger>
+        <SheetContent className="w-full gap-0 sm:max-w-sm">
+          <SheetHeader className="border-b border-border">
+            <SheetTitle>Formato</SheetTitle>
+          </SheetHeader>
 
-          <div className="space-y-1">
-            <p className="px-0.5 text-xs font-medium text-text-secondary">Prioridad</p>
-            <div className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                onClick={() => setQuickFilters({ priority: null })}
-                className={cn(
-                  "rounded-md px-1.5 py-1 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                  options.quickFilters.priority == null && "bg-surface font-medium text-foreground",
-                )}
-              >
-                Todas
-              </button>
-              {TASK_PRIORITIES.map((priority) => (
-                <button
-                  key={priority.value}
-                  type="button"
-                  onClick={() => setQuickFilters({ priority: priority.value })}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                    priority.value === options.quickFilters.priority && "bg-surface font-medium text-foreground",
-                  )}
-                >
-                  <PriorityDot priority={priority.value} />
-                  {priorityLabel(priority.value)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {labels && labels.length > 0 && (
+          <div className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
             <div className="space-y-1">
-              <p className="px-0.5 text-xs font-medium text-text-secondary">Etiqueta</p>
-              <div className="flex max-h-40 flex-col gap-0.5 overflow-y-auto">
-                <button
-                  type="button"
-                  onClick={() => setQuickFilters({ labelId: null })}
-                  className={cn(
-                    "rounded-md px-1.5 py-1 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                    options.quickFilters.labelId == null && "bg-surface font-medium text-foreground",
-                  )}
-                >
-                  Todas
-                </button>
-                {labels.map((label) => (
-                  <button
-                    key={label.id}
-                    type="button"
-                    onClick={() => setQuickFilters({ labelId: label.id })}
-                    className={cn(
-                      "rounded-md px-1.5 py-1 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                      label.id === options.quickFilters.labelId && "bg-surface font-medium text-foreground",
-                    )}
-                  >
-                    {label.name}
-                  </button>
-                ))}
+              <SectionTitle>Vista</SectionTitle>
+
+              {showViewShape && (
+                <div className="px-2 pt-1">
+                  <div className="flex items-center gap-1 rounded-lg border border-input p-1" role="radiogroup" aria-label="Forma de ver">
+                    {VIEW_SHAPE_OPTIONS.map((shape) => {
+                      const Icon = VIEW_SHAPE_ICONS[shape];
+                      return (
+                        <button
+                          key={shape}
+                          type="button"
+                          role="radio"
+                          aria-checked={options.viewShape === shape}
+                          onClick={() => setOption("viewShape", shape)}
+                          className={cn(
+                            "flex flex-1 flex-col items-center gap-1 rounded-md py-2 text-xs text-text-secondary outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
+                            options.viewShape === shape && "bg-surface font-medium text-foreground",
+                          )}
+                        >
+                          <Icon className="size-4" aria-hidden />
+                          {VIEW_SHAPE_LABELS[shape]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {showViewShape && options.viewShape === "calendario" && (
+                <div>
+                  <OptionGroupLabel>Formato de calendario</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Formato de calendario">
+                    {CALENDAR_FORMATS.map((format) => (
+                      <OptionRow
+                        key={format}
+                        label={CALENDAR_FORMAT_LABELS[format]}
+                        selected={format === options.formato_calendario}
+                        onClick={() => setOption("formato_calendario", format)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showViewShape && options.viewShape === "calendario" && (
+                <SwitchRow
+                  label="Repeticiones futuras"
+                  checked={options.showFutureRecurrences}
+                  onClick={() => setOption("showFutureRecurrences", !options.showFutureRecurrences)}
+                  icon={<CalendarClock className="size-4 text-text-secondary" aria-hidden />}
+                />
+              )}
+
+              {showDaysAhead && (
+                <div>
+                  <OptionGroupLabel>Días adelante</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Días adelante">
+                    {DAYS_AHEAD_PRESETS.map((days) => (
+                      <OptionRow
+                        key={days}
+                        label={`${days} días`}
+                        selected={days === options.daysAhead}
+                        onClick={() => setOption("daysAhead", days)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <SwitchRow
+                label="Completadas"
+                checked={options.showCompleted}
+                onClick={() => setOption("showCompleted", !options.showCompleted)}
+                icon={
+                  options.showCompleted ? (
+                    <Eye className="size-4 text-text-secondary" aria-hidden />
+                  ) : (
+                    <EyeOff className="size-4 text-text-secondary" aria-hidden />
+                  )
+                }
+              />
+              <SwitchRow
+                label="Hábitos"
+                checked={options.showHabits}
+                onClick={() => setOption("showHabits", !options.showHabits)}
+                icon={<Repeat className="size-4 text-text-secondary" aria-hidden />}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-1">
+              <SectionTitle>Orden</SectionTitle>
+
+              <div>
+                <OptionGroupLabel>Agrupar por</OptionGroupLabel>
+                <div role="radiogroup" aria-label="Agrupar por">
+                  {GROUP_BY_OPTIONS.map((groupBy) => (
+                    <OptionRow
+                      key={groupBy}
+                      label={GROUP_BY_LABELS[groupBy]}
+                      selected={groupBy === options.groupBy}
+                      onClick={() => setOption("groupBy", groupBy)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <OptionGroupLabel>Ordenar por</OptionGroupLabel>
+                <div role="radiogroup" aria-label="Ordenar por">
+                  {ORDER_OPTIONS.map((order) => (
+                    <OptionRow
+                      key={order}
+                      label={ORDER_LABELS[order]}
+                      selected={order === options.order}
+                      onClick={() => setOption("order", order)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          )}
-        </PopoverContent>
-      </Popover>
 
-      <Button type="button" variant="ghost" size="sm" onClick={reset} className="text-text-secondary">
-        <RotateCcw className="size-3.5" aria-hidden />
-        Restablecer
-      </Button>
+            <Separator />
+
+            <div className="space-y-1">
+              <SectionTitle>Filtro</SectionTitle>
+
+              <div>
+                <OptionGroupLabel>Fecha límite</OptionGroupLabel>
+                <div role="radiogroup" aria-label="Fecha límite">
+                  {DEADLINE_FILTER_OPTIONS.map((value) => (
+                    <OptionRow
+                      key={value}
+                      label={DEADLINE_FILTER_LABELS[value]}
+                      selected={value === options.quickFilters.deadline}
+                      onClick={() => setQuickFilters({ deadline: value })}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <OptionGroupLabel>Prioridad</OptionGroupLabel>
+                <div role="radiogroup" aria-label="Prioridad">
+                  <OptionRow label="Todas" selected={options.quickFilters.priority == null} onClick={() => setQuickFilters({ priority: null })} />
+                  {TASK_PRIORITIES.map((priority) => (
+                    <OptionRow
+                      key={priority.value}
+                      label={priorityLabel(priority.value)}
+                      selected={priority.value === options.quickFilters.priority}
+                      onClick={() => setQuickFilters({ priority: priority.value })}
+                      icon={<PriorityDot priority={priority.value} />}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {labels && labels.length > 0 && (
+                <div>
+                  <OptionGroupLabel>Etiqueta</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Etiqueta" className="max-h-40 overflow-y-auto">
+                    <OptionRow label="Todas" selected={options.quickFilters.labelId == null} onClick={() => setQuickFilters({ labelId: null })} />
+                    {labels.map((label) => (
+                      <OptionRow
+                        key={label.id}
+                        label={label.name}
+                        selected={label.id === options.quickFilters.labelId}
+                        onClick={() => setQuickFilters({ labelId: label.id })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <SheetFooter className="border-t border-border">
+            <Button type="button" variant="ghost" onClick={reset} className="w-full justify-start text-text-secondary">
+              <RotateCcw className="size-3.5" aria-hidden />
+              Restablecer
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
