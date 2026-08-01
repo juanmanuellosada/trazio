@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { OVERLAY_MODAL } from "@/components/primitives/overlay";
 import { useLabels } from "@/lib/labels/use-labels";
 import { TASK_PRIORITIES, priorityLabel } from "@/lib/validation/tasks";
 import { PriorityDot } from "@/components/selectors/priority-select";
@@ -137,10 +138,13 @@ function countActiveQuickFilters(quickFilters: QuickFilters): number {
  * decisión **D-A** de `openspec/changes/interfaz-descubrible/design.md`).
  *
  * Antes era una tira plana de siete controles sueltos que en 390px ya se
- * envolvía. Pasa a ser un único disparador que abre un panel (`Sheet`) con
- * tres secciones — **Vista** (forma de ver, formato de calendario solo en
- * calendario, completadas, hábitos), **Orden** (agrupar por, ordenar por) y
- * **Filtro** (fecha límite, prioridad, etiqueta) — y restablecer al pie.
+ * envolvía. Pasa a ser un único disparador que abre un panel (`Popover`,
+ * anclado al botón — no una hoja lateral) con tres secciones — **Vista**
+ * (forma de ver, formato de calendario solo en calendario, completadas,
+ * hábitos), **Orden** (agrupar por, ordenar por) y **Filtro** (fecha límite,
+ * prioridad, etiqueta) — y restablecer al pie. Misma primitiva que ya usa
+ * `DateSelect` para un panel con contenido a medida (no una lista de ítems
+ * de menú), en vez de traer una nueva al sistema.
  * Nada cambia en qué hacen las opciones ni en cómo se persisten:
  * `useViewOptions`/`view_preferences` siguen iguales.
  *
@@ -181,210 +185,211 @@ export function ViewOptionsBar({
     countActiveQuickFilters(options.quickFilters) > 0;
 
   return (
-    <div className="flex items-center border-b border-border px-4 py-2 sm:px-6">
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger render={<Button type="button" variant="ghost" size="sm" />}>
-          <SlidersHorizontal className="size-3.5" aria-hidden />
-          Formato
-          {hasActiveOptions && (
-            <>
-              <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-              <span className="sr-only">, con opciones activas</span>
-            </>
-          )}
-        </SheetTrigger>
-        <SheetContent className="w-full gap-0 sm:max-w-sm">
-          <SheetHeader className="border-b border-border">
-            <SheetTitle>Formato</SheetTitle>
-          </SheetHeader>
+    <div className="border-b border-border px-4 py-2 sm:px-6" role="group" aria-label="Opciones de vista">
+      <div className="flex w-full max-w-content mx-auto items-center">
+        <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
+          <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" />}>
+            <SlidersHorizontal className="size-3.5" aria-hidden />
+            Formato
+            {hasActiveOptions && (
+              <>
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+                <span className="sr-only">, con opciones activas</span>
+              </>
+            )}
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-[22rem] max-w-[calc(100vw-2rem)] max-h-(--available-height) gap-0 overflow-y-auto p-0"
+          >
+            <div className="space-y-4 px-2 py-3">
+              <div className="space-y-1">
+                <SectionTitle>Vista</SectionTitle>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
-            <div className="space-y-1">
-              <SectionTitle>Vista</SectionTitle>
-
-              {showViewShape && (
-                <div className="px-2 pt-1">
-                  <div className="flex items-center gap-1 rounded-lg border border-input p-1" role="radiogroup" aria-label="Forma de ver">
-                    {VIEW_SHAPE_OPTIONS.map((shape) => {
-                      const Icon = VIEW_SHAPE_ICONS[shape];
-                      return (
-                        <button
-                          key={shape}
-                          type="button"
-                          role="radio"
-                          aria-checked={options.viewShape === shape}
-                          onClick={() => setOption("viewShape", shape)}
-                          className={cn(
-                            "flex flex-1 flex-col items-center gap-1 rounded-md py-2 text-xs text-text-secondary outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                            options.viewShape === shape && "bg-surface font-medium text-foreground",
-                          )}
-                        >
-                          <Icon className="size-4" aria-hidden />
-                          {VIEW_SHAPE_LABELS[shape]}
-                        </button>
-                      );
-                    })}
+                {showViewShape && (
+                  <div className="px-2 pt-1">
+                    <div className="flex items-center gap-1 rounded-lg border border-input p-1" role="radiogroup" aria-label="Forma de ver">
+                      {VIEW_SHAPE_OPTIONS.map((shape) => {
+                        const Icon = VIEW_SHAPE_ICONS[shape];
+                        return (
+                          <button
+                            key={shape}
+                            type="button"
+                            role="radio"
+                            aria-checked={options.viewShape === shape}
+                            onClick={() => setOption("viewShape", shape)}
+                            className={cn(
+                              "flex flex-1 flex-col items-center gap-1 rounded-md py-2 text-xs text-text-secondary outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
+                              options.viewShape === shape && "bg-surface font-medium text-foreground",
+                            )}
+                          >
+                            <Icon className="size-4" aria-hidden />
+                            {VIEW_SHAPE_LABELS[shape]}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {showViewShape && options.viewShape === "calendario" && (
-                <div>
-                  <OptionGroupLabel>Formato de calendario</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Formato de calendario">
-                    {CALENDAR_FORMATS.map((format) => (
-                      <OptionRow
-                        key={format}
-                        label={CALENDAR_FORMAT_LABELS[format]}
-                        selected={format === options.formato_calendario}
-                        onClick={() => setOption("formato_calendario", format)}
-                      />
-                    ))}
+                {showViewShape && options.viewShape === "calendario" && (
+                  <div>
+                    <OptionGroupLabel>Formato de calendario</OptionGroupLabel>
+                    <div role="radiogroup" aria-label="Formato de calendario">
+                      {CALENDAR_FORMATS.map((format) => (
+                        <OptionRow
+                          key={format}
+                          label={CALENDAR_FORMAT_LABELS[format]}
+                          selected={format === options.formato_calendario}
+                          onClick={() => setOption("formato_calendario", format)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {showViewShape && options.viewShape === "calendario" && (
+                {showViewShape && options.viewShape === "calendario" && (
+                  <SwitchRow
+                    label="Repeticiones futuras"
+                    checked={options.showFutureRecurrences}
+                    onClick={() => setOption("showFutureRecurrences", !options.showFutureRecurrences)}
+                    icon={<CalendarClock className="size-4 text-text-secondary" aria-hidden />}
+                  />
+                )}
+
+                {showDaysAhead && (
+                  <div>
+                    <OptionGroupLabel>Días adelante</OptionGroupLabel>
+                    <div role="radiogroup" aria-label="Días adelante">
+                      {DAYS_AHEAD_PRESETS.map((days) => (
+                        <OptionRow
+                          key={days}
+                          label={`${days} días`}
+                          selected={days === options.daysAhead}
+                          onClick={() => setOption("daysAhead", days)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <SwitchRow
-                  label="Repeticiones futuras"
-                  checked={options.showFutureRecurrences}
-                  onClick={() => setOption("showFutureRecurrences", !options.showFutureRecurrences)}
-                  icon={<CalendarClock className="size-4 text-text-secondary" aria-hidden />}
+                  label="Completadas"
+                  checked={options.showCompleted}
+                  onClick={() => setOption("showCompleted", !options.showCompleted)}
+                  icon={
+                    options.showCompleted ? (
+                      <Eye className="size-4 text-text-secondary" aria-hidden />
+                    ) : (
+                      <EyeOff className="size-4 text-text-secondary" aria-hidden />
+                    )
+                  }
                 />
-              )}
+                <SwitchRow
+                  label="Hábitos"
+                  checked={options.showHabits}
+                  onClick={() => setOption("showHabits", !options.showHabits)}
+                  icon={<Repeat className="size-4 text-text-secondary" aria-hidden />}
+                />
+              </div>
 
-              {showDaysAhead && (
+              <Separator />
+
+              <div className="space-y-1">
+                <SectionTitle>Orden</SectionTitle>
+
                 <div>
-                  <OptionGroupLabel>Días adelante</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Días adelante">
-                    {DAYS_AHEAD_PRESETS.map((days) => (
+                  <OptionGroupLabel>Agrupar por</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Agrupar por">
+                    {GROUP_BY_OPTIONS.map((groupBy) => (
                       <OptionRow
-                        key={days}
-                        label={`${days} días`}
-                        selected={days === options.daysAhead}
-                        onClick={() => setOption("daysAhead", days)}
+                        key={groupBy}
+                        label={GROUP_BY_LABELS[groupBy]}
+                        selected={groupBy === options.groupBy}
+                        onClick={() => setOption("groupBy", groupBy)}
                       />
                     ))}
                   </div>
                 </div>
-              )}
 
-              <SwitchRow
-                label="Completadas"
-                checked={options.showCompleted}
-                onClick={() => setOption("showCompleted", !options.showCompleted)}
-                icon={
-                  options.showCompleted ? (
-                    <Eye className="size-4 text-text-secondary" aria-hidden />
-                  ) : (
-                    <EyeOff className="size-4 text-text-secondary" aria-hidden />
-                  )
-                }
-              />
-              <SwitchRow
-                label="Hábitos"
-                checked={options.showHabits}
-                onClick={() => setOption("showHabits", !options.showHabits)}
-                icon={<Repeat className="size-4 text-text-secondary" aria-hidden />}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-1">
-              <SectionTitle>Orden</SectionTitle>
-
-              <div>
-                <OptionGroupLabel>Agrupar por</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Agrupar por">
-                  {GROUP_BY_OPTIONS.map((groupBy) => (
-                    <OptionRow
-                      key={groupBy}
-                      label={GROUP_BY_LABELS[groupBy]}
-                      selected={groupBy === options.groupBy}
-                      onClick={() => setOption("groupBy", groupBy)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <OptionGroupLabel>Ordenar por</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Ordenar por">
-                  {ORDER_OPTIONS.map((order) => (
-                    <OptionRow
-                      key={order}
-                      label={ORDER_LABELS[order]}
-                      selected={order === options.order}
-                      onClick={() => setOption("order", order)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-1">
-              <SectionTitle>Filtro</SectionTitle>
-
-              <div>
-                <OptionGroupLabel>Fecha límite</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Fecha límite">
-                  {DEADLINE_FILTER_OPTIONS.map((value) => (
-                    <OptionRow
-                      key={value}
-                      label={DEADLINE_FILTER_LABELS[value]}
-                      selected={value === options.quickFilters.deadline}
-                      onClick={() => setQuickFilters({ deadline: value })}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <OptionGroupLabel>Prioridad</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Prioridad">
-                  <OptionRow label="Todas" selected={options.quickFilters.priority == null} onClick={() => setQuickFilters({ priority: null })} />
-                  {TASK_PRIORITIES.map((priority) => (
-                    <OptionRow
-                      key={priority.value}
-                      label={priorityLabel(priority.value)}
-                      selected={priority.value === options.quickFilters.priority}
-                      onClick={() => setQuickFilters({ priority: priority.value })}
-                      icon={<PriorityDot priority={priority.value} />}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {labels && labels.length > 0 && (
                 <div>
-                  <OptionGroupLabel>Etiqueta</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Etiqueta" className="max-h-40 overflow-y-auto">
-                    <OptionRow label="Todas" selected={options.quickFilters.labelId == null} onClick={() => setQuickFilters({ labelId: null })} />
-                    {labels.map((label) => (
+                  <OptionGroupLabel>Ordenar por</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Ordenar por">
+                    {ORDER_OPTIONS.map((order) => (
                       <OptionRow
-                        key={label.id}
-                        label={label.name}
-                        selected={label.id === options.quickFilters.labelId}
-                        onClick={() => setQuickFilters({ labelId: label.id })}
+                        key={order}
+                        label={ORDER_LABELS[order]}
+                        selected={order === options.order}
+                        onClick={() => setOption("order", order)}
                       />
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <SheetFooter className="border-t border-border">
-            <Button type="button" variant="ghost" onClick={reset} className="w-full justify-start text-text-secondary">
-              <RotateCcw className="size-3.5" aria-hidden />
-              Restablecer
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+              <Separator />
+
+              <div className="space-y-1">
+                <SectionTitle>Filtro</SectionTitle>
+
+                <div>
+                  <OptionGroupLabel>Fecha límite</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Fecha límite">
+                    {DEADLINE_FILTER_OPTIONS.map((value) => (
+                      <OptionRow
+                        key={value}
+                        label={DEADLINE_FILTER_LABELS[value]}
+                        selected={value === options.quickFilters.deadline}
+                        onClick={() => setQuickFilters({ deadline: value })}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <OptionGroupLabel>Prioridad</OptionGroupLabel>
+                  <div role="radiogroup" aria-label="Prioridad">
+                    <OptionRow label="Todas" selected={options.quickFilters.priority == null} onClick={() => setQuickFilters({ priority: null })} />
+                    {TASK_PRIORITIES.map((priority) => (
+                      <OptionRow
+                        key={priority.value}
+                        label={priorityLabel(priority.value)}
+                        selected={priority.value === options.quickFilters.priority}
+                        onClick={() => setQuickFilters({ priority: priority.value })}
+                        icon={<PriorityDot priority={priority.value} />}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {labels && labels.length > 0 && (
+                  <div>
+                    <OptionGroupLabel>Etiqueta</OptionGroupLabel>
+                    <div role="radiogroup" aria-label="Etiqueta" className="max-h-40 overflow-y-auto">
+                      <OptionRow label="Todas" selected={options.quickFilters.labelId == null} onClick={() => setQuickFilters({ labelId: null })} />
+                      {labels.map((label) => (
+                        <OptionRow
+                          key={label.id}
+                          label={label.name}
+                          selected={label.id === options.quickFilters.labelId}
+                          onClick={() => setQuickFilters({ labelId: label.id })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-border p-2">
+              <Button type="button" variant="ghost" onClick={reset} className="w-full justify-start text-text-secondary">
+                <RotateCcw className="size-3.5" aria-hidden />
+                Restablecer
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 }
