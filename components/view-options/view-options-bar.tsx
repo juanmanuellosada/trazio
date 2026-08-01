@@ -1,21 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import {
-  CalendarClock,
-  CalendarDays,
-  Check,
-  Eye,
-  EyeOff,
-  LayoutGrid,
-  List,
-  Repeat,
-  RotateCcw,
-  SlidersHorizontal,
-} from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { CalendarClock, Eye, EyeOff, Repeat, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OVERLAY_MODAL } from "@/components/primitives/overlay";
 import { useLabels } from "@/lib/labels/use-labels";
 import { TASK_PRIORITIES, priorityLabel } from "@/lib/validation/tasks";
@@ -34,7 +25,7 @@ import {
   type ViewOptions,
   type ViewShape,
 } from "@/lib/view-options/schema";
-import { CALENDAR_FORMATS, CALENDAR_FORMAT_LABELS } from "@/lib/calendar/block";
+import { CALENDAR_FORMATS, CALENDAR_FORMAT_LABELS, type CalendarFormat } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
 
 const ORDER_LABELS: Record<OrderOption, string> = {
@@ -56,12 +47,6 @@ const DEADLINE_FILTER_LABELS: Record<DeadlineFilterOption, string> = {
   sin: "Sin fecha límite",
 };
 
-const VIEW_SHAPE_ICONS: Record<ViewShape, typeof List> = {
-  lista: List,
-  panel: LayoutGrid,
-  calendario: CalendarDays,
-};
-
 const VIEW_SHAPE_LABELS: Record<ViewShape, string> = {
   lista: "Lista",
   panel: "Panel",
@@ -71,27 +56,35 @@ const VIEW_SHAPE_LABELS: Record<ViewShape, string> = {
 /** Presets del control "días adelante" (bloque 6.3, solo en Próximos): entre una semana y tres meses (D-J), sin exigir un número libre en la barra. */
 const DAYS_AHEAD_PRESETS = [7, 14, 30, 60, 90] as const;
 
-/** Fila de una sola opción (radio): usada para orden, agrupar, filtros rápidos, formato de calendario y días adelante. */
-function OptionRow({ label, selected, onClick, icon }: { label: string; selected: boolean; onClick: () => void; icon?: ReactNode }) {
+const DAYS_AHEAD_ITEMS: Record<string, string> = Object.fromEntries(
+  DAYS_AHEAD_PRESETS.map((days) => [String(days), `${days} días`]),
+);
+
+const PRIORITY_FILTER_ITEMS: Record<string, string> = {
+  todas: "Todas",
+  ...Object.fromEntries(TASK_PRIORITIES.map((priority) => [String(priority.value), priorityLabel(priority.value)])),
+};
+
+/**
+ * Fila "etiqueta a la izquierda, desplegable a la derecha" (mismo criterio en
+ * las secciones Vista, Orden y Filtro): un único desplegable resume las
+ * opciones en vez de listarlas todas abiertas, lo que angosta y acorta el
+ * panel (pedido del dueño en la cuarta ronda de refinamiento visual). Mismo
+ * alto y ritmo que `SwitchRow`, para que interruptores y desplegables
+ * convivan sin dos lenguajes visuales distintos.
+ */
+function FieldRow({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onClick}
-      className={cn(
-        "flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-        selected && "bg-surface font-medium text-foreground",
-      )}
-    >
-      {icon}
-      <span className="flex-1">{label}</span>
-      {selected && <Check className="size-3.5 shrink-0 text-primary" aria-hidden />}
-    </button>
+    <div className="flex min-h-10 items-center justify-between gap-3 px-2">
+      <Label htmlFor={htmlFor} className="text-sm font-normal text-foreground">
+        {label}
+      </Label>
+      {children}
+    </div>
   );
 }
 
-/** Fila de interruptor (completadas, hábitos, repeticiones futuras): mismo lenguaje visual que `OptionRow`, con una marca a la derecha en vez del check de selección única. */
+/** Fila de interruptor (completadas, hábitos, repeticiones futuras): un booleano no se pone en un desplegable, pero comparte alto y ritmo con `FieldRow`. */
 function SwitchRow({ label, checked, onClick, icon }: { label: string; checked: boolean; onClick: () => void; icon: ReactNode }) {
   return (
     <button
@@ -116,11 +109,6 @@ function SwitchRow({ label, checked, onClick, icon }: { label: string; checked: 
   );
 }
 
-/** Sub-encabezado de un grupo de opciones dentro de una sección (p. ej. "Ordenar por" dentro de Orden). Mismo estilo que ya usaba el popover de filtros de la barra plana. */
-function OptionGroupLabel({ children }: { children: ReactNode }) {
-  return <p className="px-2 pt-1 pb-1 text-xs font-medium text-text-secondary">{children}</p>;
-}
-
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h3 className="px-2 text-sm font-semibold text-foreground">{children}</h3>;
 }
@@ -137,14 +125,22 @@ function countActiveQuickFilters(quickFilters: QuickFilters): number {
  * Disparador y panel de opciones de vista (capacidad `opciones-de-vista`,
  * decisión **D-A** de `openspec/changes/interfaz-descubrible/design.md`).
  *
- * Antes era una tira plana de siete controles sueltos que en 390px ya se
- * envolvía. Pasa a ser un único disparador que abre un panel (`Popover`,
- * anclado al botón — no una hoja lateral) con tres secciones — **Vista**
- * (forma de ver, formato de calendario solo en calendario, completadas,
- * hábitos), **Orden** (agrupar por, ordenar por) y **Filtro** (fecha límite,
- * prioridad, etiqueta) — y restablecer al pie. Misma primitiva que ya usa
- * `DateSelect` para un panel con contenido a medida (no una lista de ítems
- * de menú), en vez de traer una nueva al sistema.
+ * Panel (`Popover`, anclado al botón) con tres secciones — **Vista** (forma
+ * de ver, formato de calendario solo en calendario, completadas, hábitos),
+ * **Orden** (agrupar por, ordenar por) y **Filtro** (fecha límite,
+ * prioridad, etiqueta) — y restablecer al pie.
+ *
+ * Cuarta ronda de refinamiento visual: cada opción de un solo valor es una
+ * fila de "etiqueta a la izquierda, desplegable a la derecha" (`FieldRow` +
+ * `Select`), el mismo criterio que ya usaban agrupar por/ordenar
+ * por/fecha límite/prioridad/etiqueta. Antes, Vista era la única sección con
+ * un lenguaje distinto — tres fichas grandes con ícono para la forma de ver
+ * y listas abiertas para formato de calendario y días adelante — que además
+ * era lo que más estiraba el panel. Unificar hacia el desplegable angosta y
+ * acorta el panel sin sacar ni una opción. Los interruptores (completadas,
+ * hábitos, repeticiones futuras) siguen siendo interruptores — un booleano
+ * no se pone en un desplegable — pero comparten alto y ritmo con las filas
+ * de desplegable (`SwitchRow`/`FieldRow`, mismo `min-h-10`).
  * Nada cambia en qué hacen las opciones ni en cómo se persisten:
  * `useViewOptions`/`view_preferences` siguen iguales.
  *
@@ -176,6 +172,15 @@ export function ViewOptionsBar({
   const { data: labels } = useLabels();
   const [open, setOpen] = useState(false);
 
+  const viewShapeId = useId();
+  const calendarFormatId = useId();
+  const daysAheadId = useId();
+  const groupById = useId();
+  const orderId = useId();
+  const deadlineId = useId();
+  const priorityId = useId();
+  const labelFilterId = useId();
+
   const defaults = defaultOptionsForViewKey(viewKey);
   const hasActiveOptions =
     options.order !== defaults.order ||
@@ -183,6 +188,11 @@ export function ViewOptionsBar({
     options.showCompleted !== defaults.showCompleted ||
     options.showHabits !== defaults.showHabits ||
     countActiveQuickFilters(options.quickFilters) > 0;
+
+  const labelFilterItems: Record<string, string> = {
+    todas: "Todas",
+    ...Object.fromEntries((labels ?? []).map((label) => [label.id, label.name])),
+  };
 
   return (
     <div role="group" aria-label="Opciones de vista">
@@ -199,52 +209,52 @@ export function ViewOptionsBar({
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="w-[22rem] max-w-[calc(100vw-2rem)] max-h-(--available-height) gap-0 overflow-y-auto p-0"
+          className="w-72 max-w-[calc(100vw-2rem)] max-h-(--available-height) gap-0 overflow-y-auto p-0"
         >
-          <div className="space-y-4 px-2 py-3">
+          <div className="space-y-3 px-2 py-3">
             <div className="space-y-1">
               <SectionTitle>Vista</SectionTitle>
 
               {showViewShape && (
-                <div className="px-2 pt-1">
-                  <div className="flex items-center gap-1 rounded-lg border border-input p-1" role="radiogroup" aria-label="Forma de ver">
-                    {VIEW_SHAPE_OPTIONS.map((shape) => {
-                      const Icon = VIEW_SHAPE_ICONS[shape];
-                      return (
-                        <button
-                          key={shape}
-                          type="button"
-                          role="radio"
-                          aria-checked={options.viewShape === shape}
-                          onClick={() => setOption("viewShape", shape)}
-                          className={cn(
-                            "flex flex-1 flex-col items-center gap-1 rounded-md py-2 text-xs text-text-secondary outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
-                            options.viewShape === shape && "bg-surface font-medium text-foreground",
-                          )}
-                        >
-                          <Icon className="size-4" aria-hidden />
+                <FieldRow label="Forma de ver" htmlFor={viewShapeId}>
+                  <Select
+                    items={VIEW_SHAPE_LABELS}
+                    value={options.viewShape}
+                    onValueChange={(value) => setOption("viewShape", value as ViewShape)}
+                  >
+                    <SelectTrigger id={viewShapeId} className="max-w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VIEW_SHAPE_OPTIONS.map((shape) => (
+                        <SelectItem key={shape} value={shape}>
                           {VIEW_SHAPE_LABELS[shape]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
               )}
 
               {showViewShape && options.viewShape === "calendario" && (
-                <div>
-                  <OptionGroupLabel>Formato de calendario</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Formato de calendario">
-                    {CALENDAR_FORMATS.map((format) => (
-                      <OptionRow
-                        key={format}
-                        label={CALENDAR_FORMAT_LABELS[format]}
-                        selected={format === options.formato_calendario}
-                        onClick={() => setOption("formato_calendario", format)}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <FieldRow label="Formato de calendario" htmlFor={calendarFormatId}>
+                  <Select
+                    items={CALENDAR_FORMAT_LABELS}
+                    value={options.formato_calendario}
+                    onValueChange={(value) => setOption("formato_calendario", value as CalendarFormat)}
+                  >
+                    <SelectTrigger id={calendarFormatId} className="max-w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CALENDAR_FORMATS.map((format) => (
+                        <SelectItem key={format} value={format}>
+                          {CALENDAR_FORMAT_LABELS[format]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
               )}
 
               {showViewShape && options.viewShape === "calendario" && (
@@ -257,19 +267,24 @@ export function ViewOptionsBar({
               )}
 
               {showDaysAhead && (
-                <div>
-                  <OptionGroupLabel>Días adelante</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Días adelante">
-                    {DAYS_AHEAD_PRESETS.map((days) => (
-                      <OptionRow
-                        key={days}
-                        label={`${days} días`}
-                        selected={days === options.daysAhead}
-                        onClick={() => setOption("daysAhead", days)}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <FieldRow label="Días adelante" htmlFor={daysAheadId}>
+                  <Select
+                    items={DAYS_AHEAD_ITEMS}
+                    value={String(options.daysAhead)}
+                    onValueChange={(value) => setOption("daysAhead", Number(value))}
+                  >
+                    <SelectTrigger id={daysAheadId} className="max-w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS_AHEAD_PRESETS.map((days) => (
+                        <SelectItem key={days} value={String(days)}>
+                          {days} días
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
               )}
 
               <SwitchRow
@@ -297,33 +312,43 @@ export function ViewOptionsBar({
             <div className="space-y-1">
               <SectionTitle>Orden</SectionTitle>
 
-              <div>
-                <OptionGroupLabel>Agrupar por</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Agrupar por">
-                  {GROUP_BY_OPTIONS.map((groupBy) => (
-                    <OptionRow
-                      key={groupBy}
-                      label={GROUP_BY_LABELS[groupBy]}
-                      selected={groupBy === options.groupBy}
-                      onClick={() => setOption("groupBy", groupBy)}
-                    />
-                  ))}
-                </div>
-              </div>
+              <FieldRow label="Agrupar por" htmlFor={groupById}>
+                <Select
+                  items={GROUP_BY_LABELS}
+                  value={options.groupBy}
+                  onValueChange={(value) => setOption("groupBy", value as GroupByOption)}
+                >
+                  <SelectTrigger id={groupById} className="max-w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GROUP_BY_OPTIONS.map((groupBy) => (
+                      <SelectItem key={groupBy} value={groupBy}>
+                        {GROUP_BY_LABELS[groupBy]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldRow>
 
-              <div>
-                <OptionGroupLabel>Ordenar por</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Ordenar por">
-                  {ORDER_OPTIONS.map((order) => (
-                    <OptionRow
-                      key={order}
-                      label={ORDER_LABELS[order]}
-                      selected={order === options.order}
-                      onClick={() => setOption("order", order)}
-                    />
-                  ))}
-                </div>
-              </div>
+              <FieldRow label="Ordenar por" htmlFor={orderId}>
+                <Select
+                  items={ORDER_LABELS}
+                  value={options.order}
+                  onValueChange={(value) => setOption("order", value as OrderOption)}
+                >
+                  <SelectTrigger id={orderId} className="max-w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORDER_OPTIONS.map((order) => (
+                      <SelectItem key={order} value={order}>
+                        {ORDER_LABELS[order]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldRow>
             </div>
 
             <Separator />
@@ -331,51 +356,66 @@ export function ViewOptionsBar({
             <div className="space-y-1">
               <SectionTitle>Filtro</SectionTitle>
 
-              <div>
-                <OptionGroupLabel>Fecha límite</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Fecha límite">
-                  {DEADLINE_FILTER_OPTIONS.map((value) => (
-                    <OptionRow
-                      key={value}
-                      label={DEADLINE_FILTER_LABELS[value]}
-                      selected={value === options.quickFilters.deadline}
-                      onClick={() => setQuickFilters({ deadline: value })}
-                    />
-                  ))}
-                </div>
-              </div>
+              <FieldRow label="Fecha límite" htmlFor={deadlineId}>
+                <Select
+                  items={DEADLINE_FILTER_LABELS}
+                  value={options.quickFilters.deadline}
+                  onValueChange={(value) => setQuickFilters({ deadline: value as DeadlineFilterOption })}
+                >
+                  <SelectTrigger id={deadlineId} className="max-w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEADLINE_FILTER_OPTIONS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {DEADLINE_FILTER_LABELS[value]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldRow>
 
-              <div>
-                <OptionGroupLabel>Prioridad</OptionGroupLabel>
-                <div role="radiogroup" aria-label="Prioridad">
-                  <OptionRow label="Todas" selected={options.quickFilters.priority == null} onClick={() => setQuickFilters({ priority: null })} />
-                  {TASK_PRIORITIES.map((priority) => (
-                    <OptionRow
-                      key={priority.value}
-                      label={priorityLabel(priority.value)}
-                      selected={priority.value === options.quickFilters.priority}
-                      onClick={() => setQuickFilters({ priority: priority.value })}
-                      icon={<PriorityDot priority={priority.value} />}
-                    />
-                  ))}
-                </div>
-              </div>
+              <FieldRow label="Prioridad" htmlFor={priorityId}>
+                <Select
+                  items={PRIORITY_FILTER_ITEMS}
+                  value={options.quickFilters.priority == null ? "todas" : String(options.quickFilters.priority)}
+                  onValueChange={(value) => setQuickFilters({ priority: value === "todas" ? null : Number(value) })}
+                >
+                  <SelectTrigger id={priorityId} className="max-w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    {TASK_PRIORITIES.map((priority) => (
+                      <SelectItem key={priority.value} value={String(priority.value)}>
+                        <PriorityDot priority={priority.value} />
+                        {priorityLabel(priority.value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldRow>
 
               {labels && labels.length > 0 && (
-                <div>
-                  <OptionGroupLabel>Etiqueta</OptionGroupLabel>
-                  <div role="radiogroup" aria-label="Etiqueta" className="max-h-40 overflow-y-auto">
-                    <OptionRow label="Todas" selected={options.quickFilters.labelId == null} onClick={() => setQuickFilters({ labelId: null })} />
-                    {labels.map((label) => (
-                      <OptionRow
-                        key={label.id}
-                        label={label.name}
-                        selected={label.id === options.quickFilters.labelId}
-                        onClick={() => setQuickFilters({ labelId: label.id })}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <FieldRow label="Etiqueta" htmlFor={labelFilterId}>
+                  <Select
+                    items={labelFilterItems}
+                    value={options.quickFilters.labelId ?? "todas"}
+                    onValueChange={(value) => setQuickFilters({ labelId: value === "todas" ? null : value })}
+                  >
+                    <SelectTrigger id={labelFilterId} className="max-w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas</SelectItem>
+                      {labels.map((label) => (
+                        <SelectItem key={label.id} value={label.id}>
+                          {label.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
               )}
             </div>
           </div>

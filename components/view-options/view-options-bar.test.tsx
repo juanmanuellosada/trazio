@@ -44,6 +44,12 @@ async function openPanel(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Formato/ }));
 }
 
+/** Elige una opción de un desplegable (patrón `FieldRow` + `Select`, tarea 3.1 fase 4): abre el combobox por su etiqueta y clickea la opción. */
+async function chooseOption(user: ReturnType<typeof userEvent.setup>, comboboxName: string, optionName: string) {
+  await user.click(screen.getByRole("combobox", { name: comboboxName }));
+  await user.click(await screen.findByRole("option", { name: optionName }));
+}
+
 describe("ViewOptionsBar — un único disparador que abre el panel (tarea 3.1, D-A)", () => {
   beforeEach(() => {
     setOption.mockClear();
@@ -71,17 +77,19 @@ describe("ViewOptionsBar — un único disparador que abre el panel (tarea 3.1, 
     const user = userEvent.setup();
     renderBar();
     await openPanel(user);
-    expect(screen.getByRole("radiogroup", { name: "Forma de ver" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Lista" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Panel" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Calendario" })).toBeInTheDocument();
+    const combobox = screen.getByRole("combobox", { name: "Forma de ver" });
+    expect(combobox).toBeInTheDocument();
+    await user.click(combobox);
+    expect(await screen.findByRole("option", { name: "Lista" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Panel" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Calendario" })).toBeInTheDocument();
   });
 
   it("elegir calendario cambia viewShape", async () => {
     const user = userEvent.setup();
     renderBar();
     await openPanel(user);
-    await user.click(screen.getByRole("radio", { name: "Calendario" }));
+    await chooseOption(user, "Forma de ver", "Calendario");
     expect(setOption).toHaveBeenCalledWith("viewShape", "calendario");
   });
 
@@ -89,7 +97,7 @@ describe("ViewOptionsBar — un único disparador que abre el panel (tarea 3.1, 
     const user = userEvent.setup();
     renderBar({}, { showViewShape: false });
     await openPanel(user);
-    expect(screen.queryByRole("radiogroup", { name: "Forma de ver" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Forma de ver" })).not.toBeInTheDocument();
   });
 
   it("restablecer llama a reset", async () => {
@@ -110,7 +118,7 @@ describe("ViewOptionsBar — formato de calendario y repeticiones futuras (bloqu
     const user = userEvent.setup();
     renderBar({ viewShape: "lista" });
     await openPanel(user);
-    expect(screen.queryByRole("radiogroup", { name: "Formato de calendario" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Formato de calendario" })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: /repeticiones futuras/i })).not.toBeInTheDocument();
   });
 
@@ -118,7 +126,7 @@ describe("ViewOptionsBar — formato de calendario y repeticiones futuras (bloqu
     const user = userEvent.setup();
     renderBar({ viewShape: "panel" });
     await openPanel(user);
-    expect(screen.queryByRole("radiogroup", { name: "Formato de calendario" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Formato de calendario" })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: /repeticiones futuras/i })).not.toBeInTheDocument();
   });
 
@@ -126,7 +134,7 @@ describe("ViewOptionsBar — formato de calendario y repeticiones futuras (bloqu
     const user = userEvent.setup();
     renderBar({ viewShape: "calendario" });
     await openPanel(user);
-    expect(screen.getByRole("radiogroup", { name: "Formato de calendario" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Formato de calendario" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /repeticiones futuras/i })).toBeInTheDocument();
   });
 
@@ -135,11 +143,12 @@ describe("ViewOptionsBar — formato de calendario y repeticiones futuras (bloqu
     renderBar({ viewShape: "calendario", formato_calendario: "semana" });
     await openPanel(user);
 
-    expect(screen.getByRole("radio", { name: "Día" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "4 días" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Mes" })).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Formato de calendario" }));
+    expect(await screen.findByRole("option", { name: "Día" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "4 días" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Mes" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("radio", { name: "Mes" }));
+    await user.click(screen.getByRole("option", { name: "Mes" }));
     expect(setOption).toHaveBeenCalledWith("formato_calendario", "mes");
   });
 
@@ -162,7 +171,7 @@ describe("ViewOptionsBar — días adelante, solo en Próximos (bloque 6.3)", ()
     const user = userEvent.setup();
     renderBar({}, { showDaysAhead: false });
     await openPanel(user);
-    expect(screen.queryByRole("radiogroup", { name: "Días adelante" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Días adelante" })).not.toBeInTheDocument();
   });
 
   it("ofrece los presets y elegir uno llama a setOption", async () => {
@@ -170,8 +179,7 @@ describe("ViewOptionsBar — días adelante, solo en Próximos (bloque 6.3)", ()
     renderBar({ daysAhead: 14 }, { showDaysAhead: true });
     await openPanel(user);
 
-    expect(screen.getByRole("radiogroup", { name: "Días adelante" })).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "30 días" }));
+    await chooseOption(user, "Días adelante", "30 días");
     expect(setOption).toHaveBeenCalledWith("daysAhead", 30);
   });
 });
@@ -187,10 +195,10 @@ describe("ViewOptionsBar — orden y filtro (secciones Orden y Filtro, tareas 3.
     renderBar();
     await openPanel(user);
 
-    await user.click(screen.getByRole("radio", { name: "Etiqueta" }));
+    await chooseOption(user, "Agrupar por", "Etiqueta");
     expect(setOption).toHaveBeenCalledWith("groupBy", "etiqueta");
 
-    await user.click(screen.getByRole("radio", { name: "Fecha" }));
+    await chooseOption(user, "Ordenar por", "Fecha");
     expect(setOption).toHaveBeenCalledWith("order", "fecha");
   });
 
@@ -199,10 +207,10 @@ describe("ViewOptionsBar — orden y filtro (secciones Orden y Filtro, tareas 3.
     renderBar();
     await openPanel(user);
 
-    await user.click(screen.getByRole("radio", { name: "Con fecha límite" }));
+    await chooseOption(user, "Fecha límite", "Con fecha límite");
     expect(setQuickFilters).toHaveBeenCalledWith({ deadline: "con" });
 
-    await user.click(screen.getByRole("radio", { name: /Urgente/ }));
+    await chooseOption(user, "Prioridad", "Urgente");
     expect(setQuickFilters).toHaveBeenCalledWith({ priority: 1 });
   });
 });
