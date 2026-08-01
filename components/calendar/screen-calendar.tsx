@@ -5,7 +5,6 @@ import { useTheme } from "next-themes";
 import { useMounted } from "@/hooks/use-mounted";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
-import { toastError } from "@/lib/toast";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
 import { useUpdateTask } from "@/lib/tasks/mutations";
 import { useTaskDetail } from "@/components/tasks/task-detail-context";
@@ -14,15 +13,33 @@ import { useHabits } from "@/lib/habits/use-habits";
 import { useSetHabitScheduleOverride } from "@/lib/habits/schedule-overrides";
 import { useHabitScheduleOverridesForRange } from "@/lib/habits/use-habit-schedule-overrides-range";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
-import { taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
+import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
 import type { DragResult } from "@/lib/calendar/drag";
 import type { CalendarBlock, UnscheduledHabitChip } from "@/lib/calendar/block";
-import { eventToCalendarBlock, habitToCalendarBlock, parseHabitBlockId, taskToCalendarBlock } from "@/lib/calendar/screen-blocks";
+import type { CalendarEventInstance, EventInput, RecurrenceEditScope } from "@/lib/calendar/events";
+import {
+  eventToCalendarBlock,
+  habitToCalendarBlock,
+  parseHabitBlockId,
+  taskRecurrencePreviewBlocks,
+  taskToCalendarBlock,
+} from "@/lib/calendar/screen-blocks";
 import { useCalendarRangeEvents } from "@/lib/calendar/use-calendar-range-events";
+import { useRecurringTaskFields } from "@/lib/calendar/use-recurring-task-fields";
+import { useUpdateEvent } from "@/lib/calendar/use-update-event";
+import { expandRecurringTaskRange } from "@/lib/recurrence/expand-range";
+import type { CalendarDate } from "@/lib/parser/dates";
 import type { ViewOptions } from "@/lib/view-options/schema";
 import { CalendarNav } from "./calendar-nav";
 import { CalendarView } from "./calendar-view";
 import { CreateTaskFromRangeDialog } from "./create-task-from-range-dialog";
+import { EditEventDialog } from "./edit-event-dialog";
+import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
+
+function calendarDateFromKey(dateKey: string): CalendarDate {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return { y, m, d };
+}
 
 /**
  * Monta `CalendarView` en una pantalla con opciones de vista (grupo 7,
@@ -47,11 +64,20 @@ import { CreateTaskFromRangeDialog } from "./create-task-from-range-dialog";
  * Los eventos pueden no cargar (D-C/tarea 3.7): igual se muestran tareas y
  * hábitos, con un aviso aparte en vez de romper la vista.
  *
- * Mover o redimensionar un bloque de evento todavía no tiene mutación
- * propia wireada a esta pantalla (no hay UI de edición de eventos existentes
- * en ningún lado del repo todavía, y no hay forma de probarla de punta a
- * punta sin credenciales de Google cargadas): se avisa en vez de fallar en
- * silencio. Tarea y hábito sí están completos.
+ * Mover/redimensionar un evento (D24, tarea 8.4) usa `useUpdateEvent` +
+ * `eventDragChanges`/`eventUpdateInput`; si el evento pertenece a una serie,
+ * abre `RecurrenceScopeDialog` antes de mutar nada (sin default silencioso,
+ * tarea 3.6). Un evento de todo el día se ignora al arrastrar (mismo
+ * criterio que ya documenta `eventDragChanges`: no tiene horario que mover
+ * en esta grilla). El camino sin arrastre (D24) es `EditEventDialog`, que
+ * `handleSelectBlock` abre al hacer clic en un bloque de evento.
+ *
+ * Bloques de vista previa de repeticiones futuras de tareas (tarea 5.7,
+ * `options.showFutureRecurrences`): `useRecurringTaskFields` trae los tres
+ * campos de recurrencia que `TaskRow`/`TASK_LIST_COLUMNS` no incluyen (ver
+ * `lib/calendar/use-recurring-task-fields.ts`), y
+ * `lib/recurrence/expand-range.ts` calcula las fechas futuras dentro del
+ * rango visible — nunca interactivos, la grilla ya los fuerza (`isPreview`).
  */
 export function ScreenCalendar({
   timezone,
@@ -88,8 +114,11 @@ export function ScreenCalendar({
   const { open: openTaskDetail } = useTaskDetail();
   const updateTask = useUpdateTask();
   const setHabitOverride = useSetHabitScheduleOverride();
+  const updateEvent = useUpdateEvent();
 
   const [createRange, setCreateRange] = useState<DragResult | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEventInstance | null>(null);
+  const [pendingEventUpdate, setPendingEventUpdate] = useState<{ event: CalendarEventInstance; changes: EventInput } | null>(null);
 
   const visibleDays = useMemo(
     () => (anchorDate ? visibleDaysForFormat(options.formato_calendario, anchorDate, weekStartsOn) : []),
@@ -101,6 +130,41 @@ export function ScreenCalendar({
 
   const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t] as const)), [tasks]);
   const habitsById = useMemo(() => new Map((habits ?? []).map((h) => [h.id, h] as const)), [habits]);
+  const eventsById = useMemo(() => {
+    const events = rangeEvents.data?.status === "ok" ? rangeEvents.data.events : [];
+    return new Map(events.map((event) => [event.id, event] as const));
+  }, [rangeEvents.data]);
+
+  // Tarea 5.7: campos de recurrencia que `TaskRow` no trae (fuera de
+  // alcance ampliar `TASK_LIST_COLUMNS`, la usan otras cinco pantallas),
+  // pedidos aparte solo para las tareas ya visibles.
+  const taskIds = useMemo(() => tasks.map((task) => task.id), [tasks]);
+  const recurringTaskFields = useRecurringTaskFields(taskIds);
+
+  const previewBlocks = useMemo(() => {
+    if (!options.showFutureRecurrences || !recurringTaskFields.data || visibleDays.length === 0) return [];
+    const rangeStart = calendarDateFromKey(visibleDays[0]!);
+    const rangeEnd = calendarDateFromKey(visibleDays[visibleDays.length - 1]!);
+    const fieldsByTaskId = new Map(recurringTaskFields.data.map((fields) => [fields.id, fields] as const));
+
+    return tasks.flatMap((task) => {
+      const fields = fieldsByTaskId.get(task.id);
+      if (!fields) return [];
+      const occurrences = expandRecurringTaskRange(
+        {
+          recurrence_rule: fields.recurrence_rule,
+          due_date: task.due_date,
+          due_at: task.due_at,
+          recurrence_ends_at: fields.recurrence_ends_at,
+          recurrence_count: fields.recurrence_count,
+        },
+        rangeStart,
+        rangeEnd,
+      );
+      if (occurrences.length === 0) return [];
+      return taskRecurrencePreviewBlocks(task, occurrences, resolveTaskColor(task), timezone);
+    });
+  }, [options.showFutureRecurrences, recurringTaskFields.data, visibleDays, tasks, resolveTaskColor, timezone]);
 
   const taskBlocks = useMemo(
     () =>
@@ -146,8 +210,29 @@ export function ScreenCalendar({
   const blocks = useMemo(() => [...taskBlocks, ...habitBlocks, ...eventBlocks], [taskBlocks, habitBlocks, eventBlocks]);
 
   function handleSelectBlock(block: CalendarBlock) {
-    if (block.type === "task") openTaskDetail(block.id);
-    // Hábito y evento: sin un detalle propio que abrir todavía desde acá.
+    if (block.type === "task") {
+      openTaskDetail(block.id);
+      return;
+    }
+    if (block.type === "event") {
+      const event = eventsById.get(block.id);
+      if (event) setEditingEvent(event);
+      return;
+    }
+    // Hábito: sin un detalle propio que abrir todavía desde acá.
+  }
+
+  function applyEventUpdate(event: CalendarEventInstance, changes: EventInput, scope?: RecurrenceEditScope) {
+    updateEvent.mutate({
+      target: {
+        calendarId: event.calendarId,
+        eventId: event.id,
+        recurringEventId: event.recurringEventId,
+        originalStartTime: event.originalStartTime,
+      },
+      changes,
+      scope,
+    });
   }
 
   function handleMoveOrResize(block: CalendarBlock, range: DragResult) {
@@ -165,11 +250,17 @@ export function ScreenCalendar({
       setHabitOverride.mutate({ habitId, habit, date, scheduledTime, timezone });
       return;
     }
-    toastError(
-      "No pudimos mover el evento",
-      "todavía no se puede editar un evento existente desde el calendario de Trazio",
-      "Editalo directamente desde Google Calendar.",
-    );
+
+    const event = eventsById.get(block.id);
+    // Todo el día: sin horario que mover en esta grilla horaria, se ignora
+    // el arrastre (mismo criterio que ya documenta `eventDragChanges`).
+    if (!event || event.allDay) return;
+    const changes = eventUpdateInput(eventDragChanges(event, range), timezone);
+    if (event.recurringEventId !== null) {
+      setPendingEventUpdate({ event, changes });
+      return;
+    }
+    applyEventUpdate(event, changes);
   }
 
   function handleScheduleHabitChip(chip: UnscheduledHabitChip, target: { date: string; time: string }) {
@@ -206,6 +297,7 @@ export function ScreenCalendar({
           timezone={timezone}
           weekStartsOn={weekStartsOn}
           blocks={blocks}
+          previewBlocks={previewBlocks}
           unscheduledHabits={unscheduledHabits}
           now={now}
           timeFormat={timeFormat}
@@ -223,6 +315,27 @@ export function ScreenCalendar({
           onOpenChange={(open) => !open && setCreateRange(null)}
           range={createRange}
           fixedProjectId={createTaskProjectId}
+        />
+      )}
+
+      {editingEvent && (
+        <EditEventDialog
+          open
+          onOpenChange={(open) => !open && setEditingEvent(null)}
+          event={editingEvent}
+          timezone={timezone}
+        />
+      )}
+
+      {pendingEventUpdate && (
+        <RecurrenceScopeDialog
+          open
+          onOpenChange={(open) => !open && setPendingEventUpdate(null)}
+          action="editar"
+          onConfirm={(scope) => {
+            applyEventUpdate(pendingEventUpdate.event, pendingEventUpdate.changes, scope);
+            setPendingEventUpdate(null);
+          }}
         />
       )}
     </div>

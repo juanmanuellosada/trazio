@@ -1,4 +1,4 @@
-import { GoogleAccessTokenExpiredError, GoogleTransientError } from "./google-client";
+import { GoogleAccessTokenExpiredError, GoogleTransientError, withGoogleApiBaseOverride } from "./google-client";
 
 /**
  * ABM de calendarios de Google (tarea 4.1, capacidad
@@ -26,9 +26,9 @@ import { GoogleAccessTokenExpiredError, GoogleTransientError } from "./google-cl
  * probarlo contra Google real, ver tarea 4.5).
  */
 
-const CALENDARS_ENDPOINT = "https://www.googleapis.com/calendar/v3/calendars";
-const CALENDAR_LIST_ENTRY_ENDPOINT = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
-const COLORS_ENDPOINT = "https://www.googleapis.com/calendar/v3/colors";
+const CALENDARS_ENDPOINT = withGoogleApiBaseOverride("https://www.googleapis.com/calendar/v3/calendars");
+const CALENDAR_LIST_ENTRY_ENDPOINT = withGoogleApiBaseOverride("https://www.googleapis.com/calendar/v3/users/me/calendarList");
+const COLORS_ENDPOINT = withGoogleApiBaseOverride("https://www.googleapis.com/calendar/v3/colors");
 
 const RETRY_DELAY_MS = 300;
 

@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { defineConfig, devices } from "@playwright/test";
+import { MOCK_GOOGLE_BASE_URL } from "./e2e/helpers/google-calendar-mock-config";
 
 // 127.0.0.1, no "localhost": tiene que ser textualmente igual a `site_url`
 // de `supabase/config.toml` (y a `http://127.0.0.1:3000/**` en
@@ -54,14 +55,27 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    // Build de producción real (criterio 14.*: nada de esto vale contra
-    // `next dev`). `next start` sin script propio en package.json: se
-    // invoca directo para no sumar un script que nadie más pidió.
-    command: "pnpm build && pnpm exec next start",
-    url: SITE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    env: supabaseEnv,
-  },
+  webServer: [
+    {
+      // API de Google simulada (tarea 8.11): `GOOGLE_API_BASE_URL` más abajo
+      // hace que `lib/calendar/google-client.ts` y compañía le hablen a este
+      // proceso en vez de a Google real. Levantado aparte (no con
+      // `pnpm build && next start`) porque no es la app: es lo que la app
+      // llama del lado del servidor.
+      command: "node e2e/helpers/google-calendar-mock-server.ts",
+      url: `${MOCK_GOOGLE_BASE_URL}/__test__/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      // Build de producción real (criterio 14.*: nada de esto vale contra
+      // `next dev`). `next start` sin script propio en package.json: se
+      // invoca directo para no sumar un script que nadie más pidió.
+      command: "pnpm build && pnpm exec next start",
+      url: SITE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+      env: { ...supabaseEnv, GOOGLE_API_BASE_URL: MOCK_GOOGLE_BASE_URL },
+    },
+  ],
 });

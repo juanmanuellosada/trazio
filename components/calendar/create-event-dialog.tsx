@@ -122,7 +122,7 @@ export function CreateEventDialog({
               <Label>Calendario</Label>
               <Select value={effectiveCalendarId ?? undefined} onValueChange={(next) => next && setCalendarId(next)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{calendars.find((c) => c.id === effectiveCalendarId)?.summary}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {calendars.map((calendar) => (

@@ -1,4 +1,4 @@
-import { GoogleAccessTokenExpiredError, GoogleTransientError } from "./google-client";
+import { GoogleAccessTokenExpiredError, GoogleTransientError, withGoogleApiBaseOverride } from "./google-client";
 
 /**
  * Llamadas a la API de eventos de Google Calendar
@@ -16,7 +16,7 @@ import { GoogleAccessTokenExpiredError, GoogleTransientError } from "./google-cl
  * miniatura. Ver el informe final del agente.
  */
 
-const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3/calendars";
+const CALENDAR_API_BASE = withGoogleApiBaseOverride("https://www.googleapis.com/calendar/v3/calendars");
 const RETRY_DELAY_MS = 300;
 
 function sleep(ms: number): Promise<void> {

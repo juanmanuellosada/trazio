@@ -170,12 +170,12 @@ credenciales.
 
 ### Criterios de aceptación
 
-- [ ] Se conecta una cuenta de Google y los eventos aparecen con su color.
-- [ ] Un evento editado en Trazio se refleja en Google Calendar, y al revés tras
+- [x] Se conecta una cuenta de Google y los eventos aparecen con su color.
+- [x] Un evento editado en Trazio se refleja en Google Calendar, y al revés tras
       refrescar.
-- [ ] Mover un bloque en el calendario ajusta a 15 minutos y persiste.
-- [ ] Al vencer el token aparece el aviso de reconexión y reconectar funciona.
-- [ ] Las tareas de Trazio **no** se publican en Google.
+- [x] Mover un bloque en el calendario ajusta a 15 minutos y persiste.
+- [x] Al vencer el token aparece el aviso de reconexión y reconectar funciona.
+- [x] Las tareas de Trazio **no** se publican en Google.
 
 ---
 

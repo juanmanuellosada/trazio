@@ -14,9 +14,25 @@ import { randomBytes } from "node:crypto";
  * `GOOGLE_CLIENT_SECRET` silenciosamente.
  */
 
-const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
-const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
-const CALENDAR_LIST_ENDPOINT = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+/**
+ * Costura para los e2e (tarea 8.11): sin `GOOGLE_API_BASE_URL` seteada, esta
+ * función devuelve la URL real de Google tal cual — en producción no cambia
+ * nada. Con la variable seteada (solo Playwright la setea), reemplaza el
+ * origen por un servidor simulado, conservando el resto de la URL intacto.
+ * Necesaria porque estas llamadas las hace el servidor de Next, no el
+ * navegador: a diferencia de un `fetch` de cliente, Playwright no puede
+ * interceptarlas con `page.route`.
+ */
+export function withGoogleApiBaseOverride(url: string): string {
+  const override = process.env.GOOGLE_API_BASE_URL;
+  if (!override) return url;
+  const parsed = new URL(url);
+  return `${override}${parsed.pathname}${parsed.search}`;
+}
+
+const TOKEN_ENDPOINT = withGoogleApiBaseOverride("https://oauth2.googleapis.com/token");
+const AUTH_ENDPOINT = withGoogleApiBaseOverride("https://accounts.google.com/o/oauth2/v2/auth");
+const CALENDAR_LIST_ENDPOINT = withGoogleApiBaseOverride("https://www.googleapis.com/calendar/v3/users/me/calendarList");
 
 // Scope de acceso total: docs/setup-google-calendar.md explica por qué. El
 // ABM de calendarios de esta fase (crear, renombrar, recolorear, eliminar)

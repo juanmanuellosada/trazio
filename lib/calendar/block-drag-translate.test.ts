@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDragChanges, habitDragOverride, taskDragPatch } from "./block-drag-translate";
+import { eventDragChanges, eventUpdateInput, habitDragOverride, taskDragPatch } from "./block-drag-translate";
 
 // Tarea 6.10: la traducción de cada tipo a su propia mutación (D-F,
 // requirement de `assertAppliesOnDate` aparte, cubierto en
@@ -72,5 +72,44 @@ describe("eventDragChanges (tarea 6.3)", () => {
     };
     const result = { start: new Date("2026-08-05T14:00:00-03:00"), end: new Date("2026-08-05T15:00:00-03:00") };
     expect(eventDragChanges(current, result)).toBe(current);
+  });
+});
+
+describe("eventUpdateInput (tarea 8.4/D24: traducción del drag a EventInput)", () => {
+  it("arma el EventInput campo a campo a partir del evento ya trasladado", () => {
+    const changed = {
+      calendarId: "primary",
+      title: "Reunión",
+      description: "Agenda",
+      location: "Oficina",
+      allDay: false,
+      start: "2026-08-05T14:00:00.000Z",
+      end: "2026-08-05T15:00:00.000Z",
+      timeZone: TZ,
+    };
+    expect(eventUpdateInput(changed, "America/Argentina/Ushuaia")).toEqual({
+      calendarId: "primary",
+      title: "Reunión",
+      description: "Agenda",
+      location: "Oficina",
+      allDay: false,
+      start: "2026-08-05T14:00:00.000Z",
+      end: "2026-08-05T15:00:00.000Z",
+      timeZone: TZ,
+    });
+  });
+
+  it("un evento de todo el día no trae timeZone propia: usa la de la pantalla", () => {
+    const changed = {
+      calendarId: "primary",
+      title: "Feriado",
+      description: null,
+      location: null,
+      allDay: true,
+      start: "2026-08-05",
+      end: "2026-08-06",
+      timeZone: null,
+    };
+    expect(eventUpdateInput(changed, TZ).timeZone).toBe(TZ);
   });
 });

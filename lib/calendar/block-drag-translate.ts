@@ -1,5 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { durationMinutesBetween, minutesToTimeString, localMinutesOfDay, type DragResult } from "./drag";
+import type { EventInput } from "./events";
 
 /**
  * Cada dominio traduce el mismo resultado de arrastre (`DragResult`, un
@@ -61,4 +62,27 @@ export function habitDragOverride(start: Date, timezone: string): HabitDragOverr
 export function eventDragChanges<T extends { allDay: boolean; start: string; end: string }>(current: T, result: DragResult): T {
   if (current.allDay) return current;
   return { ...current, start: result.start.toISOString(), end: result.end.toISOString() };
+}
+
+export type EventChangeSource = {
+  calendarId: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  allDay: boolean;
+  start: string;
+  end: string;
+  timeZone: string | null;
+};
+
+/**
+ * Arma el `EventInput` que pide `useUpdateEvent` (tarea 8.4/D24) a partir
+ * del evento ya trasladado por `eventDragChanges`: los mismos campos, con
+ * `timeZone` resuelto a la de la pantalla cuando el evento no traía una
+ * propia (todo el día — `CalendarEventInstance.timeZone` es `null` en ese
+ * caso).
+ */
+export function eventUpdateInput(source: EventChangeSource, fallbackTimeZone: string): EventInput {
+  const { calendarId, title, description, location, allDay, start, end, timeZone } = source;
+  return { calendarId, title, description, location, allDay, start, end, timeZone: timeZone ?? fallbackTimeZone };
 }

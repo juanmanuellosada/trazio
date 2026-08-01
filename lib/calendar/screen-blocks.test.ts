@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
 import type { CalendarEventInstance } from "./events";
-import { eventToCalendarBlock, habitBlockId, habitToCalendarBlock, parseHabitBlockId, taskToCalendarBlock } from "./screen-blocks";
+import {
+  eventToCalendarBlock,
+  habitBlockId,
+  habitToCalendarBlock,
+  parseHabitBlockId,
+  taskRecurrencePreviewBlocks,
+  taskToCalendarBlock,
+} from "./screen-blocks";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -123,5 +130,50 @@ describe("eventToCalendarBlock", () => {
       originalStartTime: null,
     };
     expect(eventToCalendarBlock(event).color).toBe("#6B7280");
+  });
+});
+
+describe("taskRecurrencePreviewBlocks (tarea 5.7: vista previa de repeticiones futuras)", () => {
+  it("una tarea con due_at conserva la misma hora del día en cada ocurrencia futura", () => {
+    const task = { id: "task-1", title: "Regar las plantas", due_at: "2026-08-03T11:00:00-03:00", duration_minutes: 20 };
+    const blocks = taskRecurrencePreviewBlocks(task, [{ y: 2026, m: 8, d: 10 }, { y: 2026, m: 8, d: 17 }], "#22C55E", TZ);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toEqual({
+      id: "task-1::preview::2026-08-10",
+      type: "task",
+      title: "Regar las plantas",
+      color: "#22C55E",
+      allDay: false,
+      start: new Date("2026-08-10T11:00:00-03:00").toISOString(),
+      end: new Date("2026-08-10T11:20:00-03:00").toISOString(),
+      isPreview: true,
+    });
+  });
+
+  it("sin duration_minutes propia, usa 30 minutos por defecto (mismo default que taskToCalendarBlock)", () => {
+    const task = { id: "task-1", title: "Regar las plantas", due_at: "2026-08-03T11:00:00-03:00", duration_minutes: null };
+    const [block] = taskRecurrencePreviewBlocks(task, [{ y: 2026, m: 8, d: 10 }], "#22C55E", TZ);
+    expect(block?.end).toBe(new Date("2026-08-10T11:30:00-03:00").toISOString());
+  });
+
+  it("una tarea sin due_at (solo due_date) arma bloques de todo el día, con end exclusivo", () => {
+    const task = { id: "task-2", title: "Pagar alquiler", due_at: null, duration_minutes: null };
+    const [block] = taskRecurrencePreviewBlocks(task, [{ y: 2026, m: 9, d: 1 }], "#0284C7", TZ);
+    expect(block).toEqual({
+      id: "task-2::preview::2026-09-01",
+      type: "task",
+      title: "Pagar alquiler",
+      color: "#0284C7",
+      allDay: true,
+      start: "2026-09-01",
+      end: "2026-09-02",
+      isPreview: true,
+    });
+  });
+
+  it("sin ocurrencias, no arma ningún bloque", () => {
+    const task = { id: "task-1", title: "Regar las plantas", due_at: null, duration_minutes: null };
+    expect(taskRecurrencePreviewBlocks(task, [], "#22C55E", TZ)).toEqual([]);
   });
 });

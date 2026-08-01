@@ -1,9 +1,11 @@
 import { addDays, format, parseISO } from "date-fns";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
 import type { Habit } from "@/lib/habits/habit-columns";
+import type { CalendarDate } from "@/lib/parser/dates";
+import { formatDate } from "@/lib/parser/dates";
 import type { CalendarEventInstance } from "./events";
 import type { CalendarBlock } from "./block";
-import { instantFromDayMinutes } from "./drag";
+import { instantFromDayMinutes, localMinutesOfDay } from "./drag";
 
 /**
  * Traduce tareas, hábitos y eventos ya traídos por cada pantalla a la forma
@@ -77,6 +79,52 @@ export function habitToCalendarBlock(
     start: instantFromDayMinutes(dateIso, startMinutes, timezone).toISOString(),
     end: instantFromDayMinutes(dateIso, startMinutes + habit.duration_minutes, timezone).toISOString(),
   };
+}
+
+/**
+ * Bloques de vista previa de repeticiones futuras de una tarea recurrente
+ * (tarea 5.7, D-F): mismo color y mismo `duration_minutes` (con el mismo
+ * default) que `taskToCalendarBlock` — las únicas diferencias son
+ * `isPreview: true` y que cada fecha es una ocurrencia futura calculada
+ * aparte (`lib/recurrence/expand-range.ts`), no la fecha actual de la
+ * tarea. Si la tarea tenía hora (`due_at`), cada ocurrencia conserva esa
+ * misma hora del día; si no, queda de todo el día, igual que hoy.
+ */
+export function taskRecurrencePreviewBlocks(
+  task: Pick<TaskRow, "id" | "title" | "due_at" | "duration_minutes">,
+  occurrences: CalendarDate[],
+  colorHex: string,
+  timezone: string,
+): CalendarBlock[] {
+  const durationMinutes = task.duration_minutes ?? DEFAULT_TASK_DURATION_MINUTES;
+  const timeMinutes = task.due_at ? localMinutesOfDay(new Date(task.due_at), timezone) : null;
+
+  return occurrences.map((occurrence) => {
+    const dateIso = formatDate(occurrence);
+    const id = `${task.id}::preview::${dateIso}`;
+    if (timeMinutes !== null) {
+      return {
+        id,
+        type: "task",
+        title: task.title,
+        color: colorHex,
+        allDay: false,
+        start: instantFromDayMinutes(dateIso, timeMinutes, timezone).toISOString(),
+        end: instantFromDayMinutes(dateIso, timeMinutes + durationMinutes, timezone).toISOString(),
+        isPreview: true,
+      };
+    }
+    return {
+      id,
+      type: "task",
+      title: task.title,
+      color: colorHex,
+      allDay: true,
+      start: dateIso,
+      end: format(addDays(parseISO(dateIso), 1), "yyyy-MM-dd"),
+      isPreview: true,
+    };
+  });
 }
 
 export function eventToCalendarBlock(event: CalendarEventInstance): CalendarBlock {
