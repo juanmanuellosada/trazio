@@ -436,8 +436,8 @@ El ícono de la aplicación muestra un número con la cantidad de pendientes de 
 
 ## 10. Atajos de teclado
 
-**Generales:** `Ctrl/Cmd+Z` deshacer; `G` seguido de `I` (Bandeja), `T` (Hoy),
-`U` (Próximos), `C` (Completado), `A` (Hábitos); `S` buscador; `Q` nueva tarea;
+**Generales:** `Ctrl/Cmd+Z` deshacer; `G` seguido de `I` (Bandeja), `H` (Hoy),
+`P` (Próximos), `C` (Completado), `A` (Hábitos); `S` buscador; `Q` nueva tarea;
 `E` nuevo evento de calendario.
 
 **Detalle de tarea:** `Ctrl+S` guardar, `D` fecha, `L` fecha límite, `F` prioridad,

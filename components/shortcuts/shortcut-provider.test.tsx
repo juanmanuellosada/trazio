@@ -220,10 +220,10 @@ describe("ShortcutProvider — el acorde G", () => {
     expect(push).toHaveBeenCalledWith("/bandeja");
   });
 
-  it("G seguido de T navega a Hoy, y de U a Próximos, y de C a Completado", () => {
+  it("G seguido de H navega a Hoy, y de P a Próximos, y de C a Completado", () => {
     renderHarness();
     fireEvent.keyDown(window, { key: "g" });
-    fireEvent.keyDown(window, { key: "t" });
+    fireEvent.keyDown(window, { key: "h" });
     expect(push).toHaveBeenCalledWith("/hoy");
   });
 

@@ -4,8 +4,8 @@ import { CHORD_ROUTES, chordDestinationFor } from "./chord";
 describe("chordDestinationFor", () => {
   it("reconoce las cinco teclas del acorde G", () => {
     expect(chordDestinationFor("i")).toBe("bandeja");
-    expect(chordDestinationFor("t")).toBe("hoy");
-    expect(chordDestinationFor("u")).toBe("proximos");
+    expect(chordDestinationFor("h")).toBe("hoy");
+    expect(chordDestinationFor("p")).toBe("proximos");
     expect(chordDestinationFor("c")).toBe("completado");
     expect(chordDestinationFor("a")).toBe("habitos");
   });

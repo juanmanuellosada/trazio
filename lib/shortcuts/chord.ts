@@ -9,8 +9,8 @@ export type ChordDestination = "bandeja" | "hoy" | "proximos" | "completado" | "
 
 const CHORD_MAP: Record<string, ChordDestination> = {
   i: "bandeja",
-  t: "hoy",
-  u: "proximos",
+  h: "hoy",
+  p: "proximos",
   c: "completado",
   a: "habitos",
 };

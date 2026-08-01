@@ -11,11 +11,11 @@
 
 ## 1. Localizar los atajos (bloqueante)
 
-- [ ] 1.1 `lib/shortcuts/chord.ts`: `t` pasa a `h` para Hoy, y `u` pasa a `p` para Próximos. `i`, `c` y `a` no cambian
-- [ ] 1.2 Verificar que `h` y `p` no colisionan con ningún binding existente, ni global ni por pantalla ni del detalle de tarea
-- [ ] 1.3 Actualizar `lib/shortcuts/chord.test.ts` y `components/shortcuts/shortcut-provider.test.tsx`, que hoy fijan las teclas viejas
-- [ ] 1.4 Corregir la sección 10 de `docs/product-spec.md`, que documenta `G T` y `G U`
-- [ ] 1.5 Probar en el navegador que `G H` lleva a Hoy y `G P` a Próximos, y que las teclas viejas ya no hacen nada
+- [x] 1.1 `lib/shortcuts/chord.ts`: `t` pasa a `h` para Hoy, y `u` pasa a `p` para Próximos. `i`, `c` y `a` no cambian
+- [x] 1.2 Verificar que `h` y `p` no colisionan con ningún binding existente, ni global ni por pantalla ni del detalle de tarea
+- [x] 1.3 Actualizar `lib/shortcuts/chord.test.ts` y `components/shortcuts/shortcut-provider.test.tsx`, que hoy fijan las teclas viejas
+- [x] 1.4 Corregir la sección 10 de `docs/product-spec.md`, que documenta `G T` y `G U`
+- [x] 1.5 Probar en el navegador que `G H` lleva a Hoy y `G P` a Próximos, y que las teclas viejas ya no hacen nada
 
 ## 2. Indicadores de atajo *(paralelo tras el grupo 1)*
 
