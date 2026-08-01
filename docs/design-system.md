@@ -338,65 +338,49 @@ todavía no llena el viewport pero el margen sobrante sigue siendo chico:
 ahí alinear a la izquierda no genera el problema original y centrar sí lo
 reproduce.
 
-**La respuesta no es volver a elegir entre las dos, es dejar que el ancho
-disponible decida (decisión D35).** Por encima de un umbral, centrado — el
-margen sobrante ya es suficiente para leerse como aire de diseño, no como
-columna torcida. Por debajo, alineado a la izquierda — el mismo tratamiento
-que resolvió el hueco original, para el rango de ancho donde ese hueco
-todavía se nota. El umbral concreto, junto con el comportamiento en el
-tramo intermedio, lo define la skill `ui-ux-pro-max` (tarea 9.2 de
-`interfaz-refinada`). En mobile no hay diferencia visible: el panel lateral
-no está presente (`hidden md:flex`) y el viewport ya es más angosto que
+**La respuesta no es un umbral, es dejar que `mx-auto` resuelva solo, sin
+condición (decisión D39).** Con el tope de columna en 72rem y `mx-auto` sin
+ninguna variante que lo active, el propio mecanismo de centrado de CSS ya
+cubre los dos casos que las versiones anteriores intentaban resolver a
+mano: por debajo del tope no queda margen para repartir, así que el
+contenido llena el ancho disponible — el mismo alineado a la izquierda que
+resolvía el hueco original, en el rango de ancho donde ese hueco se nota.
+Por encima del tope, el margen sobrante se centra solo — sin que haga falta
+calcular en qué punto empieza a leerse como aire de diseño en vez de
+columna torcida. En mobile no hay diferencia visible: el panel lateral no
+está presente (`hidden md:flex`) y el viewport ya es más angosto que
 `max-w-content`.
 
 Si en el futuro alguien vuelve a discutir centrado contra alineado a la
-izquierda como si fuera una sola decisión fija para siempre, la respuesta
-ya está acá: las dos versiones anteriores eran correctas para el ancho de
-columna que tenían en su momento (768px, y luego 1152px sin piso). El error
-nunca fue la elección, fue tratar un umbral variable como una constante —
-lo que hace falta no es volver a elegir un bando, es el umbral.
+izquierda, o propone un umbral nuevo mejor calibrado que 90rem, la
+respuesta ya está acá: la decisión D35 fijó ese umbral para decidir entre
+los dos, y se descalibró apenas el tope de columna subió de 48rem a 72rem
+sin que nadie lo recalculara — quedó una franja (entre 1152px y 1440px de
+ancho disponible) donde no llenaba ni centraba. La decisión D39 no
+recalibra el número: saca la condición. Un umbral fijo depende de otro
+valor (el tope de columna) y los dos se descalibran de nuevo apenas uno
+cambia sin el otro; `mx-auto` sin condición no tiene esa dependencia,
+porque no es un número que haya que mantener sincronizado a mano.
 
 Si en el futuro alguien vuelve a ver la metadata lejos del título en una
 pantalla ancha, la corrección es revisar el `flex-1`/`max-w-lg` de
 `TaskRow`, no volver a achicar `--container-content` — eso repetiría el
 mismo diagnóstico equivocado que esta sección documenta.
 
-**El umbral de centrado es 90rem/1440px de ancho disponible** (tarea 9.2 de
-`interfaz-refinada`) — no de ventana: es el ancho que le queda a la columna
-una vez descontado el panel lateral (`AppSidebar`, `w-16` colapsado/`w-64`
-expandido), sin regla puntual de la skill para esta composición exacta,
-igual que ya pasaba con el alineado a la izquierda más arriba en esta misma
-sección. El valor concreto sale de la misma familia de breakpoints
-documentada que ya validó el tope de columna (dominio `ux`, categoría
-*Responsive*, resultado "Breakpoint Testing": "Do: Test at 320 375 414 768
-1024 1440" — fuente `ux-guidelines.csv`; la categoría *Layout & Responsive*
-del catálogo general coincide, listando 1440 como uno de los "systematic
-breakpoints" de referencia junto a 375/768/1024). 1440px es, además, el
-mismo punto que ya usaba el razonamiento de esta sección para el tope de
-columna: "en un monitor ancho (1440px+), 1152px de columna pegada al panel
-ya deja poco margen residual" — el umbral de centrado reutiliza ese mismo
-número en vez de inventar uno nuevo.
-
-No hay tratamiento intermedio: es un único breakpoint, centrado de un lado y
-alineado a la izquierda del otro, igual que la decisión D35 lo plantea (un
-umbral, no una transición gradual) — una franja de transición progresiva
-sumaría complejidad que ni el requisito ni la skill piden.
-
-Técnicamente, el umbral se resuelve con una *container query* de CSS en vez
-de JavaScript con un listener de resize: el panel lateral y la columna de
-contenido ya son hermanos dentro de un contenedor flex
-(`app/(app)/layout.tsx`), así que el ancho que le queda a la columna después
-de descontar el panel **ya es su ancho renderizado real** — no hace falta
-duplicar el ancho del panel en una variable sincronizada a mano. Ese
-contenedor flex lleva la clase `@container` (`app/(app)/layout.tsx`), y cada
-columna de contenido agrega `@[90rem]:mx-auto` junto a `max-w-content`: por
-debajo de 1440px de ancho disponible no hay margen automático (queda
-alineada a la izquierda, el comportamiento por defecto); por encima, el
-margen se centra solo. El colapso/expansión del panel (`w-16`/`w-64`,
+**El centrado no tiene umbral: `mx-auto` corre siempre** (decisión D39). El
+par de clases es `w-full max-w-content mx-auto`, sin ninguna variante
+condicional, aplicado en las mismas vistas que ya usaban `max-w-content`
+(Hoy, Bandeja de entrada, Proyecto, Completado, detalle de tarea en su ruta
+suelta) y también en las que habían quedado afuera del despliegue original
+de D35 (Etiquetas, Filtros, resultados de un filtro, Hábitos, Buscar). No
+hay tratamiento intermedio que documentar, porque no hay dos comportamientos
+entre los que elegir: por debajo del tope de columna el contenido llena el
+ancho disponible, por encima se centra, y es el mismo cálculo de CSS —
+`margin-inline: auto` contra un `max-width` — en los dos casos. El
+colapso o expansión del panel lateral (`w-16`/`w-64`,
 `components/layout/app-sidebar.tsx`) cambia el ancho disponible de la
-columna sin ningún cambio adicional, porque sigue siendo el mismo cálculo de
-layout flex de siempre — no una lectura de variable que haya que mantener
-sincronizada aparte.
+columna sin ningún ajuste adicional, porque sigue siendo el mismo layout
+flex de siempre.
 
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 
