@@ -2,34 +2,26 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LabelsCollapsibleList, FiltersCollapsibleList } from "./label-filter-lists";
-import type { Label } from "@/lib/labels/use-labels";
+import { FiltersCollapsibleList } from "./label-filter-lists";
 import type { FilterRow } from "@/lib/filters/use-filters";
 
 /**
- * Tests de las listas colapsables de etiquetas y filtros (bloque 8.3/8.4):
- * solo listan los ítems no favoritos (los favoritos ya están en la sección
- * Favoritos), no se renderizan si no queda ninguno, y expandir/contraer
- * muestra u oculta la lista.
+ * Tests de la lista colapsable de filtros (bloque 8.4): solo lista los no
+ * favoritos (los favoritos ya están en la sección Favoritos), no se
+ * renderiza si no queda ninguno, y expandir/contraer muestra u oculta la
+ * lista. La de etiquetas se sacó en `etiquetas-sin-lista-duplicada` (D-A);
+ * sus casos de cero etiquetas y todas favoritas se reapuntaron a
+ * `app-sidebar.test.tsx`, describe "AppSidebar — acceso Etiquetas".
  */
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/bandeja" }));
-
-const mockUseLabels = vi.fn();
-vi.mock("@/lib/labels/use-labels", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/labels/use-labels")>();
-  return { ...actual, useLabels: () => mockUseLabels() };
-});
 
 const mockUseFilters = vi.fn();
 vi.mock("@/lib/filters/use-filters", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/filters/use-filters")>();
   return { ...actual, useFilters: () => mockUseFilters() };
 });
-
-const favoriteLabel = { id: "l1", name: "Compras", color: "amarillo", is_favorite: true } satisfies Label;
-const plainLabel = { id: "l2", name: "Lectura", color: "verde", is_favorite: false } satisfies Label;
 
 const favoriteFilter = {
   id: "f1",
@@ -47,47 +39,6 @@ const plainFilter = {
   icon: null,
   is_favorite: false,
 } satisfies FilterRow;
-
-describe("LabelsCollapsibleList", () => {
-  it("muestra el acceso aunque todas las etiquetas sean favoritas, sin listar ninguna al expandir", async () => {
-    const user = userEvent.setup();
-    mockUseLabels.mockReturnValue({ data: [favoriteLabel] });
-    render(<LabelsCollapsibleList />);
-
-    expect(screen.getByRole("button", { name: /Etiquetas/ })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Etiquetas/ }));
-
-    expect(await screen.findByText("No hay etiquetas para mostrar acá.")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Compras" })).not.toBeInTheDocument();
-  });
-
-  it("muestra el acceso aunque el usuario no tenga ninguna etiqueta", async () => {
-    const user = userEvent.setup();
-    mockUseLabels.mockReturnValue({ data: [] });
-    render(<LabelsCollapsibleList />);
-
-    expect(screen.getByRole("button", { name: /Etiquetas/ })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Etiquetas/ }));
-
-    expect(await screen.findByText("No hay etiquetas para mostrar acá.")).toBeInTheDocument();
-  });
-
-  it("lista las etiquetas no favoritas, sin las favoritas, al expandir", async () => {
-    const user = userEvent.setup();
-    mockUseLabels.mockReturnValue({ data: [favoriteLabel, plainLabel] });
-    render(<LabelsCollapsibleList />);
-
-    expect(screen.getByRole("button", { name: /Etiquetas/ })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Lectura" })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Etiquetas/ }));
-
-    expect(await screen.findByRole("link", { name: "Lectura" })).toHaveAttribute("href", "/etiquetas/l2");
-    expect(screen.queryByRole("link", { name: "Compras" })).not.toBeInTheDocument();
-  });
-});
 
 describe("FiltersCollapsibleList", () => {
   it("no renderiza nada si todos los filtros son favoritos", () => {

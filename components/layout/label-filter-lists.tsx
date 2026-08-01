@@ -3,13 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { ChevronRight, Filter as FilterIcon, Tag } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useMounted } from "@/hooks/use-mounted";
-import { useLabels, type Label } from "@/lib/labels/use-labels";
 import { useFilters, type FilterRow } from "@/lib/filters/use-filters";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { ProjectMark } from "./project-tree";
 import { cn } from "@/lib/utils";
 
@@ -47,60 +43,12 @@ function ListTrigger({ icon: Icon, label, open }: { icon: typeof Tag; label: str
 }
 
 /**
- * Lista colapsable de etiquetas (bloque 8.3, capacidad
- * `navegacion-por-etiqueta`, requirement "Acceso 'Etiquetas' en el panel
- * lateral"): solo las que no están marcadas como favoritas, esas ya se
- * muestran en la sección Favoritos. Colapsada por defecto para que el panel
- * no se alargue de entrada; sin `initialData` porque el layout del servidor
- * no siembra etiquetas (mismo motivo que en `FavoritesSection`).
- *
- * Ya no devuelve `null` sin etiquetas no favoritas (`etiquetas-con-lugar-propio`,
- * D-A): el acceso a la administración de etiquetas ahora vive en
- * `sidebar-content.tsx` como ítem principal, así que esta lista puede seguir
- * mostrándose vacía sin dejar el panel sin ningún rastro de "Etiquetas".
- */
-export function LabelsCollapsibleList() {
-  const [open, setOpen] = useState(false);
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
-  const { data } = useLabels();
-  const labels = ((data ?? []) as Label[]).filter((l) => !l.is_favorite);
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <ListTrigger icon={Tag} label="Etiquetas" open={open} />
-      <CollapsibleContent>
-        {labels.length === 0 ? (
-          <p className="px-2.5 py-1 pl-5 text-sm text-text-secondary">No hay etiquetas para mostrar acá.</p>
-        ) : (
-          <ul className="flex flex-col gap-0.5 py-0.5 pl-5">
-            {labels.map((label) => (
-              <li key={label.id}>
-                <ListItemLink
-                  href={`/etiquetas/${label.id}`}
-                  name={label.name}
-                  mark={
-                    <span
-                      aria-hidden
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
-                    />
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-/**
  * Lista colapsable de filtros (bloque 8.4, capacidad `filtros-guardados`,
  * requirement "Ubicación de los filtros en el panel lateral"): solo los no
- * favoritos. Mismo patrón que `LabelsCollapsibleList`.
+ * favoritos. Se devuelve `null` sin filtros no favoritos porque, a diferencia
+ * de Etiquetas (`etiquetas-sin-lista-duplicada`, D-C), la administración de
+ * filtros sigue enterrada en el menú de cuenta: esta lista es su único
+ * rastro en el panel lateral.
  */
 export function FiltersCollapsibleList() {
   const [open, setOpen] = useState(false);

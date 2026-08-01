@@ -4,7 +4,7 @@ import { SidebarAddTask } from "./sidebar-add-task";
 import { SidebarAddEvent } from "./sidebar-add-event";
 import { AccountMenu } from "./account-menu";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
-import { LabelsCollapsibleList, FiltersCollapsibleList } from "./label-filter-lists";
+import { FiltersCollapsibleList } from "./label-filter-lists";
 import { Separator } from "@/components/ui/separator";
 import { CHORD_KEY_BY_DESTINATION, CHORD_TRIGGER_KEY } from "@/lib/shortcuts/chord";
 import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
@@ -40,8 +40,9 @@ function getInitials(source: string): string {
  * administración, `/etiquetas`, capacidad `administracion-de-etiquetas`—,
  * Hábitos, Completado — ese orden lo fija `docs/product-spec.md`), Favoritos
  * (proyectos, etiquetas y filtros marcados como tales), árbol de proyectos,
- * lista colapsable de las etiquetas no favoritas (cada una a su propia
- * página, no a la administración) y de filtros, y pie.
+ * lista colapsable de filtros (la de etiquetas se sacó en
+ * `etiquetas-sin-lista-duplicada`, D-A: el acceso principal ya cubre ese
+ * caso), y pie.
  */
 export function SidebarContent({
   collapsed = false,
@@ -149,7 +150,6 @@ export function SidebarContent({
           <ProjectsSection initialProjects={initialProjects} taskCounts={taskCounts} />
           <Separator />
           <div className="flex flex-col gap-0.5 p-2">
-            <LabelsCollapsibleList />
             <FiltersCollapsibleList />
           </div>
         </div>

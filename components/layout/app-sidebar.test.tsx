@@ -35,6 +35,12 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/bandeja",
 }));
 
+const mockUseLabels = vi.fn(() => ({ data: [] as Array<{ id: string; name: string; color: string; is_favorite: boolean }> }));
+vi.mock("@/lib/labels/use-labels", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/labels/use-labels")>();
+  return { ...actual, useLabels: () => mockUseLabels() };
+});
+
 const STORAGE_KEY = "trazio:sidebar-collapsed";
 
 function renderSidebar() {
@@ -99,11 +105,15 @@ describe("AppSidebar — colapso", () => {
 /**
  * Tests del acceso principal "Etiquetas" (`etiquetas-con-lugar-propio`,
  * requirement "Acceso 'Etiquetas' en el panel lateral"): se muestra siempre,
- * incluso sin ninguna etiqueta creada — sin `initialData` para `useLabels`,
- * este render no siembra ninguna, el mismo caso que hoy falla en producción.
+ * incluso sin ninguna etiqueta creada o con todas marcadas como favoritas.
+ * Reapuntados de `label-filter-lists.test.tsx` (`etiquetas-sin-lista-duplicada`,
+ * D-A): esos dos casos escondían el acceso cuando era la lista plegable la
+ * que lo garantizaba; ahora lo garantiza este acceso principal, que no
+ * depende de `useLabels` para mostrarse.
  */
 describe("AppSidebar — acceso Etiquetas", () => {
   it("se muestra entre Próximos y Hábitos, con destino /etiquetas, aunque no haya ninguna etiqueta", () => {
+    mockUseLabels.mockReturnValueOnce({ data: [] });
     renderSidebar();
 
     const mainNav = screen.getByRole("navigation", { name: "Navegación principal" });
@@ -115,6 +125,19 @@ describe("AppSidebar — acceso Etiquetas", () => {
     const links = Array.from(mainNav.querySelectorAll("a")).map((a) => a.getAttribute("href"));
     expect(links.indexOf("/proximos")).toBeLessThan(links.indexOf("/etiquetas"));
     expect(links.indexOf("/etiquetas")).toBeLessThan(links.indexOf("/habitos"));
+  });
+
+  it("se muestra igual si todas las etiquetas del usuario son favoritas", () => {
+    mockUseLabels.mockReturnValueOnce({
+      data: [{ id: "l1", name: "Urgente", color: "amarillo", is_favorite: true }],
+    });
+    renderSidebar();
+
+    const mainNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const labels = screen.getByRole("link", { name: "Etiquetas" });
+
+    expect(mainNav).toContainElement(labels);
+    expect(labels).toHaveAttribute("href", "/etiquetas");
   });
 
   it("anuncia G E como su atajo, la misma tecla que efectivamente navega", () => {

@@ -279,8 +279,7 @@ Colapsable a una versión angosta de solo íconos. De arriba abajo:
    botón para crear subproyecto, y arrastrar para reordenar entre hermanos.
    Anidar un proyecto o cambiarlo de padre se hace desde el menú contextual o
    el diálogo "Mover a…".
-6. Lista colapsable de las etiquetas que no son favoritas, cada una a su propia
-   página; y lista colapsable de filtros.
+6. Lista colapsable de filtros.
 7. Al pie: cambiar tema, Configuración, cerrar sesión.
 
 ### Barra inferior (teléfono)
