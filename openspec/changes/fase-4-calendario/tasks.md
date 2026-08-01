@@ -16,10 +16,10 @@
 
 ## 0. Tareas del dueño del proyecto *(no las hace ningún agente)*
 
-- [ ] 0.1 Crear el proyecto y las credenciales en Google Cloud siguiendo `docs/setup-google-calendar.md`, con el permiso `calendar` completo
-- [ ] 0.2 Cargar `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` en local y en Vercel
-- [ ] 0.3 Generar la clave de cifrado de 32 bytes y cargarla como variable de servidor, nunca expuesta al navegador
-- [ ] 0.4 Actualizar la política de privacidad **antes** de activar la conexión: se empiezan a mandar datos a un tercero (D20, el texto lo provee el dueño)
+- [x] 0.1 Crear el proyecto y las credenciales en Google Cloud siguiendo `docs/setup-google-calendar.md`, con el permiso `calendar` completo
+- [x] 0.2 Cargar `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` en local y en Vercel — verificado en `.env.local` (`GOOGLE_CLIENT_ID` de 72 caracteres con la forma correcta, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` cargadas) y la conexión OAuth funcionó de punta a punta contra Google real; lo de Vercel **no se pudo comprobar** desde acá, no hay CLI de Vercel instalada — queda bajo la palabra del dueño.
+- [x] 0.3 Generar la clave de cifrado de 32 bytes y cargarla como variable de servidor, nunca expuesta al navegador — verificado en `.env.local`: `CALENDAR_REFRESH_TOKEN_ENCRYPTION_KEY` de 44 caracteres en base64 (32 bytes).
+- [ ] 0.4 Actualizar la política de privacidad **antes** de activar la conexión: se empiezan a mandar datos a un tercero (D20, el texto lo provee el dueño) — dato que salió en el camino: la política ya estaba desactualizada antes de esta fase. Tiene un párrafo que promete actualizarse antes de activar comentarios, recordatorios push, hábitos y la conexión con Google Calendar, y las tres primeras están en producción desde las fases 2 y 3. La deuda es de cuatro funcionalidades, no solo del calendario.
 - [ ] 0.5 Iniciar la verificación de Google apenas la fase funcione en desarrollo, no cuando se quiera lanzar
 
 ## 1. Esquema y cifrado (bloqueante)
@@ -60,7 +60,7 @@
 - [x] 4.2 Interfaz de administración en la sección Calendarios de Configuración
 - [x] 4.3 El color sale de lo que Google admite, no de la paleta fija de Trazio — anotar la tensión con D19
 - [x] 4.4 Eliminar pide confirmación advirtiendo que **el calendario se borra de la cuenta de Google entera**, no solo de Trazio
-- [ ] 4.5 Verificar contra la API real que `calendars.delete` hace exactamente eso antes de escribir esa advertencia — **sin verificar todavía**: no hay credenciales de Google cargadas (grupo 0 pendiente, `.env.local` no tiene `GOOGLE_CLIENT_ID` ni relacionadas). Se verificó contra la documentación oficial de `calendars.delete` ("Deletes a secondary calendar. Use calendars.clear for clearing all events on primary calendars.") y de `calendarList.patch`/`colors` para el color, no contra la API real. Falta repetir esta verificación con una cuenta de Google real en cuanto el grupo 0 cargue las credenciales.
+- [x] 4.5 Verificar contra la API real que `calendars.delete` hace exactamente eso antes de escribir esa advertencia — confirmado contra Google real durante la verificación de la fase (grupo 8).
 
 ## 5. La grilla del calendario *(tras los grupos 3 y 4)*
 
