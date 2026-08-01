@@ -38,7 +38,7 @@ export function ProjectHeader({
 
   return (
     <header className="border-b border-border px-4 py-4 sm:px-6">
-      <div className="flex w-full max-w-content items-start justify-between gap-3 @[90rem]:mx-auto">
+      <div className="flex w-full max-w-content mx-auto items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
           {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}

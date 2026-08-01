@@ -94,13 +94,13 @@ export function HoyView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="flex w-full max-w-content items-center gap-2 @[90rem]:mx-auto">
+          <div className="flex w-full max-w-content mx-auto items-center gap-2">
             <Sun aria-hidden className="size-5 text-primary" />
             <h1 className="text-2xl font-semibold text-foreground">Hoy</h1>
           </div>
         </header>
         <ViewOptionsBar viewKey={VIEW_KEY} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
-        <div className="w-full max-w-content flex-1 space-y-6 overflow-y-auto p-4 sm:p-6 @[90rem]:mx-auto">
+        <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
           {inboxProjectId && (
             <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={todayDate} />
           )}

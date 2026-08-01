@@ -149,7 +149,7 @@ export function SectionedTasks({
 
         <div
           className={cn(
-            "w-full max-w-content flex-1 p-4 sm:p-6 @[90rem]:mx-auto",
+            "w-full max-w-content mx-auto flex-1 p-4 sm:p-6",
             options.viewShape === "calendario" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
           )}
         >

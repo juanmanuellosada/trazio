@@ -43,7 +43,7 @@ export default async function BandejaPage() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="w-full max-w-content @[90rem]:mx-auto">
+        <div className="w-full max-w-content mx-auto">
           <h1 className="text-2xl font-semibold text-foreground">Bandeja de entrada</h1>
         </div>
       </header>

@@ -682,7 +682,10 @@ hueco casi no existe en pantallas grandes, pero sí en las medianas.
 
 **Consecuencia.** El umbral concreto lo define la skill `ui-ux-pro-max`
 (tarea 9.2 de `interfaz-refinada`) — lo que esta decisión fija es que no
-vuelva a resolverse con un número de columna fijo y chico.
+vuelva a resolverse con un número de columna fijo y chico. (Nota: D39
+elimina el umbral que esta decisión introdujo — el centrado pasa a
+aplicarse siempre que sobra espacio, sin container query. Esta entrada
+queda como registro histórico de por qué existió la condición.)
 
 ---
 
@@ -816,3 +819,46 @@ este mismo patrón: cifrado en aplicación con AES-256-GCM y clave de servidor, 
 Vault ni cifrado de columna. Perder la clave de cifrado invalida todas las
 conexiones existentes — documentado para que nadie la mueva a la base "para no
 perderla".
+
+---
+
+## D39 — Se elimina el umbral de centrado que fijó D35; `mx-auto` corre siempre
+
+**Fecha.** 2026-08-01
+
+**Contexto.** D35 centraba la columna de contenido solo por encima de un
+umbral de ancho disponible (90rem/1440px, medido con container queries para
+que colapsar el panel lateral contara), implementado como el par de clases
+`w-full max-w-content @[90rem]:mx-auto`. Pero el tope de la columna
+(`--container-content`) es 72rem/1152px, y entre 1152px y 1440px de ancho
+disponible ninguna de las dos condiciones se cumple: no llena (sobra ancho)
+ni centra (no llegó al umbral). En ese tramo el contenido queda pegado a la
+izquierda con hasta ~288px muertos del lado derecho — exactamente el reparto
+que D35 existía para evitar, y en un monitor de 1600px, que no es un caso de
+borde. Además, cinco vistas (Etiquetas, Filtros, resultados de un filtro,
+Hábitos, Buscar) tenían `max-w-content` pero nunca recibieron la variante de
+container query: el despliegue original de D35 cubrió cinco pantallas y
+quedaron afuera sin que nadie volviera a pasar.
+
+**Decisión.** Se saca la condición. El par pasa de
+`w-full max-w-content @[90rem]:mx-auto` a `w-full max-w-content mx-auto`, en
+todas las vistas, incluidas las cinco que no lo tenían. `mx-auto` sin
+condición ya resuelve lo que D35 pedía: por debajo del tope de columna llena
+el ancho disponible, porque no queda margen para repartir; por encima,
+centra. No hace falta un umbral aparte para eso.
+
+**Por qué no se recalibra el número en vez de sacar la condición.** El
+defecto no fue elegir mal 90rem — fue que un umbral fijo depende del tope de
+columna (72rem), y los dos se descalibran apenas uno cambia sin el otro: es
+lo que ya pasó, cuando el tope de columna subió de 48rem a 72rem sin que el
+umbral de centrado se recalculara. Elegir hoy un número nuevo, mejor
+ajustado a 72rem, no evita que se repita — deja la misma clase de bug
+esperando la próxima vez que el tope de columna cambie. Sacar la condición
+quita la variable que hay que mantener sincronizada a mano.
+
+**Consecuencia.** El `@container` de `app/(app)/layout.tsx` se revisó: sigue
+en pie porque `components/view-options/view-options-bar.tsx` todavía usa
+`@[90rem]:mx-auto` (fuera del alcance de esta tanda); si ese archivo pasa al
+mismo criterio, `@container` queda sin ningún consumidor y se puede sacar.
+`docs/design-system.md` §5.1 documenta el mecanismo de umbral y container
+query que esta decisión reemplaza, y queda pendiente de actualizar.

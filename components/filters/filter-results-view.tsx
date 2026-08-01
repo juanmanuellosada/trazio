@@ -73,13 +73,13 @@ export function FilterResultsView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="w-full max-w-content">
+          <div className="w-full max-w-content mx-auto">
             <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
           </div>
         </header>
         <ViewOptionsBar viewKey={`filtro:${filterId}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
 
-        <div className="w-full max-w-content flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
+        <div className="w-full max-w-content mx-auto flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           {(missingLabels.length > 0 || missingProjects.length > 0) && (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-3 text-sm text-text-secondary">
               <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-text-secondary" />

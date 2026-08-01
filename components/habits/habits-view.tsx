@@ -112,7 +112,7 @@ export function HabitsView({
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="w-full max-w-content space-y-4">
+        <div className="w-full max-w-content mx-auto space-y-4">
           <div className="flex items-center justify-between gap-2">
             <h1 className="text-2xl font-semibold text-foreground">Hábitos</h1>
             {habits.length > 0 && (
@@ -130,7 +130,7 @@ export function HabitsView({
         </div>
       </header>
 
-      <div className="w-full max-w-content flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
         {habits.length === 0 ? (
           <TaskListEmptyState
             icon={Repeat}

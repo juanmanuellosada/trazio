@@ -20,13 +20,13 @@ export function SearchView() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="flex w-full max-w-content items-center gap-2">
+        <div className="flex w-full max-w-content mx-auto items-center gap-2">
           <SearchIcon aria-hidden className="size-5 text-primary" />
           <h1 className="text-2xl font-semibold text-foreground">Buscar</h1>
         </div>
       </header>
 
-      <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-content mx-auto flex-1 overflow-y-auto p-4 sm:p-6">
         <Input
           autoFocus
           type="search"

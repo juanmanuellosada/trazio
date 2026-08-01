@@ -5,13 +5,10 @@ import { defaultOptionsForViewKey } from "@/lib/view-options/schema";
 import { HoyView } from "./hoy-view";
 
 /**
- * Test del centrado condicional (bloque 9, D35 / design-system.md §5.1): la
- * columna de contenido lleva la variante de container query
- * `@[90rem]:mx-auto` junto a `max-w-content`, que centra por encima del
- * umbral de ancho disponible (90rem/1440px) y deja alineada a la izquierda
- * por debajo. jsdom no evalúa container queries reales (no hay layout), así
- * que esto verifica que la clase esté presente — el comportamiento
- * resultante en distintos anchos se confirma en un navegador real.
+ * Test del centrado (bloque 9, D39 / design-system.md §5.1): la columna de
+ * contenido lleva `mx-auto` junto a `max-w-content`, que centra siempre que
+ * sobra espacio y llena el ancho por debajo del máximo, sin condición de
+ * container query.
  */
 
 vi.mock("@/lib/tasks/use-hoy-tasks", () => ({
@@ -53,8 +50,8 @@ vi.mock("@/lib/calendar/use-today-events", () => ({
   useTodayEvents: () => ({ data: { status: "ok", events: [] }, isPending: false, isError: false }),
 }));
 
-describe("HoyView — centrado condicional", () => {
-  it("aplica @[90rem]:mx-auto junto con max-w-content al encabezado y al contenido", () => {
+describe("HoyView — centrado", () => {
+  it("aplica mx-auto junto con max-w-content al encabezado y al contenido", () => {
     const { container } = render(
       <HoyView
         userId="user-1"
@@ -71,7 +68,7 @@ describe("HoyView — centrado condicional", () => {
     const contentDivs = container.querySelectorAll(".max-w-content");
     expect(contentDivs).toHaveLength(2);
     contentDivs.forEach((div) => {
-      expect(div).toHaveClass("max-w-content", "@[90rem]:mx-auto");
+      expect(div).toHaveClass("max-w-content", "mx-auto");
     });
   });
 });

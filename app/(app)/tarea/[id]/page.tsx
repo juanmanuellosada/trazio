@@ -31,7 +31,7 @@ export default async function TareaPage({ params }: { params: Promise<{ id: stri
   const task = await getTask(id, user.id);
 
   return (
-    <div className="h-full max-w-content @[90rem]:mx-auto">
+    <div className="h-full max-w-content mx-auto">
       <TaskDetailContent taskId={id} initialData={task} />
     </div>
   );

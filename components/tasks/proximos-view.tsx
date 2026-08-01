@@ -153,14 +153,14 @@ export function ProximosView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="w-full max-w-content @[90rem]:mx-auto">
+          <div className="w-full max-w-content mx-auto">
             <h1 className="text-2xl font-semibold text-foreground">Próximos</h1>
           </div>
         </header>
         <ViewOptionsBar viewKey={VIEW_KEY} initialOptions={initialOptions} showViewShape showDaysAhead />
 
         {options.viewShape === "panel" ? (
-        <div className={cn("w-full max-w-content flex-1 overflow-hidden p-4 sm:p-6 @[90rem]:mx-auto")}>
+        <div className={cn("w-full max-w-content mx-auto flex-1 overflow-hidden p-4 sm:p-6")}>
           <Board
             columns={boardColumns}
             allTasks={tasks}
@@ -170,7 +170,7 @@ export function ProximosView({
           />
         </div>
       ) : options.viewShape === "calendario" ? (
-        <div className="flex w-full max-w-content flex-1 flex-col overflow-hidden p-4 sm:p-6 @[90rem]:mx-auto">
+        <div className="flex w-full max-w-content mx-auto flex-1 flex-col overflow-hidden p-4 sm:p-6">
           <ScreenCalendar
             timezone={timezone}
             weekStartsOn={weekStartsOn}
@@ -182,7 +182,7 @@ export function ProximosView({
           />
         </div>
       ) : (
-        <div className="w-full max-w-content flex-1 space-y-6 overflow-y-auto p-4 sm:p-6 @[90rem]:mx-auto">
+        <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
           {isEmpty ? (
             <TaskListEmptyState
               icon={CalendarDays}
