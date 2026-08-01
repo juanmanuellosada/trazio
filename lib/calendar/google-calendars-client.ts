@@ -58,12 +58,52 @@ export class GoogleInsufficientPermissionError extends Error {
   }
 }
 
+/**
+ * Un 403 de Google al eliminar un calendario del que la cuenta conectada no
+ * es dueña (importado, suscripto, compartido de solo lectura, feriados,
+ * cumpleaños). `calendars.delete` exige rol `owner`; ningún scope lo
+ * arregla, así que este error NO sugiere reconectar (a diferencia de
+ * `GoogleInsufficientPermissionError`).
+ */
+export class GoogleForbiddenNonOwnerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoogleForbiddenNonOwnerError";
+  }
+}
+
+/** Un 403 de Google al intentar eliminar el calendario principal de la cuenta. */
+export class GoogleCannotDeletePrimaryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoogleCannotDeletePrimaryError";
+  }
+}
+
+/** El `reason` que manda Google en el cuerpo de un error, para distinguir por qué rechazó un 403. */
+async function googleErrorReason(response: Response): Promise<string | null> {
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { error?: { errors?: Array<{ reason?: string }> } } | null;
+  return body?.error?.errors?.[0]?.reason ?? null;
+}
+
 async function ensureOk(response: Response, context: string): Promise<void> {
   if (response.ok) return;
   if (response.status === 401) {
     throw new GoogleAccessTokenExpiredError("El access token venció o fue rechazado por Google");
   }
   if (response.status === 403) {
+    const reason = await googleErrorReason(response);
+    if (reason === "cannotDeletePrimaryCalendar") {
+      throw new GoogleCannotDeletePrimaryError(`Google rechazó la solicitud al ${context} porque es el calendario principal`);
+    }
+    if (reason === "forbiddenForNonOrganizer") {
+      throw new GoogleForbiddenNonOwnerError(
+        `Google rechazó la solicitud al ${context}: la cuenta conectada no es dueña de este calendario`,
+      );
+    }
     throw new GoogleInsufficientPermissionError(
       `Google rechazó la solicitud al ${context} por falta de permiso: la conexión necesita reautorizarse con el permiso completo de calendario`,
     );

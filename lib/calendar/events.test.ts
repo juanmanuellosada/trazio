@@ -136,7 +136,9 @@ describe("getEventsForRange — degradación (tarea 3.7)", () => {
 describe("getEventsForRange — campos y normalización (requirement 'Campos que se muestran de un evento')", () => {
   beforeEach(() => {
     vi.mocked(resolveAccessToken).mockResolvedValue(readyState());
-    vi.mocked(listCalendars).mockResolvedValue([{ id: CALENDAR_ID, summary: "Trabajo", backgroundColor: "#4285f4", primary: true }]);
+    vi.mocked(listCalendars).mockResolvedValue([
+      { id: CALENDAR_ID, summary: "Trabajo", backgroundColor: "#4285f4", primary: true, accessRole: "owner" },
+    ]);
   });
 
   it("un evento puntual muestra título, horario y ubicación, sin inventar una descripción", async () => {

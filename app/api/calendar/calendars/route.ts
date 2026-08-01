@@ -2,10 +2,22 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { calendarAdminErrorResponse } from "@/lib/calendar/calendar-admin-http";
 import { createCalendar } from "@/lib/calendar/calendars";
-import { enabledCalendarIdsSchema, listUserCalendars, updateEnabledCalendars } from "@/lib/calendar/connection";
+import {
+  GoogleConnectionNotFoundError,
+  enabledCalendarIdsSchema,
+  listUserCalendars,
+  updateEnabledCalendars,
+} from "@/lib/calendar/connection";
 import { calendarNameSchema } from "@/lib/validation/calendars";
 
-/** Lista los calendarios de Google del usuario y cuáles tiene habilitados (tarea 2.7). */
+/**
+ * Lista los calendarios de Google del usuario y cuáles tiene habilitados
+ * (tarea 2.7). No tener una cuenta de Google conectada no es un error: es
+ * el estado normal de quien todavía no conectó, así que responde 200 con
+ * las listas vacías y `connected: false` en vez de propagar un 404 — antes
+ * ensuciaba la consola en toda la app, porque `GoogleReconnectBanner` llama
+ * a esta misma ruta desde `app/(app)/layout.tsx`.
+ */
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -14,8 +26,11 @@ export async function GET() {
 
   try {
     const { calendars, enabledCalendarIds } = await listUserCalendars(user.id);
-    return NextResponse.json({ calendars, enabledCalendarIds });
+    return NextResponse.json({ calendars, enabledCalendarIds, connected: true });
   } catch (error) {
+    if (error instanceof GoogleConnectionNotFoundError) {
+      return NextResponse.json({ calendars: [], enabledCalendarIds: [], connected: false });
+    }
     return calendarAdminErrorResponse(error);
   }
 }

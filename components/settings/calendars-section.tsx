@@ -57,12 +57,16 @@ export function CalendarsSection() {
 
   const calendars = data?.calendars ?? [];
   const enabledCalendarIds = data?.enabledCalendarIds ?? [];
-  const isConnected = !isPending && !isError;
+  // No conectado ya no es un error (la ruta devuelve 200 con
+  // `connected: false`): se lee del dato explícito, no de deducirlo de
+  // `isPending`/`isError` — esa deducción quedó invertida con el cambio.
+  const isConnected = !isPending && !isError && data?.connected === true;
+  const notConnected = !isPending && !isError && data?.connected === false;
   const code = classifyError(error);
   // "insufficient_scope" también se resuelve reconectando: es la misma
   // conexión pidiendo el permiso `calendar` completo otra vez (D19/tarea 4.3).
   const canReconnect = code === "needs_reauth" || code === "insufficient_scope";
-  const connectionStatus = describeConnectionStatus({ isConnected, code, error });
+  const connectionStatus = describeConnectionStatus({ isConnected, notConnected, code, error });
 
   function toggleCalendarEnabled(calendarId: string, checked: boolean) {
     const next = checked ? [...enabledCalendarIds, calendarId] : enabledCalendarIds.filter((id) => id !== calendarId);
@@ -88,7 +92,7 @@ export function CalendarsSection() {
             <Button type="button" variant="outline" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
               Desconectar
             </Button>
-          ) : code === "not_connected" || canReconnect ? (
+          ) : notConnected || canReconnect ? (
             <Button size="sm" render={<a href="/api/auth/google" />}>
               {canReconnect ? "Reconectar" : "Conectar con Google"}
             </Button>
@@ -153,9 +157,11 @@ export function CalendarsSection() {
                   aria-label={
                     calendar.primary
                       ? `No se puede eliminar ${calendar.summary} porque es el calendario principal`
-                      : `Eliminar ${calendar.summary}`
+                      : calendar.accessRole !== "owner"
+                        ? `No se puede eliminar ${calendar.summary} porque no sos el dueño de este calendario`
+                        : `Eliminar ${calendar.summary}`
                   }
-                  disabled={calendar.primary}
+                  disabled={calendar.primary || calendar.accessRole !== "owner"}
                   onClick={() => setDeletingCalendar(calendar)}
                 >
                   <Trash2 className="size-4" />
@@ -188,17 +194,19 @@ export function CalendarsSection() {
  */
 function describeConnectionStatus({
   isConnected,
+  notConnected,
   code,
   error,
 }: {
   isConnected: boolean;
+  notConnected: boolean;
   code: ReturnType<typeof classifyError>;
   error: unknown;
 }): { title: string; description: string } {
   if (isConnected) {
     return { title: "Conectado con Google", description: "Trazio puede leer y editar los eventos de tu cuenta." };
   }
-  if (code === "not_connected") {
+  if (notConnected) {
     return { title: "Sin conexión con Google", description: "Conectá tu cuenta de Google para ver y crear eventos desde Trazio." };
   }
   if (code === "needs_reauth" || code === "insufficient_scope") {

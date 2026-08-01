@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoogleAccessTokenExpiredError, GoogleTransientError } from "./google-client";
 import {
+  GoogleCannotDeletePrimaryError,
+  GoogleForbiddenNonOwnerError,
   GoogleInsufficientPermissionError,
   createCalendar,
   deleteCalendar,
@@ -129,12 +131,28 @@ describe("deleteCalendar", () => {
     await expect(deleteCalendar("access-token-valido", "cal-1")).resolves.toBeUndefined();
   });
 
-  it("un 403 al eliminar lanza GoogleInsufficientPermissionError", async () => {
+  it("un 403 sin reason específico lanza GoogleInsufficientPermissionError", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(emptyResponse(403));
 
     await expect(deleteCalendar("access-token-valido", "cal-1")).rejects.toBeInstanceOf(
       GoogleInsufficientPermissionError,
     );
+  });
+
+  it("un 403 con reason forbiddenForNonOrganizer lanza GoogleForbiddenNonOwnerError, no GoogleInsufficientPermissionError", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(403, { error: { errors: [{ reason: "forbiddenForNonOrganizer", message: "Forbidden" }] } }),
+    );
+
+    await expect(deleteCalendar("access-token-valido", "cal-1")).rejects.toBeInstanceOf(GoogleForbiddenNonOwnerError);
+  });
+
+  it("un 403 con reason cannotDeletePrimaryCalendar lanza GoogleCannotDeletePrimaryError", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(403, { error: { errors: [{ reason: "cannotDeletePrimaryCalendar", message: "Forbidden" }] } }),
+    );
+
+    await expect(deleteCalendar("access-token-valido", "cal-1")).rejects.toBeInstanceOf(GoogleCannotDeletePrimaryError);
   });
 });
 

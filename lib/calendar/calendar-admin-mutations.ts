@@ -32,6 +32,16 @@ const MENSAJES: Record<CalendarAdminErrorCode | "network", { quePaso: string; po
     porQue: "la conexión no tiene el permiso completo para administrar calendarios",
     queHacer: "Reconectá tu cuenta de Google desde Configuración y volvé a intentar.",
   },
+  forbidden_non_owner: {
+    quePaso: "No pudimos eliminar el calendario",
+    porQue: "no sos el dueño de este calendario",
+    queHacer: "Pedile al dueño que lo elimine, o dejá de mostrarlo en Trazio sin eliminarlo de Google.",
+  },
+  cannot_delete_primary: {
+    quePaso: "No pudimos eliminar el calendario",
+    porQue: "es tu calendario principal y Google no permite eliminarlo",
+    queHacer: "Elegí otro calendario para eliminar.",
+  },
   network: {
     quePaso: "No pudimos completar la acción",
     porQue: "se cortó la conexión",
@@ -71,7 +81,12 @@ export async function requestJson<T>(url: string, method: string, body?: unknown
     const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
     const code = errorBody?.error;
     const knownCode: CalendarAdminErrorCode =
-      code === "not_connected" || code === "needs_reauth" || code === "google_transient" || code === "insufficient_scope"
+      code === "not_connected" ||
+      code === "needs_reauth" ||
+      code === "google_transient" ||
+      code === "insufficient_scope" ||
+      code === "forbidden_non_owner" ||
+      code === "cannot_delete_primary"
         ? code
         : "unknown";
     throw new CalendarAdminError(knownCode);

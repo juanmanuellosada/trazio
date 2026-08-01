@@ -143,11 +143,11 @@ describe("listCalendars", () => {
     vi.unstubAllGlobals();
   });
 
-  it("devuelve los calendarios con su color y si es el primario", async () => {
+  it("devuelve los calendarios con su color, si es el primario y el rol de acceso", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse(200, {
         items: [
-          { id: "primary", summary: "Juan", backgroundColor: "#123456", primary: true },
+          { id: "primary", summary: "Juan", backgroundColor: "#123456", primary: true, accessRole: "owner" },
           { id: "otro@group.calendar.google.com", summary: "Trabajo" },
         ],
       }),
@@ -156,8 +156,8 @@ describe("listCalendars", () => {
     const calendars = await listCalendars("access-token-valido");
 
     expect(calendars).toEqual([
-      { id: "primary", summary: "Juan", backgroundColor: "#123456", primary: true },
-      { id: "otro@group.calendar.google.com", summary: "Trabajo", backgroundColor: null, primary: false },
+      { id: "primary", summary: "Juan", backgroundColor: "#123456", primary: true, accessRole: "owner" },
+      { id: "otro@group.calendar.google.com", summary: "Trabajo", backgroundColor: null, primary: false, accessRole: "reader" },
     ]);
   });
 

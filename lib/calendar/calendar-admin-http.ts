@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { GoogleConnectionNotFoundError } from "@/lib/calendar/connection";
-import { GoogleInsufficientPermissionError } from "@/lib/calendar/google-calendars-client";
+import {
+  GoogleCannotDeletePrimaryError,
+  GoogleForbiddenNonOwnerError,
+  GoogleInsufficientPermissionError,
+} from "@/lib/calendar/google-calendars-client";
 import { GoogleReauthRequiredError, GoogleTransientError } from "@/lib/calendar/google-client";
 
 /**
@@ -19,6 +23,12 @@ export function calendarAdminErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof GoogleInsufficientPermissionError) {
     return NextResponse.json({ error: "insufficient_scope" }, { status: 403 });
+  }
+  if (error instanceof GoogleForbiddenNonOwnerError) {
+    return NextResponse.json({ error: "forbidden_non_owner" }, { status: 403 });
+  }
+  if (error instanceof GoogleCannotDeletePrimaryError) {
+    return NextResponse.json({ error: "cannot_delete_primary" }, { status: 403 });
   }
   if (error instanceof GoogleTransientError) {
     return NextResponse.json({ error: "google_transient" }, { status: 502 });

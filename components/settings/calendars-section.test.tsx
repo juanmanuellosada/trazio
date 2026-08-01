@@ -17,10 +17,11 @@ function jsonResponse(status: number, body: unknown): Response {
 
 const CALENDARS_BODY = {
   calendars: [
-    { id: "primary", summary: "Juan", backgroundColor: "#a4bdfc", primary: true },
-    { id: "trabajo@group.calendar.google.com", summary: "Trabajo", backgroundColor: "#7ae7bf", primary: false },
+    { id: "primary", summary: "Juan", backgroundColor: "#a4bdfc", primary: true, accessRole: "owner" },
+    { id: "trabajo@group.calendar.google.com", summary: "Trabajo", backgroundColor: "#7ae7bf", primary: false, accessRole: "owner" },
   ],
   enabledCalendarIds: ["primary"],
+  connected: true,
 };
 
 const COLORS_BODY = {
@@ -83,7 +84,7 @@ describe("CalendarsSection (tarea 4.2)", () => {
   });
 
   it("sin conexión con Google, ofrece conectar y no ofrece administrar (tarea 7.10)", async () => {
-    mockFetchRouter({ calendars: jsonResponse(404, { error: "not_connected" }) });
+    mockFetchRouter({ calendars: jsonResponse(200, { calendars: [], enabledCalendarIds: [], connected: false }) });
     renderSection();
 
     expect(await screen.findByText("Sin conexión con Google")).toBeInTheDocument();
@@ -125,6 +126,29 @@ describe("CalendarsSection (tarea 4.2)", () => {
 
     expect(screen.getByRole("button", { name: /no se puede eliminar juan/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Eliminar Trabajo" })).not.toBeDisabled();
+  });
+
+  it("un calendario importado del que no sos dueño no deja eliminarlo, y explica por qué", async () => {
+    mockFetchRouter({
+      calendars: jsonResponse(200, {
+        calendars: [
+          { id: "primary", summary: "Juan", backgroundColor: "#a4bdfc", primary: true, accessRole: "owner" },
+          {
+            id: "feriados@import.calendar.google.com",
+            summary: "Feriados",
+            backgroundColor: "#7ae7bf",
+            primary: false,
+            accessRole: "reader",
+          },
+        ],
+        enabledCalendarIds: ["primary"],
+        connected: true,
+      }),
+    });
+    renderSection();
+
+    expect(await screen.findByText("Feriados")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /no se puede eliminar feriados.*no sos el dueño/i })).toBeDisabled();
   });
 
   it("elegir qué calendarios se muestran en Trazio (spec configuracion, requirement 'Elegir qué calendarios se muestran')", async () => {

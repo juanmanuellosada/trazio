@@ -216,10 +216,20 @@ export type GoogleCalendarSummary = {
   summary: string;
   backgroundColor: string | null;
   primary: boolean;
+  /**
+   * Rol de la cuenta conectada sobre este calendario ("owner", "writer",
+   * "reader", "freeBusyReader"). Se propaga para deshabilitar "Eliminar" en
+   * calendarios que no son propios (importados, suscriptos, feriados,
+   * cumpleaños): `calendars.delete` exige `owner` y Google lo rechaza con
+   * 403 aunque el scope sea el correcto. Si Google no lo manda, se asume
+   * "reader" (no dueño) en vez de asumir "owner": ante ambigüedad, menos
+   * permiso, no más.
+   */
+  accessRole: string;
 };
 
 type CalendarListResponse = {
-  items?: Array<{ id: string; summary: string; backgroundColor?: string; primary?: boolean }>;
+  items?: Array<{ id: string; summary: string; backgroundColor?: string; primary?: boolean; accessRole?: string }>;
 };
 
 /** Lista los calendarios de la cuenta conectada (tarea 2.7). */
@@ -250,5 +260,6 @@ export async function listCalendars(accessToken: string): Promise<GoogleCalendar
     summary: item.summary,
     backgroundColor: item.backgroundColor ?? null,
     primary: item.primary ?? false,
+    accessRole: item.accessRole ?? "reader",
   }));
 }

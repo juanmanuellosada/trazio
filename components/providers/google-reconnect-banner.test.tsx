@@ -44,14 +44,14 @@ describe("GoogleReconnectBanner", () => {
   });
 
   it("no aparece sin conexión con Google", async () => {
-    mockCalendarsFetch(404, { error: "not_connected" });
+    mockCalendarsFetch(200, { calendars: [], enabledCalendarIds: [], connected: false });
     renderBanner();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("no aparece con la conexión activa", async () => {
-    mockCalendarsFetch(200, { calendars: [], enabledCalendarIds: [] });
+    mockCalendarsFetch(200, { calendars: [], enabledCalendarIds: [], connected: true });
     renderBanner();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

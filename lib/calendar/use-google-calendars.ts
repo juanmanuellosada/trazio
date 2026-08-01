@@ -16,6 +16,8 @@ export type GoogleCalendarListItem = {
   summary: string;
   backgroundColor: string | null;
   primary: boolean;
+  /** Rol de la cuenta conectada sobre este calendario ("owner", "writer", "reader", "freeBusyReader"). */
+  accessRole: string;
 };
 
 export type GoogleCalendarColorOption = { id: string; background: string; foreground: string };
@@ -24,7 +26,25 @@ export const googleCalendarsQueryKey = ["calendar-admin", "calendars"] as const;
 export const googleCalendarColorsQueryKey = ["calendar-admin", "colors"] as const;
 
 /** Código de error que devuelven las rutas bajo `app/api/calendar/` (tarea 2.7/4.1). */
-export type CalendarAdminErrorCode = "not_connected" | "needs_reauth" | "google_transient" | "insufficient_scope" | "unknown";
+export type CalendarAdminErrorCode =
+  | "not_connected"
+  | "needs_reauth"
+  | "google_transient"
+  | "insufficient_scope"
+  | "forbidden_non_owner"
+  | "cannot_delete_primary"
+  | "unknown";
+
+/**
+ * Códigos que representan un estado permanente: reintentar no lo arregla
+ * (no hay conexión, o el 4xx es una regla de negocio de Google). TanStack
+ * Query reintenta 3 veces por default; para estos códigos, un solo intento
+ * alcanza. `needs_reauth` entra en el mismo grupo que `not_connected` e
+ * `insufficient_scope`: `getValidAccessToken` (`lib/calendar/connection.ts`)
+ * ya evita llamar a Google de nuevo una vez marcada `needs_reauth`, así que
+ * reintentar acá tampoco cambiaría nada.
+ */
+const PERMANENT_ERROR_CODES: readonly CalendarAdminErrorCode[] = ["not_connected", "needs_reauth", "insufficient_scope"];
 
 export class CalendarAdminError extends Error {
   readonly code: CalendarAdminErrorCode;
@@ -36,16 +56,33 @@ export class CalendarAdminError extends Error {
   }
 }
 
+const KNOWN_ERROR_CODES: readonly CalendarAdminErrorCode[] = [
+  "not_connected",
+  "needs_reauth",
+  "google_transient",
+  "insufficient_scope",
+  "forbidden_non_owner",
+  "cannot_delete_primary",
+];
+
 async function parseErrorCode(response: Response): Promise<CalendarAdminErrorCode> {
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
   const code = body?.error;
-  if (code === "not_connected" || code === "needs_reauth" || code === "google_transient" || code === "insufficient_scope") {
-    return code;
-  }
-  return "unknown";
+  return (KNOWN_ERROR_CODES as string[]).includes(code ?? "") ? (code as CalendarAdminErrorCode) : "unknown";
 }
 
-async function fetchGoogleCalendars(): Promise<{ calendars: GoogleCalendarListItem[]; enabledCalendarIds: string[] }> {
+/**
+ * No conectado NO es un error: es el estado normal de quien todavía no
+ * conectó Google (requirement de la sección Calendarios). La ruta devuelve
+ * 200 con `connected: false` y las listas vacías en vez de un 404 — antes
+ * ensuciaba la consola en toda la app porque `GoogleReconnectBanner` llama a
+ * este mismo hook desde `app/(app)/layout.tsx`.
+ */
+async function fetchGoogleCalendars(): Promise<{
+  calendars: GoogleCalendarListItem[];
+  enabledCalendarIds: string[];
+  connected: boolean;
+}> {
   const response = await fetch("/api/calendar/calendars");
   if (!response.ok) throw new CalendarAdminError(await parseErrorCode(response));
   return response.json();
@@ -53,7 +90,16 @@ async function fetchGoogleCalendars(): Promise<{ calendars: GoogleCalendarListIt
 
 /** Calendarios de la cuenta de Google conectada, para listarlos en la sección Calendarios (tarea 4.2). */
 export function useGoogleCalendars() {
-  return useQuery({ queryKey: googleCalendarsQueryKey, queryFn: fetchGoogleCalendars });
+  return useQuery({
+    queryKey: googleCalendarsQueryKey,
+    queryFn: fetchGoogleCalendars,
+    // Un 4xx de negocio (sin conexión, permiso insuficiente) no mejora
+    // reintentándolo: solo agrega ruido (D-antes, cuatro llamados por vez).
+    retry: (failureCount, error) => {
+      if (error instanceof CalendarAdminError && PERMANENT_ERROR_CODES.includes(error.code)) return false;
+      return failureCount < 3;
+    },
+  });
 }
 
 async function fetchCalendarColorOptions(): Promise<GoogleCalendarColorOption[]> {

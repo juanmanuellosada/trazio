@@ -65,11 +65,12 @@ const { getUser } = (supabaseClientModule as unknown as { __mock: { getUser: Ret
 // `hidden`, no desmontada, como el resto de los paneles— y llama a
 // `fetch("/api/calendar/calendars")` apenas se monta (`useGoogleCalendars`).
 // Sin este mock, cada test de este archivo dispararía una llamada de red de
-// verdad. `not_connected` es el estado más simple de simular.
+// verdad. No conectado (`connected: false`) es el estado más simple de
+// simular, y ya no es un 404: la ruta responde 200 con las listas vacías.
 function mockCalendarsFetch() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify({ error: "not_connected" }), { status: 404 })),
+    vi.fn(async () => new Response(JSON.stringify({ calendars: [], enabledCalendarIds: [], connected: false }), { status: 200 })),
   );
 }
 
