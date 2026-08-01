@@ -8,12 +8,13 @@ export const CHORD_TIMEOUT_MS = 1500;
 /** La primera tecla del acorde (bloque 2, D-C): el indicador de atajo la lee de acá en vez de repetirla como cadena escrita a mano. */
 export const CHORD_TRIGGER_KEY = "g";
 
-export type ChordDestination = "bandeja" | "hoy" | "proximos" | "completado" | "habitos";
+export type ChordDestination = "bandeja" | "hoy" | "proximos" | "etiquetas" | "completado" | "habitos";
 
 const CHORD_MAP: Record<string, ChordDestination> = {
   i: "bandeja",
   h: "hoy",
   p: "proximos",
+  e: "etiquetas",
   c: "completado",
   a: "habitos",
 };
@@ -28,6 +29,7 @@ export const CHORD_ROUTES: Record<ChordDestination, string | null> = {
   bandeja: "/bandeja",
   hoy: "/hoy",
   proximos: "/proximos",
+  etiquetas: "/etiquetas",
   completado: "/completado",
   habitos: "/habitos",
 };

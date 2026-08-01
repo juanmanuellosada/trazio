@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { CHORD_KEY_BY_DESTINATION, CHORD_ROUTES, CHORD_TRIGGER_KEY, chordDestinationFor } from "./chord";
 
 describe("chordDestinationFor", () => {
-  it("reconoce las cinco teclas del acorde G", () => {
+  it("reconoce las seis teclas del acorde G", () => {
     expect(chordDestinationFor("i")).toBe("bandeja");
     expect(chordDestinationFor("h")).toBe("hoy");
     expect(chordDestinationFor("p")).toBe("proximos");
+    expect(chordDestinationFor("e")).toBe("etiquetas");
     expect(chordDestinationFor("c")).toBe("completado");
     expect(chordDestinationFor("a")).toBe("habitos");
   });
@@ -27,6 +28,7 @@ describe("chordDestinationFor", () => {
     expect(CHORD_ROUTES.bandeja).toBe("/bandeja");
     expect(CHORD_ROUTES.hoy).toBe("/hoy");
     expect(CHORD_ROUTES.proximos).toBe("/proximos");
+    expect(CHORD_ROUTES.etiquetas).toBe("/etiquetas");
     expect(CHORD_ROUTES.completado).toBe("/completado");
   });
 });
@@ -45,6 +47,10 @@ describe("CHORD_KEY_BY_DESTINATION (bloque 2, D-C)", () => {
   it("las teclas nuevas de Hoy y Próximos son H y P (tarea 1.1)", () => {
     expect(CHORD_KEY_BY_DESTINATION.hoy).toBe("h");
     expect(CHORD_KEY_BY_DESTINATION.proximos).toBe("p");
+  });
+
+  it("la tecla de Etiquetas es E (etiquetas-con-lugar-propio, tarea 1.1)", () => {
+    expect(CHORD_KEY_BY_DESTINATION.etiquetas).toBe("e");
   });
 });
 

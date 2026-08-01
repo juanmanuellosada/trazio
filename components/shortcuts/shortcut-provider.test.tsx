@@ -234,6 +234,22 @@ describe("ShortcutProvider — el acorde G", () => {
     expect(push).toHaveBeenCalledWith("/habitos");
   });
 
+  it("G seguido de E navega a Etiquetas y no abre el alta de evento (etiquetas-con-lugar-propio, tarea 1.4)", () => {
+    renderHarness();
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "e" });
+    expect(push).toHaveBeenCalledWith("/etiquetas");
+    expect(screen.queryByText("Evento nuevo")).not.toBeInTheDocument();
+  });
+
+  it("la E suelta sigue abriendo el alta de evento después de que G E navegó a Etiquetas", () => {
+    renderHarness();
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "e" });
+    fireEvent.keyDown(window, { key: "e" });
+    expect(screen.getByText("Evento nuevo")).toBeInTheDocument();
+  });
+
   it("Escape cancela el acorde pendiente sin navegar", () => {
     renderHarness();
     fireEvent.keyDown(window, { key: "g" });
