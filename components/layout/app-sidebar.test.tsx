@@ -5,6 +5,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsProvider } from "@/components/settings/settings-context";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
+
+// `SidebarAddEvent` (bloque 7.6) necesita el contexto de preferencias
+// (zona horaria, para el alta de evento) igual que `AppBadgeSync` en
+// `settings-modal.test.tsx`.
+const PREFERENCES: UserPreferences = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd-MM-yyyy",
+  timeFormat: 24,
+  weekStartsOn: 1,
+};
 
 /**
  * Tests del panel lateral de escritorio (bloque 10.4): que el colapso se
@@ -29,9 +41,11 @@ function renderSidebar() {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <AppSidebar fullName="Ana" email="ana@example.com" todayCount={0} projects={[]} initialProjects={[]} />
-      </SettingsProvider>
+      <PreferencesProvider preferences={PREFERENCES}>
+        <SettingsProvider>
+          <AppSidebar fullName="Ana" email="ana@example.com" todayCount={0} projects={[]} initialProjects={[]} />
+        </SettingsProvider>
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }

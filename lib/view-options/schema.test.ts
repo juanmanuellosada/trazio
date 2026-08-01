@@ -37,9 +37,19 @@ describe('parseViewOptions: "una view_key sin fila usa los defaults" (bloque 6.1
 
 describe("parseViewOptions: clave desconocida se ignora (requirement de specs/opciones-de-vista)", () => {
   it("una clave inválida no rompe el resto de las opciones válidas", () => {
-    const result = parseViewOptions("proyecto:1", { formato_calendario: "semana", order: "prioridad" });
+    const result = parseViewOptions("proyecto:1", { orden_experimental: "manual-viejo", order: "prioridad" });
     expect(result.order).toBe("prioridad");
-    expect(result).not.toHaveProperty("formato_calendario");
+    expect(result).not.toHaveProperty("orden_experimental");
+  });
+
+  it("formato_calendario ya no es una clave desconocida: fase 4 la vuelve válida (D-E, bloque 7.1/7.2)", () => {
+    const result = parseViewOptions("proyecto:1", { formato_calendario: "semana" });
+    expect(result.formato_calendario).toBe("semana");
+  });
+
+  it("un formato_calendario inválido cae al default de esa clave", () => {
+    const result = parseViewOptions("proyecto:1", { formato_calendario: "año" });
+    expect(result.formato_calendario).toBe("semana");
   });
 
   it("un valor de tipo equivocado en un campo conocido cae al default de ese campo, sin tocar el resto", () => {
@@ -64,6 +74,7 @@ describe("parseViewOptions: clave desconocida se ignora (requirement de specs/op
       quickFilters: { deadline: "con", priority: 1, labelId: "abc" },
       showHabits: true,
       showFutureRecurrences: false,
+      formato_calendario: "semana",
     });
   });
 });

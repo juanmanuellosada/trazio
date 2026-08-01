@@ -1,6 +1,7 @@
 import { CalendarDays, CheckCircle2, Inbox, Repeat, Search, Sun } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { SidebarAddTask } from "./sidebar-add-task";
+import { SidebarAddEvent } from "./sidebar-add-event";
 import { AccountMenu } from "./account-menu";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
 import { LabelsCollapsibleList, FiltersCollapsibleList } from "./label-filter-lists";
@@ -32,9 +33,9 @@ function getInitials(source: string): string {
  * 2), compartido por la versión de escritorio (`app-sidebar.tsx`, colapsable)
  * y la hoja de teléfono (`mobile-nav.tsx`, siempre expandida). De arriba a
  * abajo, el orden de "Panel lateral (escritorio)" en `docs/product-spec.md`:
- * cuenta, accesos rápidos (agregar tarea, buscar), accesos principales
- * (Bandeja, Hoy, Próximos, Hábitos, Completado — ese orden lo fija
- * `docs/product-spec.md`), Favoritos
+ * cuenta, accesos rápidos (agregar tarea, agregar evento —bloque 7.6— y
+ * buscar), accesos principales (Bandeja, Hoy, Próximos, Hábitos, Completado
+ * — ese orden lo fija `docs/product-spec.md`), Favoritos
  * (proyectos, etiquetas y filtros marcados como tales), árbol de proyectos,
  * listas colapsables de etiquetas y filtros, y pie.
  */
@@ -77,6 +78,7 @@ export function SidebarContent({
 
       <div className="flex flex-col gap-0.5 p-2">
         <SidebarAddTask collapsed={collapsed} inboxProjectId={inboxProjectId} />
+        <SidebarAddEvent collapsed={collapsed} />
         <NavLink href="/buscar" label="Buscar" icon={Search} collapsed={collapsed} />
         {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba. */}
         <nav className="contents" aria-label="Navegación principal">

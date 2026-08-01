@@ -7,6 +7,9 @@ import { ShortcutRegistryContext } from "@/lib/shortcuts/context";
 import { isBlockedByFocusGuard } from "@/lib/shortcuts/guards";
 import { matchesCombo } from "@/lib/shortcuts/match";
 import type { ShortcutScope } from "@/lib/shortcuts/types";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { defaultEventRange } from "@/lib/calendar/default-event-range";
+import { CreateEventDialog } from "@/components/calendar/create-event-dialog";
 import { GlobalQuickAddDialog } from "./global-quick-add-dialog";
 
 /**
@@ -15,10 +18,13 @@ import { GlobalQuickAddDialog } from "./global-quick-add-dialog";
  * contextos (`lib/shortcuts/context.ts`) donde el más recientemente
  * registrado gana. Acá viven, además, los atajos generales que no
  * pertenecen a ninguna pantalla en particular (bloque 7.4): el acorde `G`,
- * `S` (buscador), `Q` (alta rápida) y `E` (nuevo evento, sin navegar todavía
- * — bloque 7.5). `Ctrl/Cmd+Z` no pasa por acá: sigue siendo el listener
- * propio de `UndoProvider`, que no se toca (ver la nota del bloque 7 en
- * `tasks.md`).
+ * `S` (buscador), `Q` (alta rápida) y `E` (nuevo evento, bloque 7.5). La
+ * colisión de `E` con la etiqueta del detalle de tarea
+ * (`task-detail-content.tsx`) ya la resuelve la pila de contextos: cuando el
+ * detalle está abierto empuja su propio binding de `E`, que gana acá abajo
+ * sin que este componente sepa nada de tareas. `Ctrl/Cmd+Z` no pasa por acá:
+ * sigue siendo el listener propio de `UndoProvider`, que no se toca (ver la
+ * nota del bloque 7 en `tasks.md`).
  *
  * Vive una sola vez en `app/(app)/layout.tsx`, por encima de cualquier
  * pantalla — cada pantalla y cada modal registra su propio contexto con
@@ -32,12 +38,14 @@ export function ShortcutProvider({
   inboxProjectId: string | null;
 }) {
   const router = useRouter();
+  const { timezone } = useUserPreferences();
   const scopesRef = useRef<ShortcutScope[]>([]);
   const chordRef = useRef<{ pending: boolean; timer: ReturnType<typeof setTimeout> | null }>({
     pending: false,
     timer: null,
   });
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [eventRange, setEventRange] = useState<{ start: Date; end: Date } | null>(null);
 
   const pushScope = useCallback((scope: ShortcutScope) => {
     scopesRef.current.push(scope);
@@ -83,8 +91,7 @@ export function ShortcutProvider({
         return true;
       }
       if (matchesCombo(event, { key: "e" })) {
-        // Nuevo evento de calendario: fase 4 (bloque 7.5). Se reconoce el
-        // atajo (no rompe nada), pero no abre nada todavía.
+        setEventRange(defaultEventRange(new Date()));
         return true;
       }
       return false;
@@ -125,6 +132,15 @@ export function ShortcutProvider({
     <ShortcutRegistryContext.Provider value={{ pushScope }}>
       {children}
       <GlobalQuickAddDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} inboxProjectId={inboxProjectId} />
+      {eventRange && (
+        <CreateEventDialog
+          open
+          onOpenChange={(open) => !open && setEventRange(null)}
+          start={eventRange.start}
+          end={eventRange.end}
+          timezone={timezone}
+        />
+      )}
     </ShortcutRegistryContext.Provider>
   );
 }

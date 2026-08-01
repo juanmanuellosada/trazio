@@ -46,6 +46,9 @@ function mockFetchRouter(overrides: { calendars?: Response; colors?: Response } 
       if (url === "/api/calendar/calendars" && method === "POST") {
         return jsonResponse(201, { calendar: { id: "nuevo-id", summary: (init?.body ? JSON.parse(init.body as string) : {}).name } });
       }
+      if (url === "/api/calendar/calendars" && method === "PATCH") {
+        return jsonResponse(200, { ok: true });
+      }
       if (url === "/api/calendar/calendars/colors" && method === "GET") {
         return overrides.colors ?? jsonResponse(200, COLORS_BODY);
       }
@@ -53,6 +56,9 @@ function mockFetchRouter(overrides: { calendars?: Response; colors?: Response } 
         return jsonResponse(200, { ok: true });
       }
       if (url.startsWith("/api/calendar/calendars/") && method === "DELETE") {
+        return jsonResponse(200, { ok: true });
+      }
+      if (url === "/api/auth/google/disconnect" && method === "POST") {
         return jsonResponse(200, { ok: true });
       }
       throw new Error(`Ruta no mockeada: ${method} ${url}`);
@@ -76,12 +82,37 @@ describe("CalendarsSection (tarea 4.2)", () => {
     vi.clearAllMocks();
   });
 
-  it("sin conexión con Google, avisa y no ofrece administrar", async () => {
+  it("sin conexión con Google, ofrece conectar y no ofrece administrar (tarea 7.10)", async () => {
     mockFetchRouter({ calendars: jsonResponse(404, { error: "not_connected" }) });
     renderSection();
 
-    expect(await screen.findByText(/todavía no hay ninguna cuenta de google conectada/i)).toBeInTheDocument();
+    expect(await screen.findByText("Sin conexión con Google")).toBeInTheDocument();
+    const connectLink = screen.getByRole("link", { name: "Conectar con Google" });
+    expect(connectLink).toHaveAttribute("href", "/api/auth/google");
     expect(screen.queryByRole("button", { name: /nuevo calendario/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desconectar" })).not.toBeInTheDocument();
+  });
+
+  it("con la conexión rota, distingue el estado de una conexión activa y ofrece reconectar (spec configuracion)", async () => {
+    mockFetchRouter({ calendars: jsonResponse(409, { error: "needs_reauth" }) });
+    renderSection();
+
+    expect(await screen.findByText("La conexión necesita reconectarse")).toBeInTheDocument();
+    const reconnectLink = screen.getByRole("link", { name: "Reconectar" });
+    expect(reconnectLink).toHaveAttribute("href", "/api/auth/google");
+  });
+
+  it("con conexión activa, muestra el estado y ofrece desconectar (tarea 7.10)", async () => {
+    const calls = mockFetchRouter();
+    const user = userEvent.setup();
+    renderSection();
+
+    expect(await screen.findByText("Conectado con Google")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Desconectar" }));
+
+    await waitFor(() =>
+      expect(calls).toContainEqual(expect.objectContaining({ url: "/api/auth/google/disconnect", method: "POST" })),
+    );
   });
 
   it("lista los calendarios, marca el principal y no deja eliminarlo", async () => {
@@ -94,6 +125,30 @@ describe("CalendarsSection (tarea 4.2)", () => {
 
     expect(screen.getByRole("button", { name: /no se puede eliminar juan/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Eliminar Trabajo" })).not.toBeDisabled();
+  });
+
+  it("elegir qué calendarios se muestran en Trazio (spec configuracion, requirement 'Elegir qué calendarios se muestran')", async () => {
+    const calls = mockFetchRouter();
+    const user = userEvent.setup();
+    renderSection();
+
+    await screen.findByText("Trabajo");
+    const juanCheckbox = screen.getByRole("checkbox", { name: "Dejar de mostrar Juan en Trazio" });
+    const trabajoCheckbox = screen.getByRole("checkbox", { name: "Mostrar Trabajo en Trazio" });
+    expect(juanCheckbox).toHaveAttribute("aria-checked", "true");
+    expect(trabajoCheckbox).toHaveAttribute("aria-checked", "false");
+
+    await user.click(trabajoCheckbox);
+
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          url: "/api/calendar/calendars",
+          method: "PATCH",
+          body: { enabledCalendarIds: ["primary", "trabajo@group.calendar.google.com"] },
+        }),
+      ),
+    );
   });
 
   it("eliminar un calendario secundario advierte que se borra de la cuenta de Google entera, no solo de Trazio", async () => {

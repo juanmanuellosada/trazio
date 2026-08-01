@@ -1,15 +1,22 @@
 import { z } from "zod";
 import { UPCOMING_WINDOW_DEFAULT_DAYS, UPCOMING_WINDOW_MAX_DAYS, UPCOMING_WINDOW_MIN_DAYS } from "@/lib/tasks/upcoming-filter";
+import { CALENDAR_FORMATS, type CalendarFormat } from "@/lib/calendar/block";
 
 /**
  * Esquema de `view_preferences.options` (bloque 6.1, D-H, spec
  * `opciones-de-vista`): una fila por pantalla, `view_key` es `bandeja`,
- * `hoy`, `proximos`, `proyecto:<id>`, `etiqueta:<id>` o `filtro:<id>`. El
- * modo calendario no es un valor posible de `viewShape` en fase 2 (es fase
- * 4, D-I del design), así que ni siquiera se declara acá.
+ * `hoy`, `proximos`, `proyecto:<id>`, `etiqueta:<id>` o `filtro:<id>`.
+ *
+ * Fase 4 (D-E del design): `viewShape` suma `"calendario"`, y con ella el
+ * campo `formato_calendario` (día/cuatro días/semana/mes). Ese nombre —no
+ * `calendarFormat`, distinto de la convención en inglés del resto de los
+ * campos— es intencional: es la misma clave que ya usaba, como ejemplo de
+ * clave desconocida, el test de fase 2 que verificaba el descarte (spec
+ * `opciones-de-vista`, "Una clave desconocida en el jsonb se ignora"). Esa
+ * clave pasa a ser válida en vez de cambiarle el nombre.
  */
 
-export const VIEW_SHAPE_OPTIONS = ["lista", "panel"] as const;
+export const VIEW_SHAPE_OPTIONS = ["lista", "panel", "calendario"] as const;
 export type ViewShape = (typeof VIEW_SHAPE_OPTIONS)[number];
 
 export const ORDER_OPTIONS = ["manual", "nombre", "fecha", "prioridad"] as const;
@@ -37,13 +44,15 @@ export type ViewOptions = {
   groupBy: GroupByOption;
   quickFilters: QuickFilters;
   /**
-   * Reservado (bloque 6.4, requirement "Los controles de hábitos y
-   * repeticiones futuras quedan reservados, sin exponerse"): existen en el
-   * esquema como punto de extensión para las fases 3 y 4, pero la barra no
-   * los muestra como controles en fase 2.
+   * `showHabits` ya es un control visible desde la fase 3. Bloque 7.3:
+   * `showFutureRecurrences` deja de estar reservado y se expone como
+   * control, pero solo cuando `viewShape` es `"calendario"` (spec
+   * `opciones-de-vista`).
    */
   showHabits: boolean;
   showFutureRecurrences: boolean;
+  /** Formato de la forma de ver calendario (bloque 7.1): solo importa cuando `viewShape` es `"calendario"`, pero se guarda igual para el resto de las pantallas. */
+  formato_calendario: CalendarFormat;
 };
 
 const viewShapeFieldSchema = z.enum(VIEW_SHAPE_OPTIONS);
@@ -54,6 +63,7 @@ const priorityFieldSchema = z.union([z.number().int().min(1).max(4), z.null()]);
 const labelIdFieldSchema = z.union([z.string().min(1), z.null()]);
 const daysAheadFieldSchema = z.number().int().min(UPCOMING_WINDOW_MIN_DAYS).max(UPCOMING_WINDOW_MAX_DAYS);
 const booleanFieldSchema = z.boolean();
+const calendarFormatFieldSchema = z.enum(CALENDAR_FORMATS);
 
 /** Bandeja y Proyecto: orden manual (D25). El resto: por fecha de vencimiento, que ya reproduce "por hora" en Hoy y el orden propio de Próximos, Etiqueta y Filtro (ver `docs/decisions.md` D25 y los requirements de defaults de `specs/opciones-de-vista`). */
 export function defaultOptionsForViewKey(viewKey: string): ViewOptions {
@@ -69,6 +79,7 @@ export function defaultOptionsForViewKey(viewKey: string): ViewOptions {
     quickFilters: { ...DEFAULT_QUICK_FILTERS },
     showHabits: true,
     showFutureRecurrences: false,
+    formato_calendario: "semana",
   };
 }
 
@@ -102,6 +113,7 @@ export function parseViewOptions(viewKey: string, raw: unknown): ViewOptions {
     },
     showHabits: safeField(booleanFieldSchema, obj.showHabits, defaults.showHabits),
     showFutureRecurrences: safeField(booleanFieldSchema, obj.showFutureRecurrences, defaults.showFutureRecurrences),
+    formato_calendario: safeField(calendarFormatFieldSchema, obj.formato_calendario, defaults.formato_calendario),
   };
 }
 

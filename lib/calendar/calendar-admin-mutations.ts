@@ -118,6 +118,29 @@ export function useRecolorCalendar() {
   });
 }
 
+/** Desconecta la cuenta de Google (tarea 7.10, requirement "ofrece desconectarla"): borra la conexión, nunca datos de Trazio (`lib/calendar/connection.ts`, tarea 2.6). */
+export function useDisconnectGoogleConnection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: CALENDAR_ADMIN_MUTATION_KEY,
+    mutationFn: () => requestJson("/api/auth/google/disconnect", "POST"),
+    onSuccess: () => toastSuccess("Cuenta de Google desconectada."),
+    onError: reportCalendarAdminError,
+    onSettled: () => invalidateGoogleCalendars(queryClient),
+  });
+}
+
+/** Guarda cuáles calendarios de Google se muestran en Trazio (tarea 2.7/7.4, requirement "Elegir qué calendarios se muestran"). Manda la lista completa: la API reemplaza `enabled_calendar_ids`, no la parchea de a un id. */
+export function useUpdateEnabledCalendars() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: CALENDAR_ADMIN_MUTATION_KEY,
+    mutationFn: (enabledCalendarIds: string[]) => requestJson("/api/calendar/calendars", "PATCH", { enabledCalendarIds }),
+    onError: reportCalendarAdminError,
+    onSettled: () => invalidateGoogleCalendars(queryClient),
+  });
+}
+
 /**
  * Elimina un calendario de la cuenta de Google entera (tarea 4.1/4.4). Sin
  * optimistic update a propósito, a diferencia del resto de las mutaciones

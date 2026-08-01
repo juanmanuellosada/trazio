@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { ShortcutProvider } from "@/components/shortcuts/shortcut-provider";
 import { SelectionCheckbox } from "./selection-checkbox";
 import { SelectionProvider, useSelection } from "./selection-context";
@@ -9,6 +11,19 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/shortcuts/global-quick-add-dialog", () => ({
   GlobalQuickAddDialog: () => null,
 }));
+// El atajo `E` (bloque 7.5) monta `CreateEventDialog`, que necesita
+// `QueryClientProvider` (`useGoogleCalendars`) — ajeno al propósito de este
+// archivo, que prueba selección múltiple, no el alta de eventos.
+vi.mock("@/components/calendar/create-event-dialog", () => ({
+  CreateEventDialog: () => null,
+}));
+
+const PREFERENCES: UserPreferences = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd-MM-yyyy",
+  timeFormat: 24,
+  weekStartsOn: 1,
+};
 
 const ORDERED_IDS = ["a", "b", "c", "d", "e", "f", "g"];
 
@@ -41,12 +56,14 @@ function renderList() {
 
 function renderListWithShortcuts() {
   return render(
-    <ShortcutProvider inboxProjectId={null}>
-      <SelectionProvider>
-        <List />
-        <Bar />
-      </SelectionProvider>
-    </ShortcutProvider>,
+    <PreferencesProvider preferences={PREFERENCES}>
+      <ShortcutProvider inboxProjectId={null}>
+        <SelectionProvider>
+          <List />
+          <Bar />
+        </SelectionProvider>
+      </ShortcutProvider>
+    </PreferencesProvider>,
   );
 }
 

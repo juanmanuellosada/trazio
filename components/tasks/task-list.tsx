@@ -110,7 +110,11 @@ export function TaskList({
       {tasks.length === 0 ? (
         depth === 0 && (emptyState ?? <p className="py-1 text-sm text-text-secondary">No hay tareas acá todavía.</p>)
       ) : dragEnabled ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        // `id` fijo: mismo hydration mismatch de `aria-describedby` que
+        // `components/board/board.tsx` y por la misma razón (bloque 7,
+        // diagnosticado en fase 4) — acá era el que de verdad disparaba el
+        // warning en `/bandeja`, la pantalla que se pidió confirmar.
+        <DndContext id="task-list-drag" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col">
               {tasks.map((task) => (

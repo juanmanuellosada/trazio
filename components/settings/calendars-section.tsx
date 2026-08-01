@@ -1,32 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { CalendarAdminError, useGoogleCalendars, type GoogleCalendarListItem } from "@/lib/calendar/use-google-calendars";
+import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarAdminError,
+  useGoogleCalendars,
+  type CalendarAdminErrorCode,
+  type GoogleCalendarListItem,
+} from "@/lib/calendar/use-google-calendars";
+import { useDisconnectGoogleConnection, useUpdateEnabledCalendars } from "@/lib/calendar/calendar-admin-mutations";
 import { Button } from "@/components/ui/button";
 import { CalendarFormDialog } from "./calendar-form-dialog";
 import { DeleteCalendarDialog } from "./delete-calendar-dialog";
+import { cn } from "@/lib/utils";
 
 /**
- * Sección Calendarios de Configuración (tarea 4.2, capacidad
- * `administracion-de-calendarios`): crear, renombrar, recolorear y
- * eliminar los calendarios de la cuenta de Google conectada. Mismo patrón
- * que `components/labels/labels-view.tsx` —lista con swatch de color e
- * iconos de acción inline, sin menú de tres puntos porque acá también son
- * solo dos acciones por fila— pero adaptado al espacio angosto del modal
- * de Configuración en vez de una pantalla propia.
+ * Sección Calendarios de Configuración (tarea 4.2 + bloque 7.4/7.10, spec
+ * `configuracion` "Sección Calendarios"): estado de la conexión con Google
+ * siempre visible, conectar/desconectar/reconectar, elegir qué calendarios
+ * de Google se muestran en Trazio, y crear/renombrar/recolorear/eliminar
+ * los calendarios de la cuenta conectada. Mismo patrón que
+ * `components/labels/labels-view.tsx` —lista con swatch de color e iconos
+ * de acción inline— pero adaptado al espacio angosto del modal de
+ * Configuración.
  *
- * Todavía no está montada en `settings-modal.tsx`: ese archivo es del
- * grupo 7 (`components/settings/settings-modal.tsx` es de dueño único,
- * bloqueado con un test hasta que ese grupo agregue la pestaña
- * "Calendarios"). Este componente queda completo y listo para que ese
- * grupo lo monte con `<CalendarsSection />`, sin props.
- *
- * No incluye la selección de qué calendarios se muestran en Trazio
- * (`enabled_calendar_ids`): esa es la capacidad `conexion-google-calendar`,
- * ya resuelta del lado del servidor por la tanda anterior
- * (`app/api/calendar/calendars` GET/PATCH), y es una responsabilidad
- * distinta de administrar los calendarios en sí.
+ * Montada en `settings-modal.tsx` (bloque 7.4): antes quedaba completa pero
+ * sin montar, a la espera de que este grupo agregara la pestaña
+ * "Calendarios".
  */
 export function CalendarsSection() {
   // `isPending`, no `isLoading`: `isLoading` es `isPending && isFetching`, y
@@ -38,6 +38,8 @@ export function CalendarsSection() {
   // mockeado.
   const { data, isPending, isError, error, fetchStatus } = useGoogleCalendars();
   const isOffline = isPending && fetchStatus === "paused";
+  const disconnect = useDisconnectGoogleConnection();
+  const updateEnabled = useUpdateEnabledCalendars();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<GoogleCalendarListItem | undefined>(undefined);
@@ -54,22 +56,54 @@ export function CalendarsSection() {
   }
 
   const calendars = data?.calendars ?? [];
+  const enabledCalendarIds = data?.enabledCalendarIds ?? [];
+  const isConnected = !isPending && !isError;
+  const code = classifyError(error);
+  // "insufficient_scope" también se resuelve reconectando: es la misma
+  // conexión pidiendo el permiso `calendar` completo otra vez (D19/tarea 4.3).
+  const canReconnect = code === "needs_reauth" || code === "insufficient_scope";
+  const connectionStatus = describeConnectionStatus({ isConnected, code, error });
+
+  function toggleCalendarEnabled(calendarId: string, checked: boolean) {
+    const next = checked ? [...enabledCalendarIds, calendarId] : enabledCalendarIds.filter((id) => id !== calendarId);
+    updateEnabled.mutate(next);
+  }
 
   return (
     <section className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Calendarios</h2>
-          <p className="text-sm text-text-secondary">
-            Administrá los calendarios de tu cuenta de Google conectada. Los cambios se hacen directamente en Google.
-          </p>
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Calendarios</h2>
+        <p className="text-sm text-text-secondary">
+          Administrá tu conexión con Google Calendar y elegí qué calendarios se muestran en Trazio.
+        </p>
+      </div>
+
+      {!isPending && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">{connectionStatus.title}</p>
+            <p className="text-xs text-text-secondary">{connectionStatus.description}</p>
+          </div>
+          {isConnected ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
+              Desconectar
+            </Button>
+          ) : code === "not_connected" || canReconnect ? (
+            <Button size="sm" render={<a href="/api/auth/google" />}>
+              {canReconnect ? "Reconectar" : "Conectar con Google"}
+            </Button>
+          ) : null}
         </div>
-        {!isPending && !isError ? (
+      )}
+
+      {isConnected && (
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-sm font-medium text-foreground">Tus calendarios</h3>
           <Button onClick={openCreate}>
             <Plus className="size-4" /> Nuevo calendario
           </Button>
-        ) : null}
-      </div>
+        </div>
+      )}
 
       {isPending ? (
         <p className="text-sm text-text-secondary">
@@ -77,46 +111,60 @@ export function CalendarsSection() {
             ? "No hay conexión a internet. Trazio funciona 100% en línea: reconectate para ver tus calendarios."
             : "Cargando tus calendarios de Google…"}
         </p>
-      ) : isError ? (
-        <p className="text-sm text-text-secondary">{describeCalendarsError(error)}</p>
-      ) : calendars.length === 0 ? (
+      ) : isConnected && calendars.length === 0 ? (
         <p className="text-sm text-text-secondary">No encontramos ningún calendario en tu cuenta de Google.</p>
-      ) : (
+      ) : isConnected ? (
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {calendars.map((calendar) => (
-            <li key={calendar.id} className="flex items-center gap-2.5 px-3 py-2.5">
-              <span
-                aria-hidden
-                className="size-3 shrink-0 rounded-full"
-                style={{ backgroundColor: calendar.backgroundColor ?? "var(--text-secondary)" }}
-              />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{calendar.summary}</span>
-              {calendar.primary ? <span className="text-xs text-text-secondary">Principal</span> : null}
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Editar ${calendar.summary}`}
-                onClick={() => openEdit(calendar)}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={
-                  calendar.primary
-                    ? `No se puede eliminar ${calendar.summary} porque es el calendario principal`
-                    : `Eliminar ${calendar.summary}`
-                }
-                disabled={calendar.primary}
-                onClick={() => setDeletingCalendar(calendar)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </li>
-          ))}
+          {calendars.map((calendar) => {
+            const enabled = enabledCalendarIds.includes(calendar.id);
+            return (
+              <li key={calendar.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={enabled}
+                  aria-label={enabled ? `Dejar de mostrar ${calendar.summary} en Trazio` : `Mostrar ${calendar.summary} en Trazio`}
+                  onClick={() => toggleCalendarEnabled(calendar.id, !enabled)}
+                  className={cn(
+                    "flex size-4 shrink-0 items-center justify-center rounded border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    enabled ? "border-primary bg-primary" : "border-input",
+                  )}
+                >
+                  {enabled && <Check className="size-3 text-primary-foreground" aria-hidden />}
+                </button>
+                <span
+                  aria-hidden
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: calendar.backgroundColor ?? "var(--text-secondary)" }}
+                />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{calendar.summary}</span>
+                {calendar.primary ? <span className="text-xs text-text-secondary">Principal</span> : null}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Editar ${calendar.summary}`}
+                  onClick={() => openEdit(calendar)}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={
+                    calendar.primary
+                      ? `No se puede eliminar ${calendar.summary} porque es el calendario principal`
+                      : `Eliminar ${calendar.summary}`
+                  }
+                  disabled={calendar.primary}
+                  onClick={() => setDeletingCalendar(calendar)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </li>
+            );
+          })}
         </ul>
-      )}
+      ) : null}
 
       <CalendarFormDialog open={formOpen} onOpenChange={setFormOpen} calendar={editingCalendar} />
       {deletingCalendar && (
@@ -130,6 +178,37 @@ export function CalendarsSection() {
       )}
     </section>
   );
+}
+
+/**
+ * Título y descripción del estado de la conexión, siempre visible (tarea
+ * 7.10, spec `configuracion` "Sección Calendarios"): distingue conectado,
+ * sin conexión, y necesita reconectarse, en vez de un único texto de error
+ * genérico — es lo primero que se ve al abrir la sección.
+ */
+function describeConnectionStatus({
+  isConnected,
+  code,
+  error,
+}: {
+  isConnected: boolean;
+  code: ReturnType<typeof classifyError>;
+  error: unknown;
+}): { title: string; description: string } {
+  if (isConnected) {
+    return { title: "Conectado con Google", description: "Trazio puede leer y editar los eventos de tu cuenta." };
+  }
+  if (code === "not_connected") {
+    return { title: "Sin conexión con Google", description: "Conectá tu cuenta de Google para ver y crear eventos desde Trazio." };
+  }
+  if (code === "needs_reauth" || code === "insufficient_scope") {
+    return { title: "La conexión necesita reconectarse", description: describeCalendarsError(error) };
+  }
+  return { title: "No pudimos conectar con Google", description: describeCalendarsError(error) };
+}
+
+function classifyError(error: unknown): CalendarAdminErrorCode | null {
+  return error instanceof CalendarAdminError ? error.code : null;
 }
 
 /**

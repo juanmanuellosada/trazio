@@ -46,6 +46,13 @@ vi.mock("@/lib/view-options/use-view-options", () => ({
   useViewOptions: (_viewKey: string, initialOptions: unknown) => ({ options: initialOptions }),
 }));
 
+// El bloque de eventos de hoy (bloque 7.8) también corre TanStack Query
+// (`useTodayEvents`), ajeno al propósito de este test — mismo criterio que
+// `useHabits` arriba.
+vi.mock("@/lib/calendar/use-today-events", () => ({
+  useTodayEvents: () => ({ data: { status: "ok", events: [] }, isPending: false, isError: false }),
+}));
+
 describe("HoyView — centrado condicional", () => {
   it("aplica @[90rem]:mx-auto junto con max-w-content al encabezado y al contenido", () => {
     const { container } = render(

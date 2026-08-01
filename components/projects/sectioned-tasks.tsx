@@ -2,23 +2,30 @@
 
 import { useRef } from "react";
 import type { ReactNode } from "react";
+import { useTheme } from "next-themes";
+import { useMounted } from "@/hooks/use-mounted";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { SectionList } from "@/components/sections/section-list";
 import { TaskList } from "@/components/tasks/task-list";
 import { TaskRow as TaskRowView } from "@/components/tasks/task-row";
 import { Board, type BoardColumn } from "@/components/board/board";
+import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { clickButtonByText } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
+import { useProjects } from "@/lib/projects/use-projects";
 import { useMoveTask } from "@/lib/tasks/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
 import { useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import { isDragEnabled, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
+import { cn } from "@/lib/utils";
 
 const UNSECTIONED_COLUMN_ID = "sin-seccion";
 
@@ -72,6 +79,14 @@ export function SectionedTasks({
   const { data: sectionsData } = useSections(projectId, initialSections);
   const { data: tasksData } = useTasks(projectId, initialTasks);
   const { options } = useViewOptions(viewKey, initialOptions);
+  const { weekStartsOn, timeFormat } = useUserPreferences();
+  const { data: projects } = useProjects();
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
+  const project = projects?.find((p) => p.id === projectId);
+  const projectColorHex = resolveProjectColorHex(project?.color ?? null, theme);
+  const resolveTaskColor = () => projectColorHex;
   const moveTask = useMoveTask();
   const sections = [...(sectionsData ?? [])].sort((a, b) => a.position - b.position);
   const allTasks = tasksData ?? [];
@@ -132,7 +147,12 @@ export function SectionedTasks({
       <div className="flex flex-1 flex-col overflow-hidden">
         <ViewOptionsBar viewKey={viewKey} initialOptions={initialOptions} showViewShape showDaysAhead={false} />
 
-        <div className="w-full max-w-content flex-1 overflow-y-auto p-4 sm:p-6 @[90rem]:mx-auto">
+        <div
+          className={cn(
+            "w-full max-w-content flex-1 p-4 sm:p-6 @[90rem]:mx-auto",
+            options.viewShape === "calendario" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
+          )}
+        >
           {isEmpty ? (
             emptyState
           ) : options.viewShape === "panel" ? (
@@ -142,6 +162,16 @@ export function SectionedTasks({
               draggable={dragEnabled}
               onReorderWithinColumn={handleReorderWithinColumn}
               onMoveAcrossColumns={handleMoveAcrossColumns}
+            />
+          ) : options.viewShape === "calendario" ? (
+            <ScreenCalendar
+              timezone={timezone}
+              weekStartsOn={weekStartsOn}
+              timeFormat={timeFormat}
+              options={options}
+              tasks={visibleTasks}
+              resolveTaskColor={resolveTaskColor}
+              createTaskProjectId={projectId}
             />
           ) : options.groupBy === "nada" ? (
             <div className="space-y-4">

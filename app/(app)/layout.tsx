@@ -14,6 +14,7 @@ import { PreferencesProvider } from "@/components/providers/preferences-provider
 import { UndoProvider } from "@/components/providers/undo-provider";
 import { RealtimeProvider } from "@/components/providers/realtime-provider";
 import { OfflineBanner } from "@/components/providers/offline-banner";
+import { GoogleReconnectBanner } from "@/components/providers/google-reconnect-banner";
 import { OfflineBoundary } from "@/components/providers/offline-boundary";
 import { ShortcutProvider } from "@/components/shortcuts/shortcut-provider";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -64,6 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <SettingsProvider>
                 <ShortcutProvider inboxProjectId={inboxProjectId}>
                   <OfflineBanner />
+                  <GoogleReconnectBanner />
                   <OfflineBoundary>
                     <div className="flex min-h-dvh">
                       <AppSidebar

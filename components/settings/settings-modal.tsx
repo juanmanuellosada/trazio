@@ -1,19 +1,18 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
-import { Bell, ChevronLeft, Download, Palette, SlidersHorizontal, User } from "lucide-react";
+import { Bell, CalendarDays, ChevronLeft, Download, Palette, SlidersHorizontal, User } from "lucide-react";
 import { AppDialog } from "@/components/primitives/dialog";
-import { useSettings } from "./settings-context";
+import { useSettings, type SectionId } from "./settings-context";
 import { useSettingsData } from "@/lib/preferences/use-settings-data";
 import { AccountSection } from "./account-section";
 import { GeneralSection } from "./general-section";
 import { ThemeSection } from "./theme-section";
 import { InstallSection } from "./install-section";
 import { NotificationsSection } from "./notifications-section";
+import { CalendarsSection } from "./calendars-section";
 import { AppBadgeSync } from "./app-badge-sync";
 import { cn } from "@/lib/utils";
-
-type SectionId = "cuenta" | "general" | "notificaciones" | "tema" | "instalacion";
 
 const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { id: "cuenta", label: "Cuenta", icon: User },
@@ -21,32 +20,32 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?
   { id: "notificaciones", label: "Notificaciones", icon: Bell },
   { id: "tema", label: "Tema", icon: Palette },
   { id: "instalacion", label: "Instalación", icon: Download },
+  { id: "calendarios", label: "Calendarios", icon: CalendarDays },
 ];
 
 /**
  * Modal de configuración (bloque 9): secciones navegables en vez de la
  * vieja pantalla propia (`docs/design-system.md` §9.2, spec `configuracion`
  * "Secciones del modal de configuración en fase 1"). Notificaciones se
- * suma en fase 2 (bloque 4.9, recordatorios push) — Calendarios sigue sin
- * contenido y no aparece ni deshabilitada ni con aviso de "próximamente"
- * (D7, OQ3): mostrar una opción inerte no resuelve el problema de
- * confianza, lo anuncia.
+ * suma en fase 2 (bloque 4.9, recordatorios push); Calendarios en fase 4
+ * (bloque 7.4, D7 resuelto): `CalendarsSection` ya no queda sin montar.
  *
  * Vive una sola vez en `app/(app)/layout.tsx`, junto a `TaskDetailPanel`:
  * cualquier punto de entrada la abre a través de `useSettings()` sin
  * navegar a una ruta separada, así que la pantalla de fondo sigue siendo la
  * vista en la que estaba la persona (mismo patrón que el detalle de
- * tarea).
+ * tarea). `open(section)` (bloque 7.7) deja pedir una sección puntual —el
+ * banner de reconexión abre directo en "calendarios" en vez de en "cuenta".
  *
  * En mobile, la lista de secciones y el contenido de la elegida ocupan el
  * modal por turnos (con un botón "Volver") en vez de mostrarse lado a
- * lado: no entran los dos a la vez en un ancho de teléfono. Los cinco
+ * lado: no entran los dos a la vez en un ancho de teléfono. Los seis
  * paneles de contenido quedan siempre montados —solo se ocultan con
  * `hidden`— para no perder lo que la persona esté escribiendo si navega
  * entre secciones dentro de la misma apertura del modal.
  */
 export function SettingsModal() {
-  const { isOpen, close } = useSettings();
+  const { isOpen, close, initialSection } = useSettings();
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
   const { data, isLoading, isError } = useSettingsData(isOpen);
 
@@ -57,7 +56,7 @@ export function SettingsModal() {
     }
   }
 
-  const effectiveSection = activeSection ?? "cuenta";
+  const effectiveSection = activeSection ?? initialSection ?? "cuenta";
 
   return (
     <>
@@ -140,6 +139,9 @@ export function SettingsModal() {
             </div>
             <div data-testid="panel-instalacion" className={effectiveSection === "instalacion" ? "block" : "hidden"}>
               <InstallSection />
+            </div>
+            <div data-testid="panel-calendarios" className={effectiveSection === "calendarios" ? "block" : "hidden"}>
+              <CalendarsSection />
             </div>
           </div>
         </div>

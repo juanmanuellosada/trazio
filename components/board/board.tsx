@@ -103,7 +103,16 @@ export function Board({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    // `id` fijo (no el default autoincremental de `@dnd-kit`): sin esto, los
+    // `aria-describedby`/`id` que arma internamente para las instrucciones de
+    // accesibilidad dependen de cuántos `DndContext` ya se montaron en ese
+    // proceso, y el conteo del server (un proceso Node de larga vida) diverge
+    // del conteo del cliente (uno por carga de página) — hydration mismatch
+    // diagnosticado en la fase 4 (grupo 6, tarea 6.1) al ponerle `id`
+    // explícito a `components/calendar/calendar-view.tsx`; acá quedaba el
+    // mismo riesgo latente desde la fase 2, descartado entonces como
+    // artefacto de desarrollo sin serlo.
+    <DndContext id="board-drag" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex h-full items-start gap-3 overflow-x-auto pb-2">
         {columns.map((column) => (
           <div key={column.id} className="flex w-72 shrink-0 flex-col gap-2 rounded-lg bg-surface/60 p-2">

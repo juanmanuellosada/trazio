@@ -273,7 +273,9 @@ export function SectionList({
   return (
     <div className="space-y-2">
       {sections.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        // `id` fijo: mismo hydration mismatch de `aria-describedby` que
+        // `components/board/board.tsx` (bloque 7, diagnosticado en fase 4).
+        <DndContext id="section-list-drag" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-5">
               {sections.map((section) => (

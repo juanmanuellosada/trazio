@@ -3,6 +3,8 @@
 import { useState } from "react";
 import {
   ArrowDownUp,
+  CalendarClock,
+  CalendarDays,
   Check,
   Columns3,
   Eye,
@@ -37,6 +39,7 @@ import {
   type OrderOption,
   type ViewOptions,
 } from "@/lib/view-options/schema";
+import { CALENDAR_FORMATS, CALENDAR_FORMAT_LABELS } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
 
 const ORDER_LABELS: Record<OrderOption, string> = {
@@ -79,14 +82,18 @@ function countActiveQuickFilters(quickFilters: ViewOptions["quickFilters"]): num
 /**
  * Barra de opciones de vista (bloque 6.3/6.5, capacidad
  * `opciones-de-vista`): forma de ver, mostrar completadas, mostrar hábitos
- * (tarea 5.7 de fase 3 — el de repeticiones futuras sigue reservado, sin
- * control propio, es de fase 4), días adelante, orden, agrupar por, filtros
- * rápidos y restablecer. Un único componente
- * para las seis pantallas (`.claude/rules/frontend.md`: consultar
- * `ui-ux-pro-max` antes de crear un componente visual nuevo — acá se
- * decidió por control binario para forma de ver, menús desplegables para
- * orden/agrupar, y un popover de divulgación progresiva para los filtros
- * rápidos, en vez de tres controles sueltos siempre visibles).
+ * (tarea 5.7 de fase 3), días adelante, orden, agrupar por, filtros rápidos
+ * y restablecer. Un único componente para las seis pantallas
+ * (`.claude/rules/frontend.md`: consultar `ui-ux-pro-max` antes de crear un
+ * componente visual nuevo — acá se decidió por control binario para forma
+ * de ver, menús desplegables para orden/agrupar, y un popover de
+ * divulgación progresiva para los filtros rápidos, en vez de tres controles
+ * sueltos siempre visibles).
+ *
+ * Fase 4 (bloque 7.1/7.3, D-E): con la forma de ver "calendario" aparecen
+ * dos controles más, antes reservados sin control propio — formato de
+ * calendario (día/cuatro días/semana/mes) y repeticiones futuras—, y
+ * desaparecen apenas se vuelve a "lista" o "panel".
  *
  * `showViewShape` y `showDaysAhead` acotan qué controles aparecen según la
  * pantalla (`specs/opciones-de-vista`: forma de ver solo donde existe modo
@@ -139,7 +146,40 @@ export function ViewOptionsBar({
           >
             <LayoutGrid className="size-3.5" aria-hidden />
           </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={options.viewShape === "calendario"}
+            aria-label="Ver en calendario"
+            onClick={() => setOption("viewShape", "calendario")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              options.viewShape === "calendario" && "bg-surface text-foreground",
+            )}
+          >
+            <CalendarDays className="size-3.5" aria-hidden />
+          </button>
         </div>
+      )}
+
+      {showViewShape && options.viewShape === "calendario" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<button type="button" aria-label="Formato de calendario" className={triggerClassName(false)} />}>
+            <CalendarClock className="size-3.5 text-text-secondary" aria-hidden />
+            {CALENDAR_FORMAT_LABELS[options.formato_calendario]}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Formato de calendario</DropdownMenuLabel>
+              {CALENDAR_FORMATS.map((format) => (
+                <DropdownMenuItem key={format} onClick={() => setOption("formato_calendario", format)}>
+                  {CALENDAR_FORMAT_LABELS[format]}
+                  {format === options.formato_calendario && <Check className="ml-auto size-3.5" aria-hidden />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       <Button
@@ -165,6 +205,20 @@ export function ViewOptionsBar({
         <Repeat className="size-3.5" aria-hidden />
         Hábitos
       </Button>
+
+      {showViewShape && options.viewShape === "calendario" && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-pressed={options.showFutureRecurrences}
+          onClick={() => setOption("showFutureRecurrences", !options.showFutureRecurrences)}
+          className={cn(options.showFutureRecurrences && "text-foreground")}
+        >
+          <CalendarClock className="size-3.5" aria-hidden />
+          Repeticiones futuras
+        </Button>
+      )}
 
       {showDaysAhead && (
         <DropdownMenu>

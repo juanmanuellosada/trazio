@@ -1,9 +1,10 @@
 /**
  * "Seguimos sumando funciones" (bloque 12.7): hoja de ruta explícita, no
  * funcionalidad presente. Incluye los atajos de teclado, que salieron de la
- * grilla de Funcionalidades porque son de fase 2.
+ * grilla de Funcionalidades porque son de fase 2. Google Calendar sale de
+ * acá en la fase 4 (bloque 7.9): ya está en la app, no es más "lo próximo".
  */
-const ROADMAP_ITEMS = ["Hábitos con rachas", "Filtros guardados", "Recordatorios", "Google Calendar", "Atajos de teclado"];
+const ROADMAP_ITEMS = ["Hábitos con rachas", "Filtros guardados", "Recordatorios", "Atajos de teclado"];
 
 export function RoadmapSection() {
   return (

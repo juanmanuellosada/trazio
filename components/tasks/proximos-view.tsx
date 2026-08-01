@@ -1,14 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import { addDays, format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { AlertTriangle, CalendarDays } from "lucide-react";
+import { useMounted } from "@/hooks/use-mounted";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { isTaskOverdue, taskDueDay, todayInTimeZone } from "@/lib/dates/today";
+import { useProjects } from "@/lib/projects/use-projects";
 import { useUndatedTasks } from "@/lib/tasks/use-undated-tasks";
 import { useUpcomingTasks } from "@/lib/tasks/use-upcoming-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { Board, type BoardColumn } from "@/components/board/board";
+import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
@@ -66,6 +72,16 @@ export function ProximosView({
   initialOptions: ViewOptions;
 }) {
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
+  const { weekStartsOn, timeFormat } = useUserPreferences();
+  const { data: projects } = useProjects();
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
+  const projectColorById = useMemo(
+    () => new Map((projects ?? []).map((p) => [p.id, resolveProjectColorHex(p.color, theme)] as const)),
+    [projects, theme],
+  );
+  const resolveTaskColor = (task: TaskRowData) => projectColorById.get(task.project_id) ?? resolveProjectColorHex(null, theme);
   const windowDays = options.daysAhead;
   const { data } = useUpcomingTasks(userId, timezone, windowDays, initialTasks, options.showCompleted);
   const { data: undatedData } = useUndatedTasks(userId, undefined, options.showCompleted);
@@ -152,6 +168,18 @@ export function ProximosView({
             draggable={isDragEnabled(options)}
             onReorderWithinColumn={handleReorderWithinColumn}
             onMoveAcrossColumns={handleMoveAcrossColumns}
+          />
+        </div>
+      ) : options.viewShape === "calendario" ? (
+        <div className="flex w-full max-w-content flex-1 flex-col overflow-hidden p-4 sm:p-6 @[90rem]:mx-auto">
+          <ScreenCalendar
+            timezone={timezone}
+            weekStartsOn={weekStartsOn}
+            timeFormat={timeFormat}
+            options={options}
+            tasks={tasks}
+            resolveTaskColor={resolveTaskColor}
+            createTaskProjectId={inboxProjectId}
           />
         </div>
       ) : (

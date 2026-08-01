@@ -61,24 +61,36 @@ vi.mock("@/lib/supabase/client", () => {
 
 const { getUser } = (supabaseClientModule as unknown as { __mock: { getUser: ReturnType<typeof vi.fn> } }).__mock;
 
-function OpenButton() {
+// La sección Calendarios (bloque 7.4) ahora se monta siempre —oculta con
+// `hidden`, no desmontada, como el resto de los paneles— y llama a
+// `fetch("/api/calendar/calendars")` apenas se monta (`useGoogleCalendars`).
+// Sin este mock, cada test de este archivo dispararía una llamada de red de
+// verdad. `not_connected` es el estado más simple de simular.
+function mockCalendarsFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ error: "not_connected" }), { status: 404 })),
+  );
+}
+
+function OpenButton({ section }: { section?: "calendarios" } = {}) {
   const { open } = useSettings();
   return (
-    <button type="button" onClick={open}>
+    <button type="button" onClick={() => open(section)}>
       Abrir configuración
     </button>
   );
 }
 
-function renderModal() {
-  const queryClient = new QueryClient();
+function renderModal(section?: "calendarios") {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       {/* `AppBadgeSync`, montado dentro de `SettingsModal`, necesita el contexto
           de preferencias (tarea 5.3, fase 3) igual que en `app/(app)/layout.tsx`. */}
       <PreferencesProvider preferences={PREFERENCES}>
         <SettingsProvider>
-          <OpenButton />
+          <OpenButton section={section} />
           <SettingsModal />
         </SettingsProvider>
       </PreferencesProvider>
@@ -86,18 +98,23 @@ function renderModal() {
   );
 }
 
-async function openModal() {
+async function openModal(section?: "calendarios") {
   const user = userEvent.setup();
-  renderModal();
+  renderModal(section);
   await user.click(screen.getByRole("button", { name: "Abrir configuración" }));
   await screen.findByRole("dialog", { name: "Configuración" });
-  await waitFor(() => expect(screen.getByLabelText("Nombre")).toBeInTheDocument());
+  if (section === "calendarios") {
+    await waitFor(() => expect(screen.getByTestId("panel-calendarios")).not.toHaveClass("hidden"));
+  } else {
+    await waitFor(() => expect(screen.getByLabelText("Nombre")).toBeInTheDocument());
+  }
   return user;
 }
 
 describe("SettingsModal (bloque 9)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalendarsFetch();
     getUser.mockResolvedValue({
       data: {
         user: {
@@ -117,7 +134,7 @@ describe("SettingsModal (bloque 9)", () => {
     expect(screen.getByRole("dialog", { name: "Configuración" })).toBeInTheDocument();
   });
 
-  it("muestra las cinco secciones de fase 2, con Notificaciones y sin Calendarios", async () => {
+  it("muestra las seis secciones de fase 4, con Calendarios (bloque 7.4)", async () => {
     await openModal();
 
     const nav = screen.getByRole("navigation", { name: "Secciones de configuración" });
@@ -126,9 +143,16 @@ describe("SettingsModal (bloque 9)", () => {
     expect(within(nav).getByRole("button", { name: "Notificaciones" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Tema" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Instalación" })).toBeInTheDocument();
-    expect(within(nav).getAllByRole("button")).toHaveLength(5);
+    expect(within(nav).getByRole("button", { name: "Calendarios" })).toBeInTheDocument();
+    expect(within(nav).getAllByRole("button")).toHaveLength(6);
+  });
 
-    expect(screen.queryByText(/calendarios/i)).not.toBeInTheDocument();
+  it("open(\"calendarios\") abre el modal directo en esa sección (bloque 7.7)", async () => {
+    await openModal("calendarios");
+
+    expect(screen.getByRole("button", { name: "Calendarios" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("panel-calendarios")).not.toHaveClass("hidden");
+    expect(screen.getByTestId("panel-cuenta")).toHaveClass("hidden");
   });
 
   it("navega entre secciones: elegir General la marca activa y muestra su contenido", async () => {

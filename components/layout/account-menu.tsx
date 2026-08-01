@@ -55,7 +55,7 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top">
         <ThemeToggle />
-        <DropdownMenuItem onClick={openSettings}>
+        <DropdownMenuItem onClick={() => openSettings()}>
           <Settings className="size-4" />
           Configuración
         </DropdownMenuItem>
