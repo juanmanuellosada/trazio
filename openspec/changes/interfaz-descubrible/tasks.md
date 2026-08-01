@@ -56,7 +56,7 @@
 ## 5. Verificación
 
 - [x] 5.1 `pnpm lint && pnpm typecheck && pnpm test` en verde
-- [ ] 5.2 Recorrido completo en el navegador, en escritorio y en 390px — escritorio completo; 390px sin confirmar en vivo (el redimensionado real de ventana no respondió en este entorno, ver informe de verificación)
+- [x] 5.2 Recorrido completo en el navegador, en escritorio y en 390px — los 390px quedaron confirmados con un viewport real de Playwright, después de que el redimensionado de ventana fallara en cinco tandas seguidas: ningún indicador de atajo se muestra a ese ancho, ni en la hoja lateral móvil ni en ningún botón, y el panel de Formato abre anclado y cómodo
 - [x] 5.3 Cada indicador de atajo verificado apretando su tecla
 - [x] 5.4 El disparador del panel muestra que hay opciones activas cuando las hay
 - [x] 5.5 Ninguna sección conserva el ícono en el título

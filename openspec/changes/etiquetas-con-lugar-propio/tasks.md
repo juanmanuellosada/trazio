@@ -44,11 +44,11 @@
 
 ## 4. Verificación
 
-- [ ] 4.1 `pnpm lint && pnpm typecheck && pnpm test` en verde
-- [ ] 4.2 `G E` navega a Etiquetas, y la `E` suelta sigue abriendo el alta de evento
-- [ ] 4.3 El indicador del ítem nuevo anuncia la tecla que realmente funciona
-- [ ] 4.4 **Con cero etiquetas el acceso se ve**, y desde ahí se puede crear la primera
-- [ ] 4.5 Renombrar, recolorear, favorita y eliminar funcionan desde la página de la etiqueta
-- [ ] 4.6 Eliminar desde la página de la etiqueta no deja la aplicación en una página que ya no existe
-- [ ] 4.7 "Etiquetas" ya no está en el menú de cuenta, y no quedó ningún camino roto hacia `/etiquetas`
-- [ ] 4.8 Recorrido en escritorio y en 390px
+- [x] 4.1 `pnpm lint && pnpm typecheck && pnpm test` en verde
+- [x] 4.2 `G E` navega a Etiquetas, y la `E` suelta sigue abriendo el alta de evento
+- [x] 4.3 El indicador del ítem nuevo anuncia la tecla que realmente funciona
+- [x] 4.4 **Con cero etiquetas el acceso se ve**, y desde ahí se puede crear la primera
+- [x] 4.5 Renombrar, recolorear, favorita y eliminar funcionan desde la página de la etiqueta
+- [x] 4.6 Eliminar desde la página de la etiqueta no deja la aplicación en una página que ya no existe
+- [x] 4.7 "Etiquetas" ya no está en el menú de cuenta, y no quedó ningún camino roto hacia `/etiquetas`
+- [x] 4.8 Recorrido en escritorio y en 390px
