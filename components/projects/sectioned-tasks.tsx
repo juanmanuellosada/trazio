@@ -10,7 +10,6 @@ import { TaskList } from "@/components/tasks/task-list";
 import { TaskRow as TaskRowView } from "@/components/tasks/task-row";
 import { Board, type BoardColumn } from "@/components/board/board";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
-import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { clickButtonByText } from "@/lib/shortcuts/dom";
@@ -47,14 +46,15 @@ const UNSECTIONED_COLUMN_ID = "sin-seccion";
  * `⇧S` agrega una sección (bloque 7.7) — la misma acción de "revelar el
  * campo de agregar sección" bajo una tecla distinta para no colisionar.
  *
- * Bloque 6 (`opciones-de-vista`/`modo-panel`): monta acá la barra (una
- * sección de cada tipo de estas dos pantallas), porque es el único lugar
- * que ya conoce tareas y secciones juntas. Con agrupación activa (por
- * prioridad o etiqueta), la agrupación por sección se reemplaza por la
- * elegida — las secciones vuelven en cuanto se restablece "nada". En modo
- * panel, las columnas son siempre las secciones (bloque 6.8), sin importar
- * la agrupación: la agrupación ahí solo apaga el arrastre (D-I, bloque
- * 6.10), como en cualquier otra combinación.
+ * Bloque 6 (`opciones-de-vista`/`modo-panel`): el disparador de opciones de
+ * vista vive en la cabecera de cada pantalla (bandeja/page.tsx, project-header.tsx),
+ * no acá — este componente solo lee `options` vía `useViewOptions` con el
+ * mismo `viewKey`. Con agrupación activa (por prioridad o etiqueta), la
+ * agrupación por sección se reemplaza por la elegida — las secciones vuelven
+ * en cuanto se restablece "nada". En modo panel, las columnas son siempre
+ * las secciones (bloque 6.8), sin importar la agrupación: la agrupación ahí
+ * solo apaga el arrastre (D-I, bloque 6.10), como en cualquier otra
+ * combinación.
  */
 export function SectionedTasks({
   projectId,
@@ -145,8 +145,6 @@ export function SectionedTasks({
   return (
     <SelectionProvider>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <ViewOptionsBar viewKey={viewKey} initialOptions={initialOptions} showViewShape showDaysAhead={false} />
-
         <div
           className={cn(
             "w-full max-w-content mx-auto flex-1 p-4 sm:p-6",

@@ -73,11 +73,11 @@ export function FilterResultsView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="w-full max-w-content mx-auto">
-            <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
+          <div className="flex w-full max-w-content mx-auto items-center justify-between gap-2">
+            <h1 className="min-w-0 truncate text-2xl font-semibold text-foreground">{name}</h1>
+            <ViewOptionsBar viewKey={`filtro:${filterId}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
           </div>
         </header>
-        <ViewOptionsBar viewKey={`filtro:${filterId}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
 
         <div className="w-full max-w-content mx-auto flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           {(missingLabels.length > 0 || missingProjects.length > 0) && (

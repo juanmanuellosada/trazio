@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useUpdateLabel } from "@/lib/labels/mutations";
 import { useLabelTasks } from "@/lib/labels/use-label-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
@@ -106,35 +107,40 @@ export function LabelView({
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={label.is_favorite ? "Quitar de favoritos" : "Marcar como favorita"}
-                onClick={() => updateLabel.mutate({ id: label.id, patch: { is_favorite: !label.is_favorite } })}
-              >
-                <Star className={cn("size-4", label.is_favorite && "fill-current text-primary")} />
-              </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={label.is_favorite ? "Quitar de favoritos" : "Marcar como favorita"}
+                  onClick={() => updateLabel.mutate({ id: label.id, patch: { is_favorite: !label.is_favorite } })}
+                >
+                  <Star className={cn("size-4", label.is_favorite && "fill-current text-primary")} />
+                </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones de la etiqueta" />}>
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-                    Eliminar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones de la etiqueta" />}>
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <Separator orientation="vertical" className="h-5" />
+
+              <ViewOptionsBar viewKey={`etiqueta:${label.id}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
             </div>
           </div>
         </header>
 
         <LabelFormDialog open={editOpen} onOpenChange={setEditOpen} label={label} />
         <DeleteLabelDialog open={deleteOpen} onOpenChange={setDeleteOpen} label={label} />
-        <ViewOptionsBar viewKey={`etiqueta:${label.id}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
 
         <div className="w-full max-w-content mx-auto flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           {visibleTasks.length === 0 ? (

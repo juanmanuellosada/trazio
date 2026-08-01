@@ -12,7 +12,7 @@ import { SectionedTasks } from "./sectioned-tasks";
 
 /**
  * Vista de proyecto (bloques 6 y 8): encabezado con las acciones del
- * proyecto y, debajo, la barra de opciones de vista y las tareas y
+ * proyecto y el disparador de opciones de vista, y debajo las tareas y
  * secciones del proyecto vía `SectionedTasks` (spec §3 "Proyecto",
  * `opciones-de-vista`). `viewKey` es `proyecto:<id>` (D-H).
  */
@@ -41,7 +41,12 @@ export function ProjectView({
 
   return (
     <div className="flex h-full flex-col">
-      <ProjectHeader project={project} allProjects={allProjects} />
+      <ProjectHeader
+        project={project}
+        allProjects={allProjects}
+        viewKey={`proyecto:${projectId}`}
+        initialOptions={initialViewOptions}
+      />
       <SectionedTasks
         projectId={projectId}
         viewKey={`proyecto:${projectId}`}

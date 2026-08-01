@@ -7,6 +7,7 @@ import { getTasks } from "@/lib/tasks/get-tasks";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { getViewPreferences } from "@/lib/view-options/get-view-preferences";
 import { SectionedTasks } from "@/components/projects/sectioned-tasks";
+import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
 
@@ -43,8 +44,9 @@ export default async function BandejaPage() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="w-full max-w-content mx-auto">
+        <div className="flex w-full max-w-content mx-auto items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold text-foreground">Bandeja de entrada</h1>
+          <ViewOptionsBar viewKey="bandeja" initialOptions={initialViewOptions} showViewShape showDaysAhead={false} />
         </div>
       </header>
       <SectionedTasks

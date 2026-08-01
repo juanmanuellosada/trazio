@@ -153,11 +153,11 @@ export function ProximosView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="w-full max-w-content mx-auto">
+          <div className="flex w-full max-w-content mx-auto items-center justify-between gap-2">
             <h1 className="text-2xl font-semibold text-foreground">Próximos</h1>
+            <ViewOptionsBar viewKey={VIEW_KEY} initialOptions={initialOptions} showViewShape showDaysAhead />
           </div>
         </header>
-        <ViewOptionsBar viewKey={VIEW_KEY} initialOptions={initialOptions} showViewShape showDaysAhead />
 
         {options.viewShape === "panel" ? (
         <div className={cn("w-full max-w-content mx-auto flex-1 overflow-hidden p-4 sm:p-6")}>
