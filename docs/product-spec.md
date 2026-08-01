@@ -273,13 +273,14 @@ Colapsable a una versión angosta de solo íconos. De arriba abajo:
 2. Accesos rápidos: agregar tarea, agregar evento (si hay calendario conectado),
    abrir buscador.
 3. Accesos principales: Bandeja de entrada, Hoy (con contador de pendientes que
-   suma tareas y hábitos), Próximos, Hábitos, Completado.
+   suma tareas y hábitos), Próximos, Etiquetas (administración), Hábitos, Completado.
 4. Favoritos: proyectos, etiquetas y filtros marcados como tales.
 5. Árbol de proyectos, con cantidad de tareas por proyecto, ramas colapsables,
    botón para crear subproyecto, y arrastrar para reordenar entre hermanos.
    Anidar un proyecto o cambiarlo de padre se hace desde el menú contextual o
    el diálogo "Mover a…".
-6. Listas colapsables de etiquetas y filtros.
+6. Lista colapsable de las etiquetas que no son favoritas, cada una a su propia
+   página; y lista colapsable de filtros.
 7. Al pie: cambiar tema, Configuración, cerrar sesión.
 
 ### Barra inferior (teléfono)

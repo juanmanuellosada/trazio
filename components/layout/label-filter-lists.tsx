@@ -53,6 +53,11 @@ function ListTrigger({ icon: Icon, label, open }: { icon: typeof Tag; label: str
  * muestran en la sección Favoritos. Colapsada por defecto para que el panel
  * no se alargue de entrada; sin `initialData` porque el layout del servidor
  * no siembra etiquetas (mismo motivo que en `FavoritesSection`).
+ *
+ * Ya no devuelve `null` sin etiquetas no favoritas (`etiquetas-con-lugar-propio`,
+ * D-A): el acceso a la administración de etiquetas ahora vive en
+ * `sidebar-content.tsx` como ítem principal, así que esta lista puede seguir
+ * mostrándose vacía sin dejar el panel sin ningún rastro de "Etiquetas".
  */
 export function LabelsCollapsibleList() {
   const [open, setOpen] = useState(false);
@@ -62,29 +67,31 @@ export function LabelsCollapsibleList() {
   const { data } = useLabels();
   const labels = ((data ?? []) as Label[]).filter((l) => !l.is_favorite);
 
-  if (labels.length === 0) return null;
-
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <ListTrigger icon={Tag} label="Etiquetas" open={open} />
       <CollapsibleContent>
-        <ul className="flex flex-col gap-0.5 py-0.5 pl-5">
-          {labels.map((label) => (
-            <li key={label.id}>
-              <ListItemLink
-                href={`/etiquetas/${label.id}`}
-                name={label.name}
-                mark={
-                  <span
-                    aria-hidden
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
-                  />
-                }
-              />
-            </li>
-          ))}
-        </ul>
+        {labels.length === 0 ? (
+          <p className="px-2.5 py-1 pl-5 text-sm text-text-secondary">No hay etiquetas para mostrar acá.</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5 py-0.5 pl-5">
+            {labels.map((label) => (
+              <li key={label.id}>
+                <ListItemLink
+                  href={`/etiquetas/${label.id}`}
+                  name={label.name}
+                  mark={
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
+                    />
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );

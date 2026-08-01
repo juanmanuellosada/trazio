@@ -94,28 +94,24 @@ describe("AccountMenu", () => {
     await user.click(screen.getByRole("button", { name: "Menú de cuenta" }));
     await screen.findByRole("menu");
 
-    // Tema, Configuración, Etiquetas, Filtros, Cerrar sesión: cinco pasos
-    // hasta la última opción (el separador antes de "Cerrar sesión" no
-    // cuenta como parada de la navegación por teclado).
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
+    // Tema, Configuración, Filtros, Cerrar sesión: cuatro pasos hasta la
+    // última opción (el separador antes de "Cerrar sesión" no cuenta como
+    // parada de la navegación por teclado).
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
 
     await waitFor(() => expect(signOut).toHaveBeenCalled());
     expect(push).toHaveBeenCalledWith("/");
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("Etiquetas navega a la pantalla de administración de etiquetas", async () => {
+  it("no ofrece una entrada 'Etiquetas': ese acceso vive en el panel lateral y en G E", async () => {
     const user = userEvent.setup();
     renderMenu();
 
     await user.click(screen.getByRole("button", { name: "Menú de cuenta" }));
+    await screen.findByRole("menu");
 
-    const item = await screen.findByRole("menuitem", { name: "Etiquetas" });
-    expect(item).not.toHaveAttribute("href");
-
-    await user.click(item);
-
-    expect(push).toHaveBeenCalledWith("/etiquetas");
+    expect(screen.queryByRole("menuitem", { name: "Etiquetas" })).not.toBeInTheDocument();
   });
 
   it("Filtros navega a la pantalla de administración de filtros", async () => {

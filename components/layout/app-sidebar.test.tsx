@@ -95,3 +95,33 @@ describe("AppSidebar — colapso", () => {
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe("0");
   });
 });
+
+/**
+ * Tests del acceso principal "Etiquetas" (`etiquetas-con-lugar-propio`,
+ * requirement "Acceso 'Etiquetas' en el panel lateral"): se muestra siempre,
+ * incluso sin ninguna etiqueta creada — sin `initialData` para `useLabels`,
+ * este render no siembra ninguna, el mismo caso que hoy falla en producción.
+ */
+describe("AppSidebar — acceso Etiquetas", () => {
+  it("se muestra entre Próximos y Hábitos, con destino /etiquetas, aunque no haya ninguna etiqueta", () => {
+    renderSidebar();
+
+    const mainNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const labels = screen.getByRole("link", { name: "Etiquetas" });
+
+    expect(mainNav).toContainElement(labels);
+    expect(labels).toHaveAttribute("href", "/etiquetas");
+
+    const links = Array.from(mainNav.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(links.indexOf("/proximos")).toBeLessThan(links.indexOf("/etiquetas"));
+    expect(links.indexOf("/etiquetas")).toBeLessThan(links.indexOf("/habitos"));
+  });
+
+  it("anuncia G E como su atajo, la misma tecla que efectivamente navega", () => {
+    renderSidebar();
+
+    const labels = screen.getByRole("link", { name: "Etiquetas" });
+    expect(labels).toHaveTextContent("G");
+    expect(labels).toHaveTextContent("E");
+  });
+});

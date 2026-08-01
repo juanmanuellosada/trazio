@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle2, Inbox, Repeat, Search, Sun } from "lucide-react";
+import { CalendarDays, CheckCircle2, Inbox, Repeat, Search, Sun, Tag } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { SidebarAddTask } from "./sidebar-add-task";
 import { SidebarAddEvent } from "./sidebar-add-event";
@@ -36,10 +36,12 @@ function getInitials(source: string): string {
  * y la hoja de teléfono (`mobile-nav.tsx`, siempre expandida). De arriba a
  * abajo, el orden de "Panel lateral (escritorio)" en `docs/product-spec.md`:
  * cuenta, accesos rápidos (agregar tarea, agregar evento —bloque 7.6— y
- * buscar), accesos principales (Bandeja, Hoy, Próximos, Hábitos, Completado
- * — ese orden lo fija `docs/product-spec.md`), Favoritos
+ * buscar), accesos principales (Bandeja, Hoy, Próximos, Etiquetas —lleva a la
+ * administración, `/etiquetas`, capacidad `administracion-de-etiquetas`—,
+ * Hábitos, Completado — ese orden lo fija `docs/product-spec.md`), Favoritos
  * (proyectos, etiquetas y filtros marcados como tales), árbol de proyectos,
- * listas colapsables de etiquetas y filtros, y pie.
+ * lista colapsable de las etiquetas no favoritas (cada una a su propia
+ * página, no a la administración) y de filtros, y pie.
  */
 export function SidebarContent({
   collapsed = false,
@@ -115,6 +117,13 @@ export function SidebarContent({
             icon={CalendarDays}
             collapsed={collapsed}
             shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.proximos }]}
+          />
+          <NavLink
+            href="/etiquetas"
+            label="Etiquetas"
+            icon={Tag}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.etiquetas }]}
           />
           <NavLink
             href="/habitos"

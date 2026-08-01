@@ -49,10 +49,29 @@ const plainFilter = {
 } satisfies FilterRow;
 
 describe("LabelsCollapsibleList", () => {
-  it("no renderiza nada si todas las etiquetas son favoritas", () => {
+  it("muestra el acceso aunque todas las etiquetas sean favoritas, sin listar ninguna al expandir", async () => {
+    const user = userEvent.setup();
     mockUseLabels.mockReturnValue({ data: [favoriteLabel] });
-    const { container } = render(<LabelsCollapsibleList />);
-    expect(container).toBeEmptyDOMElement();
+    render(<LabelsCollapsibleList />);
+
+    expect(screen.getByRole("button", { name: /Etiquetas/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Etiquetas/ }));
+
+    expect(await screen.findByText("No hay etiquetas para mostrar acá.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Compras" })).not.toBeInTheDocument();
+  });
+
+  it("muestra el acceso aunque el usuario no tenga ninguna etiqueta", async () => {
+    const user = userEvent.setup();
+    mockUseLabels.mockReturnValue({ data: [] });
+    render(<LabelsCollapsibleList />);
+
+    expect(screen.getByRole("button", { name: /Etiquetas/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Etiquetas/ }));
+
+    expect(await screen.findByText("No hay etiquetas para mostrar acá.")).toBeInTheDocument();
   });
 
   it("lista las etiquetas no favoritas, sin las favoritas, al expandir", async () => {

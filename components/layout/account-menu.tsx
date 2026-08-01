@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Filter, LogOut, MoreVertical, Settings, Tag } from "lucide-react";
+import { Filter, LogOut, MoreVertical, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,22 +59,15 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
           <Settings className="size-4" />
           Configuración
         </DropdownMenuItem>
-        {/* "Etiquetas" (bloque 4.5, `administracion-de-etiquetas`): el
-            requirement de fase 1 protege la lista PRINCIPAL de navegación
-            (Bandeja/Hoy/Completado + árbol de proyectos, en
-            `sidebar-content.tsx`) de un ítem "Etiquetas" — ese ítem llevaría
-            a la página propia por etiqueta, que todavía no existe. La
-            pantalla de administración que sí se suma acá no es esa página,
-            así que entra donde ya vive "Configuración": otro destino que
-            tampoco pertenece a esa lista principal. */}
-        <DropdownMenuItem onClick={() => router.push("/etiquetas")}>
-          <Tag className="size-4" />
-          Etiquetas
-        </DropdownMenuItem>
-        {/* "Filtros" (capacidad `filtros-guardados`): mismo caso que
-            "Etiquetas" arriba — la página de administración de filtros
-            (`/filtros`) no es la lista principal de navegación ni la página
-            de un filtro puntual, así que entra en el mismo lugar. */}
+        {/* "Etiquetas" salió de acá (`etiquetas-con-lugar-propio`, D-E): la
+            administración de etiquetas ahora se alcanza desde el ítem
+            principal del panel lateral (`sidebar-content.tsx`) y desde `G E`,
+            no desde este menú que ni siquiera habla de etiquetas. */}
+        {/* "Filtros" (capacidad `filtros-guardados`): mismo caso que tenía
+            "Etiquetas" antes de moverse — la página de administración de
+            filtros (`/filtros`) no es la lista principal de navegación ni la
+            página de un filtro puntual, así que entra acá. Queda pendiente
+            su propia propuesta para moverla, no se arrastra en esta. */}
         <DropdownMenuItem onClick={() => router.push("/filtros")}>
           <Filter className="size-4" />
           Filtros
