@@ -7,18 +7,23 @@ export const metadata: Metadata = {
 };
 
 /**
- * Bloque 12.9 / decisión D20: texto tomado literal de `docs/legales.md`
+ * Bloque 12.9 / decisión D20: texto base tomado de `docs/legales.md`
  * ("## Política de privacidad"), incluido el punto pendiente sobre el
  * derecho de acceso de la Ley 25.326. No se redacta contenido legal nuevo
  * acá — ver `LegalDraftNotice` para el aviso de que falta aprobación del
  * dueño.
+ *
+ * Actualizado para incorporar comentarios, recordatorios push, hábitos y la
+ * conexión con Google Calendar (fases 2 a 4), verificado contra el esquema
+ * y el código real. `docs/legales.md` todavía tiene la versión anterior de
+ * este texto y hay que sincronizarlo aparte.
  */
 export default function PrivacidadPage() {
   return (
     <LegalPageShell title="Política de privacidad">
       <h2>Qué datos recogemos</h2>
       <p>Recogemos solamente lo necesario para que la app funcione. Tabla por tabla, esto es lo que guardamos:</p>
-      <table>
+      <table className="table-fixed sm:table-auto [&_td]:break-words [&_th]:break-words">
         <thead>
           <tr>
             <th>Qué</th>
@@ -72,13 +77,61 @@ export default function PrivacidadPage() {
             <td>Tablas labels y task_labels</td>
             <td>El nombre y color de cada etiqueta que creás, y qué tareas tienen cada una.</td>
           </tr>
+          <tr>
+            <td>Tus comentarios</td>
+            <td>Tabla comments</td>
+            <td>El texto con formato que escribís en el hilo de comentarios de una tarea.</td>
+          </tr>
+          <tr>
+            <td>Tus recordatorios</td>
+            <td>Tabla reminders</td>
+            <td>El momento en que tiene que sonar cada recordatorio, y si ya se mandó.</td>
+          </tr>
+          <tr>
+            <td>Tus dispositivos con avisos activados</td>
+            <td>Tabla push_subscriptions</td>
+            <td>
+              Por cada dispositivo en el que activaste notificaciones, la dirección y las claves que
+              necesita el servicio de notificaciones push de tu navegador para poder mandarte un aviso.
+            </td>
+          </tr>
+          <tr>
+            <td>Tus hábitos</td>
+            <td>Tabla habits</td>
+            <td>
+              Nombre, ícono, color, duración, horario, y con qué frecuencia se repite (todos los días,
+              cierta cantidad de veces por semana, o días puntuales).
+            </td>
+          </tr>
+          <tr>
+            <td>Qué días cumpliste cada hábito</td>
+            <td>Tabla habit_completions</td>
+            <td>La fecha en la que lo marcaste como hecho. Nada más.</td>
+          </tr>
+          <tr>
+            <td>Cambios de horario puntuales de un hábito</td>
+            <td>Tabla habit_schedule_overrides</td>
+            <td>
+              El horario distinto que le pusiste a un hábito para un día específico, sin tocar su horario
+              habitual.
+            </td>
+          </tr>
+          <tr>
+            <td>Tu conexión con Google Calendar</td>
+            <td>Tabla calendar_connections</td>
+            <td>
+              Tu refresh token, cifrado, y qué calendarios de Google elegiste mostrar en Trazio. Los
+              eventos de tu calendario no están en esta lista a propósito — más abajo explicamos por qué.
+            </td>
+          </tr>
         </tbody>
       </table>
       <p>
-        No guardamos nada más que esto. Si en el futuro Trazio agrega funciones nuevas que impliquen
-        guardar otro tipo de dato —comentarios en las tareas, recordatorios push, hábitos, conexión con
-        Google Calendar— esta política tiene que actualizarse antes de que esas funciones se activen, no
-        después.
+        Eso es todo lo que guardamos hoy. Las cuatro funciones que en algún momento estaban pendientes
+        —comentarios, recordatorios push, hábitos y la conexión con Google Calendar— ya están en
+        producción, y quedaron incorporadas arriba con el mismo detalle que el resto. Si en el futuro
+        Trazio agrega una función nueva que implique guardar otro tipo de dato, esta política tiene que
+        actualizarse antes de que esa función se active, no después.
       </p>
 
       <h2>Qué NO recogemos</h2>
@@ -136,8 +189,19 @@ export default function PrivacidadPage() {
           <tr>
             <td>Google</td>
             <td>
-              Solo interviene si vos elegís entrar con tu cuenta de Google. Si no usás esa opción, Google
-              no recibe ningún dato tuyo de parte de Trazio.
+              Interviene en dos casos: si elegís entrar con tu cuenta de Google, y si conectás tu Google
+              Calendar. En el segundo caso, le pedimos tus eventos cada vez que abrís el calendario en
+              Trazio, y si desde ahí creás, editás o borrás un evento, ese cambio se manda a Google. Si no
+              usás ninguna de las dos opciones, Google no recibe ningún dato tuyo de parte de Trazio.
+            </td>
+          </tr>
+          <tr>
+            <td>El servicio de notificaciones push de tu navegador (Google, Mozilla o Apple, según cuál
+              uses)</td>
+            <td>
+              Cuando se dispara un recordatorio, le mandamos el título de la tarea para que te llegue la
+              notificación. Es el único dato que sale así: no le mandamos tu correo ni el resto de tu
+              cuenta.
             </td>
           </tr>
         </tbody>
@@ -148,6 +212,41 @@ export default function PrivacidadPage() {
         cruzan la frontera para guardarse: es una transferencia internacional de datos, y la política
         final tiene que decirlo en esos términos.
       </p>
+
+      <h2>Cómo funciona la conexión con Google Calendar</h2>
+      <p>Esta es la función que más vale la pena explicar bien, porque es distinta a todo lo demás de esta lista.</p>
+      <ul>
+        <li>
+          <strong>Los eventos de tu Google Calendar no se guardan en ningún lado.</strong> Cada vez que
+          abrís el calendario en Trazio, le pedimos tus eventos a la API de Google en ese momento, los
+          mostramos, y quedan en la memoria del servidor unos segundos nada más. No existe ninguna tabla
+          con tus eventos.
+        </li>
+        <li>
+          <strong>Lo único que persiste es tu refresh token, cifrado.</strong> Es la credencial que le
+          permite a Trazio pedirle eventos a Google sin que tengas que volver a iniciar sesión cada vez.
+          Se guarda cifrado con AES-256-GCM, nunca en texto plano, y el descifrado ocurre solo en el
+          servidor: ese token nunca llega a tu navegador.
+        </li>
+        <li>
+          También guardamos qué calendarios de Google elegiste mostrar en Trazio, para no tener que
+          preguntarte cada vez que entrás.
+        </li>
+        <li>
+          <strong>Tus tareas y tus hábitos de Trazio no se publican en Google.</strong> La conexión
+          funciona en un solo sentido para ellos: de Google hacia Trazio, nunca al revés.
+        </li>
+        <li>
+          Si desde el calendario de Trazio creás, editás o borrás un evento de Google, ese cambio sí se
+          manda a Google —es lo que hace la integración—, pero ese evento tampoco queda guardado en
+          nuestra base: seguimos sin tener una copia propia, solo mostramos lo que hay en tu cuenta de
+          Google en cada consulta.
+        </li>
+        <li>
+          <strong>Desconectar borra la conexión, y nada más.</strong> Se elimina el registro con tu
+          refresh token cifrado y no toca ninguna tarea, hábito ni ningún otro dato tuyo en Trazio.
+        </li>
+      </ul>
 
       <h2>La analítica de la landing es otra cosa</h2>
       <p>
