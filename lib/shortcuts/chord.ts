@@ -5,6 +5,9 @@
  */
 export const CHORD_TIMEOUT_MS = 1500;
 
+/** La primera tecla del acorde (bloque 2, D-C): el indicador de atajo la lee de acá en vez de repetirla como cadena escrita a mano. */
+export const CHORD_TRIGGER_KEY = "g";
+
 export type ChordDestination = "bandeja" | "hoy" | "proximos" | "completado" | "habitos";
 
 const CHORD_MAP: Record<string, ChordDestination> = {
@@ -14,6 +17,11 @@ const CHORD_MAP: Record<string, ChordDestination> = {
   c: "completado",
   a: "habitos",
 };
+
+/** Inverso de `CHORD_MAP`, no un duplicado escrito a mano: la segunda tecla que efectivamente navega a cada destino, para que el indicador de atajo (bloque 2, D-C) muestre siempre la que está realmente registrada. */
+export const CHORD_KEY_BY_DESTINATION: Record<ChordDestination, string> = Object.fromEntries(
+  Object.entries(CHORD_MAP).map(([key, destination]) => [destination, key]),
+) as Record<ChordDestination, string>;
 
 /** Ruta de cada destino del acorde. */
 export const CHORD_ROUTES: Record<ChordDestination, string | null> = {

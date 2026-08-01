@@ -5,6 +5,8 @@ import { Plus } from "lucide-react";
 import { AppDialog } from "@/components/primitives/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
+import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
+import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,6 +50,7 @@ export function SidebarAddTask({
     >
       <Plus className="size-4 shrink-0" />
       {!collapsed && <span className="flex-1 text-left">Agregar tarea</span>}
+      {!collapsed && <ShortcutHint combo={GENERAL_SHORTCUTS.agregarTarea} />}
     </button>
   );
 

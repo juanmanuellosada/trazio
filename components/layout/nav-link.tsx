@@ -4,12 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ShortcutCombo } from "@/lib/shortcuts/types";
 import { cn } from "@/lib/utils";
+import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
 
 /**
  * Fila de navegación compartida por el panel lateral y la hoja móvil
  * (bloque 5.3): ícono + etiqueta + contador opcional, colapsable a solo
  * ícono con tooltip. El estado activo compara contra la ruta actual.
+ *
+ * `shortcut` (bloque 2, capacidad `indicadores-de-atajo`) dibuja el
+ * indicador del atajo de este acceso, cuando tiene uno, junto al contador —
+ * solo en la versión expandida, igual criterio que ya usa `count` acá
+ * abajo, y solo desde `md` (`ShortcutHint` lo oculta por debajo).
  */
 export function NavLink({
   href,
@@ -17,12 +24,14 @@ export function NavLink({
   icon: Icon,
   collapsed = false,
   count,
+  shortcut,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   collapsed?: boolean;
   count?: number;
+  shortcut?: ShortcutCombo | [ShortcutCombo, ShortcutCombo];
 }) {
   const pathname = usePathname();
   const active = pathname === href;
@@ -41,6 +50,7 @@ export function NavLink({
     >
       <Icon className="size-4 shrink-0" />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      {!collapsed && shortcut && <ShortcutHint combo={shortcut} />}
       {!collapsed && count != null && count > 0 && (
         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium tabular-nums text-primary">
           {count}

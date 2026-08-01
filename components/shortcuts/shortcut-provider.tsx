@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CHORD_ROUTES, CHORD_TIMEOUT_MS, chordDestinationFor } from "@/lib/shortcuts/chord";
+import { CHORD_ROUTES, CHORD_TIMEOUT_MS, CHORD_TRIGGER_KEY, chordDestinationFor } from "@/lib/shortcuts/chord";
 import { ShortcutRegistryContext } from "@/lib/shortcuts/context";
+import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { isBlockedByFocusGuard } from "@/lib/shortcuts/guards";
 import { matchesCombo } from "@/lib/shortcuts/match";
 import type { ShortcutScope } from "@/lib/shortcuts/types";
@@ -82,15 +83,15 @@ export function ShortcutProvider({
 
     /** Atajos generales (bloque 7.4): fallback cuando ninguna pantalla ni modal registró el mismo combo — la pila de arriba ya resuelve las colisiones de S y E (D-G). */
     function resolveGeneral(event: KeyboardEvent): boolean {
-      if (matchesCombo(event, { key: "s" })) {
+      if (matchesCombo(event, GENERAL_SHORTCUTS.buscar)) {
         router.push("/buscar");
         return true;
       }
-      if (matchesCombo(event, { key: "q" })) {
+      if (matchesCombo(event, GENERAL_SHORTCUTS.agregarTarea)) {
         setQuickAddOpen(true);
         return true;
       }
-      if (matchesCombo(event, { key: "e" })) {
+      if (matchesCombo(event, GENERAL_SHORTCUTS.agregarEvento)) {
         setEventRange(defaultEventRange(new Date()));
         return true;
       }
@@ -111,7 +112,7 @@ export function ShortcutProvider({
         return;
       }
 
-      if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "g") {
+      if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === CHORD_TRIGGER_KEY) {
         event.preventDefault();
         startChord();
         return;

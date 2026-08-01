@@ -6,6 +6,8 @@ import { AccountMenu } from "./account-menu";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
 import { LabelsCollapsibleList, FiltersCollapsibleList } from "./label-filter-lists";
 import { Separator } from "@/components/ui/separator";
+import { CHORD_KEY_BY_DESTINATION, CHORD_TRIGGER_KEY } from "@/lib/shortcuts/chord";
+import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { cn } from "@/lib/utils";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
 import type { ProjectRow } from "@/lib/projects/use-projects";
@@ -79,14 +81,47 @@ export function SidebarContent({
       <div className="flex flex-col gap-0.5 p-2">
         <SidebarAddTask collapsed={collapsed} inboxProjectId={inboxProjectId} />
         <SidebarAddEvent collapsed={collapsed} />
-        <NavLink href="/buscar" label="Buscar" icon={Search} collapsed={collapsed} />
-        {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba. */}
+        <NavLink href="/buscar" label="Buscar" icon={Search} collapsed={collapsed} shortcut={GENERAL_SHORTCUTS.buscar} />
+        {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba.
+            El acorde de cada acceso (bloque 2, D-C) se arma con `CHORD_TRIGGER_KEY` + `CHORD_KEY_BY_DESTINATION`, la misma definición que
+            `lib/shortcuts/chord.ts` usa para navegar de verdad — no una tecla escrita a mano acá. */}
         <nav className="contents" aria-label="Navegación principal">
-          <NavLink href="/bandeja" label="Bandeja de entrada" icon={Inbox} collapsed={collapsed} />
-          <NavLink href="/hoy" label="Hoy" icon={Sun} collapsed={collapsed} count={todayCount} />
-          <NavLink href="/proximos" label="Próximos" icon={CalendarDays} collapsed={collapsed} />
-          <NavLink href="/habitos" label="Hábitos" icon={Repeat} collapsed={collapsed} />
-          <NavLink href="/completado" label="Completado" icon={CheckCircle2} collapsed={collapsed} />
+          <NavLink
+            href="/bandeja"
+            label="Bandeja de entrada"
+            icon={Inbox}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.bandeja }]}
+          />
+          <NavLink
+            href="/hoy"
+            label="Hoy"
+            icon={Sun}
+            collapsed={collapsed}
+            count={todayCount}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.hoy }]}
+          />
+          <NavLink
+            href="/proximos"
+            label="Próximos"
+            icon={CalendarDays}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.proximos }]}
+          />
+          <NavLink
+            href="/habitos"
+            label="Hábitos"
+            icon={Repeat}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.habitos }]}
+          />
+          <NavLink
+            href="/completado"
+            label="Completado"
+            icon={CheckCircle2}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.completado }]}
+          />
         </nav>
       </div>
 

@@ -6,6 +6,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { CreateEventDialog } from "@/components/calendar/create-event-dialog";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { defaultEventRange } from "@/lib/calendar/default-event-range";
+import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
+import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,6 +35,7 @@ export function SidebarAddEvent({ collapsed }: { collapsed: boolean }) {
     >
       <CalendarPlus className="size-4 shrink-0" />
       {!collapsed && <span className="flex-1 text-left">Agregar evento</span>}
+      {!collapsed && <ShortcutHint combo={GENERAL_SHORTCUTS.agregarEvento} />}
     </button>
   );
 

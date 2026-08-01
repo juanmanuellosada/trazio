@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { toastSuccess } from "@/lib/toast";
 import { formatTaskDueLabel } from "@/lib/dates/format";
 import { useShortcutScope } from "@/lib/shortcuts/context";
+import type { ShortcutCombo } from "@/lib/shortcuts/types";
+import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionForSwap } from "@/lib/tasks/tree";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
@@ -193,15 +195,28 @@ export function TaskRow({
   // no compiten entre sí — solo puede haber una abierta por vez de todos
   // modos (es el mismo `DropdownMenu`). `T` y `Y` abren el detalle con el
   // selector correspondiente ya enfocado (`task-detail-context.tsx`), en vez
-  // de reimplementar un selector de fecha/prioridad inline acá.
+  // de reimplementar un selector de fecha/prioridad inline acá; no tienen
+  // fila propia en este menú, así que no llevan indicador visual.
+  //
+  // Las cuatro que sí tienen una fila (bloque 2, D-C) viven en este objeto
+  // en vez de como literales sueltos: `useShortcutScope` de abajo y los
+  // `ShortcutHint` del menú leen del mismo lugar, así que no se pueden
+  // desincronizar.
+  const menuShortcuts = {
+    mover: { key: "v" },
+    copiarEnlace: { key: "c", ctrl: true, shift: true },
+    abrirVentana: { key: "n", ctrl: true, shift: true },
+    eliminar: { key: "Delete", shift: true },
+  } as const satisfies Record<string, ShortcutCombo>;
+
   useShortcutScope(
     [
       { combo: { key: "t" }, handler: () => open(task.id, "date") },
       { combo: { key: "y" }, handler: () => open(task.id, "priority") },
-      { combo: { key: "v" }, handler: () => setMoveDialogOpen(true) },
-      { combo: { key: "c", ctrl: true, shift: true }, handler: copyLink },
-      { combo: { key: "n", ctrl: true, shift: true }, handler: () => window.open(`/tarea/${task.id}`, "_blank") },
-      { combo: { key: "Delete", shift: true }, handler: () => deleteTask.mutate({ id: task.id, projectId: task.project_id }) },
+      { combo: menuShortcuts.mover, handler: () => setMoveDialogOpen(true) },
+      { combo: menuShortcuts.copiarEnlace, handler: copyLink },
+      { combo: menuShortcuts.abrirVentana, handler: () => window.open(`/tarea/${task.id}`, "_blank") },
+      { combo: menuShortcuts.eliminar, handler: () => deleteTask.mutate({ id: task.id, projectId: task.project_id }) },
     ],
     { enabled: menuOpen },
   );
@@ -306,13 +321,15 @@ export function TaskRow({
           >
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          {/* `min-w-72` (bloque 2): el ancho por defecto del menú sigue al botón "…" que lo dispara (`w-(--anchor-width)` en `ui/dropdown-menu.tsx`), angosto de sobra para que un indicador de atajo de tres teclas (`Ctrl` `⇧` `N`) entre en la misma línea que "Abrir en ventana aparte" sin que `overflow-x-hidden` lo recorte. */}
+          <DropdownMenuContent align="end" className="min-w-72">
             <DropdownMenuItem onClick={() => open(task.id)}>Abrir detalle</DropdownMenuItem>
             <DropdownMenuItem onClick={() => duplicateTask.mutate({ task })}>
               <Copy className="size-3.5" /> Duplicar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
               <FolderInput className="size-3.5" /> Mover…
+              <ShortcutHint combo={menuShortcuts.mover} className="ml-auto" />
             </DropdownMenuItem>
             {!isFlat && (
               <>
@@ -338,9 +355,11 @@ export function TaskRow({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={copyLink}>
               <Link2 className="size-3.5" /> Copiar enlace directo
+              <ShortcutHint combo={menuShortcuts.copiarEnlace} className="ml-auto" />
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => window.open(`/tarea/${task.id}`, "_blank")}>
               <ExternalLink className="size-3.5" /> Abrir en ventana aparte
+              <ShortcutHint combo={menuShortcuts.abrirVentana} className="ml-auto" />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -348,6 +367,7 @@ export function TaskRow({
               onClick={() => deleteTask.mutate({ id: task.id, projectId: task.project_id })}
             >
               <Trash2 className="size-3.5" /> Eliminar
+              <ShortcutHint combo={menuShortcuts.eliminar} className="ml-auto" />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
