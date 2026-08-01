@@ -25,6 +25,7 @@ export function NavLink({
   collapsed = false,
   count,
   shortcut,
+  shortcutHiddenOn,
 }: {
   href: string;
   label: string;
@@ -32,9 +33,12 @@ export function NavLink({
   collapsed?: boolean;
   count?: number;
   shortcut?: ShortcutCombo | [ShortcutCombo, ShortcutCombo];
+  /** Rutas donde este atajo no dispara de verdad (otro handler lo gana ahí) y por eso el indicador no debe dibujarse — un indicador que miente es peor que no tenerlo. */
+  shortcutHiddenOn?: string[];
 }) {
   const pathname = usePathname();
   const active = pathname === href;
+  const showShortcut = shortcut && !shortcutHiddenOn?.includes(pathname ?? "");
 
   const link = (
     <Link
@@ -50,7 +54,7 @@ export function NavLink({
     >
       <Icon className="size-4 shrink-0" />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
-      {!collapsed && shortcut && <ShortcutHint combo={shortcut} />}
+      {!collapsed && showShortcut && <ShortcutHint combo={shortcut} />}
       {!collapsed && count != null && count > 0 && (
         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium tabular-nums text-primary">
           {count}

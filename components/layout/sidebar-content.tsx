@@ -81,7 +81,15 @@ export function SidebarContent({
       <div className="flex flex-col gap-0.5 p-2">
         <SidebarAddTask collapsed={collapsed} inboxProjectId={inboxProjectId} />
         <SidebarAddEvent collapsed={collapsed} />
-        <NavLink href="/buscar" label="Buscar" icon={Search} collapsed={collapsed} shortcut={GENERAL_SHORTCUTS.buscar} />
+        {/* En Bandeja, `s` lo gana "Agregar sección" (`sectioned-tasks.tsx`), así que el indicador se oculta ahí: mostrarlo sería anunciar un atajo que no dispara. */}
+        <NavLink
+          href="/buscar"
+          label="Buscar"
+          icon={Search}
+          collapsed={collapsed}
+          shortcut={GENERAL_SHORTCUTS.buscar}
+          shortcutHiddenOn={["/bandeja"]}
+        />
         {/* `contents`: agrupa solo los links bajo el landmark de navegación, sin duplicar el `gap`/`padding` que ya pone el contenedor de arriba.
             El acorde de cada acceso (bloque 2, D-C) se arma con `CHORD_TRIGGER_KEY` + `CHORD_KEY_BY_DESTINATION`, la misma definición que
             `lib/shortcuts/chord.ts` usa para navegar de verdad — no una tecla escrita a mano acá. */}
