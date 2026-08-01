@@ -81,7 +81,12 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/login";
     url.search = "";
     url.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    // No devolver este redirect solo: hay que copiarle las cookies de
+    // `supabaseResponse`, si no el navegador y el servidor se desincronizan
+    // (mismo comentario de arriba, en el caso en que no hace falta redirect).
+    supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   // Hay que devolver supabaseResponse tal cual. Si se arma una respuesta

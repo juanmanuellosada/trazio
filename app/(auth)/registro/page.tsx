@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { resolveEntryPath } from "@/lib/preferences/get-default-view-path";
 import { appendNext, safeNextPath } from "@/lib/safe-path";
 import { getSiteUrl } from "@/lib/site-url";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { RegistroForm } from "./registro-form";
 
 export const metadata: Metadata = {
@@ -17,6 +20,14 @@ export default async function RegistroPage({
 }) {
   const { next: nextParam } = await searchParams;
   const next = safeNextPath(nextParam);
+
+  // Si ya hay sesión, no mostrar el formulario de registro (mismo bug y
+  // mismo arreglo que `app/(auth)/login/page.tsx`).
+  const user = await getCurrentUser();
+  if (user) {
+    redirect(await resolveEntryPath(user.id, next));
+  }
+
   const siteUrl = getSiteUrl();
 
   return (
