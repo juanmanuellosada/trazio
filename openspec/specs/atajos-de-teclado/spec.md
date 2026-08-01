@@ -42,7 +42,7 @@ Un atajo cuyo binding requiere el modificador `Ctrl` o `Cmd` (`metaKey`) SHALL d
 
 ### Requirement: Atajos generales de navegación y acceso rápido
 
-La aplicación SHALL registrar, disponibles desde cualquier pantalla, el acorde `G` seguido de `I` (Bandeja de entrada), `T` (Hoy), `U` (Próximos), `C` (Completado) o `A` (Hábitos); `S` para abrir el buscador; `Q` para abrir el alta rápida de tarea; `E` para abrir el alta de un nuevo evento de calendario; y `Ctrl/Cmd+Z` para deshacer. `G A` SHALL navegar a la pantalla de Hábitos (`/habitos`). `E` SHALL registrarse igual que el resto de los atajos de este requisito, pero NO SHALL navegar ni abrir nada en esta fase: el alta de eventos de calendario es de fase 4.
+La aplicación SHALL registrar, disponibles desde cualquier pantalla, el acorde `G` seguido de `I` (Bandeja de entrada), `T` (Hoy), `U` (Próximos), `C` (Completado) o `A` (Hábitos); `S` para abrir el buscador; `Q` para abrir el alta rápida de tarea; `E` para abrir el alta de un nuevo evento de calendario; y `Ctrl/Cmd+Z` para deshacer. `G A` SHALL navegar a la pantalla de Hábitos (`/habitos`). `E` SHALL abrir el formulario de alta de un evento de calendario nuevo.
 
 #### Scenario: El acorde G navega según la segunda tecla
 
@@ -66,6 +66,11 @@ La aplicación SHALL registrar, disponibles desde cualquier pantalla, el acorde 
 
 - **WHEN** se presiona `Q` sin foco en un campo de texto
 - **THEN** se abre el componente de alta rápida de tarea
+
+#### Scenario: E abre el alta de un nuevo evento de calendario
+
+- **WHEN** se presiona `E` sin foco en un campo de texto y sin el detalle de una tarea abierto
+- **THEN** se abre el formulario de alta de un evento de calendario nuevo
 
 ### Requirement: Atajos del detalle de tarea
 
@@ -199,15 +204,15 @@ ninguna.
 
 ### Requirement: G A y E (nuevo evento) apuntan a pantallas de fases posteriores
 
-`G A` SHALL navegar a la pantalla de Hábitos (`/habitos`), que esta fase construye. El atajo general `E` de nuevo evento de calendario SHALL seguir registrándose y SHALL responder a la combinación de teclas sin producir un error, pero NO SHALL navegar ni abrir nada en esta fase: el alta de eventos de calendario es de fase 4.
+`G A` SHALL navegar a la pantalla de Hábitos (`/habitos`), construida en la fase 3. El atajo general `E` SHALL abrir el formulario de alta de un evento de calendario nuevo, construido en esta fase.
 
 #### Scenario: G A navega a la pantalla de Hábitos
 
 - **WHEN** se presiona `G` y luego `A` dentro de la ventana del acorde
 - **THEN** la aplicación navega a `/habitos`
 
-#### Scenario: E como atajo general no abre nada todavía
+#### Scenario: E como atajo general abre el alta de un nuevo evento
 
 - **WHEN** se presiona `E` sin el detalle de una tarea abierto y sin foco en un campo de texto
-- **THEN** la combinación se reconoce como válida y no produce ningún error, pero no se abre ningún alta de evento
+- **THEN** se abre el formulario de alta de un evento de calendario nuevo
 
