@@ -32,7 +32,8 @@ export default async function EtiquetaPage({ params }: { params: Promise<{ id: s
 
   return (
     <LabelView
-      label={label}
+      labelId={id}
+      initialLabels={labels}
       userId={user.id}
       timezone={preferences.timezone}
       initialTasks={initialTasks}
