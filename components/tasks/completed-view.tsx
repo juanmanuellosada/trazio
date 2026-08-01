@@ -38,10 +38,7 @@ export function CompletedView({
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-4 py-4 sm:px-6">
         <div className="w-full max-w-content @[90rem]:mx-auto">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 aria-hidden className="size-5 text-primary" />
-            <h1 className="text-2xl font-semibold text-foreground">Completado</h1>
-          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Completado</h1>
           {total > 0 && (
             <p className="mt-1 text-sm text-text-secondary">
               {total} {total === 1 ? "tarea completada" : "tareas completadas"}

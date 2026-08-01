@@ -1,11 +1,8 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { Tag } from "lucide-react";
-import { useMounted } from "@/hooks/use-mounted";
 import { useLabelTasks } from "@/lib/labels/use-label-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
@@ -22,8 +19,8 @@ import type { Label } from "@/lib/labels/use-labels";
  * Página de una etiqueta (bloque 3.4/3.5, capacidad
  * `navegacion-por-etiqueta`, extendida por los bloques 6 y 7): todas las
  * tareas con esa etiqueta asignada, sin importar a qué proyecto pertenezcan.
- * Mismo tratamiento de encabezado que `ProjectHeader` (punto de color +
- * nombre + conteo) y mismo `variant="flat"` de `TaskRow` que Hoy y
+ * Mismo tratamiento de encabezado que `ProjectHeader` (nombre + conteo) y
+ * mismo `variant="flat"` de `TaskRow` que Hoy y
  * Completado, porque acá tampoco hay un único árbol de hermanos/padre del
  * cual indentar o reordenar por posición: cada tarea es candidata por su
  * etiqueta, no por su lugar en un proyecto. Sin modo panel (spec
@@ -45,9 +42,6 @@ export function LabelView({
 }) {
   const { data } = useLabelTasks(userId, label.id, timezone, initialTasks);
   const { options } = useViewOptions(`etiqueta:${label.id}`, initialOptions);
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const hex = resolveProjectColorHex(label.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
   const allTasks = data ?? [];
   const visibleTasks = orderTasks(
     applyQuickFilters(allTasks, options.quickFilters, options.showCompleted),
@@ -62,14 +56,11 @@ export function LabelView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="flex w-full max-w-content items-start gap-3 @[90rem]:mx-auto">
-            <span aria-hidden className="mt-1.5 size-3 shrink-0 rounded-full" style={{ backgroundColor: hex }} />
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold text-foreground">{label.name}</h1>
-              <p className="mt-1 text-sm text-text-secondary">
-                {allTasks.length} {allTasks.length === 1 ? "tarea" : "tareas"}
-              </p>
-            </div>
+          <div className="w-full max-w-content @[90rem]:mx-auto">
+            <h1 className="truncate text-2xl font-semibold text-foreground">{label.name}</h1>
+            <p className="mt-1 text-sm text-text-secondary">
+              {allTasks.length} {allTasks.length === 1 ? "tarea" : "tareas"}
+            </p>
           </div>
         </header>
         <ViewOptionsBar viewKey={`etiqueta:${label.id}`} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />

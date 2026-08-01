@@ -114,10 +114,7 @@ export function HabitsView({
       <header className="border-b border-border px-4 py-4 sm:px-6">
         <div className="w-full max-w-content space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Repeat aria-hidden className="size-5 text-primary" />
-              <h1 className="text-2xl font-semibold text-foreground">Hábitos</h1>
-            </div>
+            <h1 className="text-2xl font-semibold text-foreground">Hábitos</h1>
             {habits.length > 0 && (
               <Button onClick={openCreate}>
                 <Plus className="size-4" /> Nuevo hábito

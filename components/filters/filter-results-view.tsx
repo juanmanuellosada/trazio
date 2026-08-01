@@ -9,9 +9,6 @@ import { collectFieldValues } from "@/lib/query-language/ast-utils";
 import { parseQuery } from "@/lib/query-language/parse";
 import { normalize } from "@/lib/parser/normalize";
 import type { FilterRow } from "@/lib/filters/use-filters";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
-import { useTheme } from "next-themes";
-import { useMounted } from "@/hooks/use-mounted";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskRow } from "@/components/tasks/task-row";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
@@ -56,17 +53,12 @@ export function FilterResultsView({
 }) {
   const { data: filter } = useFilter(filterId, initialFilter);
   const query = filter?.query ?? initialFilter.query;
-  const color = filter?.color ?? initialFilter.color;
-  const icon = filter?.icon ?? initialFilter.icon;
   const name = filter?.name ?? initialFilter.name;
 
   const { data: labels } = useLabels();
   const { data: projects } = useProjects();
   const results = useFilterResults(filterId, query);
   const { options } = useViewOptions(`filtro:${filterId}`, initialOptions);
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
 
   const missingLabels = missingReferences(query, (labels ?? []).map((l) => l.name), "label");
   const missingProjects = missingReferences(query, (projects ?? []).map((p) => p.name), "project");
@@ -81,13 +73,7 @@ export function FilterResultsView({
     <SelectionProvider>
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="flex w-full max-w-content items-center gap-2">
-            <span
-              aria-hidden
-              className="size-3 shrink-0 rounded-full"
-              style={{ backgroundColor: resolveProjectColorHex(color, theme) }}
-            />
-            {icon ? <span aria-hidden className="text-xl">{icon}</span> : <Filter aria-hidden className="size-5 text-primary" />}
+          <div className="w-full max-w-content">
             <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
           </div>
         </header>

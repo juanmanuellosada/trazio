@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { Inbox, MoreHorizontal, Star } from "lucide-react";
+import { MoreHorizontal, Star } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,15 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useUpdateProject } from "@/lib/projects/mutations";
 import type { ProjectRow } from "@/lib/projects/use-projects";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
-import { useMounted } from "@/hooks/use-mounted";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 
 /**
- * Encabezado de la vista de proyecto (bloque 6): nombre, ícono/color,
- * descripción y las acciones del proyecto. La Bandeja de entrada no ofrece
+ * Encabezado de la vista de proyecto (bloque 6): nombre, descripción y las
+ * acciones del proyecto. La Bandeja de entrada no ofrece
  * "Editar" (no se puede renombrar — B3 del design de fase 1), "Archivar" ni
  * "Eliminar" (bloque 6.7): directamente no se renderiza el menú de acciones
  * para ella, no solo se deshabilitan sus opciones.
@@ -35,39 +32,16 @@ export function ProjectHeader({
   allProjects: ProjectRow[];
 }) {
   const router = useRouter();
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
   const updateProject = useUpdateProject();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // `resolvedTheme` se resuelve en el cliente desde el primer render (lee
-  // `localStorage` de forma síncrona), antes de montar — puede no coincidir
-  // con lo que asumió el servidor. Hasta montar, forzar "light" (lo mismo
-  // que el servidor, que nunca conoce el tema real).
-  const hex = resolveProjectColorHex(project.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
-
   return (
     <header className="border-b border-border px-4 py-4 sm:px-6">
       <div className="flex w-full max-w-content items-start justify-between gap-3 @[90rem]:mx-auto">
-        <div className="flex min-w-0 items-start gap-3">
-          {project.is_inbox ? (
-            <Inbox aria-hidden className="mt-0.5 size-6 text-primary" />
-          ) : project.icon ? (
-            <span aria-hidden className="text-2xl leading-none">
-              {project.icon}
-            </span>
-          ) : (
-            <span
-              aria-hidden
-              className="mt-1.5 size-3 shrink-0 rounded-full"
-              style={{ backgroundColor: hex }}
-            />
-          )}
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
-            {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}
-          </div>
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
+          {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
