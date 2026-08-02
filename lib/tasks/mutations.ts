@@ -854,3 +854,103 @@ export function useBulkDeleteTasks() {
     },
   });
 }
+
+/** Las etiquetas de `toApply` que `existing` todavía no tiene. */
+function addedLabels(existing: LabelChip[], toApply: LabelChip[]): LabelChip[] {
+  const existingIds = new Set(existing.map((l) => l.id));
+  return toApply.filter((l) => !existingIds.has(l.id));
+}
+
+/**
+ * Suma etiquetas a varias tareas a la vez (bloque 7.11, capacidad
+ * `seleccion-multiple`; D-C de `seleccion-con-ctrl`): a diferencia de
+ * `useReplaceTaskLabels` (una sola tarea, reemplaza el conjunto completo),
+ * acá cada tarea CONSERVA las etiquetas que ya tenía — al editar varias a la
+ * vez no se ve lo que cada una tiene, y reemplazar destruiría información
+ * que no se estaba mirando. `upsert` con `ignoreDuplicates` deja mandar la
+ * matriz completa tarea×etiqueta sin chocar contra los pares que una tarea
+ * ya tuviera (la PK de `task_labels` es compuesta `(task_id, label_id)`).
+ *
+ * Quitar una etiqueta de varias tareas no existe (fuera de alcance, D-C): el
+ * deshacer de esta mutación solo borra los pares que ella misma agregó, para
+ * no arrastrar por error una etiqueta que la tarea ya traía de antes.
+ */
+export function useBulkAddLabels() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+  const { push } = useUndoStack();
+
+  return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
+    mutationFn: async ({ tasks, labels }: { tasks: BulkTaskRef[]; labels: LabelChip[] }) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("No hay sesión activa.");
+
+      const rows = tasks.flatMap((task) =>
+        labels.map((label) => ({ task_id: task.id, label_id: label.id, user_id: session.user.id })),
+      );
+      const { error } = await supabase
+        .from("task_labels")
+        .upsert(rows, { onConflict: "task_id,label_id", ignoreDuplicates: true });
+      if (error) throw error;
+    },
+    onMutate: async ({ tasks, labels }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      await Promise.all(projectIds.map((pid) => queryClient.cancelQueries({ queryKey: tasksQueryKey(pid) })));
+      const previousLists = new Map(projectIds.map((pid) => [pid, listSnapshot(queryClient, pid)]));
+      const idSet = new Set(tasks.map((t) => t.id));
+
+      function withAddedLabels(row: TaskRow): TaskRow {
+        if (!idSet.has(row.id)) return row;
+        const toAdd = addedLabels(row.labels, labels);
+        return toAdd.length === 0 ? row : { ...row, labels: [...row.labels, ...toAdd] };
+      }
+
+      projectIds.forEach((pid) =>
+        queryClient.setQueryData<TaskRow[]>(tasksQueryKey(pid), (old) => old?.map(withAddedLabels)),
+      );
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY }, (old) => old?.map(withAddedLabels));
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY }, (old) => old?.map(withAddedLabels));
+
+      return { previousLists };
+    },
+    onError: (error, _vars, context) => {
+      context?.previousLists.forEach((list, pid) => {
+        if (list) queryClient.setQueryData(tasksQueryKey(pid), list);
+      });
+      reportTaskError(error);
+    },
+    onSuccess: (_data, { tasks, labels }, context) => {
+      if (!context) return;
+      const perTaskAdded = tasks
+        .map((t) => {
+          const previousRow = context.previousLists.get(t.projectId)?.find((row) => row.id === t.id);
+          const toAdd = addedLabels(previousRow?.labels ?? [], labels);
+          return toAdd.length > 0 ? { taskId: t.id, labelIds: toAdd.map((l) => l.id) } : null;
+        })
+        .filter((entry): entry is { taskId: string; labelIds: string[] } => entry != null);
+      if (perTaskAdded.length === 0) return;
+
+      push({
+        label: `Etiquetas agregadas en ${tasks.length} ${pluralTareas(tasks.length)}.`,
+        undo: async () => {
+          await Promise.all(
+            perTaskAdded.map(({ taskId, labelIds }) =>
+              supabase.from("task_labels").delete().eq("task_id", taskId).in("label_id", labelIds),
+            ),
+          );
+          const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+          projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+          invalidateCrossViewCaches(queryClient);
+        },
+      });
+    },
+    onSettled: (_data, _error, { tasks }) => {
+      const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+      projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
+      invalidateCrossViewCaches(queryClient);
+    },
+  });
+}

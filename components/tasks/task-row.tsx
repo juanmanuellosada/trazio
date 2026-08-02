@@ -54,6 +54,7 @@ import { useMounted } from "@/hooks/use-mounted";
 import { DEFAULT_TASK_PRIORITY, TASK_PRIORITIES } from "@/lib/validation/tasks";
 import { getQuickDateOptions } from "@/components/selectors/quick-dates";
 import { SelectionCheckbox } from "@/components/selection/selection-checkbox";
+import { useSelection } from "@/components/selection/selection-context";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "@/components/selectors/priority-select";
@@ -182,6 +183,13 @@ export function TaskRow({
   selectionOrderIds?: string[];
 }) {
   const { open } = useTaskDetail();
+  const selection = useSelection();
+  // Mismo criterio que el casillero (`SelectionCheckbox`, línea 518 más
+  // abajo): `Ctrl`/`Cmd`+clic solo selecciona donde el casillero también
+  // existiría (`selectionOrderIds` presente y `depth === 0`) — sin esto no
+  // habría `orderedIds` para el rango, ni sentido en las subtareas del
+  // detalle, que no tienen selección múltiple.
+  const selectableHere = Boolean(selectionOrderIds) && depth === 0 && selection != null;
   const isMobile = useMediaQuery("(max-width: 767px)");
   const preferences = useUserPreferences();
   const updateTask = useUpdateTask();
@@ -475,15 +483,43 @@ export function TaskRow({
   // procesan de adentro hacia afuera en la fase de burbuja, así que este
   // corta el paso antes de que el trigger vea el evento.
   function handleRowContextMenu(event: MouseEvent<HTMLDivElement>) {
+    // D-B de `seleccion-con-ctrl`: en plataformas donde `Ctrl`/`Cmd`+clic se
+    // entrega como `contextmenu` en vez de `click` (ej. macOS con "clic
+    // secundario: Control+clic" activado), seleccionar en vez de abrir el
+    // menú — los dos gestos caen sobre el mismo elemento y no pueden
+    // convivir sin esta rama.
+    if ((event.ctrlKey || event.metaKey) && selectableHere) {
+      event.preventDefault();
+      event.stopPropagation();
+      selection!.toggle(task.id);
+      return;
+    }
     const target = event.target as HTMLElement;
     if (target.closest("a[href], input, textarea, [contenteditable='true']")) {
       event.stopPropagation();
       return;
     }
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed && selection.anchorNode && event.currentTarget.contains(selection.anchorNode)) {
+    const textSelection = window.getSelection();
+    if (
+      textSelection &&
+      !textSelection.isCollapsed &&
+      textSelection.anchorNode &&
+      event.currentTarget.contains(textSelection.anchorNode)
+    ) {
       event.stopPropagation();
     }
+  }
+
+  // `Ctrl`/`Cmd`+clic selecciona la tarea sin abrir el detalle ni el menú de
+  // acciones (`seleccion-con-ctrl`, bloque 1): capturado en la fase de
+  // "capture", antes de que el clic llegue a cualquier control interno de la
+  // fila (título, casillero de completar, botón "…"), así que ninguno de
+  // esos ejecuta su propia acción cuando el modificador está apretado.
+  function handleRowClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (!selectableHere || !(event.ctrlKey || event.metaKey)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selection!.toggle(task.id);
   }
 
   // El detalle abre con doble clic (bloque 6), no con un clic simple: un
@@ -514,6 +550,7 @@ export function TaskRow({
       // darse nunca.
       className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface select-text"
       onContextMenu={handleRowContextMenu}
+      onClickCapture={handleRowClickCapture}
     >
       {selectionOrderIds && depth === 0 && (
         <SelectionCheckbox taskId={task.id} taskTitle={task.title} orderedIds={selectionOrderIds} />

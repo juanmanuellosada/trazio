@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { addDays } from "date-fns";
-import { CalendarOff, Flag, Trash2, X } from "lucide-react";
+import { CalendarOff, Flag, MoreHorizontal, Tags, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { PriorityDot } from "@/components/selectors/priority-select";
+import { LabelPicker } from "@/components/tasks/label-picker";
 import { TaskDestinationSelect, type TaskDestination } from "@/components/tasks/task-destination-select";
 import { useParserContext } from "@/lib/parser/use-parser-context";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
-import { useBulkDeleteTasks, useBulkMoveTasks, useBulkUpdateTasks, type BulkTaskRef } from "@/lib/tasks/mutations";
+import { useBulkAddLabels, useBulkDeleteTasks, useBulkMoveTasks, useBulkUpdateTasks, type BulkTaskRef } from "@/lib/tasks/mutations";
+import type { LabelChip } from "@/lib/tasks/use-tasks";
 import { TASK_PRIORITIES, priorityLabel } from "@/lib/validation/tasks";
 import { useSelection } from "./selection-context";
 
@@ -42,7 +45,7 @@ const triggerClass =
  *
  * El contenido real (`SelectionActionBarContent`) es un componente aparte,
  * montado solo mientras hay selección activa: sus hooks (preferencias,
- * proyectos, las tres mutaciones en lote) no tienen por qué pagarse en el
+ * proyectos, las cuatro mutaciones en lote) no tienen por qué pagarse en el
  * caso común de "nada seleccionado". `useSelection()` sí se llama siempre
  * acá afuera porque ya degrada sola sin `<SelectionProvider>` (mismo
  * criterio que `useUndoStack`), a diferencia de esas otras.
@@ -60,6 +63,14 @@ function SelectionActionBarContent({ candidateTasks }: { candidateTasks: BulkTas
   const bulkUpdate = useBulkUpdateTasks();
   const bulkMove = useBulkMoveTasks();
   const bulkDelete = useBulkDeleteTasks();
+  const bulkAddLabels = useBulkAddLabels();
+  // Borrador de etiquetas a sumar (D-C de `seleccion-con-ctrl`): el
+  // `LabelPicker` se reutiliza en su modo "borrador" (`onChange`, sin
+  // `taskId`) porque en lote no hay un conjunto "asignado" único que
+  // mostrar — cada tarea seleccionada puede traer etiquetas distintas, y
+  // mostrar las de una sería engañoso. Elegir acá solo arma la lista a
+  // sumar; no toca el servidor hasta "Sumar etiquetas".
+  const [labelsToAdd, setLabelsToAdd] = useState<LabelChip[]>([]);
 
   const count = selection.count;
   const tasks = candidateTasks.filter((t) => selection.isSelected(t.id));
@@ -75,6 +86,15 @@ function SelectionActionBarContent({ candidateTasks }: { candidateTasks: BulkTas
 
   function changeDate(dueDate: string | null) {
     bulkUpdate.mutate({ tasks, patch: { due_date: dueDate, due_at: null } });
+  }
+
+  // "Sumar", nunca "reemplazar" (D-C, requirement "Aplicar etiquetas en lote
+  // SHALL sumar"): el nombre del botón lo dice porque es la diferencia
+  // deliberada con editar una sola tarea, y alguien la va a notar.
+  function applyLabels() {
+    if (labelsToAdd.length === 0) return;
+    bulkAddLabels.mutate({ tasks, labels: labelsToAdd });
+    setLabelsToAdd([]);
   }
 
   // Eliminar es la única acción en lote que sale del modo de selección sola
@@ -99,10 +119,6 @@ function SelectionActionBarContent({ candidateTasks }: { candidateTasks: BulkTas
       <span className="text-sm font-medium text-foreground">
         {count} {count === 1 ? "seleccionada" : "seleccionadas"}
       </span>
-
-      <Button type="button" variant="ghost" size="sm" onClick={() => selection.selectAll(allVisibleIds)}>
-        Seleccionar todas
-      </Button>
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <TaskDestinationSelect
@@ -129,27 +145,55 @@ function SelectionActionBarContent({ candidateTasks }: { candidateTasks: BulkTas
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center rounded-lg border border-input p-0.5">
-          <button type="button" onClick={() => changeDate(today)} className="rounded-md px-2 py-1 text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50">
-            Hoy
-          </button>
-          <button type="button" onClick={() => changeDate(tomorrow)} className="rounded-md px-2 py-1 text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50">
-            Mañana
-          </button>
-          <button
-            type="button"
-            aria-label="Sin fecha"
-            onClick={() => changeDate(null)}
-            className="flex items-center justify-center rounded-md px-2 py-1 text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <CalendarOff className="size-3.5" aria-hidden />
-          </button>
+        {/* Etiquetas en lote (bloque 7.11, D-C): el `LabelPicker` en modo
+            borrador arma la lista a sumar (mostrada como chips en su propio
+            gatillo), y "Sumar etiquetas" recién ahí dispara la mutación —
+            el nombre del botón es la forma en que la interfaz dice que suma,
+            no reemplaza (requirement, D-C). */}
+        <div className="flex items-center gap-1.5">
+          <LabelPicker
+            projectId=""
+            assigned={labelsToAdd}
+            onChange={setLabelsToAdd}
+            triggerClassName="h-8 w-auto max-w-40"
+          />
+          <Button type="button" variant="ghost" size="sm" disabled={labelsToAdd.length === 0} onClick={applyLabels}>
+            <Tags className="size-3.5" aria-hidden />
+            Sumar etiquetas
+          </Button>
         </div>
 
         <Button type="button" variant="ghost" size="sm" className="text-error hover:text-error" onClick={handleDeleteAll}>
           <Trash2 className="size-3.5" aria-hidden />
           Eliminar
         </Button>
+
+        {/* Menú de más (D-D): la barra ya tenía siete controles y sumamos
+            etiquetas, así que en pantallas angostas (390px) no entran todos
+            en línea. Acá van "seleccionar todas" y los tres atajos de fecha
+            — los que menos se usan de la barra llena, mirándola armada
+            (mover, prioridad y etiquetas son las acciones nuevas o
+            frecuentes; eliminar NUNCA va acá por ser destructiva). Ítems
+            planos, sin submenú anidado: un `DropdownMenuSub` abre por hover
+            (Base UI), un gesto que no aporta nada para tres acciones fijas y
+            solo suma fragilidad. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-sm" aria-label="Más acciones en lote" />}>
+            <MoreHorizontal className="size-4" aria-hidden />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => selection.selectAll(allVisibleIds)}>Seleccionar todas</DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Fecha</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => changeDate(today)}>Hoy</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changeDate(tomorrow)}>Mañana</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changeDate(null)}>
+                <CalendarOff className="size-3.5" aria-hidden />
+                Sin fecha
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           type="button"

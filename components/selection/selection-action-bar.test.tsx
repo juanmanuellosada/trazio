@@ -10,11 +10,18 @@ import type { BulkTaskRef } from "@/lib/tasks/mutations";
 const mutateBulkDelete = vi.fn();
 const mutateBulkMove = vi.fn();
 const mutateBulkUpdate = vi.fn();
+const mutateBulkAddLabels = vi.fn();
 
 vi.mock("@/lib/tasks/mutations", () => ({
   useBulkDeleteTasks: () => ({ mutate: mutateBulkDelete }),
   useBulkMoveTasks: () => ({ mutate: mutateBulkMove }),
   useBulkUpdateTasks: () => ({ mutate: mutateBulkUpdate }),
+  useBulkAddLabels: () => ({ mutate: mutateBulkAddLabels }),
+  useReplaceTaskLabels: () => ({ mutate: vi.fn() }),
+}));
+
+vi.mock("@/lib/labels/use-labels", () => ({
+  useLabels: () => ({ data: [] }),
 }));
 
 vi.mock("@/lib/parser/use-parser-context", () => ({
@@ -87,7 +94,10 @@ describe("SelectionActionBar — acciones en lote (bloque 7.11)", () => {
     expect(mutateBulkUpdate).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("toolbar", { name: "Acciones en lote" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
+    // "Hoy"/"Mañana"/"Sin fecha" viven detrás del menú "Más" (D-D de
+    // `seleccion-con-ctrl`): hay que abrirlo antes de encontrar el ítem.
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones en lote" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hoy" }));
     expect(mutateBulkUpdate).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("toolbar", { name: "Acciones en lote" })).toBeInTheDocument();
   });
