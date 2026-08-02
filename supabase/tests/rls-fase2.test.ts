@@ -92,7 +92,7 @@ describe("RLS: aislamiento entre usuarios (tablas de fase 2)", () => {
   it("comments: B no puede leer, insertar en nombre de A, actualizar ni borrar el comentario de A", async () => {
     const { data: commentData, error: commentError } = await userA.client
       .from("comments")
-      .insert({ user_id: userA.id, task_id: fixturesA.taskId, content: { type: "doc", content: [] } })
+      .insert({ user_id: userA.id, task_id: fixturesA.taskId, content: "comentario de A" })
       .select("id")
       .single();
     const comment = unwrap(commentData, commentError, "Comentario de A");
@@ -102,12 +102,12 @@ describe("RLS: aislamiento entre usuarios (tablas de fase 2)", () => {
 
     const { error: insertError } = await userB.client
       .from("comments")
-      .insert({ user_id: userA.id, task_id: fixturesA.taskId, content: { type: "doc", content: [] } });
+      .insert({ user_id: userA.id, task_id: fixturesA.taskId, content: "comentario de A" });
     expect(insertError).not.toBeNull();
 
     const { data: updateResult } = await userB.client
       .from("comments")
-      .update({ content: { type: "doc", content: [{ type: "text", text: "hackeado" }] } })
+      .update({ content: "hackeado" })
       .eq("id", comment.id)
       .select();
     expect(updateResult).toEqual([]);

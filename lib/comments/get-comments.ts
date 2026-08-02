@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/supabase/database.types";
 
 export type CommentRow = {
   id: string;
   task_id: string;
-  content: Json;
+  content: string;
   created_at: string;
   updated_at: string;
 };

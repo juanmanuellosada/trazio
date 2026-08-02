@@ -2,7 +2,6 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Json } from "@/lib/supabase/database.types";
 import { reportCommentError } from "./errors";
 import { commentsQueryKey } from "./use-comments";
 import type { CommentRow } from "./get-comments";
@@ -23,7 +22,7 @@ export function useCreateComment(taskId: string) {
 
   return useMutation({
     mutationKey: COMMENTS_MUTATION_KEY,
-    mutationFn: async (content: Json) => {
+    mutationFn: async (content: string) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -67,7 +66,7 @@ export function useUpdateComment(taskId: string) {
 
   return useMutation({
     mutationKey: COMMENTS_MUTATION_KEY,
-    mutationFn: async ({ id, content }: { id: string; content: Json }) => {
+    mutationFn: async ({ id, content }: { id: string; content: string }) => {
       const { error } = await supabase.from("comments").update({ content }).eq("id", id);
       if (error) throw error;
     },

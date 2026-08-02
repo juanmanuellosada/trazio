@@ -39,6 +39,10 @@ estorba o directamente no se puede aplicar: chips de calendario de veinte píxel
 notificaciones push, badges, resultados de búsqueda y el `<title>` del documento.
 Un link dentro de un título es un problema de renderizado en todos ellos.
 
+**Nota (2026-08-02).** D40 supera la parte de esta decisión sobre comentarios:
+un comentario pasa a ser texto plano. Lo que esta decisión fija sobre el
+título y sobre la descripción sigue vigente sin cambios.
+
 ---
 
 ## D3 — Sin exportar ni importar datos
@@ -862,3 +866,56 @@ en pie porque `components/view-options/view-options-bar.tsx` todavía usa
 mismo criterio, `@container` queda sin ningún consumidor y se puede sacar.
 `docs/design-system.md` §5.1 documenta el mecanismo de umbral y container
 query que esta decisión reemplaza, y queda pendiente de actualizar.
+
+**Nota (2026-08-02).** Lo pendiente de este párrafo ya se completó:
+`view-options-bar.tsx` pasó al mismo criterio y no queda ninguna ocurrencia
+de `@[90rem]` ni de `@container` en el código.
+
+---
+
+## D40 — Un comentario vuelve a ser texto plano; la descripción no se toca
+
+**Fecha.** 2026-08-02
+
+**Contexto.** Un comentario se escribía con el mismo editor Tiptap enriquecido
+que la descripción de la tarea: barra de herramientas, títulos, tablas, listas
+de tareas, bloques de código, notas al pie. No un parecido — el mismo
+componente importado. D2 lo decidía así explícitamente, en la misma oración
+que descarta el markdown en el título: *"La descripción y los comentarios sí
+son enriquecidos."*
+
+El dueño, usándolo, decidió que no lo quiere así: un comentario es una nota
+corta al margen de una tarea, y darle el mismo peso editorial que a la
+descripción es desproporcionado. La barra de formato ocupa más que lo que se
+suele escribir.
+
+**Decisión.** Un comentario se escribe y se muestra como texto plano, en un
+campo de texto simple. Sin barra de herramientas, sin menú de insertar, sin
+diálogo de enlaces. Los saltos de línea que la persona escriba se respetan al
+mostrarlo. `comments.content` pasa de `jsonb` a `text`; los comentarios ya
+escritos se convirtieron con una migración que aplana el documento
+preservando el texto y los saltos de línea entre bloques, y pierde el formato
+que tuvieran (negritas, títulos, listas, tablas) de forma irreversible.
+
+Esto **supera la parte de D2** que decía que los comentarios son enriquecidos.
+Lo que D2 decide sobre el **título** —texto plano— sigue vigente y no se toca.
+
+**La descripción de la tarea no se toca.** Sigue enriquecida, con el editor
+Tiptap y las extensiones de D31, sin fórmula matemática (D30). Queda una
+asimetría deliberada entre los dos: la descripción es el cuerpo de la tarea
+—donde va un procedimiento, una lista de pasos, una tabla— y el comentario es
+una nota al margen. Que se vean distintos es información, no ruido, y no es
+una inconsistencia a resolver más adelante: el impulso de "unificar" los dos
+editores va a volver, y esta decisión es la respuesta ya escrita para cuando
+vuelva.
+
+**Por qué no un editor enriquecido con las opciones capadas.** Seguiría
+guardando un documento estructurado con un solo tipo de nodo — la complejidad
+de Tiptap en una superficie que no la necesita, sin ninguno de sus beneficios.
+
+**Consecuencia.** `components/comments/comment-composer.tsx` y
+`comment-item.tsx` usan un campo de texto (`Textarea`) en vez de
+`TaskDescriptionEditor`; `comment-content.tsx` renderiza el texto guardado en
+vez de instanciar un editor de solo lectura. El veto a adjuntos en
+comentarios no cambia. `docs/product-spec.md` queda actualizado para
+describir los comentarios como texto plano.

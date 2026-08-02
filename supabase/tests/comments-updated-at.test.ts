@@ -77,7 +77,7 @@ describe("comments_set_updated_at_trigger", () => {
   it("un comentario sin editar mantiene updated_at igual a created_at", async () => {
     const { data, error } = await user.client
       .from("comments")
-      .insert({ user_id: user.id, task_id: taskId, content: { texto: "hola" } })
+      .insert({ user_id: user.id, task_id: taskId, content: "hola" })
       .select("created_at, updated_at")
       .single();
     const comment = unwrap(data, error, "Comentario sin editar");
@@ -88,7 +88,7 @@ describe("comments_set_updated_at_trigger", () => {
   it("editar el contenido actualiza updated_at, distinto de created_at", async () => {
     const { data: insertData, error: insertError } = await user.client
       .from("comments")
-      .insert({ user_id: user.id, task_id: taskId, content: { texto: "primera versión" } })
+      .insert({ user_id: user.id, task_id: taskId, content: "primera versión" })
       .select("id, created_at, updated_at")
       .single();
     const comment = unwrap(insertData, insertError, "Comentario a editar");
@@ -100,7 +100,7 @@ describe("comments_set_updated_at_trigger", () => {
 
     const { data: updateData, error: updateError } = await user.client
       .from("comments")
-      .update({ content: { texto: "segunda versión" } })
+      .update({ content: "segunda versión" })
       .eq("id", comment.id)
       .select("created_at, updated_at")
       .single();

@@ -82,12 +82,10 @@ test.describe("9.9 — comentar una tarea", () => {
     const detail = page.getByRole("dialog", { name: "Detalle de la tarea" });
     await expect(detail.getByText("Comentarios", { exact: true })).toBeVisible();
 
-    // El composer de comentarios reusa el mismo editor Tiptap que la
-    // descripción (bloque 4.3): es el último de los dos que aparece en el
-    // DOM del modal, porque no hay comentarios previos en una tarea recién
-    // creada.
+    // El composer de comentarios es un campo de texto plano (bloque 4.3,
+    // revierte D2 solo para comentarios: `openspec/changes/comentarios-en-texto-plano/`).
     const commentText = "Quedó listo para revisar mañana.";
-    await detail.locator('[data-testid="task-description-editor"]').last().click();
+    await detail.getByRole("textbox", { name: "Nuevo comentario" }).click();
     await page.keyboard.type(commentText);
     await detail.getByRole("button", { name: "Comentar" }).click();
 

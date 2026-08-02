@@ -5,9 +5,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Json } from "@/lib/supabase/database.types";
+import { Textarea } from "@/components/ui/textarea";
 import type { CommentRow } from "@/lib/comments/get-comments";
-import { TaskDescriptionEditor } from "@/components/tasks/task-description-editor";
 import { CommentContent } from "./comment-content";
 
 function formatTimestamp(iso: string): string {
@@ -25,11 +24,11 @@ export function CommentItem({
   onDelete,
 }: {
   comment: CommentRow;
-  onSave: (content: Json) => void;
+  onSave: (content: string) => void;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Json>(comment.content);
+  const [draft, setDraft] = useState(comment.content);
   const edited = comment.updated_at !== comment.created_at;
 
   function save() {
@@ -69,7 +68,13 @@ export function CommentItem({
 
       {editing ? (
         <div className="space-y-2">
-          <TaskDescriptionEditor content={comment.content} onChange={setDraft} />
+          <Textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            aria-label="Editar el comentario"
+            rows={2}
+            className="min-h-0 resize-none text-sm"
+          />
           <div className="flex justify-end gap-1.5">
             <Button type="button" variant="ghost" size="sm" onClick={cancel}>
               Cancelar

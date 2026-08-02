@@ -35,7 +35,7 @@ export type Database = {
       }
       comments: {
         Row: {
-          content: Json
+          content: string
           created_at: string
           id: string
           task_id: string
@@ -43,7 +43,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          content: Json
+          content: string
           created_at?: string
           id?: string
           task_id: string
@@ -51,7 +51,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          content?: Json
+          content?: string
           created_at?: string
           id?: string
           task_id?: string

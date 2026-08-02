@@ -85,7 +85,7 @@ El elemento central. Campos:
 | Fecha límite | Fecha tope, distinta de la fecha en que se planea trabajarla. |
 | Etiquetas | Varias por tarea. |
 | Subtareas | Anidadas, sin límite de niveles. |
-| Comentarios | Hilo propio, texto enriquecido. |
+| Comentarios | Hilo propio, texto plano. |
 | Recordatorios | Uno o varios. |
 | Recurrencia | Regla RRULE. |
 | Ubicación | Un proyecto y, opcionalmente, una sección dentro de ese proyecto. |
@@ -111,7 +111,7 @@ completo. Al eliminar una etiqueta se quita de todas las tareas que la tenían.
 
 ### Comentario
 
-Cada tarea tiene su hilo. Texto enriquecido. Se crean, editan (quedan marcados como
+Cada tarea tiene su hilo. Texto plano. Se crean, editan (quedan marcados como
 "editado") y eliminan.
 
 ### Recordatorio

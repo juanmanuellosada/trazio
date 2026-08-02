@@ -53,7 +53,7 @@ describe("snapshotTaskSubtree / restoreTaskSnapshot (requirement \"Restaurar una
         { task_id: "t1", label_id: "l1", user_id: "u1" },
         { task_id: "t2", label_id: "l2", user_id: "u1" },
       ],
-      comments: [{ id: "c1", task_id: "t1", user_id: "u1", content: { texto: "hola" }, created_at: "a", updated_at: "a" }],
+      comments: [{ id: "c1", task_id: "t1", user_id: "u1", content: "hola", created_at: "a", updated_at: "a" }],
     };
     const supabase = fakeSupabase(tables);
 
@@ -73,7 +73,7 @@ describe("snapshotTaskSubtree / restoreTaskSnapshot (requirement \"Restaurar una
     expect(tables.tasks.map((t) => t.id).sort()).toEqual(["t1", "t2"]);
     expect(tables.task_labels).toHaveLength(2);
     expect(tables.comments).toHaveLength(1);
-    expect(tables.comments[0].content).toEqual({ texto: "hola" });
+    expect(tables.comments[0].content).toEqual("hola");
   });
 
   it("una tarea sin comentarios ni etiquetas restaura igual, sin insertar filas vacías", async () => {
