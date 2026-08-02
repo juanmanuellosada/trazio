@@ -1,7 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, CornerUpLeft, ExternalLink, Link2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Copy, CornerUpLeft, ExternalLink, Link2, Maximize2, MoreHorizontal, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clickButtonByText, clickFirstButton } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
@@ -48,6 +49,7 @@ function toTaskRowShape(task: TaskDetail): TaskRow {
 }
 
 function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => void }) {
+  const router = useRouter();
   const preferences = useUserPreferences();
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
@@ -265,6 +267,9 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={copyLink}>
                 <Link2 className="size-3.5" /> Copiar enlace directo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/tarea/${task.id}`)}>
+                <Maximize2 className="size-3.5" /> Abrir completo en esta ventana
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(`/tarea/${task.id}`, "_blank")}>
                 <ExternalLink className="size-3.5" /> Abrir en ventana aparte

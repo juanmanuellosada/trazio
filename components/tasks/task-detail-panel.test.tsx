@@ -12,6 +12,7 @@ import { TaskDetailProvider, useTaskDetail } from "./task-detail-context";
 import type { TaskDetail } from "@/lib/tasks/use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: vi.fn() }));
 
 const TEST_PREFERENCES = {
@@ -84,6 +85,7 @@ const baseTask: TaskDetail = {
   recurrence_rule: null,
   recurrence_ends_at: null,
   recurrence_count: null,
+  recurrence_anchor: null,
   labels: [],
 };
 

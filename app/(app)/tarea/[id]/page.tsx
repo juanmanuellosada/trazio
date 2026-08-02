@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { getTask } from "@/lib/tasks/get-task";
 import { TaskDetailContent } from "@/components/tasks/task-detail-content";
+import { RecordRecentTaskView } from "@/components/tasks/record-recent-task-view";
 
 /**
  * Ruta de una tarea suelta (bloque 6, antes 7.11): pantalla completa
@@ -32,6 +33,7 @@ export default async function TareaPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="h-full max-w-content mx-auto">
+      {task && <RecordRecentTaskView taskId={id} />}
       <TaskDetailContent taskId={id} initialData={task} />
     </div>
   );

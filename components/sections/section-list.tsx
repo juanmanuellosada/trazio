@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { TaskList } from "@/components/tasks/task-list";
 import { positionForIndex, positionForSwap } from "@/lib/projects/tree";
 import {
@@ -249,6 +250,7 @@ function SectionItem({
           />
         </div>
       )}
+      {!section.is_collapsed && <Separator className="my-1" />}
       {!section.is_collapsed && (
         <div className="pl-7" onFocus={() => onSectionFocus?.(section.id)}>
           <TaskList

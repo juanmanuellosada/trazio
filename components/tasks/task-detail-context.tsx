@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { addRecentTaskId } from "@/lib/search/recent-tasks";
 
 /**
  * Campo a enfocar apenas se abre el detalle (bloque 7.8, capacidad
@@ -94,6 +95,9 @@ export function TaskDetailProvider({ children }: { children: ReactNode }) {
         window.history.pushState({ ...window.history.state, [HISTORY_KEY]: taskId }, "", window.location.href);
         setOpenTaskId(taskId);
         setPendingFocusField(focusField ?? null);
+        // `buscador-como-paleta`, D-C: abrir el detalle es lo que cuenta
+        // como "visto" para el grupo de recientes del buscador.
+        addRecentTaskId(taskId);
       },
       close: () => {
         // Cerrar por cualquier vía que no sea Atrás —la `X`, `Escape`, clic

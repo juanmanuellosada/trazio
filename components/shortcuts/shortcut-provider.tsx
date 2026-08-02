@@ -11,6 +11,7 @@ import type { ShortcutScope } from "@/lib/shortcuts/types";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { defaultEventRange } from "@/lib/calendar/default-event-range";
 import { CreateEventDialog } from "@/components/calendar/create-event-dialog";
+import { SearchPalette } from "@/components/search/search-palette";
 import { GlobalQuickAddDialog } from "./global-quick-add-dialog";
 
 /**
@@ -47,6 +48,7 @@ export function ShortcutProvider({
   });
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [eventRange, setEventRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const pushScope = useCallback((scope: ShortcutScope) => {
     scopesRef.current.push(scope);
@@ -84,7 +86,10 @@ export function ShortcutProvider({
     /** Atajos generales (bloque 7.4): fallback cuando ninguna pantalla ni modal registró el mismo combo — la pila de arriba ya resuelve las colisiones de S y E (D-G). */
     function resolveGeneral(event: KeyboardEvent): boolean {
       if (matchesCombo(event, GENERAL_SHORTCUTS.buscar)) {
-        router.push("/buscar");
+        // `buscador-como-paleta`, D-A: `S` abre la paleta por encima de la
+        // vista actual, en vez de navegar a `/buscar` y perderla. El
+        // requisito de atajos ya decía "abrir el buscador", no "navegar".
+        setSearchOpen(true);
         return true;
       }
       if (matchesCombo(event, GENERAL_SHORTCUTS.agregarTarea)) {
@@ -133,6 +138,7 @@ export function ShortcutProvider({
     <ShortcutRegistryContext.Provider value={{ pushScope }}>
       {children}
       <GlobalQuickAddDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} inboxProjectId={inboxProjectId} />
+      <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
       {eventRange && (
         <CreateEventDialog
           open
