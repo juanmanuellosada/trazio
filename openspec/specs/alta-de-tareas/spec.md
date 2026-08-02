@@ -7,32 +7,40 @@ TBD - created by archiving change interfaz-propia. Update Purpose after archive.
 
 El alta de una tarea SHALL resolverse siempre con el mismo componente de
 alta subyacente, instanciado — no reimplementado — en las vistas Bandeja de
-entrada, Hoy y Proyecto, dentro de cada sección de un proyecto, y al crear
-una subtarea desde el detalle de otra tarea. Ese componente SHALL
+entrada, Hoy, Próximos y Proyecto, dentro de cada sección de un proyecto, al
+crear una subtarea desde el detalle de otra tarea, y **al crear una tarea
+arrastrando sobre un rango libre del calendario**. Ese componente SHALL
 renderizarse en dos superficies con tratamiento distinto, nunca como dos
 implementaciones separadas: desde el botón de agregar tarea del panel
-lateral se abre el mismo modal que el detalle de una tarea, vacío y con
-todos sus campos; dentro de una lista, de una sección de un proyecto, o al
-crear una subtarea desde el detalle, se abre un modal incrustado en la
-vista, compacto y con menos campos, aprovechando el ancho disponible. La
-vista Completado SHALL NOT ofrecer alta de tareas, y la vista Próximos es de
-fase 2: no existe todavía. Ninguna de esas superficies SHALL tener su propia
-implementación de alta.
+lateral y desde su atajo global se abre un modal; dentro de una lista, de una
+sección de un proyecto, o al crear una subtarea desde el detalle, se abre un
+modal incrustado en la vista, compacto, aprovechando el ancho disponible. La
+vista Completado SHALL NOT ofrecer alta de tareas. Ninguna de esas superficies
+SHALL tener su propia implementación de alta, ni siquiera cuando necesite
+expresar algo que el componente compartido todavía no sabe expresar: en ese
+caso lo que SHALL extenderse es el componente compartido.
 
-#### Scenario: El panel lateral abre el modal completo, vacío
+#### Scenario: El modal global abre plegado
 
-- **WHEN** se abre el alta de tarea desde el botón de agregar tarea del
-  panel lateral
-- **THEN** se abre el mismo modal que el detalle de una tarea, vacío, con
-  título, descripción y los cuatro accesos de fecha, prioridad, fecha límite
-  y proyecto destino
+- **WHEN** se abre el alta de tarea desde el botón del panel lateral o desde su
+  atajo global
+- **THEN** se muestran el campo de título y el destino
+- **AND** el resto de los campos NUNCA SHALL estar desplegado hasta que se use el
+  control de desplegar
+
+#### Scenario: Desplegar el modal global muestra el resto de los campos
+
+- **WHEN** se usa el control de desplegar en el modal global
+- **THEN** se muestran la descripción y los accesos de fecha, fecha límite,
+  prioridad, etiquetas y recordatorios
 
 #### Scenario: El alta dentro de una lista o de una sección abre el modal incrustado
 
 - **WHEN** se agrega una tarea directamente dentro de Bandeja de entrada,
-  Hoy, un Proyecto, o dentro de una sección de un proyecto
-- **THEN** se abre un modal incrustado en la vista, compacto, con menos
-  campos que el modal completo, preconfigurado con ese contexto como destino
+  Hoy, Próximos, un Proyecto, o dentro de una sección de un proyecto
+- **THEN** se abre un modal incrustado en la vista, compacto,
+  preconfigurado con ese contexto como destino
+- **AND** SHALL abrirse desplegado, porque llegar ahí ya declaró la intención
 
 #### Scenario: El alta de una subtarea usa el modal incrustado
 
@@ -40,45 +48,48 @@ implementación de alta.
 - **THEN** se abre el modal incrustado y compacto, preconfigurado con esa
   tarea como padre
 
+#### Scenario: El alta del calendario usa el mismo componente
+
+- **WHEN** se arrastra sobre un rango libre del calendario para crear una tarea
+- **THEN** el alta SHALL resolverse con el componente compartido
+- **AND** el rango arrastrado SHALL entrar como fecha y horario de contexto
+- **AND** NUNCA SHALL usarse un selector nativo del navegador
+
 #### Scenario: Las dos superficies comparten el mismo componente
 
-- **WHEN** se compara la implementación del modal completo del panel
-  lateral con la del modal incrustado de una lista o sección
+- **WHEN** se compara la implementación del modal global con la del modal
+  incrustado de una lista o sección
 - **THEN** ambas superficies se construyen sobre el mismo componente de
   alta, y lo único que cambia entre ellas es qué campos se muestran, nunca
   el componente subyacente
 
 ### Requirement: Campos y accesos del componente de alta
 
-El componente de alta, en su tratamiento completo (panel lateral), SHALL
-ofrecer un campo de título, un campo de descripción, y accesos para asignar
-fecha, prioridad, fecha límite y proyecto destino. En su tratamiento
-incrustado y compacto (dentro de una lista o de una sección), SHALL ofrecer
-un campo de título, un campo de descripción, y accesos para asignar fecha,
-prioridad y fecha límite, y NUNCA SHALL mostrar un selector de proyecto ni de
-sección: el destino ya está determinado por el contexto donde se abrió, y
-mostrarlo ahí es ruido. Los controles de fecha, fecha límite y prioridad
-SHALL ser los selectores definidos por la capacidad `selectores-de-atributos`
-en las dos superficies; este requisito no redefine su comportamiento interno,
-solo exige que el alta los use.
+El componente de alta SHALL ofrecer, en sus dos tratamientos, un campo de
+título, un campo de descripción, y accesos para asignar fecha, prioridad,
+fecha límite, **etiquetas, recordatorios** y **proyecto y sección de destino**.
 
-#### Scenario: El tratamiento completo ofrece los cinco campos
+El destino SHALL mostrarse en las dos superficies, como un control que indica a
+dónde va a quedar la tarea y permite cambiarlo. Los controles de fecha, fecha
+límite y prioridad SHALL ser los selectores definidos por la capacidad
+`selectores-de-atributos` en las dos superficies; este requisito no redefine su
+comportamiento interno, solo exige que el alta los use. Los de etiquetas y
+recordatorios SHALL ser los mismos que usa el detalle de una tarea.
 
-- **WHEN** se abre el componente de alta en su tratamiento completo, desde
-  el panel lateral
+#### Scenario: Los dos tratamientos ofrecen los mismos atributos
+
+- **WHEN** se abre el componente de alta, en cualquiera de sus dos tratamientos,
+  con todos sus campos desplegados
 - **THEN** se ofrecen título, descripción, y accesos para fecha, prioridad,
-  fecha límite y proyecto destino
-- **AND** cada acceso abre el selector correspondiente de
-  `selectores-de-atributos`
+  fecha límite, etiquetas, recordatorios y destino
+- **AND** cada acceso abre el selector compartido correspondiente
 
-#### Scenario: El tratamiento incrustado omite solo el proyecto destino
+#### Scenario: El tratamiento incrustado también muestra el destino
 
-- **WHEN** se abre el componente de alta en su tratamiento incrustado,
-  dentro de una lista o de una sección
-- **THEN** se ofrecen título, descripción, y accesos para fecha, prioridad y
-  fecha límite
-- **AND** no se muestra ningún selector de proyecto ni de sección, porque el
-  destino ya está determinado por el contexto donde se abrió
+- **WHEN** se abre el componente de alta dentro de una lista o de una sección
+- **THEN** SHALL mostrarse a qué proyecto y, si corresponde, a qué sección va a
+  quedar la tarea
+- **AND** ese control SHALL permitir cambiarlo sin salir del alta
 
 ### Requirement: El alta sigue entendiendo lenguaje natural en el título
 
@@ -110,14 +121,46 @@ reconocimiento del parser.
 El componente de alta SHALL ofrecer una acción de confirmar y una de
 cancelar. El proyecto y, si corresponde, la sección de destino SHALL estar
 visibles antes de confirmar, sin requerir abrir el selector de proyecto para
-saber dónde va a quedar la tarea.
+saber dónde va a quedar la tarea. Esto rige **en las dos superficies**.
 
-#### Scenario: El destino se ve antes de confirmar
+El destino SHALL resolverse por esta cadena, del criterio más fuerte al más
+débil: lo elegido en el selector; lo detectado por el parser en el título; el
+contexto de la vista desde la que se abrió el alta; el proyecto por defecto de
+las preferencias del usuario; y por último Bandeja de entrada.
+
+#### Scenario: El destino se ve antes de confirmar, en las dos superficies
 
 - **WHEN** se abre el componente de alta con un proyecto o sección de destino
-  ya determinado (por contexto o por `@` en el título)
+  ya determinado, en cualquiera de sus dos tratamientos
 - **THEN** ese destino se muestra en el componente antes de que se confirme la
   creación de la tarea
+
+#### Scenario: El modal global hereda el contexto de la vista
+
+- **WHEN** se abre el alta desde el botón del panel lateral o desde su atajo
+  global, estando en un proyecto o en una sección
+- **THEN** el destino SHALL ser ese proyecto y esa sección
+- **AND** NUNCA SHALL caer en Bandeja de entrada por el solo hecho de haberse
+  abierto desde una superficie global
+
+#### Scenario: El modal global hereda la fecha en las vistas con fecha
+
+- **WHEN** se abre el alta desde el botón del panel lateral o desde su atajo
+  global, estando en Hoy o en Próximos
+- **THEN** la fecha SHALL quedar preconfigurada con el día correspondiente
+
+#### Scenario: Sin contexto se usa el proyecto por defecto de las preferencias
+
+- **WHEN** se abre el alta desde una superficie que no aporta contexto de
+  proyecto, y el usuario tiene configurado un proyecto por defecto
+- **THEN** el destino SHALL ser ese proyecto
+- **AND** solo si no hay ninguno configurado SHALL usarse Bandeja de entrada
+
+#### Scenario: Lo elegido gana sobre lo heredado
+
+- **WHEN** el alta heredó un destino del contexto y el usuario elige otro en el
+  selector
+- **THEN** SHALL usarse el elegido
 
 #### Scenario: Cancelar no crea la tarea
 
@@ -125,20 +168,6 @@ saber dónde va a quedar la tarea.
   o la descripción
 - **THEN** ninguna tarea se crea
 - **AND** el componente se cierra sin persistir nada
-
-### Requirement: Composición con lugar reservado para recordatorios y etiquetas
-
-El componente de alta SHALL diseñarse con lugar en su composición para
-recordatorios y para etiquetas, sin mostrar ningún control de esos dos
-atributos hoy. Este requisito exige que agregarlos en fase 2 no obligue a
-rehacer el componente; no exige ni permite mostrarlos deshabilitados ni en
-ningún estado visible mientras tanto.
-
-#### Scenario: Recordatorios y etiquetas no se muestran hoy
-
-- **WHEN** se abre el componente de alta en esta fase
-- **THEN** no se muestra ningún control de recordatorios ni de etiquetas, ni
-  siquiera deshabilitado
 
 ### Requirement: Adjuntar archivos no entra, permanentemente
 
@@ -153,4 +182,30 @@ versión; que la referencia visual del alta lo muestre no cambia esa decisión.
 - **THEN** no existe ningún botón, ícono ni zona de arrastre para adjuntar un
   archivo
 - **AND** no existe tampoco una versión deshabilitada de ese control
+
+### Requirement: Recordatorios y etiquetas se ofrecen en el alta
+
+El componente de alta SHALL ofrecer controles de recordatorios y de etiquetas,
+en sus dos tratamientos, cuando está desplegado. Estos controles SHALL ser los
+mismos que usa el detalle de una tarea, no versiones propias.
+
+Asignar etiquetas escribiendo `@` en el título SHALL seguir funcionando, con la
+misma regla de precedencia que el resto de los atributos: lo elegido en el
+selector gana sobre lo detectado por el parser.
+
+#### Scenario: Los dos controles están disponibles al desplegar el alta
+
+- **WHEN** se despliega el componente de alta
+- **THEN** SHALL ofrecerse un control de etiquetas y uno de recordatorios
+
+#### Scenario: El símbolo de etiqueta del parser sigue funcionando
+
+- **WHEN** se escribe `@` seguido de un nombre en el título del alta
+- **THEN** SHALL asignarse esa etiqueta, creándola si no existe, como hasta ahora
+
+#### Scenario: Lo elegido en el selector de etiquetas gana sobre el parser
+
+- **WHEN** el parser detectó etiquetas en el título y además se eligieron otras en
+  el selector
+- **THEN** SHALL usarse el conjunto elegido en el selector
 
