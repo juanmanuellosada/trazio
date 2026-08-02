@@ -43,13 +43,20 @@ vi.mock("@/lib/labels/use-labels", async (importOriginal) => {
 
 const STORAGE_KEY = "trazio:sidebar-collapsed";
 
-function renderSidebar() {
+function renderSidebar(inboxTaskCount = 0) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={PREFERENCES}>
         <SettingsProvider>
-          <AppSidebar fullName="Ana" email="ana@example.com" todayCount={0} projects={[]} initialProjects={[]} />
+          <AppSidebar
+            fullName="Ana"
+            email="ana@example.com"
+            todayCount={0}
+            inboxTaskCount={inboxTaskCount}
+            projects={[]}
+            initialProjects={[]}
+          />
         </SettingsProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
@@ -146,5 +153,26 @@ describe("AppSidebar — acceso Etiquetas", () => {
     const labels = screen.getByRole("link", { name: "Etiquetas" });
     expect(labels).toHaveTextContent("G");
     expect(labels).toHaveTextContent("E");
+  });
+});
+
+/**
+ * Contador de Bandeja de entrada: mismo patrón que el contador de Hoy
+ * (`todayCount`, ver `nav-link.tsx`) — un badge junto al acceso, oculto
+ * cuando no hay tareas pendientes.
+ */
+describe("AppSidebar — contador de Bandeja de entrada", () => {
+  it("muestra la cantidad de tareas pendientes de la Bandeja", () => {
+    renderSidebar(4);
+
+    const bandeja = screen.getByRole("link", { name: "Bandeja de entrada4" });
+    expect(bandeja).toHaveTextContent("4");
+  });
+
+  it("no muestra nada cuando la Bandeja no tiene tareas pendientes", () => {
+    renderSidebar(0);
+
+    const bandeja = screen.getByRole("link", { name: "Bandeja de entrada" });
+    expect(bandeja).toHaveTextContent("Bandeja de entrada");
   });
 });

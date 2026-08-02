@@ -22,12 +22,14 @@ export function MobileNav({
   fullName,
   email,
   todayCount,
+  inboxTaskCount,
   projects,
   initialProjects,
 }: {
   fullName: string | null;
   email: string | null;
   todayCount: number;
+  inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
 }) {
@@ -57,6 +59,7 @@ export function MobileNav({
               fullName={fullName}
               email={email}
               todayCount={todayCount}
+              inboxTaskCount={inboxTaskCount}
               projects={projects}
               initialProjects={initialProjects}
             />
@@ -68,7 +71,13 @@ export function MobileNav({
         className="fixed inset-x-0 bottom-0 z-30 grid h-16 grid-cols-4 border-t border-border bg-background md:hidden"
         aria-label="Navegación principal"
       >
-        <MobileTabLink href="/bandeja" label="Bandeja" icon={Inbox} active={pathname === "/bandeja"} />
+        <MobileTabLink
+          href="/bandeja"
+          label="Bandeja"
+          icon={Inbox}
+          active={pathname === "/bandeja"}
+          count={inboxTaskCount}
+        />
         <MobileTabLink href="/hoy" label="Hoy" icon={Sun} active={pathname === "/hoy"} count={todayCount} />
         <MobileTabLink href="/proximos" label="Próximos" icon={CalendarDays} active={pathname === "/proximos"} />
         <button

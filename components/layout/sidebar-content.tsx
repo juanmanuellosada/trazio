@@ -19,6 +19,7 @@ export type SidebarContentProps = {
   fullName: string | null;
   email: string | null;
   todayCount: number;
+  inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
 };
@@ -49,6 +50,7 @@ export function SidebarContent({
   fullName,
   email,
   todayCount,
+  inboxTaskCount,
   projects,
   initialProjects,
 }: SidebarContentProps) {
@@ -102,6 +104,7 @@ export function SidebarContent({
             label="Bandeja de entrada"
             icon={Inbox}
             collapsed={collapsed}
+            count={inboxTaskCount}
             shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.bandeja }]}
           />
           <NavLink

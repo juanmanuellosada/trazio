@@ -12,6 +12,15 @@ export type SidebarProject = {
   taskCount: number;
 };
 
+export type SidebarProjectsData = {
+  projects: SidebarProject[];
+  // Conteo de pendientes de la Bandeja de entrada, para el acceso principal
+  // del panel lateral (mismo patrón que el contador de Hoy). Sale del mismo
+  // `taskRows` de acá abajo: la Bandeja es un proyecto más para esa consulta,
+  // solo se excluye del árbol de `projects`.
+  inboxTaskCount: number;
+};
+
 /**
  * Proyectos del usuario para el panel lateral (bloque 5.3). La Bandeja de
  * entrada se excluye acá: se muestra aparte, como acceso principal fijo
@@ -19,7 +28,7 @@ export type SidebarProject = {
  * `tasks` (solo `project_id`) reducida en memoria, para no hacer N+1 por
  * proyecto. El CRUD de proyectos es el bloque 6: acá solo se leen.
  */
-export async function getSidebarProjects(userId: string): Promise<SidebarProject[]> {
+export async function getSidebarProjects(userId: string): Promise<SidebarProjectsData> {
   const supabase = await createClient();
 
   const [{ data: projectRows }, { data: taskRows }] = await Promise.all([
@@ -42,8 +51,10 @@ export async function getSidebarProjects(userId: string): Promise<SidebarProject
   }
 
   const projects: SidebarProject[] = [];
+  let inboxTaskCount = 0;
   for (const row of projectRows ?? []) {
     if (row.is_inbox) {
+      inboxTaskCount = counts.get(row.id) ?? 0;
       continue;
     }
     projects.push({
@@ -57,5 +68,5 @@ export async function getSidebarProjects(userId: string): Promise<SidebarProject
     });
   }
 
-  return projects;
+  return { projects, inboxTaskCount };
 }
