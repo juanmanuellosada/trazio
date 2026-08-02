@@ -50,7 +50,7 @@ export function TaskDetailPanel() {
       title="Detalle de la tarea"
       hideTitle
       showCloseButton={false}
-      size="xl"
+      size="2xl"
       className="flex h-[85vh] flex-col gap-0 overflow-hidden p-0"
     >
       {openTaskId && <TaskDetailContent taskId={openTaskId} onClose={close} />}

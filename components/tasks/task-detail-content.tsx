@@ -260,68 +260,83 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
         )}
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <div ref={destinationFieldRef} className="space-y-1">
-            <span className={FIELD_LABEL_CLASS}>Proyecto</span>
-            <TaskDestinationSelect
-              value={{ projectId: task.project_id, sectionId: task.section_id }}
-              onChange={moveTo}
-              proyectos={proyectos}
-            />
+      <div className="flex-1 overflow-y-auto p-4">
+        {/*
+          Dos columnas en escritorio ancho (bloque `detalle-de-tarea-en-dos-columnas`,
+          D-A): a la izquierda lo que se escribe, a la derecha lo que se elige.
+          Abajo de `lg`, colapsa a una columna — y ahí el orden del DOM ya deja
+          los atributos primero (D-C), así que no hace falta reordenar nada
+          aparte para ese caso; `lg:order-*` solo entra en juego en dos columnas,
+          para poner el contenido a la izquierda y los atributos a la derecha.
+          Un único scroll para las dos columnas (el de este contenedor): si la
+          columna de atributos creciera tanto que necesitara el suyo propio, es
+          señal de que hay demasiados atributos, no de que falte la barra.
+        */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
+          <div className="space-y-5 lg:order-2 lg:w-72 lg:shrink-0">
+            <div ref={destinationFieldRef} className="space-y-1">
+              <span className={FIELD_LABEL_CLASS}>Proyecto</span>
+              <TaskDestinationSelect
+                value={{ projectId: task.project_id, sectionId: task.section_id }}
+                onChange={moveTo}
+                proyectos={proyectos}
+              />
+            </div>
+
+            <div ref={priorityFieldRef} className="space-y-1">
+              <span className={FIELD_LABEL_CLASS}>Prioridad</span>
+              <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} />
+            </div>
+
+            <div ref={dateFieldRef} className="space-y-1">
+              <span className={FIELD_LABEL_CLASS}>Vencimiento</span>
+              <DateSelect
+                value={{ dueDate: task.due_date, dueAt: task.due_at, durationMinutes: task.duration_minutes }}
+                onChange={(next) => patch({ due_date: next.dueDate, due_at: next.dueAt, duration_minutes: next.durationMinutes })}
+                preferences={preferences}
+              />
+            </div>
+
+            <div ref={deadlineFieldRef} className="space-y-1">
+              <span className={FIELD_LABEL_CLASS}>Fecha límite</span>
+              <DeadlineSelect value={task.deadline} onChange={(deadline) => patch({ deadline })} preferences={preferences} />
+            </div>
+
+            <div ref={remindersFieldRef} className="space-y-1">
+              <span className={FIELD_LABEL_CLASS}>Recordatorios</span>
+              <ReminderPicker taskId={task.id} dueAt={task.due_at} />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={FIELD_LABEL_CLASS}>Repetición</span>
+              <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} />
+            </div>
+
+            <div ref={labelsFieldRef} className="space-y-1.5">
+              <span className={FIELD_LABEL_CLASS}>Etiquetas</span>
+              <LabelPicker taskId={task.id} projectId={task.project_id} assigned={task.labels} />
+            </div>
           </div>
 
-          <div ref={priorityFieldRef} className="space-y-1">
-            <span className={FIELD_LABEL_CLASS}>Prioridad</span>
-            <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} />
+          <div className="min-w-0 space-y-5 lg:order-1 lg:flex-1">
+            <div className="space-y-1.5">
+              <span className={FIELD_LABEL_CLASS}>Descripción</span>
+              <TaskDescriptionEditor
+                content={task.description}
+                onChange={(json) => updateTask.mutate({ id: task.id, projectId: task.project_id, patch: { description: json } })}
+              />
+            </div>
+
+            <div ref={subtasksFieldRef} className="space-y-1.5">
+              <span className={FIELD_LABEL_CLASS}>Subtareas</span>
+              <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={FIELD_LABEL_CLASS}>Comentarios</span>
+              <CommentThread taskId={task.id} />
+            </div>
           </div>
-
-          <div ref={dateFieldRef} className="space-y-1">
-            <span className={FIELD_LABEL_CLASS}>Vencimiento</span>
-            <DateSelect
-              value={{ dueDate: task.due_date, dueAt: task.due_at, durationMinutes: task.duration_minutes }}
-              onChange={(next) => patch({ due_date: next.dueDate, due_at: next.dueAt, duration_minutes: next.durationMinutes })}
-              preferences={preferences}
-            />
-          </div>
-
-          <div ref={deadlineFieldRef} className="space-y-1">
-            <span className={FIELD_LABEL_CLASS}>Fecha límite</span>
-            <DeadlineSelect value={task.deadline} onChange={(deadline) => patch({ deadline })} preferences={preferences} />
-          </div>
-
-          <div ref={remindersFieldRef} className="space-y-1">
-            <span className={FIELD_LABEL_CLASS}>Recordatorios</span>
-            <ReminderPicker taskId={task.id} dueAt={task.due_at} />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <span className={FIELD_LABEL_CLASS}>Repetición</span>
-          <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} />
-        </div>
-
-        <div ref={labelsFieldRef} className="space-y-1.5">
-          <span className={FIELD_LABEL_CLASS}>Etiquetas</span>
-          <LabelPicker taskId={task.id} projectId={task.project_id} assigned={task.labels} />
-        </div>
-
-        <div className="space-y-1.5">
-          <span className={FIELD_LABEL_CLASS}>Descripción</span>
-          <TaskDescriptionEditor
-            content={task.description}
-            onChange={(json) => updateTask.mutate({ id: task.id, projectId: task.project_id, patch: { description: json } })}
-          />
-        </div>
-
-        <div ref={subtasksFieldRef} className="space-y-1.5">
-          <span className={FIELD_LABEL_CLASS}>Subtareas</span>
-          <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} />
-        </div>
-
-        <div className="space-y-1.5">
-          <span className={FIELD_LABEL_CLASS}>Comentarios</span>
-          <CommentThread taskId={task.id} />
         </div>
       </div>
     </div>

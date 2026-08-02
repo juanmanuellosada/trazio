@@ -570,8 +570,29 @@ agrega sobre la base:
 
 - **Título siempre presente** (prop obligatoria): un diálogo sin título es
   mudo para un lector de pantalla, así que no es opcional en la API.
-- **Ancho como variante** (`size: "default" | "lg"`) en vez de una clase
-  suelta repetida en cada consumidor.
+- **Ancho como variante** (`size: "default" | "lg" | "xl" | "2xl"`) en vez de
+  una clase suelta repetida en cada consumidor:
+
+  | `size` | Ancho | Uso |
+  | --- | --- | --- |
+  | `default` | 28rem/448px | El resto de los diálogos: confirmaciones, formularios chicos |
+  | `lg` | 32rem/512px | Formularios con más campos (alta rápida de tarea, proyecto, configuración) |
+  | `xl` | 42rem/672px | Contenido rico con varios selectores en fila |
+  | `2xl` | hasta 64rem/1024px, con `min(64rem, calc(100%-2rem))` | Layouts de dos columnas que necesitan más ancho, como el detalle de tarea (`detalle-de-tarea-en-dos-columnas`) |
+
+  Esta lista había quedado corta respecto del código antes del cambio que
+  agregó `2xl` — solo documentaba `default` y `lg`, aunque `xl` ya existía.
+  Mantenerla al día evita que la próxima persona vuelva a poner una clase de
+  ancho suelta en su componente porque el documento no le ofrecía la
+  variante que necesitaba.
+
+  `2xl` es la primera variante más ancha que el corte a pantalla completa de
+  teléfono (767px): las otras tres nunca llegan a un viewport de escritorio
+  donde `sm:max-w-*` reemplaza el margen de la regla base
+  (`calc(100%-2rem)`). Sin el `min(...)`, un viewport de escritorio angosto
+  (768-1024px, tablet o notebook chica) dejaba el diálogo pegado a los dos
+  bordes, sin margen visible — verificado a mano redimensionando el detalle
+  de tarea en ese rango.
 - Foco atrapado, devuelto al cerrar, cierre con `Escape` y asociación de rol
   y título: los resuelve `@base-ui/react/dialog`, verificado en
   `dialog.test.tsx`.

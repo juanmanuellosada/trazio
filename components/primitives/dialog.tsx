@@ -43,8 +43,8 @@ export function AppDialog({
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
-  /** `lg` para formularios con más campos (proyecto, configuración); `xl` para contenido rico con varios selectores en fila (detalle de tarea, bloque 6); `default` cubre el resto. */
-  size?: "default" | "lg" | "xl";
+  /** `lg` para formularios con más campos (proyecto, configuración); `xl` para contenido rico con varios selectores en fila; `2xl` para layouts de dos columnas que necesitan más ancho, como el detalle de tarea (`detalle-de-tarea-en-dos-columnas`); `default` cubre el resto. */
+  size?: "default" | "lg" | "xl" | "2xl";
   className?: string;
   /** El título sigue announced para el lector de pantalla (`aria-labelledby`), pero se oculta visualmente: lo usa un consumidor que ya muestra su propio encabezado rico (detalle de tarea) y no quiere repetirlo. Mismo patrón que `ui/command.tsx`. */
   hideTitle?: boolean;
@@ -56,7 +56,20 @@ export function AppDialog({
       <DialogContent
         showCloseButton={showCloseButton}
         className={cn(
-          size === "lg" ? "sm:max-w-lg" : size === "xl" ? "sm:max-w-2xl" : "sm:max-w-md",
+          size === "lg"
+            ? "sm:max-w-lg"
+            : size === "xl"
+              ? "sm:max-w-2xl"
+              : size === "2xl"
+                ? // `2xl` (1024px) es la primera variante más ancha que el corte
+                  // a pantalla completa en teléfono (767px, `use-media-query`):
+                  // las demás nunca llegan a un viewport de escritorio donde
+                  // `sm:max-w-*` reemplaza el margen de `calc(100%-2rem)` de la
+                  // regla base. Sin `min(...)`, un viewport de 768-1024px (un
+                  // tablet o notebook chica) deja el diálogo pegado a los dos
+                  // bordes, sin margen visible.
+                  "sm:max-w-[min(64rem,calc(100%-2rem))]"
+                : "sm:max-w-md",
           className,
         )}
       >
