@@ -1,6 +1,23 @@
-## MODIFIED Requirements
+## REMOVED Requirements
 
 ### Requirement: El ancla de la recurrencia se deriva del tipo de regla
+
+**Reason**: El título afirma lo contrario de lo que pasa a regir. El ancla dejaba de ser
+una consecuencia automática de la forma de la regla y pasa a poder elegirse, así que un
+requisito llamado "se deriva del tipo de regla" quedaría contradiciendo a su propio cuerpo.
+
+El acoplamiento que ese requisito describía era real y era el problema: no se podía pedir
+"cada 3 días desde el vencimiento" ni "cada lunes desde el completado", porque el ancla
+venía impuesta por la forma de la regla.
+
+**Migration**: Lo reemplaza "El ancla de la recurrencia se elige, y si no se deriva", que
+conserva la derivación entera como comportamiento por defecto. **No hay datos que migrar y
+ninguna tarea existente cambia de comportamiento**: la columna nueva queda vacía, y vacía
+significa derivar exactamente como antes.
+
+## ADDED Requirements
+
+### Requirement: El ancla de la recurrencia se elige, y si no se deriva
 
 El ancla de una tarea recurrente SHALL poder elegirse explícitamente entre la fecha de
 vencimiento y la fecha de completado. Cuando el usuario **no** eligió ninguna, el sistema
