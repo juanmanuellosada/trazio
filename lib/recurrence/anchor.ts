@@ -16,3 +16,14 @@ const CALENDAR_ANCHORED_RE = /\bBY(?:DAY|MONTHDAY|MONTH)=/;
 export function deriveAnchor(rrule: string): RecurrenceAnchor {
   return CALENDAR_ANCHORED_RE.test(rrule) ? "due" : "completion";
 }
+
+/**
+ * `repeticion-configurable` (D-A): la columna `tasks.recurrence_anchor` gana
+ * sobre la deducción, pero solo cuando trae un valor. Vacía (`null` o
+ * `undefined`, para las tareas que nunca eligieron) sigue derivándose de la
+ * forma de la regla, exactamente como antes de que existiera la columna —
+ * así ninguna tarea existente cambia de comportamiento.
+ */
+export function resolveAnchor(explicit: RecurrenceAnchor | null | undefined, rrule: string): RecurrenceAnchor {
+  return explicit ?? deriveAnchor(rrule);
+}

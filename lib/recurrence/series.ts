@@ -1,5 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { formatDate, toDueAt, type CalendarDate } from "@/lib/parser/dates";
+import type { RecurrenceAnchor } from "./anchor";
 import { nextOccurrence } from "./next";
 
 export type RecurringTaskFields = {
@@ -8,6 +9,8 @@ export type RecurringTaskFields = {
   recurrence_count: number | null;
   due_date: string | null;
   due_at: string | null;
+  /** `tasks.recurrence_anchor` (`repeticion-configurable`, D-A): `null` si nunca se eligió. */
+  recurrence_anchor: RecurrenceAnchor | null;
 };
 
 export type NextInstancePlan = {
@@ -60,7 +63,7 @@ export function planNextOccurrence(
       ? calendarDateOf(task.due_at, timezone)
       : null;
 
-  const next = nextOccurrence({ rrule: task.recurrence_rule, dueDate, now: today });
+  const next = nextOccurrence({ rrule: task.recurrence_rule, dueDate, now: today, anchor: task.recurrence_anchor });
   const recurrenceCount = task.recurrence_count !== null ? task.recurrence_count - 1 : null;
 
   if (task.due_at) {

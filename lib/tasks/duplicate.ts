@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import type { Json } from "@/lib/supabase/database.types";
 import { fetchTaskSubtree } from "./subtree";
 
 const FULL_COLUMNS =
-  "id, user_id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, position";
+  "id, user_id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, position";
 
 type FullTask = {
   id: string;
@@ -21,6 +22,7 @@ type FullTask = {
   recurrence_rule: string | null;
   recurrence_ends_at: string | null;
   recurrence_count: number | null;
+  recurrence_anchor: RecurrenceAnchor | null;
   position: number;
 };
 
@@ -70,6 +72,7 @@ export async function duplicateTaskTree(
         recurrence_rule: source.recurrence_rule,
         recurrence_ends_at: source.recurrence_ends_at,
         recurrence_count: source.recurrence_count,
+        recurrence_anchor: source.recurrence_anchor,
         position,
       })
       .select("id")

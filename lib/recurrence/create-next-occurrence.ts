@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { today } from "@/lib/parser/dates";
 import type { Json } from "@/lib/supabase/database.types";
+import type { RecurrenceAnchor } from "./anchor";
 import { planNextOccurrence } from "./series";
 
 const RECURRING_TASK_COLUMNS =
-  "id, user_id, project_id, section_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, position, task_labels(label_id)";
+  "id, user_id, project_id, section_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, position, task_labels(label_id)";
 
 /** Mismo default que `lib/preferences/get-user-preferences.ts` para el caso sin fila todavía (no debería pasar tras el aprovisionamiento). */
 const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -33,6 +34,7 @@ type RecurringTaskRow = {
   recurrence_rule: string | null;
   recurrence_ends_at: string | null;
   recurrence_count: number | null;
+  recurrence_anchor: RecurrenceAnchor | null;
   position: number;
   task_labels: { label_id: string }[] | null;
 };
@@ -41,8 +43,9 @@ type RecurringTaskRow = {
  * Al completar una tarea recurrente (bloque 5.4, requirement "Generar la
  * siguiente ocurrencia al completar una tarea recurrente"): crea la
  * siguiente instancia heredando proyecto, sección, título, descripción,
- * prioridad, duración estimada, fecha límite y etiquetas — nunca subtareas,
- * comentarios ni recordatorios, que ni siquiera se leen acá. No hace nada
+ * prioridad, duración estimada, fecha límite, `recurrence_anchor` y
+ * etiquetas — nunca subtareas, comentarios ni recordatorios, que ni siquiera
+ * se leen acá. No hace nada
  * si la tarea no tiene `recurrence_rule` o si la serie ya terminó
  * (`lib/recurrence/series.ts`, D-E). Devuelve el id y el `updated_at` de la
  * tarea creada, o `null` si no correspondía crear ninguna.
@@ -78,6 +81,7 @@ export async function createNextRecurringOccurrence(
       recurrence_count: task.recurrence_count,
       due_date: task.due_date,
       due_at: task.due_at,
+      recurrence_anchor: task.recurrence_anchor,
     },
     now,
     today(now, timezone),
@@ -101,6 +105,7 @@ export async function createNextRecurringOccurrence(
       recurrence_rule: task.recurrence_rule,
       recurrence_ends_at: task.recurrence_ends_at,
       recurrence_count: plan.recurrence_count,
+      recurrence_anchor: task.recurrence_anchor,
       position: task.position,
     })
     .select("id, updated_at")

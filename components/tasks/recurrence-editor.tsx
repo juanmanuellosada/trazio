@@ -1,13 +1,18 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
+import { buildRule, quickOptionsFor, type QuickOption } from "@/lib/recurrence/rule";
+import type { CalendarDate } from "@/lib/parser/dates";
+import { EndDatePicker } from "@/components/recurrence/end-date-picker";
+import { CustomRecurrenceDialog } from "@/components/recurrence/custom-recurrence-dialog";
 
-/** Valor editable de la recurrencia de una tarea (bloque 5.6): las tres columnas ya existentes desde la fase 1, sin ninguna nueva. */
+/** Valor editable de la recurrencia de una tarea: las tres columnas de la fase 1 más el ancla elegible (`repeticion-configurable`, D-A). */
 export type RecurrenceValue = {
   /** RRULE sin `DTSTART` (D6, `lib/recurrence/`), o `null` si la tarea no se repite. */
   rule: string | null;
@@ -15,18 +20,11 @@ export type RecurrenceValue = {
   endsAt: string | null;
   /** Repeticiones restantes, o `null` si no tiene límite de cantidad. */
   count: number | null;
+  /** `tasks.recurrence_anchor`: `null` si nunca se eligió (se deduce de la forma de la regla, como siempre). */
+  anchor: RecurrenceAnchor | null;
 };
 
-type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 type EndMode = "never" | "date" | "count";
-
-const FREQUENCY_LABELS: Record<Frequency, string> = {
-  DAILY: "día",
-  WEEKLY: "semana",
-  MONTHLY: "mes",
-  YEARLY: "año",
-};
-const FREQUENCY_OPTIONS = Object.keys(FREQUENCY_LABELS) as Frequency[];
 
 const END_MODE_LABELS: Record<EndMode, string> = {
   never: "Nunca",
@@ -35,27 +33,12 @@ const END_MODE_LABELS: Record<EndMode, string> = {
 };
 const END_MODE_OPTIONS = Object.keys(END_MODE_LABELS) as EndMode[];
 
-/**
- * Deriva frecuencia e intervalo de una regla RRULE (bloque 5.6): este
- * editor ofrece frecuencia e intervalo con controles simples, no un editor
- * visual de RRULE completo (Non-Goal del design de `fase-2-potencia`) — una
- * regla más específica que ya trajo el parser (ej. `BYDAY=MO` de "cada
- * lunes") sigue funcionando para calcular la próxima ocurrencia
- * (`lib/recurrence/`), pero cambiar la frecuencia o el intervalo acá la
- * reemplaza por la versión simple equivalente.
- */
-function frequencyOf(rule: string): Frequency {
-  const match = /FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)/.exec(rule);
-  return (match?.[1] as Frequency | undefined) ?? "WEEKLY";
-}
+const CUSTOM_OPTION_ID = "custom";
+const CUSTOM_OPTION_LABEL = "Personalizada…";
 
-function intervalOf(rule: string): number {
-  const match = /INTERVAL=(\d+)/.exec(rule);
-  return match ? Number(match[1]) : 1;
-}
-
-function buildRule(frequency: Frequency, interval: number): string {
-  return interval > 1 ? `FREQ=${frequency};INTERVAL=${interval}` : `FREQ=${frequency}`;
+function parseCalendarDate(dateStr: string): CalendarDate {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return { y, m, d };
 }
 
 /**
@@ -70,27 +53,55 @@ function endModeOf(value: RecurrenceValue): EndMode {
   return "never";
 }
 
+/** El id de la opción rápida cuya regla coincide con la actual, o "custom" si ninguna. */
+function matchedOptionId(rule: string, quickOptions: QuickOption[]): string {
+  return quickOptions.find((option) => option.rule === rule)?.id ?? CUSTOM_OPTION_ID;
+}
+
 /**
- * Editor de recurrencia del detalle de tarea (bloque 5.6): elegir
- * frecuencia e intervalo, fin por fecha o por cantidad, y quitar la
- * repetición. Componente puro sobre `value`/`onChange` — quien lo monte
- * decide cómo persistir `recurrence_rule`/`recurrence_ends_at`/
- * `recurrence_count` (mismo patrón que `DeadlineSelect`).
+ * Editor de repetición del detalle de tarea (`repeticion-configurable`):
+ * opciones rápidas derivadas de la fecha de la tarea ("cada día", "cada
+ * semana el <día>", "cada día laborable", "cada mes el <número>", "cada
+ * año la <fecha>") y "Personalizada…", que abre `CustomRecurrenceDialog`
+ * para cualquier otra combinación (incluida la elección del ancla). Sin
+ * fecha de tarea no hay de dónde derivar las opciones rápidas (D-C, mismo
+ * criterio que `ReminderPicker` con una tarea sin fecha): en ese caso el
+ * editor ofrece directamente la repetición personalizada, sin desplegable.
+ *
+ * "Termina" (nunca / en una fecha / después de repetir) se muestra afuera
+ * del diálogo mientras la repetición sea una opción rápida — es la
+ * funcionalidad que ya existía, sin tocar. Al elegir "Personalizada…" pasa
+ * a vivir adentro del diálogo (que la comparte con el alta de eventos), así
+ * que acá se oculta para no duplicar el control.
  */
 export function RecurrenceEditor({
   value,
   onChange,
   disabled,
+  dueDate,
+  weekStartsOn = 1,
 }: {
   value: RecurrenceValue;
   onChange: (value: RecurrenceValue) => void;
   disabled?: boolean;
+  /** `yyyy-MM-dd` de la tarea (vencimiento), o `null` si no tiene — de ahí salen las opciones rápidas (D-C). */
+  dueDate: string | null;
+  /** Opcional (default lunes) para no forzarle este prop a un llamador que ya existe (`task-detail-content.tsx`) y no tiene la preferencia a mano. */
+  weekStartsOn?: 0 | 1 | 6;
 }) {
-  const frequencyId = useId();
-  const intervalId = useId();
   const endModeId = useId();
-  const endDateId = useId();
   const endCountId = useId();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  // Cambia cada vez que se abre el diálogo (nunca al cerrarlo): la `key`
+  // que le pasamos a `CustomRecurrenceDialog` para que nazca de nuevo con
+  // los valores vigentes en cada apertura, en vez de resincronizar su
+  // estado por efecto (ver el docstring del propio diálogo).
+  const [dialogSession, setDialogSession] = useState(0);
+
+  function openDialog() {
+    setDialogSession((session) => session + 1);
+    setDialogOpen(true);
+  }
 
   if (!value.rule) {
     return (
@@ -99,24 +110,23 @@ export function RecurrenceEditor({
         variant="outline"
         size="sm"
         disabled={disabled}
-        onClick={() => onChange({ rule: buildRule("WEEKLY", 1), endsAt: null, count: null })}
+        onClick={() =>
+          onChange({
+            rule: buildRule({ frequency: "WEEKLY", interval: 1, byDay: [], byMonthDay: null, byMonth: null }),
+            endsAt: null,
+            count: null,
+            anchor: null,
+          })
+        }
       >
         Repetir tarea
       </Button>
     );
   }
 
-  const frequency = frequencyOf(value.rule);
-  const interval = intervalOf(value.rule);
+  const quickOptions = dueDate ? quickOptionsFor(parseCalendarDate(dueDate)) : [];
+  const selectedOptionId = matchedOptionId(value.rule, quickOptions);
   const endMode = endModeOf(value);
-
-  function setFrequency(next: Frequency) {
-    onChange({ ...value, rule: buildRule(next, interval) });
-  }
-
-  function setInterval(next: number) {
-    onChange({ ...value, rule: buildRule(frequency, Math.max(1, next)) });
-  }
 
   function setEndMode(next: EndMode) {
     if (next === "never") onChange({ ...value, endsAt: null, count: null });
@@ -124,95 +134,121 @@ export function RecurrenceEditor({
     else onChange({ ...value, endsAt: null, count: value.count ?? 1 });
   }
 
+  function selectQuickOption(nextId: string | null) {
+    if (nextId === null) return;
+    if (nextId === CUSTOM_OPTION_ID) {
+      openDialog();
+      return;
+    }
+    const option = quickOptions.find((o) => o.id === nextId);
+    if (option) onChange({ ...value, rule: option.rule });
+  }
+
+  const quickSelectItems: Record<string, string> = {
+    ...Object.fromEntries(quickOptions.map((option) => [option.id, option.label])),
+    [CUSTOM_OPTION_ID]: CUSTOM_OPTION_LABEL,
+  };
+
   return (
     <div className="flex flex-col gap-3" data-testid="recurrence-editor">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Label htmlFor={intervalId} className="text-text-secondary">
-            Repetir cada
-          </Label>
-          <Input
-            id={intervalId}
-            type="number"
-            min={1}
-            value={interval}
-            disabled={disabled}
-            onChange={(event) => setInterval(Number(event.target.value) || 1)}
-            className="w-16"
-            aria-label="Intervalo de repetición"
-          />
-          <Select items={FREQUENCY_LABELS} value={frequency} onValueChange={(next) => setFrequency(next as Frequency)}>
-            <SelectTrigger id={frequencyId} aria-label="Frecuencia de la repetición" disabled={disabled} className="w-32">
+        {quickOptions.length > 0 ? (
+          <Select items={quickSelectItems} value={selectedOptionId} onValueChange={selectQuickOption}>
+            <SelectTrigger aria-label="Repetición" disabled={disabled} className="w-full max-w-64">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {FREQUENCY_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {FREQUENCY_LABELS[option]}
+              {quickOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
                 </SelectItem>
               ))}
+              <SelectItem value={CUSTOM_OPTION_ID}>{CUSTOM_OPTION_LABEL}</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        ) : (
+          <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={openDialog}>
+            Repetición personalizada
+          </Button>
+        )}
+
         <Button
           type="button"
           variant="ghost"
           size="sm"
           disabled={disabled}
           className="text-text-secondary"
-          onClick={() => onChange({ rule: null, endsAt: null, count: null })}
+          onClick={() => onChange({ rule: null, endsAt: null, count: null, anchor: null })}
         >
           <X className="size-3.5" /> Quitar repetición
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Label htmlFor={endModeId} className="text-text-secondary">
-          Termina
-        </Label>
-        <Select items={END_MODE_LABELS} value={endMode} onValueChange={(next) => setEndMode(next as EndMode)}>
-          <SelectTrigger id={endModeId} disabled={disabled} className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {END_MODE_OPTIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {END_MODE_LABELS[option]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {quickOptions.length > 0 && selectedOptionId === CUSTOM_OPTION_ID && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-input px-2.5 py-2 text-sm text-text-secondary">
+          <span>Repetición personalizada</span>
+          <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={openDialog}>
+            Editar
+          </Button>
+        </div>
+      )}
 
-        {endMode === "date" && (
-          <Input
-            id={endDateId}
-            type="date"
-            value={value.endsAt ?? ""}
-            disabled={disabled}
-            onChange={(event) => onChange({ ...value, endsAt: event.target.value, count: null })}
-            className="w-40"
-            aria-label="Fecha de fin de la repetición"
-          />
-        )}
+      {selectedOptionId !== CUSTOM_OPTION_ID && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Label htmlFor={endModeId} className="text-text-secondary">
+            Termina
+          </Label>
+          <Select items={END_MODE_LABELS} value={endMode} onValueChange={(next) => setEndMode(next as EndMode)}>
+            <SelectTrigger id={endModeId} disabled={disabled} className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {END_MODE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {END_MODE_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {endMode === "count" && (
-          <div className="flex items-center gap-1.5">
-            <Input
-              id={endCountId}
-              type="number"
-              min={1}
-              value={value.count ?? 1}
+          {endMode === "date" && (
+            <EndDatePicker
+              value={value.endsAt ?? ""}
               disabled={disabled}
-              onChange={(event) =>
-                onChange({ ...value, endsAt: null, count: Math.max(1, Number(event.target.value) || 1) })
-              }
-              className="w-16"
-              aria-label="Cantidad de repeticiones"
+              weekStartsOn={weekStartsOn}
+              onChange={(date) => onChange({ ...value, endsAt: date, count: null })}
             />
-            <span className="text-sm text-text-secondary">veces</span>
-          </div>
-        )}
-      </div>
+          )}
+
+          {endMode === "count" && (
+            <div className="flex items-center gap-1.5">
+              <Input
+                id={endCountId}
+                type="number"
+                min={1}
+                value={value.count ?? 1}
+                disabled={disabled}
+                onChange={(event) =>
+                  onChange({ ...value, endsAt: null, count: Math.max(1, Number(event.target.value) || 1) })
+                }
+                className="w-16"
+                aria-label="Cantidad de repeticiones"
+              />
+              <span className="text-sm text-text-secondary">veces</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <CustomRecurrenceDialog
+        key={dialogSession}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        value={{ rule: value.rule, endsAt: value.endsAt, count: value.count, anchor: value.anchor }}
+        onSave={(next) => onChange(next)}
+        showAnchorQuestion
+        weekStartsOn={weekStartsOn}
+      />
     </div>
   );
 }

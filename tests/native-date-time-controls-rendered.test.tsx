@@ -95,7 +95,13 @@ describe("sin controles nativos: lo que se renderiza (tarea 4.2)", () => {
 
   it("el fin de la recurrencia no usa un <input type=\"date\">", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RecurrenceEditor value={{ rule: "FREQ=WEEKLY", endsAt: "2026-12-31", count: null }} onChange={vi.fn()} />);
+    renderWithProviders(
+      <RecurrenceEditor
+        value={{ rule: "FREQ=WEEKLY;BYDAY=SU", endsAt: "2026-12-31", count: null, anchor: null }}
+        onChange={vi.fn()}
+        dueDate="2026-04-05"
+      />,
+    );
 
     await user.click(screen.getByLabelText("Fecha de fin de la repetición"));
 

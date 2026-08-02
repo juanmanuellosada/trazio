@@ -101,6 +101,7 @@ const baseTask: TaskDetail = {
   recurrence_rule: null,
   recurrence_ends_at: null,
   recurrence_count: null,
+  recurrence_anchor: null,
   labels: [],
 };
 

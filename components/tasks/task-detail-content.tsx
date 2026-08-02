@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { formatInTimeZone } from "date-fns-tz";
 import { Copy, CornerUpLeft, ExternalLink, Link2, Maximize2, MoreHorizontal, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -92,7 +93,19 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
     rule: task.recurrence_rule,
     endsAt: task.recurrence_ends_at ? recurrenceEndsAtDay(task.recurrence_ends_at, preferences.timezone) : null,
     count: task.recurrence_count,
+    anchor: task.recurrence_anchor,
   };
+
+  /**
+   * La fecha de la tarea que alimenta las opciones rápidas del editor de
+   * repetición (`repeticion-configurable`, D-C): `due_date` si la tarea
+   * tiene solo día, o el día calendario de `due_at` en la zona del usuario
+   * si tiene hora — mismo cálculo que ya hace `ReminderPicker` para su
+   * propio `dayOf`. `null` si la tarea no tiene ninguna fecha: el editor no
+   * ofrece ahí las opciones que dependen de ella.
+   */
+  const recurrenceDueDate =
+    task.due_date ?? (task.due_at ? formatInTimeZone(task.due_at, preferences.timezone, "yyyy-MM-dd") : null);
 
   /**
    * `recurrence_ends_at` es `timestamptz` (D9): el editor solo elige un día
@@ -105,6 +118,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
       recurrence_rule: next.rule,
       recurrence_ends_at: next.endsAt ? recurrenceEndsAtOf(next.endsAt, preferences.timezone) : null,
       recurrence_count: next.count,
+      recurrence_anchor: next.anchor,
     });
   }
 
@@ -345,7 +359,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
 
             <div className="space-y-1.5">
               <span className={FIELD_LABEL_CLASS}>Repetición</span>
-              <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} />
+              <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} dueDate={recurrenceDueDate} />
             </div>
 
             <div ref={labelsFieldRef} className="space-y-1.5">

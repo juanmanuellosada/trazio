@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useUndoStack } from "@/components/providers/undo-provider";
 import { playCompletionSound } from "@/lib/completion-sound";
+import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
@@ -141,6 +142,7 @@ export type TaskPatch = Partial<{
   recurrence_rule: string | null;
   recurrence_ends_at: string | null;
   recurrence_count: number | null;
+  recurrence_anchor: RecurrenceAnchor | null;
 }>;
 
 /** `description` no es columna de `TaskRow` (las listas no la traen, ver `use-tasks.ts`): se descarta al parchear la caché de lista. */

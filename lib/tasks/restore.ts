@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import type { Json } from "@/lib/supabase/database.types";
 import { fetchTaskSubtree } from "./subtree";
 
 const SNAPSHOT_COLUMNS =
-  "id, user_id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, recurrence_rule, recurrence_ends_at, recurrence_count, position, created_at";
+  "id, user_id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, position, created_at";
 
 type TaskSnapshotRow = {
   id: string;
@@ -22,6 +23,7 @@ type TaskSnapshotRow = {
   recurrence_rule: string | null;
   recurrence_ends_at: string | null;
   recurrence_count: number | null;
+  recurrence_anchor: RecurrenceAnchor | null;
   position: number;
   created_at: string;
 };

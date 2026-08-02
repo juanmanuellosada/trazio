@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/client";
+import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import type { LabelChip } from "./use-tasks";
 
 /**
@@ -29,11 +30,12 @@ export type TaskDetail = {
   recurrence_rule: string | null;
   recurrence_ends_at: string | null;
   recurrence_count: number | null;
+  recurrence_anchor: RecurrenceAnchor | null;
   labels: LabelChip[];
 };
 
 const TASK_DETAIL_COLUMNS =
-  "id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, created_at, position, recurrence_rule, recurrence_ends_at, recurrence_count, task_labels(labels(id, name, color))";
+  "id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, completed_at, created_at, position, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, task_labels(labels(id, name, color))";
 
 type TaskDetailRawRow = Omit<TaskDetail, "labels"> & {
   task_labels: { labels: LabelChip | null }[] | null;

@@ -49,6 +49,7 @@ const baseTask: TaskDetail = {
   recurrence_rule: "FREQ=WEEKLY",
   recurrence_ends_at: "2026-08-16T02:59:59.999Z",
   recurrence_count: null,
+  recurrence_anchor: null,
   labels: [],
 };
 
@@ -124,6 +125,7 @@ const RECURRING_TASK_ROW = {
   recurrence_rule: "FREQ=DAILY;INTERVAL=3",
   recurrence_ends_at: null,
   recurrence_count: null,
+  recurrence_anchor: null,
   position: 1000,
   task_labels: [],
 };
