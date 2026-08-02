@@ -1,34 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, BellOff, Smartphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { isPushSubscribed } from "@/lib/reminders/subscribe";
 import { usePushSubscriptions } from "@/lib/reminders/use-push-subscriptions";
 import { useRemovePushSubscription, useSubscribePush, useUnsubscribePush } from "@/lib/reminders/use-push-toggle";
+import { useUpdatePreferences } from "@/lib/preferences/mutations";
 
 function formatSubscribedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**
- * Sección Notificaciones de Configuración (bloque 4.9, spec "Activación de
- * recordatorios push desde Configuración"): activar o desactivar los
- * recordatorios push en este dispositivo, y ver los demás dispositivos ya
- * suscritos con la misma cuenta — cada uno con su propia fila en
- * `push_subscriptions` (requirement "activar en varios dispositivos crea
- * una suscripción por cada uno").
+ * Sección "Notificaciones y recordatorios" de Configuración (bloque 4.9,
+ * spec "Activación de recordatorios push desde Configuración", ampliada por
+ * `recordatorios-con-hora-de-referencia` D-A): activar o desactivar los
+ * recordatorios push en este dispositivo, ver los demás dispositivos ya
+ * suscritos con la misma cuenta, y configurar la hora de referencia — a qué
+ * hora se considera que vence una tarea que tiene día pero no hora, para
+ * los recordatorios relativos sobre esas tareas.
  */
-export function NotificationsSection() {
+export function NotificationsSection({ userId, referenceTime }: { userId: string; referenceTime: string }) {
   const [subscribedHere, setSubscribedHere] = useState<boolean | null>(null);
   const { data: subscriptions } = usePushSubscriptions();
   const subscribe = useSubscribePush();
   const unsubscribe = useUnsubscribePush();
   const removeSubscription = useRemovePushSubscription();
+  const router = useRouter();
+  const updatePreferences = useUpdatePreferences();
+  const [localReferenceTime, setLocalReferenceTime] = useState(referenceTime.slice(0, 5));
+  const referenceTimeId = useId();
 
   useEffect(() => {
     isPushSubscribed().then(setSubscribedHere);
   }, []);
+
+  function saveReferenceTime(value: string) {
+    const previous = localReferenceTime;
+    setLocalReferenceTime(value);
+    updatePreferences.mutate(
+      { userId, patch: { reference_time: value } },
+      {
+        onSuccess: () => router.refresh(),
+        onError: () => setLocalReferenceTime(previous),
+      },
+    );
+  }
 
   async function toggle() {
     if (subscribedHere) {
@@ -44,7 +65,7 @@ export function NotificationsSection() {
 
   return (
     <section className="space-y-5">
-      <h2 className="text-lg font-semibold text-foreground">Notificaciones</h2>
+      <h2 className="text-lg font-semibold text-foreground">Notificaciones y recordatorios</h2>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
         <div className="space-y-0.5">
@@ -101,6 +122,21 @@ export function NotificationsSection() {
           </ul>
         </div>
       )}
+
+      <div className="space-y-1.5 border-t border-border pt-4">
+        <Label htmlFor={referenceTimeId}>Hora de referencia</Label>
+        <p className="text-xs text-text-secondary">
+          A esta hora se considera que vence una tarea que tiene día pero no hora, para tus recordatorios relativos
+          sobre esas tareas.
+        </p>
+        <Input
+          id={referenceTimeId}
+          type="time"
+          value={localReferenceTime}
+          onChange={(event) => saveReferenceTime(event.target.value)}
+          className="w-32"
+        />
+      </div>
     </section>
   );
 }

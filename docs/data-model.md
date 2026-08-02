@@ -48,6 +48,7 @@ Una fila por usuario, creada junto con el perfil.
 | `week_starts_on` | `smallint` | 0 domingo, 1 lunes, 6 sábado |
 | `default_view` | `text` | Pantalla al entrar |
 | `default_project_id` | `uuid` FK | Destino del alta rápida |
+| `reference_time` | `time` | Hora de referencia para recordatorios relativos: a qué hora se considera que vence una tarea con día pero sin hora |
 
 ### `projects`
 
@@ -170,7 +171,10 @@ de RLS. Ambos FK con `ON DELETE CASCADE`.
 usa el cron cada minuto; sin él, la consulta escanea toda la tabla.
 
 Cuando se cambia la fecha u hora de una tarea, sus recordatorios relativos se
-recalculan.
+recalculan. Si la tarea tiene solo día (sin hora), el recálculo usa la hora de
+referencia de `user_preferences` combinada con la zona horaria del usuario.
+Quitarle la hora a una tarea que conserva su día recalcula; solo quedarse sin
+ninguna fecha elimina los relativos pendientes.
 
 ### `push_subscriptions`
 

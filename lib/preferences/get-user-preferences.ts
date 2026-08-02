@@ -10,6 +10,8 @@ export type UserPreferences = {
   defaultProjectId: string | null;
   /** Interruptor de `sonido-al-completar` (D-D): opcional para no forzar a los fixtures de test que construyen `UserPreferences` a mano a declararlo. `undefined` se trata igual que `true`, que es el default de la columna. */
   soundOnComplete?: boolean;
+  /** Hora de referencia (`recordatorios-con-hora-de-referencia`, D-A): a qué hora se considera que vence una tarea con día pero sin hora. Hora de reloj (`"HH:mm:ss"`), no instante. Opcional por el mismo motivo que `soundOnComplete`: no forzar a los fixtures de test a declararla. `undefined` se trata igual que `"09:00:00"`, el default de la columna. */
+  referenceTime?: string;
 };
 
 /** Mismos defaults que B4 del design de fase 1, para el caso sin fila todavía (no debería pasar tras el aprovisionamiento, pero evita reventar la vista). */
@@ -20,6 +22,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   weekStartsOn: 1,
   defaultProjectId: null,
   soundOnComplete: true,
+  referenceTime: "09:00:00",
 };
 
 /**
@@ -32,7 +35,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
   const supabase = await createClient();
   const { data } = await supabase
     .from("user_preferences")
-    .select("timezone, date_format, time_format, week_starts_on, default_project_id, sound_on_complete")
+    .select("timezone, date_format, time_format, week_starts_on, default_project_id, sound_on_complete, reference_time")
     .eq("user_id", userId)
     .single();
 
@@ -45,5 +48,6 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     weekStartsOn: data.week_starts_on as UserPreferences["weekStartsOn"],
     defaultProjectId: data.default_project_id,
     soundOnComplete: data.sound_on_complete,
+    referenceTime: data.reference_time,
   };
 }

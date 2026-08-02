@@ -583,7 +583,12 @@ export function TaskQuickAddRow({
               />
             </AttributeField>
             <AttributeField variant={variant} label="Recordatorios">
-              <ReminderPicker dueAt={previewDate.dueAt} drafts={remindersOverride} onChange={setRemindersOverride} />
+              <ReminderPicker
+                dueAt={previewDate.dueAt}
+                dueDate={previewDate.dueDate}
+                drafts={remindersOverride}
+                onChange={setRemindersOverride}
+              />
             </AttributeField>
           </div>
         </>

@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { id: "cuenta", label: "Cuenta", icon: User },
   { id: "general", label: "General", icon: SlidersHorizontal },
-  { id: "notificaciones", label: "Notificaciones", icon: Bell },
+  { id: "notificaciones", label: "Notificaciones y recordatorios", icon: Bell },
   { id: "tema", label: "Tema", icon: Palette },
   { id: "instalacion", label: "Instalación", icon: Download },
   { id: "calendarios", label: "Calendarios", icon: CalendarDays },
@@ -133,7 +133,7 @@ export function SettingsModal() {
               />
             </div>
             <div data-testid="panel-notificaciones" className={effectiveSection === "notificaciones" ? "block" : "hidden"}>
-              <NotificationsSection />
+              <NotificationsSection userId={data.userId} referenceTime={data.referenceTime} />
             </div>
             <div data-testid="panel-tema" className={effectiveSection === "tema" ? "block" : "hidden"}>
               <ThemeSection />

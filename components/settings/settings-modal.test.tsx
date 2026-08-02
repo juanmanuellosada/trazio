@@ -142,7 +142,7 @@ describe("SettingsModal (bloque 9)", () => {
     const nav = screen.getByRole("navigation", { name: "Secciones de configuración" });
     expect(within(nav).getByRole("button", { name: "Cuenta" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "General" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "Notificaciones" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Notificaciones y recordatorios" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Tema" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Instalación" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Calendarios" })).toBeInTheDocument();

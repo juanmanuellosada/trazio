@@ -3,9 +3,9 @@ import { toastError } from "@/lib/toast";
 /** Traducción de errores de recordatorios y push a mensajes de tres partes (`.claude/rules/copy.md`). */
 function classify(
   error: unknown,
-): "sin-hora" | "permiso-denegado" | "sin-soporte" | "sw-no-listo" | "network" | "desconocido" {
+): "sin-fecha" | "permiso-denegado" | "sin-soporte" | "sw-no-listo" | "network" | "desconocido" {
   const message = error instanceof Error ? error.message : "";
-  if (message === "recordatorio-relativo-sin-hora") return "sin-hora";
+  if (message === "recordatorio-relativo-sin-fecha") return "sin-fecha";
   if (message === "permiso-denegado") return "permiso-denegado";
   if (message === "service-worker-no-registrado") return "sw-no-listo";
   if (/no admite notificaciones|clave pública VAPID/i.test(message)) return "sin-soporte";
@@ -14,10 +14,10 @@ function classify(
 }
 
 const MENSAJES = {
-  "sin-hora": {
+  "sin-fecha": {
     quePaso: "No pudimos agregar el recordatorio",
-    porQue: "esta tarea no tiene fecha y hora definidas",
-    queHacer: "Poné una fecha con hora en la tarea y volvé a intentar.",
+    porQue: "esta tarea no tiene ninguna fecha",
+    queHacer: "Poné una fecha en la tarea y volvé a intentar.",
   },
   "permiso-denegado": {
     quePaso: "No pudimos activar las notificaciones",

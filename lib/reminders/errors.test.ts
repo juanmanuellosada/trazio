@@ -34,4 +34,14 @@ describe("reportReminderError", () => {
       "Habilitá las notificaciones para Trazio en la configuración del navegador y volvé a intentar.",
     );
   });
+
+  it("traduce el rechazo de un relativo sin ninguna fecha (recordatorios-con-hora-de-referencia)", () => {
+    reportReminderError(new Error("recordatorio-relativo-sin-fecha"));
+
+    expect(toastError).toHaveBeenCalledWith(
+      "No pudimos agregar el recordatorio",
+      "esta tarea no tiene ninguna fecha",
+      "Poné una fecha en la tarea y volvé a intentar.",
+    );
+  });
 });

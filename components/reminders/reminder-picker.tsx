@@ -8,6 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OVERLAY_MODAL } from "@/components/primitives/overlay";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { useTask } from "@/lib/tasks/use-task";
 import { useReminders, type DraftReminder, type ReminderRow } from "@/lib/reminders/use-reminders";
 import { useAddReminder, useRemoveReminder, computeRemindAt, type NewReminderInput } from "@/lib/reminders/mutations";
 import { RELATIVE_REMINDER_OPTIONS, relativeOffsetLabel } from "@/lib/reminders/relative-options";
@@ -18,12 +20,14 @@ function formatReminderMoment(iso: string): string {
 }
 
 /**
- * Selector de recordatorios del detalle de tarea (bloque 4.11): lista los
- * ya agregados y ofrece agregar uno nuevo, puntual (fecha y hora
- * concretas) o relativo a `due_at` (spec `recordatorios-push`). Las
- * opciones relativas quedan deshabilitadas sin `due_at` — requirement "un
- * recordatorio relativo exige que la tarea tenga fecha y hora" — en vez de
- * dejar que la mutación las rechace después de un click.
+ * Selector de recordatorios del detalle de tarea (bloque 4.11, opciones
+ * dinámicas ampliadas por `recordatorios-con-hora-de-referencia` D-B):
+ * lista los ya agregados y ofrece agregar uno nuevo, puntual (fecha y hora
+ * concretas) o relativo a la tarea. Lo que ofrece la pestaña relativa
+ * depende de lo que la tarea tenga: con fecha y hora, las once opciones
+ * incluida "a la hora de la tarea"; con solo fecha, los desfases (sin "a la
+ * hora de la tarea", que afirmaría una hora que la tarea no tiene); sin
+ * ninguna fecha, ninguna — solo queda la pestaña puntual.
  *
  * Modo borrador (`drafts`/`onChange`, sin `taskId`): el alta de una tarea
  * (bloque `alta-de-tareas-en-contexto`, D-E) lo usa antes de que la tarea
@@ -33,33 +37,49 @@ function formatReminderMoment(iso: string): string {
  * `remind_at`/`offset_minutes` acá también, para no duplicar esa cuenta; el
  * alta persiste los recordatorios elegidos en el mismo viaje que crea la
  * tarea (`useCreateTaskFromParse`).
+ *
+ * `dueDate` (`recordatorios-con-hora-de-referencia`, D-B): con `taskId`, se
+ * resuelve de la caché de `useTask` en vez de pedir un prop nuevo al detalle
+ * de tarea — comparte `queryKey` con el `useTask` que ya usa el panel de
+ * detalle, así que no dispara un pedido extra. En modo borrador, lo pasa el
+ * llamador (no hay tarea todavía de la que leerlo).
  */
 export function ReminderPicker({
   taskId,
   dueAt,
+  dueDate,
   drafts,
   onChange,
   variant = "chip",
 }: {
   taskId?: string;
   dueAt: string | null;
+  dueDate?: string | null;
   drafts?: DraftReminder[];
   onChange?: (drafts: DraftReminder[]) => void;
   /** `chip` (default): angosto, ajustado al texto — el de siempre, el que usa la alta. `row`: ocupa todo el ancho e iguala la altura del trigger de Etiquetas, para la columna del detalle de tarea. */
   variant?: "chip" | "row";
 }) {
+  const { data: taskFromCache } = useTask(taskId ?? null);
+  const effectiveDueDate = taskId ? (taskFromCache?.due_date ?? null) : (dueDate ?? null);
+  const hasTime = !!dueAt;
+  const hasDateOnly = !hasTime && !!effectiveDueDate;
+  const hasNoDate = !hasTime && !hasDateOnly;
+  const relativeOptions = hasTime ? RELATIVE_REMINDER_OPTIONS : RELATIVE_REMINDER_OPTIONS.filter((o) => o.offsetMinutes !== 0);
+
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"relativo" | "puntual">(dueAt ? "relativo" : "puntual");
+  const [mode, setMode] = useState<"relativo" | "puntual">(hasNoDate ? "puntual" : "relativo");
   const [puntualValue, setPuntualValue] = useState("");
   const { data: taskReminders } = useReminders(taskId ?? "");
   const addReminder = useAddReminder(taskId ?? "");
   const removeReminder = useRemoveReminder(taskId ?? "");
+  const { timezone, referenceTime } = useUserPreferences();
 
   const reminders: (ReminderRow | DraftReminder)[] = taskId ? (taskReminders ?? []) : (drafts ?? []);
   const pendingCount = reminders.filter((reminder) => !reminder.delivered_at).length;
 
   function addDraft(input: NewReminderInput) {
-    const { remind_at, offset_minutes } = computeRemindAt(input);
+    const { remind_at, offset_minutes } = computeRemindAt(input, { timezone, referenceTime: referenceTime ?? "09:00:00" });
     onChange?.([...(drafts ?? []), { id: crypto.randomUUID(), remind_at, offset_minutes, delivered_at: null }]);
   }
 
@@ -75,7 +95,7 @@ export function ReminderPicker({
   }
 
   function addRelative(offsetMinutes: number) {
-    const input: NewReminderInput = { kind: "relativo", offsetMinutes, dueAt };
+    const input: NewReminderInput = { kind: "relativo", offsetMinutes, dueAt, dueDate: effectiveDueDate };
     if (taskId) {
       addReminder.mutate(input);
     } else {
@@ -150,14 +170,13 @@ export function ReminderPicker({
           </div>
 
           {mode === "relativo" ? (
-            !dueAt ? (
+            hasNoDate ? (
               <p className="text-xs text-text-secondary">
-                Esta tarea no tiene fecha y hora. Ponele una hora de vencimiento para poder agregar un recordatorio
-                relativo.
+                Esta tarea no tiene fecha. Ponele una para poder agregar un recordatorio relativo.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-1">
-                {RELATIVE_REMINDER_OPTIONS.map((option) => (
+                {relativeOptions.map((option) => (
                   <Button
                     key={option.offsetMinutes}
                     type="button"

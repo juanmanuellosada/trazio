@@ -531,6 +531,7 @@ export type Database = {
           date_format: string
           default_project_id: string | null
           default_view: string
+          reference_time: string
           sound_on_complete: boolean
           theme: string
           time_format: number
@@ -542,6 +543,7 @@ export type Database = {
           date_format?: string
           default_project_id?: string | null
           default_view?: string
+          reference_time?: string
           sound_on_complete?: boolean
           theme?: string
           time_format?: number
@@ -553,6 +555,7 @@ export type Database = {
           date_format?: string
           default_project_id?: string | null
           default_view?: string
+          reference_time?: string
           sound_on_complete?: boolean
           theme?: string
           time_format?: number

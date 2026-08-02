@@ -426,8 +426,14 @@ Al agregar un recordatorio se elige:
 
 - Un **momento puntual** (fecha y hora concretas), o
 - Un **momento relativo a la tarea**: a la hora de la tarea, 10/30/45 minutos antes,
-  1/2/3 horas antes, 1/2/3 días antes, una semana antes. Los relativos requieren que
-  la tarea tenga fecha y hora.
+  1/2/3 horas antes, 1/2/3 días antes, una semana antes.
+
+Las opciones relativas ofrecidas dependen de lo que la tarea tenga: con fecha y
+hora, todas, incluida "a la hora de la tarea"; con solo fecha, los desfases,
+calculados desde la **hora de referencia** configurable en Configuración (a qué
+hora se considera que vence una tarea sin hora) — pero nunca "a la hora de la
+tarea", porque afirmaría una hora que la tarea no tiene; sin ninguna fecha, ningún
+relativo, solo puntual.
 
 Cuando llega el momento se envía una notificación push con el título de la tarea.
 Al tocarla se abre esa tarea.
@@ -470,7 +476,8 @@ Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con
 - **General** — zona horaria (lista IANA completa), formato de fecha, formato de
   hora (12 o 24), día en que empieza la semana (lunes, domingo o sábado), pantalla
   por defecto al entrar, proyecto por defecto para el alta rápida.
-- **Notificaciones** — activar o desactivar push.
+- **Notificaciones y recordatorios** — activar o desactivar push, y la hora de
+  referencia para los recordatorios relativos sobre tareas sin hora.
 - **Calendarios** — conexión con Google Calendar y qué calendarios se muestran.
 
 No hay selector de idioma: la app es solo en español.

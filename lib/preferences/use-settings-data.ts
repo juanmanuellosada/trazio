@@ -23,6 +23,8 @@ export type SettingsData = {
   defaultView: "bandeja" | "hoy" | "proximos";
   /** Interruptor de `sonido-al-completar` (General, D-D): viene encendido. */
   soundOnComplete: boolean;
+  /** Hora de referencia (Notificaciones y recordatorios, `recordatorios-con-hora-de-referencia` D-A). Hora de reloj `"HH:mm:ss"`. */
+  referenceTime: string;
 };
 
 export function settingsDataQueryKey() {
@@ -51,7 +53,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     supabase.from("profiles").select("full_name").eq("id", userId).single(),
     supabase
       .from("user_preferences")
-      .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete")
+      .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete, reference_time")
       .eq("user_id", userId)
       .single(),
   ]);
@@ -70,6 +72,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     weekStartsOn: (preferences?.week_starts_on as 0 | 1 | 6 | undefined) ?? 1,
     defaultView: (preferences?.default_view as "bandeja" | "hoy" | "proximos" | undefined) ?? "bandeja",
     soundOnComplete: preferences?.sound_on_complete ?? true,
+    referenceTime: preferences?.reference_time ?? "09:00:00",
   };
 }
 
