@@ -5,6 +5,7 @@ import {
   RecurrenceScopeRequiredError,
   deleteEvent,
   eventInputSchema,
+  getEventRecurrenceRule,
   recurrenceEditScopeSchema,
   updateEvent,
   type OccurrenceTarget,
@@ -26,6 +27,37 @@ const patchBodySchema = z.object({
   scope: recurrenceEditScopeSchema.optional(),
   changes: eventInputSchema,
 });
+
+/**
+ * La repetición vigente de un evento maestro (tarea 3.1/3.4): para
+ * prefiltrar el editor de repetición al abrir la edición de un evento que ya
+ * es parte de una serie. `eventId` acá es el id del maestro
+ * (`recurringEventId` de la instancia que se está editando), no el de una
+ * ocurrencia puntual.
+ */
+export async function GET(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "No hay sesión activa." }, { status: 401 });
+  }
+
+  const { eventId } = await params;
+  const { searchParams } = new URL(request.url);
+  const calendarId = searchParams.get("calendarId");
+  if (!calendarId) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const result = await getEventRecurrenceRule(user.id, calendarId, eventId);
+  if (result.status === "not_connected") return NextResponse.json({ error: "not_connected" }, { status: 404 });
+  if (result.status === "unavailable") {
+    return NextResponse.json(
+      { error: result.reason === "needs_reauth" ? "needs_reauth" : "google_transient" },
+      { status: result.reason === "needs_reauth" ? 409 : 502 },
+    );
+  }
+  return NextResponse.json({ recurrence: result.recurrence });
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const user = await getCurrentUser();

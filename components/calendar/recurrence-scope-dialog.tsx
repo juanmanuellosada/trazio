@@ -45,13 +45,21 @@ export function RecurrenceScopeDialog({
   onOpenChange,
   action,
   onConfirm,
+  excludeThisOccurrence = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Cambia el título y el verbo del botón: "editar" no es destructivo, "eliminar" sí. */
   action: "editar" | "eliminar";
   onConfirm: (scope: RecurrenceEditScope) => void;
+  /**
+   * Oculta "Esta ocurrencia" (`alta-de-evento-completa`, tarea 3.4): cambiar
+   * la regla de repetición con alcance de una sola ocurrencia no significa
+   * nada, así que quien edita la propia regla no puede llegar a elegirla.
+   */
+  excludeThisOccurrence?: boolean;
 }) {
+  const options = excludeThisOccurrence ? OPTIONS.filter((option) => option.value !== "this") : OPTIONS;
   const [selected, setSelected] = useState<RecurrenceEditScope | null>(null);
 
   function handleOpenChange(next: boolean) {
@@ -76,7 +84,7 @@ export function RecurrenceScopeDialog({
         </DialogHeader>
 
         <div role="radiogroup" aria-label="Alcance del cambio" className="space-y-1">
-          {OPTIONS.map((option) => (
+          {options.map((option) => (
             <button
               key={option.value}
               type="button"

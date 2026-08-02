@@ -9,9 +9,25 @@ import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
 // existen siempre, ninguna aparece marcada al abrir, y confirmar sin elegir
 // una no aplica ningún cambio.
 
-function Wrapper({ action, onConfirm }: { action: "editar" | "eliminar"; onConfirm: (scope: string) => void }) {
+function Wrapper({
+  action,
+  onConfirm,
+  excludeThisOccurrence,
+}: {
+  action: "editar" | "eliminar";
+  onConfirm: (scope: string) => void;
+  excludeThisOccurrence?: boolean;
+}) {
   const [open, setOpen] = useState(true);
-  return <RecurrenceScopeDialog open={open} onOpenChange={setOpen} action={action} onConfirm={onConfirm} />;
+  return (
+    <RecurrenceScopeDialog
+      open={open}
+      onOpenChange={setOpen}
+      action={action}
+      onConfirm={onConfirm}
+      excludeThisOccurrence={excludeThisOccurrence}
+    />
+  );
 }
 
 describe("RecurrenceScopeDialog", () => {
@@ -58,5 +74,20 @@ describe("RecurrenceScopeDialog", () => {
     expect(screen.getByText(/solo este evento puntual/i)).toBeInTheDocument();
     expect(screen.getByText(/este evento y todos los que vengan después/i)).toBeInTheDocument();
     expect(screen.getByText(/toda la serie, incluidas las ocurrencias pasadas y futuras/i)).toBeInTheDocument();
+  });
+
+  // `alta-de-evento-completa`, tarea 3.4: cambiar la regla de repetición con
+  // alcance de una sola ocurrencia no significa nada.
+  it("con excludeThisOccurrence, 'esta ocurrencia' no se ofrece: quedan solo las otras dos", () => {
+    render(<Wrapper action="editar" onConfirm={vi.fn()} excludeThisOccurrence />);
+
+    expect(screen.queryByRole("radio", { name: /^esta ocurrencia/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+  });
+
+  it("sin excludeThisOccurrence (default), las tres opciones se siguen ofreciendo", () => {
+    render(<Wrapper action="editar" onConfirm={vi.fn()} />);
+
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
   });
 });

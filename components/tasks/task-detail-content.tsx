@@ -359,7 +359,12 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
 
             <div className="space-y-1.5">
               <span className={FIELD_LABEL_CLASS}>Repetición</span>
-              <RecurrenceEditor value={recurrenceValue} onChange={patchRecurrence} dueDate={recurrenceDueDate} />
+              <RecurrenceEditor
+                value={recurrenceValue}
+                onChange={patchRecurrence}
+                dueDate={recurrenceDueDate}
+                weekStartsOn={preferences.weekStartsOn}
+              />
             </div>
 
             <div ref={labelsFieldRef} className="space-y-1.5">

@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import type { CalendarEventInstance } from "@/lib/calendar/events";
+import type { EventRecurrenceValue } from "@/lib/calendar/event-recurrence";
 import { EditEventDialog } from "./edit-event-dialog";
 
 const PREFERENCES: UserPreferences = {
@@ -55,8 +56,13 @@ const RECURRING_EVENT: CalendarEventInstance = {
   originalStartTime: "2026-08-05T13:00:00.000Z",
 };
 
-function renderDialog(event: CalendarEventInstance) {
-  const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => jsonResponse(200, event));
+function renderDialog(event: CalendarEventInstance, initialRecurrence: EventRecurrenceValue = null) {
+  const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (_url, init) => {
+    // `useEventRecurrenceRule` (tarea 3.1/3.4) pide la repetición vigente
+    // del maestro con un GET sin body, antes de mostrar el formulario.
+    if (!init?.method) return jsonResponse(200, { recurrence: initialRecurrence });
+    return jsonResponse(200, event);
+  });
   vi.stubGlobal("fetch", fetchMock);
   const queryClient = new QueryClient();
   render(
@@ -92,16 +98,66 @@ describe("EditEventDialog (D24, camino sin arrastre)", () => {
     const user = userEvent.setup();
     const fetchMock = renderDialog(RECURRING_EVENT);
 
-    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    // El formulario recién se monta después de leer la repetición vigente
+    // de la serie (`useEventRecurrenceRule`): `findByRole` en vez de
+    // `getByRole` porque ese GET es asíncrono.
+    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
 
     expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
 
     await user.click(screen.getByRole("radio", { name: /esta ocurrencia/i }));
     await user.click(screen.getByRole("button", { name: "Editar" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [, init] = fetchMock.mock.calls[0]!;
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true));
+    const [, init] = fetchMock.mock.calls.find(([, callInit]) => callInit?.method === "PATCH")!;
     expect(JSON.parse(init!.body as string).scope).toBe("this");
+  });
+
+  // Tarea 3.4, riesgo principal del cambio: cambiar la regla de repetición
+  // con alcance de una sola ocurrencia no significa nada, así que ese
+  // alcance no puede ofrecerse cuando lo que cambió es la propia regla.
+  it("cambiar la repetición de una serie no ofrece 'esta ocurrencia' como alcance", async () => {
+    const user = userEvent.setup();
+    const fetchMock = renderDialog(RECURRING_EVENT, { rule: "FREQ=WEEKLY;BYDAY=WE", endsAt: null, count: null });
+
+    await user.click(await screen.findByRole("combobox", { name: "Repetición" }));
+    await user.click(await screen.findByRole("option", { name: "No se repite" }));
+
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.queryByRole("radio", { name: /esta ocurrencia/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: /^Todas/ }));
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, callInit]) => callInit?.method === "PATCH")).toBe(true));
+    const [, init] = fetchMock.mock.calls.find(([, callInit]) => callInit?.method === "PATCH")!;
+    const body = JSON.parse(init!.body as string);
+    expect(body.scope).toBe("all");
+    expect(body.changes.recurrence).toBeNull();
+  });
+
+  it("editar un evento de una serie sin tocar la repetición sigue ofreciendo 'esta ocurrencia'", async () => {
+    const user = userEvent.setup();
+    const fetchMock = renderDialog(RECURRING_EVENT, { rule: "FREQ=WEEKLY;BYDAY=WE", endsAt: null, count: null });
+
+    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.getByRole("radio", { name: /esta ocurrencia/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: /esta ocurrencia/i }));
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, callInit]) => callInit?.method === "PATCH")).toBe(true));
+    const [, init] = fetchMock.mock.calls.find(([, callInit]) => callInit?.method === "PATCH")!;
+    const body = JSON.parse(init!.body as string);
+    expect(body.scope).toBe("this");
+    // Sin tocar la repetición, `recurrence` no viaja: deja la que ya tenía la serie intacta.
+    expect(body.changes.recurrence).toBeUndefined();
   });
 });

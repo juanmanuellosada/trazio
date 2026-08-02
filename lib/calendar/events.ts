@@ -12,6 +12,7 @@ import {
 } from "./events-google";
 import { GoogleAccessTokenExpiredError, GoogleReauthRequiredError, GoogleTransientError, listCalendars } from "./google-client";
 import { continueRecurrenceFrom, countOccurrencesBefore, truncateRecurrenceBefore, type RecurrenceEditScope } from "./recurrence-scope";
+import { fromGoogleRecurrenceLines, toGoogleRecurrenceLines, type EventRecurrenceValue } from "./event-recurrence";
 
 export type { RecurrenceEditScope } from "./recurrence-scope";
 
@@ -71,7 +72,23 @@ export type EventInput = {
   end: string;
   /** Ignorado cuando `allDay`. */
   timeZone: string;
+  /**
+   * `undefined`: no tocar la repetición del evento (deja `recurrence`
+   * afuera del PATCH, así que Google conserva la que ya tenía, con
+   * cualquier `EXDATE` de excepciones sueltas). `null`: el evento no se
+   * repite, o se le saca la repetición que tenía. Un valor: se repite según
+   * esa regla (`alta-de-evento-completa`, D-C).
+   */
+  recurrence?: EventRecurrenceValue;
 };
+
+const eventRecurrenceInputSchema = z
+  .object({
+    rule: z.string().min(1),
+    endsAt: z.string().nullable(),
+    count: z.number().int().positive().nullable(),
+  })
+  .nullable();
 
 export const eventInputSchema = z.object({
   calendarId: z.string().min(1),
@@ -82,6 +99,7 @@ export const eventInputSchema = z.object({
   start: z.string().min(1),
   end: z.string().min(1),
   timeZone: z.string().min(1),
+  recurrence: eventRecurrenceInputSchema.optional(),
 }) satisfies z.ZodType<EventInput>;
 
 export type OccurrenceTarget = {
@@ -152,6 +170,7 @@ function googleBody(input: EventInput): GoogleEventBody {
     location: input.location,
     start: input.allDay ? { date: input.start } : { dateTime: input.start, timeZone: input.timeZone },
     end: input.allDay ? { date: input.end } : { dateTime: input.end, timeZone: input.timeZone },
+    ...(input.recurrence !== undefined ? { recurrence: toGoogleRecurrenceLines(input.recurrence, input.allDay) } : {}),
   };
 }
 
@@ -246,6 +265,33 @@ export async function createEvent(userId: string, input: EventInput): Promise<Wr
     const created = await insertEvent(state.accessToken, input.calendarId, googleBody(input));
     invalidateCalendar(userId, input.calendarId);
     return { status: "ok", event: normalizeInstance(created, input.calendarId, null) };
+  } catch (error) {
+    return unavailableFrom(error);
+  }
+}
+
+export type EventRecurrenceResult =
+  | { status: "not_connected" }
+  | { status: "unavailable"; reason: "transient" | "needs_reauth" }
+  | { status: "ok"; recurrence: EventRecurrenceValue };
+
+/**
+ * La repetición vigente del evento maestro de una serie (tarea 3.1/3.4):
+ * para prefiltrar el editor de repetición al abrir la edición de un evento
+ * que ya es parte de una serie, sin la cual no habría forma de saber si lo
+ * que trae el formulario coincide con lo que ya existe en Google (y por lo
+ * tanto si la regla cambió, la pregunta de la que depende el cruce con el
+ * alcance de series). `eventId` tiene que ser el id del maestro
+ * (`recurringEventId` de la instancia), no el de una ocurrencia: pedirle
+ * esto a la instancia devuelve la instancia, que no trae `recurrence`.
+ */
+export async function getEventRecurrenceRule(userId: string, calendarId: string, eventId: string): Promise<EventRecurrenceResult> {
+  const state = await resolveAccessToken(userId);
+  if (state.kind !== "ready") return connectionFailure(state.kind);
+
+  try {
+    const master = await getGoogleEvent(state.accessToken, calendarId, eventId);
+    return { status: "ok", recurrence: fromGoogleRecurrenceLines(master.recurrence) };
   } catch (error) {
     return unavailableFrom(error);
   }
