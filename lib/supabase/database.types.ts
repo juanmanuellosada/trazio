@@ -363,6 +363,7 @@ export type Database = {
       }
       sections: {
         Row: {
+          description: string | null
           id: string
           is_collapsed: boolean
           name: string
@@ -371,6 +372,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          description?: string | null
           id?: string
           is_collapsed?: boolean
           name: string
@@ -379,6 +381,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          description?: string | null
           id?: string
           is_collapsed?: boolean
           name?: string

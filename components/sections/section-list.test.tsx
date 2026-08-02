@@ -46,8 +46,8 @@ const { insert, single, update, eq, delete: deleteMock, getSession } = (
 ).__mock;
 
 const sections: SectionRow[] = [
-  { id: "s1", project_id: "p1", name: "Por hacer", position: 1000, is_collapsed: false },
-  { id: "s2", project_id: "p1", name: "Hecho", position: 2000, is_collapsed: false },
+  { id: "s1", project_id: "p1", name: "Por hacer", description: null, position: 1000, is_collapsed: false },
+  { id: "s2", project_id: "p1", name: "Hecho", description: "Ya terminadas", position: 2000, is_collapsed: false },
 ];
 
 // `userEvent.click` no abre el menú de Base UI en jsdom (necesita el ciclo
@@ -76,7 +76,7 @@ describe("SectionList", () => {
     vi.clearAllMocks();
     getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
     single.mockResolvedValue({
-      data: { id: "new-section", project_id: "p1", name: "Nueva", position: 3000, is_collapsed: false },
+      data: { id: "new-section", project_id: "p1", name: "Nueva", description: null, position: 3000, is_collapsed: false },
       error: null,
     });
     eq.mockResolvedValue({ error: null });
@@ -88,32 +88,87 @@ describe("SectionList", () => {
     expect(screen.getByRole("button", { name: /agregar sección/i })).toBeInTheDocument();
   });
 
-  it("crea una sección con el nombre escrito", async () => {
+  it("crea una sección con nombre y descripción al confirmar", async () => {
     const user = userEvent.setup();
     renderList([]);
 
     await user.click(screen.getByRole("button", { name: /agregar sección/i }));
-    await user.type(screen.getByLabelText("Nombre de la nueva sección"), "En curso{Enter}");
+    await user.type(screen.getByLabelText("Nombre de la nueva sección"), "En curso");
+    await user.type(screen.getByLabelText("Descripción de la nueva sección"), "Tareas activas");
+    await user.click(screen.getByRole("button", { name: "Crear sección" }));
 
     await waitFor(() => expect(insert).toHaveBeenCalled());
     expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: "user-1", project_id: "p1", name: "En curso" }),
+      expect.objectContaining({
+        user_id: "user-1",
+        project_id: "p1",
+        name: "En curso",
+        description: "Tareas activas",
+      }),
     );
   });
 
-  it("renombra una sección existente", async () => {
+  it("crea una sección solo con el nombre", async () => {
+    const user = userEvent.setup();
+    renderList([]);
+
+    await user.click(screen.getByRole("button", { name: /agregar sección/i }));
+    await user.type(screen.getByLabelText("Nombre de la nueva sección"), "En curso");
+    await user.click(screen.getByRole("button", { name: "Crear sección" }));
+
+    await waitFor(() => expect(insert).toHaveBeenCalled());
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "En curso", description: null }),
+    );
+  });
+
+  it("mover el foco del nombre a la descripción no crea la sección todavía", async () => {
+    const user = userEvent.setup();
+    renderList([]);
+
+    await user.click(screen.getByRole("button", { name: /agregar sección/i }));
+    await user.type(screen.getByLabelText("Nombre de la nueva sección"), "En curso");
+    await user.click(screen.getByLabelText("Descripción de la nueva sección"));
+
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("cancela el alta sin crear la sección", async () => {
+    const user = userEvent.setup();
+    renderList([]);
+
+    await user.click(screen.getByRole("button", { name: /agregar sección/i }));
+    await user.type(screen.getByLabelText("Nombre de la nueva sección"), "Descartada");
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(insert).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /agregar sección/i })).toBeInTheDocument();
+  });
+
+  it("edita el nombre y la descripción de una sección existente", async () => {
     const user = userEvent.setup();
     renderList();
 
     openMenu(screen.getAllByRole("button", { name: /más acciones para la sección por hacer/i })[0]);
-    await user.click(await screen.findByRole("menuitem", { name: "Renombrar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
 
-    const input = screen.getByLabelText("Nombre de la sección");
-    await user.clear(input);
-    await user.type(input, "Pendientes{Enter}");
+    const nameInput = screen.getByLabelText("Nombre de la sección");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Pendientes");
+    await user.type(screen.getByLabelText("Descripción de la sección"), "Nueva descripción");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ name: "Pendientes" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith({ name: "Pendientes", description: "Nueva descripción" }),
+    );
     expect(eq).toHaveBeenCalledWith("id", "s1");
+  });
+
+  it("muestra la descripción debajo del nombre, y no deja hueco cuando no hay descripción", () => {
+    renderList();
+
+    expect(screen.getByText("Ya terminadas")).toBeInTheDocument();
+    expect(screen.queryByText("Por hacer")?.parentElement?.textContent).toBe("Por hacer");
   });
 
   it("elimina una sección sin pedir confirmación (sus tareas sobreviven en la base, no acá)", async () => {

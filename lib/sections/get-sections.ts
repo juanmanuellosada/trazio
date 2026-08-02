@@ -6,7 +6,7 @@ export async function getSections(projectId: string): Promise<SectionRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("sections")
-    .select("id, project_id, name, position, is_collapsed")
+    .select("id, project_id, name, description, position, is_collapsed")
     .eq("project_id", projectId)
     .order("position", { ascending: true });
 

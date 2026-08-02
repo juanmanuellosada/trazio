@@ -86,6 +86,7 @@ elementos calculando el promedio, sin reescribir toda la lista en cada arrastre.
 | `user_id` | `uuid` FK | |
 | `project_id` | `uuid` FK | `ON DELETE CASCADE` |
 | `name` | `text` | |
+| `description` | `text` | Opcional, sin default, igual patrón que `projects.description`. |
 | `position` | `numeric` | |
 | `is_collapsed` | `boolean` | |
 

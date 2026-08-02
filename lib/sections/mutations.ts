@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
 import { needsRebalance, positionForIndex, SIBLING_SPACING } from "@/lib/projects/tree";
-import type { SectionFormInput } from "@/lib/validation/sections";
+import type { SectionFormOutput } from "@/lib/validation/sections";
 import { reportSectionError } from "./errors";
 import { sectionsQueryKey, type SectionRow } from "./use-sections";
 
@@ -28,7 +28,7 @@ export function useCreateSection(projectId: string) {
 
   return useMutation({
     mutationKey: SECTIONS_MUTATION_KEY,
-    mutationFn: async (input: SectionFormInput) => {
+    mutationFn: async (input: SectionFormOutput) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -42,8 +42,14 @@ export function useCreateSection(projectId: string) {
 
       const { data, error } = await supabase
         .from("sections")
-        .insert({ user_id: session.user.id, project_id: projectId, name: input.name, position })
-        .select("id, project_id, name, position, is_collapsed")
+        .insert({
+          user_id: session.user.id,
+          project_id: projectId,
+          name: input.name,
+          description: input.description || null,
+          position,
+        })
+        .select("id, project_id, name, description, position, is_collapsed")
         .single();
       if (error) throw error;
       return data as SectionRow;
@@ -53,7 +59,7 @@ export function useCreateSection(projectId: string) {
   });
 }
 
-export type SectionPatch = Partial<Pick<SectionRow, "name" | "is_collapsed">>;
+export type SectionPatch = Partial<Pick<SectionRow, "name" | "description" | "is_collapsed">>;
 
 /** Renombrar y colapsar/expandir comparten el mismo camino optimista. */
 export function useUpdateSection(projectId: string) {

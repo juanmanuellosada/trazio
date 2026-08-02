@@ -67,9 +67,15 @@ otro proyecto.
 
 ### Sección
 
-Agrupación con nombre dentro de un proyecto ("Por hacer", "En curso", "Hecho").
-Se puede colapsar, renombrar, reordenar y eliminar. Al eliminar una sección, sus
+Agrupación con nombre dentro de un proyecto ("Por hacer", "En curso", "Hecho"), con
+una descripción opcional que se muestra debajo del nombre. Se puede colapsar,
+editar (nombre y descripción), reordenar y eliminar. Al eliminar una sección, sus
 tareas **no** desaparecen: quedan sin sección dentro del mismo proyecto.
+
+El alta pide los dos campos y exige confirmación explícita: perder el foco de un
+campo no guarda la sección, porque pasar del nombre a la descripción es
+justamente perder el foco. En vista tablero, la columna de una sección solo
+muestra su nombre.
 
 ### Tarea
 

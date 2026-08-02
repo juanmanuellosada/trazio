@@ -8,11 +8,12 @@ export type SectionRow = {
   id: string;
   project_id: string;
   name: string;
+  description: string | null;
   position: number;
   is_collapsed: boolean;
 };
 
-const SECTION_COLUMNS = "id, project_id, name, position, is_collapsed";
+const SECTION_COLUMNS = "id, project_id, name, description, position, is_collapsed";
 
 export function sectionsQueryKey(projectId: string) {
   return ["sections", projectId] as const;

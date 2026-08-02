@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import {
   DndContext,
   KeyboardSensor,
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { TaskList } from "@/components/tasks/task-list";
 import { positionForIndex, positionForSwap } from "@/lib/projects/tree";
 import {
@@ -37,8 +40,98 @@ import {
   useUpdateSection,
 } from "@/lib/sections/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
+import {
+  sectionFormSchema,
+  type SectionFormInput,
+  type SectionFormOutput,
+} from "@/lib/validation/sections";
 import type { OrderOption, QuickFilters } from "@/lib/view-options/schema";
 import { cn } from "@/lib/utils";
+
+/**
+ * Formulario de nombre + descripción con confirmar y cancelar explícitos
+ * (D-B, D-C): perder el foco al pasar de un campo al otro NUNCA guarda, así
+ * que no hay `onBlur` acá. Lo usan tanto el alta (`AddSectionRow`) como la
+ * edición (`SectionItem`).
+ */
+function SectionForm({
+  defaultValues,
+  onConfirm,
+  onCancel,
+  pending,
+  confirmLabel,
+  nameLabel,
+  descriptionLabel,
+}: {
+  defaultValues: SectionFormInput;
+  onConfirm: (values: SectionFormOutput) => void;
+  onCancel: () => void;
+  pending: boolean;
+  confirmLabel: string;
+  nameLabel: string;
+  descriptionLabel: string;
+}) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SectionFormInput, unknown, SectionFormOutput>({
+    resolver: zodResolver(sectionFormSchema),
+    defaultValues,
+  });
+
+  return (
+    <form
+      onSubmit={handleSubmit(onConfirm)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onCancel();
+        }
+      }}
+      noValidate
+      className="w-full space-y-2"
+    >
+      <div className="space-y-1">
+        <Input
+          autoFocus
+          aria-label={nameLabel}
+          placeholder="Nombre de la sección"
+          aria-invalid={!!errors.name}
+          className="h-8 text-sm"
+          {...register("name")}
+        />
+        {errors.name ? (
+          <p role="alert" className="text-sm text-error">
+            {errors.name.message}
+          </p>
+        ) : null}
+      </div>
+      <div className="space-y-1">
+        <Textarea
+          aria-label={descriptionLabel}
+          placeholder="Descripción (opcional)"
+          rows={2}
+          className="text-sm"
+          {...register("description")}
+        />
+        {errors.description ? (
+          <p role="alert" className="text-sm text-error">
+            {errors.description.message}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {confirmLabel}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 /** Opciones de vista que cada `TaskList` de sección necesita (bloque 6.6): mismo default "sin cambios" que ya define `TaskList`, para que un llamador sin barra de opciones (ninguno hoy) siga viendo el comportamiento anterior. */
 type SectionTaskListOptions = {
@@ -62,8 +155,7 @@ function SectionItem({
   /** Selección múltiple (bloque 7.10-7.13): mismo orden visual combinado que le pasa `SectionedTasks` a la lista de "sin sección" — acá se reparte igual a cada sección. */
   selectionOrderIds?: string[];
 }) {
-  const [renaming, setRenaming] = useState(false);
-  const [name, setName] = useState(section.name);
+  const [editing, setEditing] = useState(false);
   const updateSection = useUpdateSection(projectId);
   const moveSection = useMoveSection(projectId);
   const deleteSection = useDeleteSection(projectId);
@@ -71,16 +163,6 @@ function SectionItem({
     id: section.id,
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
-
-  function submitRename() {
-    setRenaming(false);
-    const trimmed = name.trim();
-    if (!trimmed || trimmed === section.name) {
-      setName(section.name);
-      return;
-    }
-    updateSection.mutate({ id: section.id, patch: { name: trimmed } });
-  }
 
   function moveWithinSiblings(direction: "up" | "down") {
     const sorted = [...allSections].sort((a, b) => a.position - b.position);
@@ -111,52 +193,59 @@ function SectionItem({
         >
           <ChevronRight className={cn("size-3.5 transition-transform", !section.is_collapsed && "rotate-90")} />
         </button>
-        {renaming ? (
-          <Input
-            autoFocus
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onBlur={submitRename}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                submitRename();
-              }
-              if (event.key === "Escape") {
-                setName(section.name);
-                setRenaming(false);
-              }
-            }}
-            aria-label="Nombre de la sección"
-            className="h-8 flex-1 text-sm font-medium"
-          />
-        ) : (
-          <span className="flex-1 truncate text-sm font-semibold text-foreground">{section.name}</span>
+        {editing ? null : (
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-foreground">{section.name}</span>
+            {section.description ? (
+              <p className="truncate text-xs text-text-secondary">{section.description}</p>
+            ) : null}
+          </div>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Más acciones para la sección ${section.name}`}
-                className="shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100"
-              />
-            }
-          >
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setRenaming(true)}>Renombrar</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => moveWithinSiblings("up")}>Mover arriba</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => moveWithinSiblings("down")}>Mover abajo</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => deleteSection.mutate(section.id)}>
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {editing ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Más acciones para la sección ${section.name}`}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100"
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setEditing(true)}>Editar</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => moveWithinSiblings("up")}>Mover arriba</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => moveWithinSiblings("down")}>Mover abajo</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={() => deleteSection.mutate(section.id)}>
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+      {editing && (
+        <div className="px-1 pb-2">
+          <SectionForm
+            defaultValues={{ name: section.name, description: section.description ?? undefined }}
+            onConfirm={(values) => {
+              updateSection.mutate({
+                id: section.id,
+                patch: { name: values.name, description: values.description || null },
+              });
+              setEditing(false);
+            }}
+            onCancel={() => setEditing(false)}
+            pending={updateSection.isPending}
+            confirmLabel="Guardar cambios"
+            nameLabel="Nombre de la sección"
+            descriptionLabel="Descripción de la sección"
+          />
+        </div>
+      )}
       {!section.is_collapsed && (
         <div className="pl-7">
           <TaskList
@@ -174,22 +263,7 @@ function SectionItem({
 
 function AddSectionRow({ projectId }: { projectId: string }) {
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
   const createSection = useCreateSection(projectId);
-
-  function submit() {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setAdding(false);
-      return;
-    }
-    createSection.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => setName(""),
-      },
-    );
-  }
 
   if (!adding) {
     return (
@@ -201,27 +275,16 @@ function AddSectionRow({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Input
-      autoFocus
-      value={name}
-      placeholder="Nombre de la sección"
-      onChange={(event) => setName(event.target.value)}
-      onBlur={() => {
-        submit();
-        setAdding(false);
+    <SectionForm
+      defaultValues={{ name: "", description: undefined }}
+      onConfirm={(values) => {
+        createSection.mutate(values, { onSuccess: () => setAdding(false) });
       }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          submit();
-        }
-        if (event.key === "Escape") {
-          setName("");
-          setAdding(false);
-        }
-      }}
-      aria-label="Nombre de la nueva sección"
-      className="h-8 max-w-64 text-sm"
+      onCancel={() => setAdding(false)}
+      pending={createSection.isPending}
+      confirmLabel="Crear sección"
+      nameLabel="Nombre de la nueva sección"
+      descriptionLabel="Descripción de la nueva sección"
     />
   );
 }
