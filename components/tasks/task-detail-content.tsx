@@ -280,12 +280,13 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
                 value={{ projectId: task.project_id, sectionId: task.section_id }}
                 onChange={moveTo}
                 proyectos={proyectos}
+                variant="row"
               />
             </div>
 
             <div ref={priorityFieldRef} className="space-y-1">
               <span className={FIELD_LABEL_CLASS}>Prioridad</span>
-              <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} />
+              <PrioritySelect value={task.priority} onChange={(priority) => patch({ priority })} variant="row" />
             </div>
 
             <div ref={dateFieldRef} className="space-y-1">
@@ -294,17 +295,23 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
                 value={{ dueDate: task.due_date, dueAt: task.due_at, durationMinutes: task.duration_minutes }}
                 onChange={(next) => patch({ due_date: next.dueDate, due_at: next.dueAt, duration_minutes: next.durationMinutes })}
                 preferences={preferences}
+                variant="row"
               />
             </div>
 
             <div ref={deadlineFieldRef} className="space-y-1">
               <span className={FIELD_LABEL_CLASS}>Fecha límite</span>
-              <DeadlineSelect value={task.deadline} onChange={(deadline) => patch({ deadline })} preferences={preferences} />
+              <DeadlineSelect
+                value={task.deadline}
+                onChange={(deadline) => patch({ deadline })}
+                preferences={preferences}
+                variant="row"
+              />
             </div>
 
             <div ref={remindersFieldRef} className="space-y-1">
               <span className={FIELD_LABEL_CLASS}>Recordatorios</span>
-              <ReminderPicker taskId={task.id} dueAt={task.due_at} />
+              <ReminderPicker taskId={task.id} dueAt={task.due_at} variant="row" />
             </div>
 
             <div className="space-y-1.5">

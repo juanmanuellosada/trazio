@@ -18,6 +18,10 @@ export interface SelectFieldOption<T extends string> {
   value: T;
   label: string;
   icon?: ReactNode;
+  /** Aplica sangría visual a la fila — para opciones anidadas bajo otra (ej. secciones bajo su proyecto). */
+  indent?: boolean;
+  /** Palabras adicionales contra las que también filtra `cmdk`, sin mostrarse en el label (ej. el nombre del proyecto en la fila de una sección, o el de sus secciones en la fila del proyecto). */
+  keywords?: string[];
 }
 
 /**
@@ -86,7 +90,9 @@ export function SelectField<T extends string>({
                 <CommandItem
                   key={option.value}
                   value={option.label}
+                  keywords={option.keywords}
                   data-checked={option.value === value}
+                  className={option.indent ? "pl-6" : undefined}
                   onSelect={() => {
                     onChange(option.value);
                     setOpen(false);

@@ -63,6 +63,7 @@ export function useParserContext(): { proyectos: ParserProject[]; etiquetas: Par
         id: project.id,
         name: project.name,
         path: projectPath(projectRows, project),
+        icon: project.icon,
         sections: sectionRows
           .filter((s) => s.project_id === project.id)
           .map((s) => ({ id: s.id, name: s.name })),

@@ -1,5 +1,6 @@
 "use client";
 
+import { Rows3 } from "lucide-react";
 import { SelectField, type SelectFieldOption } from "@/components/primitives/select-field";
 import type { ParserProject } from "@/lib/parser/types";
 
@@ -27,17 +28,28 @@ export function TaskDestinationSelect({
   onChange,
   proyectos,
   disabled,
+  variant = "chip",
 }: {
   value: TaskDestination;
   onChange: (destination: TaskDestination) => void;
   proyectos: ParserProject[];
   disabled?: boolean;
+  /** `chip` (default): angosto, ajustado al texto — el de siempre, el que usa la alta. `row`: ocupa todo el ancho e iguala la altura del trigger de Etiquetas, para la columna del detalle de tarea. */
+  variant?: "chip" | "row";
 }) {
   const options: SelectFieldOption<string>[] = proyectos.flatMap((project) => [
-    { value: destinationKey(project.id, null), label: project.path },
+    {
+      value: destinationKey(project.id, null),
+      label: project.path,
+      icon: project.icon,
+      keywords: project.sections.map((section) => section.name),
+    },
     ...project.sections.map((section) => ({
       value: destinationKey(project.id, section.id),
-      label: `${project.path} · ${section.name}`,
+      label: section.name,
+      icon: <Rows3 className="size-4 shrink-0 text-text-secondary" aria-hidden />,
+      indent: true,
+      keywords: [project.name, project.path],
     })),
   ]);
 
@@ -51,7 +63,7 @@ export function TaskDestinationSelect({
       emptyMessage="No encontramos ningún proyecto con ese nombre."
       disabled={disabled}
       ariaLabel="Proyecto destino"
-      triggerClassName="h-8 w-auto max-w-56"
+      triggerClassName={variant === "row" ? "h-9 w-full" : "h-8 w-auto max-w-56"}
     />
   );
 }

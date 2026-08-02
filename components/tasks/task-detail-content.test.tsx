@@ -108,8 +108,8 @@ const baseTask: TaskDetail = {
  * Proyectos y secciones del selector del detalle (bloque 6): `p1` es la
  * Bandeja de entrada (`color: null`, `is_inbox: true`, el mismo criterio de
  * `resolveProjectColorHex` que la pinta con el azul de marca) y `p2` es un
- * proyecto normal con una sección, para probar que el selector arma
- * "Trabajo · En curso" igual que en el alta rápida.
+ * proyecto normal con una sección, para probar que el selector anida "En
+ * curso" bajo "Trabajo" en vez de concatenarlos en un solo label.
  */
 mock.tableData.projects = [
   {
@@ -281,7 +281,7 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
 
       expect(await screen.findByRole("option", { name: "Bandeja de entrada" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "Trabajo" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Trabajo · En curso" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "En curso" })).toBeInTheDocument();
     });
 
     it("la búsqueda filtra proyectos y secciones a la vez", async () => {
@@ -293,9 +293,11 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
 
       await user.type(screen.getByPlaceholderText("Buscar proyecto o sección…"), "curso");
 
-      expect(screen.getByRole("option", { name: "Trabajo · En curso" })).toBeInTheDocument();
+      // Búsqueda cruzada: al tipear el nombre de la sección, su proyecto
+      // sigue apareciendo arriba (no queda "huérfana" sin su proyecto).
+      expect(screen.getByRole("option", { name: "En curso" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Trabajo" })).toBeInTheDocument();
       expect(screen.queryByRole("option", { name: "Bandeja de entrada" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("option", { name: "Trabajo" })).not.toBeInTheDocument();
     });
 
     it("mover a una sección de otro proyecto deja la tarea y la sección coherentes", async () => {
@@ -303,7 +305,7 @@ describe("TaskDetailContent — formulario de detalle (bloque 7.2/7.10)", () => 
       renderDetail();
 
       await user.click(await findProjectTrigger());
-      await user.click(await screen.findByRole("option", { name: "Trabajo · En curso" }));
+      await user.click(await screen.findByRole("option", { name: "En curso" }));
 
       await waitFor(() =>
         expect(

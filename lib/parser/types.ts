@@ -18,6 +18,8 @@ export type ParserProject = {
   name: string;
   path: string;
   sections: ParserProjectSection[];
+  /** Emoji del proyecto (`ProjectRow.icon`), o `null` sin uno elegido. Opcional: el parser no lo usa, solo lo llevan los selectores que sí lo pintan (ej. `TaskDestinationSelect`). */
+  icon?: string | null;
 };
 
 export type ParserLabel = { id: string; name: string };

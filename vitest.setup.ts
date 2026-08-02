@@ -27,6 +27,26 @@ if (typeof Element !== "undefined") {
   }
 }
 
+// jsdom no implementa `matchMedia`, que `useMediaQuery` (bloque 7.10, y ahora
+// `task-row.tsx` para el corte mobile del bloque 6) usa para decidir el
+// layout. Sin el stub, cualquier componente que lo llame tira al montar.
+// Por defecto no matchea nada (equivalente a "escritorio"), que es lo que
+// asumen los tests existentes; un test puede reasignar `window.matchMedia`
+// puntualmente si necesita simular mobile.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+
 // jsdom tampoco implementa `ResizeObserver`, que `cmdk` (detrás de
 // `components/ui/command.tsx`, el combobox de zona horaria del bloque 11)
 // usa para medir la lista filtrada. Sin el stub, montar el componente tira.

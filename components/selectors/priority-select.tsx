@@ -47,10 +47,13 @@ export function PrioritySelect({
   value,
   onChange,
   disabled,
+  variant = "chip",
 }: {
   value: number;
   onChange: (priority: number) => void;
   disabled?: boolean;
+  /** `chip` (default): angosto, ajustado al texto — el de siempre, el que usa la alta. `row`: ocupa todo el ancho e iguala la altura del trigger de Etiquetas, para la columna del detalle de tarea. */
+  variant?: "chip" | "row";
 }) {
   return (
     <DropdownMenu>
@@ -59,7 +62,10 @@ export function PrioritySelect({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+              variant === "row" ? "h-9 w-full" : "h-8",
+            )}
           />
         }
       >

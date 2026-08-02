@@ -540,10 +540,17 @@ export function TaskQuickAddRow({
         ocultaba en `compact` por considerarlo ruido: con el destino
         llegando también de preferencias y del contexto de la vista (D-B),
         no verlo pasa a ser peor que verlo.
+
+        Excepto en subtarea (`parentId` presente): una subtarea hereda el
+        proyecto de la tarea padre, no puede tener uno distinto, así que
+        mostrar acá un selector de destino sería engañoso — parecería que se
+        puede elegir un proyecto propio cuando en realidad no se puede.
       */}
-      <AttributeField variant={variant} label="Proyecto">
-        <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
-      </AttributeField>
+      {!parentId && (
+        <AttributeField variant={variant} label="Proyecto">
+          <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
+        </AttributeField>
+      )}
 
       {showAllFields && (
         <>

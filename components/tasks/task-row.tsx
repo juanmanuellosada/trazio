@@ -38,6 +38,7 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
 import { useMounted } from "@/hooks/use-mounted";
 import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { SelectionCheckbox } from "@/components/selection/selection-checkbox";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "@/components/selectors/priority-select";
 import { useTaskDetail } from "./task-detail-context";
@@ -84,7 +85,12 @@ function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
  *
  * El detalle (bloque 6) abre con doble clic sobre el título, no con un
  * clic simple — ver `handleTitleClick`/`onDoubleClick` más abajo. El menú
- * de acciones conserva "Abrir detalle" como camino de un solo clic.
+ * de acciones conserva "Abrir detalle" como camino de un solo clic. En
+ * teléfono (mismo corte que `task-detail-panel.tsx`, `max-width: 767px`) no
+ * hay doble tap confiable ni hover, así que un tap simple sobre el título
+ * abre directo, y el grip de arrastre y el menú "…" quedan siempre visibles
+ * en vez de depender de `group-hover` (principio de D24: ninguna acción solo
+ * por gesto/hover).
  */
 export function TaskRow({
   task,
@@ -115,6 +121,7 @@ export function TaskRow({
   selectionOrderIds?: string[];
 }) {
   const { open } = useTaskDetail();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const preferences = useUserPreferences();
   const updateTask = useUpdateTask();
   const moveTask = useMoveTask();
@@ -229,8 +236,12 @@ export function TaskRow({
   // navega por teclado sería un camino más largo que el que tiene el mouse,
   // así que la activación por teclado abre directo (`.claude/rules/frontend.md`:
   // todo control interactivo alcanzable por teclado).
+  //
+  // En teléfono (`isMobile`) no hay doble tap confiable, así que cualquier
+  // tap (`detail >= 1`) abre directo también — la fila no tiene selección/
+  // edición inline que un tap simple pudiera pisar, a diferencia de escritorio.
   function handleTitleClick(event: MouseEvent<HTMLButtonElement>) {
-    if (event.detail === 0) open(task.id);
+    if (isMobile || event.detail === 0) open(task.id);
   }
 
   return (
@@ -246,7 +257,10 @@ export function TaskRow({
             {...attributes}
             {...listeners}
             aria-label={`Reordenar ${task.title}`}
-            className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary opacity-0 outline-none group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
+            className={cn(
+              "flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing",
+              isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
+            )}
           >
             <GripVertical className="size-3.5" />
           </button>
@@ -315,7 +329,10 @@ export function TaskRow({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={`Más acciones para ${task.title}`}
-                className="order-last shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100"
+                className={cn(
+                  "order-last shrink-0",
+                  isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100",
+                )}
               />
             }
           >

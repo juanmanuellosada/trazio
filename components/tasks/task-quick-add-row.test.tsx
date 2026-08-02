@@ -542,7 +542,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     }
   });
 
-  it("una subtarea también muestra el destino (D-D), preconfigurado con el proyecto de la tarea padre", async () => {
+  it("una subtarea no muestra el selector de destino (D-D): hereda el proyecto de la tarea padre, no puede tener uno propio", async () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();
     render(
@@ -554,15 +554,14 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Agregar subtarea" }));
-    const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
-    await waitFor(() => expect(destinationTrigger).toHaveTextContent("Bandeja de entrada")); // "p1", el de la tarea padre
+    expect(screen.queryByRole("button", { name: "Proyecto destino" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Título de la nueva subtarea"), "Una subtarea");
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(insertedTask()!.parent_id).toBe("task-parent");
-    expect(insertedTask()!.project_id).toBe("p1");
+    expect(insertedTask()!.project_id).toBe("p1"); // heredado del padre, sin selector visible
   });
 
   it("compact (dentro de una sección) conserva la descripción y también muestra el destino (D-D, revierte el ruido de fase 1)", async () => {

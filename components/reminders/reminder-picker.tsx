@@ -11,6 +11,7 @@ import { OVERLAY_MODAL } from "@/components/primitives/overlay";
 import { useReminders, type DraftReminder, type ReminderRow } from "@/lib/reminders/use-reminders";
 import { useAddReminder, useRemoveReminder, computeRemindAt, type NewReminderInput } from "@/lib/reminders/mutations";
 import { RELATIVE_REMINDER_OPTIONS, relativeOffsetLabel } from "@/lib/reminders/relative-options";
+import { cn } from "@/lib/utils";
 
 function formatReminderMoment(iso: string): string {
   return format(new Date(iso), "d 'de' MMMM, HH:mm", { locale: es });
@@ -38,11 +39,14 @@ export function ReminderPicker({
   dueAt,
   drafts,
   onChange,
+  variant = "chip",
 }: {
   taskId?: string;
   dueAt: string | null;
   drafts?: DraftReminder[];
   onChange?: (drafts: DraftReminder[]) => void;
+  /** `chip` (default): angosto, ajustado al texto — el de siempre, el que usa la alta. `row`: ocupa todo el ancho e iguala la altura del trigger de Etiquetas, para la columna del detalle de tarea. */
+  variant?: "chip" | "row";
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"relativo" | "puntual">(dueAt ? "relativo" : "puntual");
@@ -91,7 +95,10 @@ export function ReminderPicker({
     <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
       <PopoverTrigger
         aria-label="Recordatorios"
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className={cn(
+          "flex items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+          variant === "row" ? "h-9 w-full" : "h-8",
+        )}
       >
         <Bell className="size-3.5 text-text-secondary" aria-hidden />
         {pendingCount > 0 ? `Recordatorios (${pendingCount})` : "Agregar recordatorio"}

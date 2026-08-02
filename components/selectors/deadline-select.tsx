@@ -34,6 +34,7 @@ export function DeadlineSelect({
   preferences,
   disabled,
   ariaLabel = "Fecha límite",
+  variant = "chip",
 }: {
   /** `yyyy-MM-dd` o `null`. */
   value: string | null;
@@ -41,6 +42,8 @@ export function DeadlineSelect({
   preferences: UserPreferences;
   disabled?: boolean;
   ariaLabel?: string;
+  /** `chip` (default): angosto, ajustado al texto — el de siempre, el que usa la alta. `row`: ocupa todo el ancho e iguala la altura del trigger de Etiquetas, para la columna del detalle de tarea. */
+  variant?: "chip" | "row";
 }) {
   const [open, setOpen] = useState(false);
   const ctx: Omit<ParserContext, "ahora"> = {
@@ -68,7 +71,8 @@ export function DeadlineSelect({
         aria-label={ariaLabel}
         disabled={disabled}
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+          "flex items-center gap-1.5 rounded-lg border border-input px-2.5 text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+          variant === "row" ? "h-9 w-full" : "h-8",
         )}
       >
         <FlagTriangleRight className="size-3.5 text-text-secondary" aria-hidden />
