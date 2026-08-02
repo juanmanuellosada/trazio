@@ -21,6 +21,8 @@ export type SettingsData = {
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
   defaultView: "bandeja" | "hoy" | "proximos";
+  /** Interruptor de `sonido-al-completar` (General, D-D): viene encendido. */
+  soundOnComplete: boolean;
 };
 
 export function settingsDataQueryKey() {
@@ -49,7 +51,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     supabase.from("profiles").select("full_name").eq("id", userId).single(),
     supabase
       .from("user_preferences")
-      .select("timezone, date_format, time_format, week_starts_on, default_view")
+      .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete")
       .eq("user_id", userId)
       .single(),
   ]);
@@ -67,6 +69,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     timeFormat: (preferences?.time_format as TimeFormatPreference | undefined) ?? 24,
     weekStartsOn: (preferences?.week_starts_on as 0 | 1 | 6 | undefined) ?? 1,
     defaultView: (preferences?.default_view as "bandeja" | "hoy" | "proximos" | undefined) ?? "bandeja",
+    soundOnComplete: preferences?.sound_on_complete ?? true,
   };
 }
 

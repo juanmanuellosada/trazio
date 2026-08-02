@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useUndoStack } from "@/components/providers/undo-provider";
+import { playCompletionSound } from "@/lib/completion-sound";
 import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
@@ -249,6 +250,16 @@ export function useUpdateTask() {
       reportTaskError(error);
     },
     onSuccess: (data, { id, projectId, patch }, context) => {
+      // `sonido-al-completar` (D-B/D-C): antes del retorno temprano de abajo,
+      // o se pierde el caso donde no había valor anterior en caché (sin
+      // `inversePatch` no hay nada para deshacer, pero el sonido igual tiene
+      // que sonar). Condicionado a la forma del cambio —que el patch traiga
+      // `completed_at` con valor—, no a "la mutación de tarea salió bien":
+      // el autoguardado de la descripción pasa por este mismo callback sin
+      // gesto del usuario, y `patch.completed_at` nunca viaja ahí. Nunca al
+      // descompletar (`patch.completed_at` sería `null`, falsy).
+      if (patch.completed_at) playCompletionSound();
+
       // Bloque 5.11: empuja completar/descompletar y cualquier edición de
       // campos a la pila de deshacer. Sin toast acá (`.claude/rules/frontend.md`
       // solo lo exige para acciones destructivas) — el toast de eliminar ya
@@ -633,6 +644,14 @@ export function useBulkUpdateTasks() {
       reportTaskError(error);
     },
     onSuccess: (_data, { tasks, patch }, context) => {
+      // `sonido-al-completar` (2.5, preventivo): no hay hoy un "completar en
+      // lote" en la interfaz —esta mutación solo se usa para prioridad y
+      // fecha (ver el docstring de arriba)—, pero si `patch` alguna vez trae
+      // `completed_at`, tiene que sonar **una vez por lote**, no una por
+      // tarea: por eso el llamado va acá, en el único `onSuccess` del lote,
+      // y no adentro del `for`/`Promise.all` de `mutationFn`.
+      if (patch.completed_at) playCompletionSound();
+
       if (!context) return;
       const inverses = tasks
         .map((t) => {

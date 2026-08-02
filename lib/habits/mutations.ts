@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { playCompletionSound } from "@/lib/completion-sound";
 import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
 import { todayInTimeZone } from "@/lib/dates/today";
@@ -204,6 +205,10 @@ export function useMarkHabitDone() {
       if (context?.previous) queryClient.setQueryData(habitsQueryKey(), context.previous);
       reportHabitError(error);
     },
+    // `sonido-al-completar` (D-E): marcar un hábito no tiene deshacer, así
+    // que acá el sonido es la única confirmación de que el clic llegó — a
+    // diferencia de una tarea, no hay tostada de deshacer para dudar.
+    onSuccess: () => playCompletionSound(),
     onSettled: () => queryClient.invalidateQueries({ queryKey: habitsQueryKey() }),
   });
 }

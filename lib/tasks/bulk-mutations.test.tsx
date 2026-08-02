@@ -5,10 +5,12 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { UndoProvider } from "@/components/providers/undo-provider";
+import { playCompletionSound } from "@/lib/completion-sound";
 import { useBulkDeleteTasks, useBulkUpdateTasks } from "./mutations";
 import { tasksQueryKey, type TaskRow } from "./use-tasks";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn() }));
 
 vi.mock("./restore", () => ({
   snapshotTaskSubtree: vi.fn(async (_supabase: unknown, rootId: string) => ({
@@ -124,6 +126,35 @@ describe("useBulkUpdateTasks — una sola entrada de deshacer para todo el lote 
     // Un segundo `Ctrl/Cmd+Z` no vuelve a deshacer lo mismo: ya salió de la pila.
     act(() => pressUndoShortcut());
     expect(mock.updateCalls).toHaveLength(4);
+  });
+
+  /**
+   * `sonido-al-completar` (2.5, preventivo): el completar en lote no existe
+   * hoy en la interfaz, pero esta mutación ya acepta cualquier `TaskPatch` —
+   * si algún día trae `completed_at`, el sonido tiene que sonar una vez por
+   * lote, nunca una vez por tarea.
+   */
+  it("un patch con completed_at reproduce el sonido una sola vez, sin importar cuántas tareas trae el lote", async () => {
+    const queryClient = new QueryClient();
+    const tasks = [baseTask("t1", "p1"), baseTask("t2", "p1"), baseTask("t3", "p2")];
+    queryClient.setQueryData(tasksQueryKey("p1"), [tasks[0], tasks[1]]);
+    queryClient.setQueryData(tasksQueryKey("p2"), [tasks[2]]);
+
+    const { result } = renderHook(() => useBulkUpdateTasks(), { wrapper: wrapper(queryClient) });
+
+    act(() => {
+      result.current.mutate({
+        tasks: [
+          { id: "t1", projectId: "p1" },
+          { id: "t2", projectId: "p1" },
+          { id: "t3", projectId: "p2" },
+        ],
+        patch: { completed_at: "2026-08-02T12:00:00.000Z" },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(playCompletionSound).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -5,9 +5,35 @@ import { useRouter } from "next/navigation";
 import { DATE_FORMAT_OPTIONS, DEFAULT_VIEW_OPTIONS, WEEK_STARTS_ON_OPTIONS } from "@/lib/validation/preferences";
 import { useUpdatePreferences, type PreferencesPatch } from "@/lib/preferences/mutations";
 import type { DateFormatPreference, TimeFormatPreference } from "@/lib/dates/format";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimezoneCombobox } from "./timezone-combobox";
+
+/**
+ * Interruptor on/off (sonido al completar). Copia el patrón visual de
+ * `SwitchRow` en `components/view-options/view-options-bar.tsx` —el único
+ * interruptor pintado a mano que hay en el proyecto hoy— en vez de
+ * extraerlo a un componente compartido: con un solo precedente todavía no
+ * hay nada que valga la pena generalizar.
+ */
+function Switch({ id, checked, onClick }: { id: string; checked: boolean; onClick: () => void }) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onClick}
+      className={cn(
+        "flex h-4 w-7 shrink-0 items-center rounded-full border border-input px-0.5 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+        checked ? "justify-end bg-primary/15" : "justify-start",
+      )}
+    >
+      <span className={cn("size-3 rounded-full bg-text-secondary transition-colors", checked && "bg-primary")} />
+    </button>
+  );
+}
 
 const DATE_FORMAT_LABELS: Record<DateFormatPreference, string> = {
   "dd-MM-yyyy": "dd-mm-aaaa (31-12-2026)",
@@ -37,6 +63,7 @@ type LocalPreferences = {
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
   defaultView: "bandeja" | "hoy" | "proximos";
+  soundOnComplete: boolean;
 };
 
 /**
@@ -55,6 +82,7 @@ export function GeneralSection({
   timeFormat,
   weekStartsOn,
   defaultView,
+  soundOnComplete,
 }: {
   userId: string;
   timezone: string;
@@ -62,16 +90,25 @@ export function GeneralSection({
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
   defaultView: "bandeja" | "hoy" | "proximos";
+  soundOnComplete: boolean;
 }) {
   const router = useRouter();
   const updatePreferences = useUpdatePreferences();
-  const [local, setLocal] = useState<LocalPreferences>({ timezone, dateFormat, timeFormat, weekStartsOn, defaultView });
+  const [local, setLocal] = useState<LocalPreferences>({
+    timezone,
+    dateFormat,
+    timeFormat,
+    weekStartsOn,
+    defaultView,
+    soundOnComplete,
+  });
 
   const timezoneLabelId = useId();
   const dateFormatId = useId();
   const timeFormatId = useId();
   const weekStartsOnId = useId();
   const defaultViewId = useId();
+  const soundOnCompleteId = useId();
 
   function save<K extends keyof LocalPreferences>(key: K, value: LocalPreferences[K], patch: PreferencesPatch) {
     const previous = local[key];
@@ -185,6 +222,15 @@ export function GeneralSection({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={soundOnCompleteId}>Sonido al completar</Label>
+        <Switch
+          id={soundOnCompleteId}
+          checked={local.soundOnComplete}
+          onClick={() => save("soundOnComplete", !local.soundOnComplete, { sound_on_complete: !local.soundOnComplete })}
+        />
       </div>
     </section>
   );

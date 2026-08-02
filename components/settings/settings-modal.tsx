@@ -129,6 +129,7 @@ export function SettingsModal() {
                 timeFormat={data.timeFormat}
                 weekStartsOn={data.weekStartsOn}
                 defaultView={data.defaultView}
+                soundOnComplete={data.soundOnComplete}
               />
             </div>
             <div data-testid="panel-notificaciones" className={effectiveSection === "notificaciones" ? "block" : "hidden"}>

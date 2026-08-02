@@ -27,7 +27,7 @@ const { update, eq } = (
   }
 ).__mock;
 
-function renderSection() {
+function renderSection(overrides: Partial<{ soundOnComplete: boolean }> = {}) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
@@ -38,6 +38,7 @@ function renderSection() {
         timeFormat={24}
         weekStartsOn={1}
         defaultView="bandeja"
+        soundOnComplete={overrides.soundOnComplete ?? true}
       />
     </QueryClientProvider>,
   );
@@ -121,5 +122,25 @@ describe("GeneralSection", () => {
     expect(screen.getByRole("combobox", { name: "Pantalla por defecto al entrar" })).toHaveTextContent(
       "Bandeja de entrada",
     );
+  });
+
+  it("apagar el interruptor de sonido guarda sound_on_complete=false y refresca", async () => {
+    const user = userEvent.setup();
+    renderSection({ soundOnComplete: true });
+
+    const toggle = screen.getByRole("switch", { name: "Sonido al completar" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await user.click(toggle);
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ sound_on_complete: false }));
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+
+  it("el interruptor de sonido arranca apagado si la preferencia ya lo estaba", () => {
+    renderSection({ soundOnComplete: false });
+
+    expect(screen.getByRole("switch", { name: "Sonido al completar" })).toHaveAttribute("aria-checked", "false");
   });
 });
