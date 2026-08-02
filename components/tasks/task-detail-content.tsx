@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, ExternalLink, Link2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Copy, CornerUpLeft, ExternalLink, Link2, MoreHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { clickButtonByText, clickFirstButton } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
@@ -159,7 +159,13 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   const labelsFieldRef = useRef<HTMLDivElement>(null);
   const subtasksFieldRef = useRef<HTMLDivElement>(null);
 
-  const { consumeFocusField } = useTaskDetail();
+  const { consumeFocusField, open: openTaskDetail } = useTaskDetail();
+
+  // Tarea padre (bloque 2, D-D): el dato ya viene en `TaskDetail.parent_id`,
+  // así que alcanza con pedir su título por la misma vía que cualquier
+  // detalle — comparte caché con el detalle del padre si ya se pidió antes.
+  // Solo el padre directo: no se resuelve la cadena de ancestros.
+  const { data: parentTask } = useTask(task.parent_id);
 
   // El menú contextual de una tarea (`T`, `Y` — bloque 7.8) abre el detalle
   // y de una vez su selector de fecha o de prioridad, en vez de solo abrir
@@ -207,57 +213,70 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-start gap-2 border-b border-border p-4">
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={isCompleted}
-          aria-label={isCompleted ? "Descompletar tarea" : "Completar tarea"}
-          onClick={() => patch({ completed_at: isCompleted ? null : new Date().toISOString() })}
-          className={cn(
-            "mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-            isCompleted ? "border-primary bg-primary" : "border-input",
-          )}
-        >
-          {isCompleted && <span aria-hidden className="size-2 rounded-full bg-primary-foreground" />}
-        </button>
-
-        <Input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onBlur={saveTitleNow}
-          aria-label="Título de la tarea"
-          placeholder="Título de la tarea"
-          className={cn("h-auto flex-1 border-none bg-transparent px-0 text-lg font-medium shadow-none focus-visible:ring-0", isCompleted && "text-text-secondary line-through")}
-        />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones de la tarea" />}>
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => duplicateTask.mutate({ task: toTaskRowShape(task) })}>
-              <Copy className="size-3.5" /> Duplicar
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={copyLink}>
-              <Link2 className="size-3.5" /> Copiar enlace directo
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`/tarea/${task.id}`, "_blank")}>
-              <ExternalLink className="size-3.5" /> Abrir en ventana aparte
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-              <Trash2 className="size-3.5" /> Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {onClose && (
-          <Button variant="ghost" size="icon-sm" aria-label="Cerrar detalle" onClick={onClose}>
-            ✕
-          </Button>
+      <div className="border-b border-border">
+        {parentTask && (
+          <button
+            type="button"
+            onClick={() => openTaskDetail(parentTask.id)}
+            className="flex items-center gap-1 px-4 pt-3 text-xs text-text-secondary hover:text-foreground hover:underline"
+          >
+            <CornerUpLeft className="size-3" aria-hidden />
+            Subtarea de {parentTask.title}
+          </button>
         )}
+
+        <div className="flex items-start gap-2 p-4">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isCompleted}
+            aria-label={isCompleted ? "Descompletar tarea" : "Completar tarea"}
+            onClick={() => patch({ completed_at: isCompleted ? null : new Date().toISOString() })}
+            className={cn(
+              "mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              isCompleted ? "border-primary bg-primary" : "border-input",
+            )}
+          >
+            {isCompleted && <span aria-hidden className="size-2 rounded-full bg-primary-foreground" />}
+          </button>
+
+          <Input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onBlur={saveTitleNow}
+            aria-label="Título de la tarea"
+            placeholder="Título de la tarea"
+            className={cn("h-auto flex-1 border-none bg-transparent px-0 text-lg font-medium shadow-none focus-visible:ring-0", isCompleted && "text-text-secondary line-through")}
+          />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones de la tarea" />}>
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => duplicateTask.mutate({ task: toTaskRowShape(task) })}>
+                <Copy className="size-3.5" /> Duplicar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={copyLink}>
+                <Link2 className="size-3.5" /> Copiar enlace directo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.open(`/tarea/${task.id}`, "_blank")}>
+                <ExternalLink className="size-3.5" /> Abrir en ventana aparte
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+                <Trash2 className="size-3.5" /> Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {onClose && (
+            <Button variant="ghost" size="icon-sm" aria-label="Cerrar detalle" onClick={onClose}>
+              ✕
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
