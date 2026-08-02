@@ -4,10 +4,20 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { HabitFormDialog } from "./habit-form-dialog";
 import type { Habit } from "@/lib/habits/habit-columns";
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
+
+const TEST_PREFERENCES: UserPreferences = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd-MM-yyyy",
+  timeFormat: 24,
+  weekStartsOn: 1,
+  defaultProjectId: null,
+};
 
 // Mismo recorte que `components/projects/emoji-picker.test.tsx`: el dataset
 // real de emojibase-data no hace falta para probar el formulario, solo un
@@ -53,7 +63,9 @@ function renderDialog(props: Partial<React.ComponentProps<typeof HabitFormDialog
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <HabitFormDialog open onOpenChange={() => {}} {...props} />
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <HabitFormDialog open onOpenChange={() => {}} {...props} />
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
 }
@@ -127,6 +139,30 @@ describe("HabitFormDialog", () => {
         scheduled_time: null,
       }),
     );
+  });
+
+  it("el horario es opcional: sin tocarlo, no aparece el bloque de hora (sin-controles-nativos)", () => {
+    renderDialog();
+
+    expect(screen.queryByLabelText("Hora")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar horario" })).toBeInTheDocument();
+  });
+
+  it("agregar un horario ofrece el bloque de hora propio (sin <input type=\"time\">) y lo guarda como HH:MM", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Agregar horario" }));
+    expect(screen.getByLabelText("Hora")).toHaveValue("09:00");
+    expect(document.querySelector('input[type="time"]')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Nombre"), "Tomar sol");
+    await pickIcon(user);
+    await user.type(screen.getByLabelText("Duración estimada (min)"), "10");
+    await user.click(screen.getByRole("button", { name: "Crear hábito" }));
+
+    await waitFor(() => expect(insert).toHaveBeenCalled());
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ scheduled_time: "09:00" }));
   });
 
   it("muestra el campo de veces por semana solo para esa frecuencia, y lo manda al crear", async () => {

@@ -4,12 +4,12 @@ import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, BellOff, Smartphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { isPushSubscribed } from "@/lib/reminders/subscribe";
 import { usePushSubscriptions } from "@/lib/reminders/use-push-subscriptions";
 import { useRemovePushSubscription, useSubscribePush, useUnsubscribePush } from "@/lib/reminders/use-push-toggle";
 import { useUpdatePreferences } from "@/lib/preferences/mutations";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { TimeField, parseHHMM, toHHMM } from "@/components/selectors/time-field";
 
 function formatSubscribedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
@@ -34,6 +34,7 @@ export function NotificationsSection({ userId, referenceTime }: { userId: string
   const updatePreferences = useUpdatePreferences();
   const [localReferenceTime, setLocalReferenceTime] = useState(referenceTime.slice(0, 5));
   const referenceTimeId = useId();
+  const { timeFormat } = useUserPreferences();
 
   useEffect(() => {
     isPushSubscribed().then(setSubscribedHere);
@@ -124,17 +125,16 @@ export function NotificationsSection({ userId, referenceTime }: { userId: string
       )}
 
       <div className="space-y-1.5 border-t border-border pt-4">
-        <Label htmlFor={referenceTimeId}>Hora de referencia</Label>
+        <p className="text-sm font-medium text-foreground">Hora de referencia</p>
         <p className="text-xs text-text-secondary">
           A esta hora se considera que vence una tarea que tiene día pero no hora, para tus recordatorios relativos
           sobre esas tareas.
         </p>
-        <Input
+        <TimeField
           id={referenceTimeId}
-          type="time"
-          value={localReferenceTime}
-          onChange={(event) => saveReferenceTime(event.target.value)}
-          className="w-32"
+          value={parseHHMM(localReferenceTime)}
+          onChange={(next) => saveReferenceTime(toHHMM(next))}
+          timeFormat={timeFormat}
         />
       </div>
     </section>

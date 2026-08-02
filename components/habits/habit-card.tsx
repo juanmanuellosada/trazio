@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useTheme } from "next-themes";
+import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { Clock, MoreHorizontal } from "lucide-react";
 import {
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useMounted } from "@/hooks/use-mounted";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { CalendarGrid } from "@/components/selectors/calendar-grid";
+import { TimeField, DEFAULT_TIME, parseHHMM, toHHMM, type TimeValue } from "@/components/selectors/time-field";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import type { Habit } from "@/lib/habits/habit-columns";
@@ -51,11 +54,19 @@ function RescheduleHabitControl({
   todayDate: string;
   timezone: string;
 }) {
-  const dateId = useId();
   const timeId = useId();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(todayDate);
-  const [value, setValue] = useState("");
+  const [month, setMonth] = useState(() => parseISO(todayDate));
+  // `null` mientras no se eligió ningún horario todavía (ni el que ya tenía
+  // esa fecha, ni uno tipeado): a diferencia del bloque de hora del alta de
+  // hábitos, acá `TimeField` no puede arrancar con un valor por defecto
+  // (09:00) sin que la persona lo haya elegido — guardar sin darse cuenta le
+  // asignaría un horario que nunca eligió, silencioso porque el campo se ve
+  // lleno. Con horario existente (`overrideTime`), en cambio, arranca
+  // mostrándolo y "Guardar" queda habilitado sin obligar a retipearlo.
+  const [value, setValue] = useState<TimeValue | null>(null);
+  const { weekStartsOn, timeFormat } = useUserPreferences();
   const { data: overrideTime } = useHabitScheduleOverride(habit.id, date);
   const setOverride = useSetHabitScheduleOverride();
   const removeOverride = useRemoveHabitScheduleOverride();
@@ -64,20 +75,21 @@ function RescheduleHabitControl({
     setOpen(next);
     if (next) {
       setDate(todayDate);
-      setValue(overrideTime ?? "");
+      setMonth(parseISO(todayDate));
+      setValue(overrideTime ? parseHHMM(overrideTime) : null);
     }
   }
 
   function handleDateChange(nextDate: string) {
     setDate(nextDate);
-    setValue("");
+    setValue(null);
   }
 
   function handleSave(event: FormEvent) {
     event.preventDefault();
     if (!value) return;
     setOverride.mutate(
-      { habitId: habit.id, habit, date, scheduledTime: value, timezone },
+      { habitId: habit.id, habit, date, scheduledTime: toHHMM(value), timezone },
       { onSuccess: () => setOpen(false) },
     );
   }
@@ -96,25 +108,25 @@ function RescheduleHabitControl({
       >
         <Clock aria-hidden className="size-3.5" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-60">
+      <PopoverContent align="end" className="w-72">
         <form onSubmit={handleSave} className="space-y-2">
-          <Label htmlFor={dateId}>Día</Label>
-          <input
-            id={dateId}
-            type="date"
-            value={date}
-            min={createdDate}
-            onChange={(event) => handleDateChange(event.target.value)}
-            className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
+          <Label className="text-text-secondary">Día</Label>
+          <CalendarGrid
+            month={month}
+            onMonthChange={setMonth}
+            selectedDate={date}
+            today={todayDate}
+            weekStartsOn={weekStartsOn}
+            minDate={createdDate}
+            onSelectDate={handleDateChange}
           />
-          <Label htmlFor={timeId}>Horario</Label>
-          <input
-            id={timeId}
-            type="time"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
-          />
+          {value ? (
+            <TimeField id={timeId} label="Horario" value={value} onChange={setValue} timeFormat={timeFormat} />
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setValue(DEFAULT_TIME)}>
+              Agregar horario
+            </Button>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             {overrideTime ? (
               <Button type="button" variant="ghost" size="sm" onClick={handleRemove}>

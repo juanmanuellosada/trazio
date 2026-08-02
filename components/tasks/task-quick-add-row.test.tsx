@@ -464,14 +464,19 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
   });
 
   it("un recordatorio agregado en el alta se persiste junto con la tarea (D-E)", async () => {
+    // Reloj congelado (`sin-controles-nativos`): el modo "Fecha y hora fija"
+    // ya no es un `<input type="datetime-local">`, sino el calendario propio
+    // — con la fecha fija, "Mañana" resuelve a un día determinístico.
+    vi.setSystemTime(new Date("2026-08-04T12:00:00Z"));
     const user = userEvent.setup();
     renderRow({ variant: "full" });
 
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
     await user.click(screen.getByRole("button", { name: "Mostrar más campos" }));
     await user.click(screen.getByRole("button", { name: "Recordatorios" }));
-    fireEvent.change(screen.getByLabelText("Fecha y hora del recordatorio"), { target: { value: "2026-08-05T09:00" } });
-    await user.click(screen.getByRole("button", { name: "Agregar recordatorio puntual" }));
+    await user.click(screen.getByRole("radio", { name: /Fecha y hora fija/ }));
+    await user.click(screen.getByRole("button", { name: /^Mañana/ }));
+    await user.click(screen.getByRole("button", { name: "Agregar recordatorio" }));
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
 
@@ -479,6 +484,8 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     const reminders = insertedReminders();
     expect(reminders).toHaveLength(1);
     expect(reminders[0]).toMatchObject({ task_id: "new-task", offset_minutes: null });
+
+    vi.useRealTimers();
   });
 
   it("con defaultDueAt y defaultDurationMinutes (D-F, alta del calendario), la tarea se crea con esa hora y duración en una sola mutación", async () => {

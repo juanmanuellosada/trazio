@@ -3,12 +3,23 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Auditoría automática de la regla A1 de `openspec/changes/interfaz-propia/design.md`:
- * ningún control interactivo puede ser el que trae el navegador por
- * defecto. Recorre `app/`, `components/` y `lib/` buscando el patrón real
- * de *uso* —no la sola mención en un comentario que documenta el
- * reemplazo— de los cuatro campos nativos prohibidos y de los tres
- * diálogos nativos del navegador.
+ * Auditoría automática de la regla A1 de `openspec/changes/interfaz-propia/design.md`,
+ * ampliada por `sin-controles-nativos` a cualquier superficie: ningún
+ * control interactivo puede ser el que trae el navegador por defecto.
+ * Recorre `app/`, `components/` y `lib/` buscando el patrón real de *uso*
+ * —no la sola mención en un comentario que documenta el reemplazo— de los
+ * cuatro campos nativos prohibidos y de los tres diálogos nativos del
+ * navegador.
+ *
+ * `<[Ii]nput\b` (no solo `<input\b`): las tres violaciones reales que
+ * `sin-controles-nativos` corrigió, más las cuatro que aparecieron al
+ * ampliar la búsqueda (una de ellas agregada el mismo día en que se
+ * escribió la regla que la prohíbe), usaban todas el componente propio
+ * `Input` (`@/components/ui/input`, mayúscula) reenviando `type="date"` a
+ * un `<input>` real — esta auditoría nunca las vio porque su patrón
+ * original solo reconocía la etiqueta HTML en minúscula. Una auditoría que
+ * no detecta el caso que importa da tranquilidad falsa; reconocer las dos
+ * formas es lo que la deja realmente estricta.
  *
  * Vive en Vitest, no en una regla de ESLint nueva: el repo no tiene
  * infraestructura de reglas propias (solo `eslint-config-next`), así que
@@ -26,7 +37,7 @@ const SCAN_EXTENSIONS = [".ts", ".tsx"];
 // comentarios y no debe auditarse a sí mismo.
 const SELF_PATH = join("tests", "native-controls-audit.test.ts");
 
-const NATIVE_INPUT = /<input\b[^>]*\btype=["'](date|time|datetime-local|color)["']/;
+const NATIVE_INPUT = /<[Ii]nput\b[^>]*\btype=["'](date|time|datetime-local|color)["']/;
 const NATIVE_DIALOG = /window\.(confirm|alert|prompt)\s*\(/;
 
 // Los comentarios que documentan el reemplazo (por ejemplo, "ya no usamos

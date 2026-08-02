@@ -29,6 +29,7 @@ export function CalendarGrid({
   today,
   weekStartsOn,
   onSelectDate,
+  minDate,
 }: {
   /** Cualquier día del mes que se está mostrando. */
   month: Date;
@@ -39,6 +40,8 @@ export function CalendarGrid({
   today: string;
   weekStartsOn: 0 | 1 | 6;
   onSelectDate: (date: string) => void;
+  /** `yyyy-MM-dd` opcional: los días anteriores se muestran deshabilitados (reprogramar un hábito, que no puede ir a un día anterior a que existiera). Ningún otro consumidor lo necesita. */
+  minDate?: string;
 }) {
   const monthStart = startOfMonth(month);
   const monthEnd = endOfMonth(month);
@@ -83,15 +86,17 @@ export function CalendarGrid({
           const key = toDateKey(date);
           const isSelected = key === selectedDate;
           const isToday = key === today;
+          const isDisabled = minDate != null && key < minDate;
           return (
             <button
               key={index}
               type="button"
+              disabled={isDisabled}
               onClick={() => onSelectDate(key)}
               aria-label={format(date, "EEEE d 'de' MMMM", { locale: es })}
               aria-pressed={isSelected}
               className={cn(
-                "flex size-8 items-center justify-center rounded-lg text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50",
+                "flex size-8 items-center justify-center rounded-lg text-sm outline-none hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-transparent",
                 isSelected && "bg-primary text-primary-foreground hover:bg-primary",
                 !isSelected && isToday && "font-semibold text-primary",
               )}

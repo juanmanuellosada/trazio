@@ -2,19 +2,101 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import { CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { OVERLAY_MODAL } from "@/components/primitives/overlay";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { DatePickerBody } from "@/components/selectors/date-picker-body";
+import { TimeField, type TimeValue } from "@/components/selectors/time-field";
+import type { ParserContext } from "@/lib/parser/types";
 import { useGoogleCalendars } from "@/lib/calendar/use-google-calendars";
 import { useUpdateEvent } from "@/lib/calendar/use-update-event";
 import type { CalendarEventInstance, EventInput, RecurrenceEditScope } from "@/lib/calendar/events";
 import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
 
-/** `yyyy-MM-ddTHH:mm`, el valor que espera `<input type="datetime-local">` — interpretado en la zona horaria del navegador, mismo criterio ya usado por `components/reminders/reminder-picker.tsx`. */
+/**
+ * `yyyy-MM-ddTHH:mm`: formato interno de `startInput`/`endInput`,
+ * interpretado en la zona horaria del navegador. Ya no es lo que espera un
+ * `<input type="datetime-local">` (`sin-controles-nativos` se lo sacó a
+ * este diálogo) — sigue siendo la representación que `buildChanges` arma
+ * con `new Date(...)`, y `splitDateTimeLocal`/`joinDateTimeLocal` la parten
+ * y recomponen para `DateField`/`TimeField`.
+ */
 function toDatetimeLocalValue(iso: string): string {
   return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+}
+
+function splitDateTimeLocal(value: string): { date: string; time: TimeValue } {
+  const [date, time] = value.split("T");
+  const [hour, minute] = time.split(":").map(Number);
+  return { date, time: { hour, minute } };
+}
+
+function joinDateTimeLocal(date: string, time: TimeValue): string {
+  return `${date}T${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`;
+}
+
+/**
+ * Selector de una fecha sola (`sin-controles-nativos`, tarea 2.3): botón que
+ * abre el mismo cuerpo compartido del selector de fecha (`DatePickerBody`,
+ * calendario propio + lenguaje natural), en vez de un `<input type="date">`
+ * o `type="datetime-local">`. Componente local a este diálogo — no hay
+ * lógica de hora ni de formato acá para duplicar, solo compone
+ * `DatePickerBody` con el día que corresponda de `startInput`/`endInput`.
+ */
+function DateField({
+  id,
+  ariaLabel,
+  value,
+  ctx,
+  onChange,
+}: {
+  id: string;
+  ariaLabel: string;
+  /** `yyyy-MM-dd`. */
+  value: string;
+  ctx: Omit<ParserContext, "ahora">;
+  onChange: (date: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
+      <PopoverTrigger
+        id={id}
+        aria-label={ariaLabel}
+        className="flex h-9 w-full items-center gap-1.5 rounded-lg border border-input px-2.5 text-left text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <CalendarDays className="size-3.5 shrink-0 text-text-secondary" aria-hidden />
+        {format(parseISO(value), "d 'de' MMMM 'de' yyyy", { locale: es })}
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        <DatePickerBody
+          inputId={`${id}-input`}
+          inputLabel="Escribí la fecha"
+          placeholder="Ej: mañana, el martes, en 3 días…"
+          ctx={ctx}
+          selectedDate={value}
+          onCommitText={(result) => {
+            if (result.dueDate) {
+              onChange(result.dueDate);
+              setOpen(false);
+            }
+          }}
+          onSelectDate={(date) => {
+            onChange(date);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /**
@@ -54,6 +136,20 @@ export function EditEventDialog({
   const { data, isLoading } = useGoogleCalendars();
   const updateEvent = useUpdateEvent();
   const calendars = data?.calendars ?? [];
+
+  // Componentes propios de fecha y hora (`sin-controles-nativos`, tarea
+  // 2.3): `DateField`/`TimeField` reemplazan los tres `<input>` nativos que
+  // tenía este diálogo, sin cambiar qué guarda `startInput`/`endInput` —
+  // siguen siendo las mismas cadenas que `buildChanges` ya interpretaba.
+  const { timeFormat, weekStartsOn } = useUserPreferences();
+  const ctx: Omit<ParserContext, "ahora"> = {
+    zonaHoraria: timezone,
+    semanaEmpiezaEn: weekStartsOn,
+    proyectos: [],
+    etiquetas: [],
+  };
+  const startParts = event.allDay ? null : splitDateTimeLocal(startInput);
+  const endParts = event.allDay ? null : splitDateTimeLocal(endInput);
 
   // Todo el día: la cantidad de días que ya cubría el evento se conserva —
   // solo se mueve el día de inicio, no se editan los dos extremos por
@@ -160,22 +256,47 @@ export function EditEventDialog({
             {event.allDay ? (
               <div className="space-y-1.5">
                 <Label htmlFor={`${titleId}-start`}>Fecha</Label>
-                <Input id={`${titleId}-start`} type="date" value={startInput} onChange={(e) => setStartInput(e.target.value)} />
+                <DateField id={`${titleId}-start`} ariaLabel="Fecha" value={startInput} ctx={ctx} onChange={setStartInput} />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor={`${titleId}-start`}>Empieza</Label>
-                  <Input
-                    id={`${titleId}-start`}
-                    type="datetime-local"
-                    value={startInput}
-                    onChange={(e) => setStartInput(e.target.value)}
-                  />
+                  <span className="text-sm font-medium text-foreground">Empieza</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <DateField
+                      id={`${titleId}-start-date`}
+                      ariaLabel="Fecha en que empieza"
+                      value={startParts!.date}
+                      ctx={ctx}
+                      onChange={(date) => setStartInput(joinDateTimeLocal(date, startParts!.time))}
+                    />
+                    <TimeField
+                      id={`${titleId}-start-time`}
+                      label="Hora"
+                      value={startParts!.time}
+                      onChange={(time) => setStartInput(joinDateTimeLocal(startParts!.date, time))}
+                      timeFormat={timeFormat}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor={`${titleId}-end`}>Termina</Label>
-                  <Input id={`${titleId}-end`} type="datetime-local" value={endInput} onChange={(e) => setEndInput(e.target.value)} />
+                  <span className="text-sm font-medium text-foreground">Termina</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <DateField
+                      id={`${titleId}-end-date`}
+                      ariaLabel="Fecha en que termina"
+                      value={endParts!.date}
+                      ctx={ctx}
+                      onChange={(date) => setEndInput(joinDateTimeLocal(date, endParts!.time))}
+                    />
+                    <TimeField
+                      id={`${titleId}-end-time`}
+                      label="Hora"
+                      value={endParts!.time}
+                      onChange={(time) => setEndInput(joinDateTimeLocal(endParts!.date, time))}
+                      timeFormat={timeFormat}
+                    />
+                  </div>
                 </div>
               </div>
             )}

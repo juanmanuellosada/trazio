@@ -2,13 +2,18 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
-import { Bell, Plus, X } from "lucide-react";
+import { Bell, Check, Plus, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OVERLAY_MODAL } from "@/components/primitives/overlay";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
+import { DatePickerBody, type CommittedDate } from "@/components/selectors/date-picker-body";
+import { TimeField, DEFAULT_TIME, type TimeValue } from "@/components/selectors/time-field";
+import { toDueAt, type CalendarDate } from "@/lib/parser/dates";
+import type { ParserContext } from "@/lib/parser/types";
 import { useTask } from "@/lib/tasks/use-task";
 import { useReminders, type DraftReminder, type ReminderRow } from "@/lib/reminders/use-reminders";
 import { useAddReminder, useRemoveReminder, computeRemindAt, type NewReminderInput } from "@/lib/reminders/mutations";
@@ -19,15 +24,34 @@ function formatReminderMoment(iso: string): string {
   return format(new Date(iso), "d 'de' MMMM, HH:mm", { locale: es });
 }
 
+function toCalendarDate(dateStr: string): CalendarDate {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return { y, m, d };
+}
+
+function dayOf(iso: string, timezone: string): string {
+  return formatInTimeZone(iso, timezone, "yyyy-MM-dd");
+}
+
+function timeOf(iso: string, timezone: string): TimeValue {
+  const [hour, minute] = formatInTimeZone(iso, timezone, "HH:mm").split(":").map(Number);
+  return { hour, minute };
+}
+
 /**
  * Selector de recordatorios del detalle de tarea (bloque 4.11, opciones
- * dinámicas ampliadas por `recordatorios-con-hora-de-referencia` D-B):
- * lista los ya agregados y ofrece agregar uno nuevo, puntual (fecha y hora
- * concretas) o relativo a la tarea. Lo que ofrece la pestaña relativa
- * depende de lo que la tarea tenga: con fecha y hora, las once opciones
- * incluida "a la hora de la tarea"; con solo fecha, los desfases (sin "a la
- * hora de la tarea", que afirmaría una hora que la tarea no tiene); sin
- * ninguna fecha, ninguna — solo queda la pestaña puntual.
+ * dinámicas ampliadas por `recordatorios-con-hora-de-referencia` D-B,
+ * rediseñado por `sin-controles-nativos` D-C): lista los ya agregados y
+ * ofrece agregar uno nuevo, con una elección explícita entre **relativo a
+ * la tarea** y **fecha y hora fija** — ya no dos botones que solo cambian
+ * de color. Lo que ofrece el modo relativo depende de lo que la tarea
+ * tenga: con fecha y hora, las once opciones incluida "a la hora de la
+ * tarea"; con solo fecha, los desfases (sin "a la hora de la tarea", que
+ * afirmaría una hora que la tarea no tiene); sin ninguna fecha, ninguna —
+ * solo queda el modo fijo. El modo fijo usa el calendario propio
+ * (`DatePickerBody`) más el bloque de hora compartido con el selector de
+ * vencimiento (`TimeField`), nunca el `<input type="datetime-local">` que
+ * tenía antes.
  *
  * Modo borrador (`drafts`/`onChange`, sin `taskId`): el alta de una tarea
  * (bloque `alta-de-tareas-en-contexto`, D-E) lo usa antes de que la tarea
@@ -68,12 +92,21 @@ export function ReminderPicker({
   const relativeOptions = hasTime ? RELATIVE_REMINDER_OPTIONS : RELATIVE_REMINDER_OPTIONS.filter((o) => o.offsetMinutes !== 0);
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"relativo" | "puntual">(hasNoDate ? "puntual" : "relativo");
-  const [puntualValue, setPuntualValue] = useState("");
+  const [mode, setMode] = useState<"relativo" | "fijo">(hasNoDate ? "fijo" : "relativo");
+  const [relativeChoice, setRelativeChoice] = useState<string | null>(null);
+  const [fixedDate, setFixedDate] = useState<string | null>(null);
+  const [fixedTime, setFixedTime] = useState<TimeValue>(DEFAULT_TIME);
   const { data: taskReminders } = useReminders(taskId ?? "");
   const addReminder = useAddReminder(taskId ?? "");
   const removeReminder = useRemoveReminder(taskId ?? "");
-  const { timezone, referenceTime } = useUserPreferences();
+  const { timezone, referenceTime, timeFormat, weekStartsOn } = useUserPreferences();
+
+  const ctx: Omit<ParserContext, "ahora"> = {
+    zonaHoraria: timezone,
+    semanaEmpiezaEn: weekStartsOn,
+    proyectos: [],
+    etiquetas: [],
+  };
 
   const reminders: (ReminderRow | DraftReminder)[] = taskId ? (taskReminders ?? []) : (drafts ?? []);
   const pendingCount = reminders.filter((reminder) => !reminder.delivered_at).length;
@@ -83,15 +116,28 @@ export function ReminderPicker({
     onChange?.([...(drafts ?? []), { id: crypto.randomUUID(), remind_at, offset_minutes, delivered_at: null }]);
   }
 
-  function addPuntual() {
-    if (!puntualValue) return;
-    const input: NewReminderInput = { kind: "puntual", remindAt: new Date(puntualValue).toISOString() };
+  function applyParsedFixed(result: CommittedDate) {
+    if (result.dueAt) {
+      setFixedDate(dayOf(result.dueAt, timezone));
+      setFixedTime(timeOf(result.dueAt, timezone));
+    } else if (result.dueDate) {
+      setFixedDate(result.dueDate);
+    }
+  }
+
+  function addFixed() {
+    if (!fixedDate) return;
+    const input: NewReminderInput = {
+      kind: "puntual",
+      remindAt: toDueAt(toCalendarDate(fixedDate), fixedTime.hour, fixedTime.minute, timezone),
+    };
     if (taskId) {
       addReminder.mutate(input);
     } else {
       addDraft(input);
     }
-    setPuntualValue("");
+    setFixedDate(null);
+    setFixedTime(DEFAULT_TIME);
   }
 
   function addRelative(offsetMinutes: number) {
@@ -149,24 +195,40 @@ export function ReminderPicker({
           </ul>
         )}
 
-        <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
-          <div className="flex gap-1">
-            <Button
+        <div className="mt-2.5 space-y-2.5 border-t border-border pt-2.5">
+          <div role="radiogroup" aria-label="Tipo de recordatorio" className="grid grid-cols-2 gap-1.5">
+            <button
               type="button"
-              variant={mode === "relativo" ? "secondary" : "ghost"}
-              size="xs"
+              role="radio"
+              aria-checked={mode === "relativo"}
               onClick={() => setMode("relativo")}
+              className={cn(
+                "flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                mode === "relativo" ? "border-primary bg-primary/10" : "border-input hover:bg-surface",
+              )}
             >
-              Relativo a la tarea
-            </Button>
-            <Button
+              <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                {mode === "relativo" && <Check className="size-3.5 text-primary" aria-hidden />}
+                Relativo a la tarea
+              </span>
+              <span className="text-xs text-text-secondary">Antes o después del vencimiento</span>
+            </button>
+            <button
               type="button"
-              variant={mode === "puntual" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => setMode("puntual")}
+              role="radio"
+              aria-checked={mode === "fijo"}
+              onClick={() => setMode("fijo")}
+              className={cn(
+                "flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                mode === "fijo" ? "border-primary bg-primary/10" : "border-input hover:bg-surface",
+              )}
             >
-              Fecha y hora puntual
-            </Button>
+              <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                {mode === "fijo" && <Check className="size-3.5 text-primary" aria-hidden />}
+                Fecha y hora fija
+              </span>
+              <span className="text-xs text-text-secondary">Un momento puntual</span>
+            </button>
           </div>
 
           {mode === "relativo" ? (
@@ -175,38 +237,41 @@ export function ReminderPicker({
                 Esta tarea no tiene fecha. Ponele una para poder agregar un recordatorio relativo.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-1">
-                {relativeOptions.map((option) => (
-                  <Button
-                    key={option.offsetMinutes}
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    className="justify-start"
-                    onClick={() => addRelative(option.offsetMinutes)}
-                  >
-                    <Plus className="size-3" /> {option.label}
-                  </Button>
-                ))}
-              </div>
+              <Select
+                items={Object.fromEntries(relativeOptions.map((option) => [String(option.offsetMinutes), option.label]))}
+                value={relativeChoice}
+                onValueChange={(next) => {
+                  if (!next) return;
+                  addRelative(Number(next));
+                  setRelativeChoice(null);
+                }}
+              >
+                <SelectTrigger aria-label="Elegir cuándo avisar" className="h-9 w-full">
+                  <SelectValue placeholder="Elegí cuándo avisar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {relativeOptions.map((option) => (
+                    <SelectItem key={option.offsetMinutes} value={String(option.offsetMinutes)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )
           ) : (
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="datetime-local"
-                aria-label="Fecha y hora del recordatorio"
-                value={puntualValue}
-                onChange={(event) => setPuntualValue(event.target.value)}
-                className="h-8 flex-1"
+            <div className="space-y-2">
+              <DatePickerBody
+                inputId="reminder-fixed-date-input"
+                inputLabel="Escribí la fecha del recordatorio"
+                placeholder="Ej: mañana, el martes, en 3 días…"
+                ctx={ctx}
+                selectedDate={fixedDate}
+                onCommitText={applyParsedFixed}
+                onSelectDate={setFixedDate}
               />
-              <Button
-                type="button"
-                size="icon-sm"
-                aria-label="Agregar recordatorio puntual"
-                onClick={addPuntual}
-                disabled={!puntualValue}
-              >
-                <Plus className="size-3.5" />
+              <TimeField id="reminder-fixed-time-input" value={fixedTime} onChange={setFixedTime} timeFormat={timeFormat} />
+              <Button type="button" size="sm" className="w-full" onClick={addFixed} disabled={!fixedDate}>
+                <Plus className="size-3.5" /> Agregar recordatorio
               </Button>
             </div>
           )}

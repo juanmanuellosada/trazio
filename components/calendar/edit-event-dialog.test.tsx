@@ -3,8 +3,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import type { CalendarEventInstance } from "@/lib/calendar/events";
 import { EditEventDialog } from "./edit-event-dialog";
+
+const PREFERENCES: UserPreferences = {
+  timezone: "America/Argentina/Buenos_Aires",
+  dateFormat: "dd-MM-yyyy",
+  timeFormat: 24,
+  weekStartsOn: 1,
+  defaultProjectId: null,
+};
 
 // D24/tarea 7.11-8.4: segundo camino para editar el horario de un evento
 // existente sin arrastrar, con el mismo requirement de "sin default
@@ -51,7 +61,9 @@ function renderDialog(event: CalendarEventInstance) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <EditEventDialog open onOpenChange={vi.fn()} event={event} timezone="America/Argentina/Buenos_Aires" />
+      <PreferencesProvider preferences={PREFERENCES}>
+        <EditEventDialog open onOpenChange={vi.fn()} event={event} timezone="America/Argentina/Buenos_Aires" />
+      </PreferencesProvider>
     </QueryClientProvider>,
   );
   return fetchMock;

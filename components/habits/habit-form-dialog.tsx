@@ -3,6 +3,7 @@
 import { useEffect, useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
+import { X } from "lucide-react";
 import { habitFormSchema, type HabitFormOutput } from "@/lib/validation/habits";
 import { PROJECT_COLOR_IDS } from "@/lib/validation/colors";
 import { useCreateHabit, useUpdateHabit } from "@/lib/habits/mutations";
@@ -21,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { SelectField, type SelectFieldOption } from "@/components/primitives/select-field";
 import { ColorSwatchPicker } from "@/components/projects/color-swatch-picker";
 import { EmojiPicker } from "@/components/projects/emoji-picker";
+import { TimeField, DEFAULT_TIME, parseHHMM, toHHMM } from "@/components/selectors/time-field";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { cn } from "@/lib/utils";
 
 type FrequencyOption = "daily" | "times_per_week" | "specific_days";
@@ -115,6 +118,7 @@ export function HabitFormDialog({
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
   const pending = createHabit.isPending || updateHabit.isPending;
+  const { timeFormat } = useUserPreferences();
 
   const {
     register,
@@ -231,17 +235,34 @@ export function HabitFormDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor={timeId}>Horario (opcional)</Label>
-              <Input
-                id={timeId}
-                type="time"
-                className="h-11 text-base"
-                {...register("scheduled_time", {
-                  // Un `<input type="time">` vacío vale `""`, no `undefined` —
-                  // `scheduledTimeSchema` (`lib/validation/habits.ts`) solo
-                  // trata `undefined` como "sin horario"; una cadena vacía
-                  // cae en el `.regex()` y se rechaza como formato inválido.
-                  setValueAs: (value) => (value === "" ? undefined : value),
-                })}
+              <Controller
+                control={control}
+                name="scheduled_time"
+                render={({ field }) =>
+                  field.value ? (
+                    <div className="flex items-center gap-1.5">
+                      <TimeField
+                        id={timeId}
+                        value={parseHHMM(field.value)}
+                        onChange={(next) => field.onChange(toHHMM(next))}
+                        timeFormat={timeFormat}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Quitar horario"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" onClick={() => field.onChange(toHHMM(DEFAULT_TIME))}>
+                      Agregar horario
+                    </Button>
+                  )
+                }
               />
               {errors.scheduled_time ? (
                 <p role="alert" className="text-sm text-error">

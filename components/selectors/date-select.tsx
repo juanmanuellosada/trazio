@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { es } from "date-fns/locale";
 import { CalendarDays, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,7 +22,7 @@ import {
   durationTextToMinutes,
   type DurationUnit,
 } from "./duration-input";
-import { parseTimeInput } from "./parse-time-input";
+import { TimeField, DEFAULT_TIME } from "./time-field";
 
 export type DateSelectValue = {
   dueDate: string | null;
@@ -45,13 +43,6 @@ function extractTime(dueAt: string, timezone: string): { hour: number; minute: n
   const [hour, minute] = formatInTimeZone(dueAt, timezone, "HH:mm").split(":").map(Number);
   return { hour, minute };
 }
-
-function formatHourOption(hour: number, minute: number, timeFormat: UserPreferences["timeFormat"]): string {
-  return format(new Date(2000, 0, 1, hour, minute), timeFormat === 24 ? "HH:mm" : "h:mm aaaa", { locale: es });
-}
-
-const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => ({ hour: Math.floor(i / 2), minute: (i % 2) * 30 }));
-const DEFAULT_HOUR = { hour: 9, minute: 0 };
 
 /**
  * Selector de fecha de vencimiento (bloque 4.2-4.5), reutilizado en el
@@ -132,7 +123,7 @@ export function DateSelect({
 
   function toggleHasTime(next: boolean) {
     const day = selectedDay ?? todayInTimeZone(new Date(), preferences.timezone);
-    withDay(day, next ? (time ?? DEFAULT_HOUR) : null);
+    withDay(day, next ? (time ?? DEFAULT_TIME) : null);
   }
 
   function changeTime(hour: number, minute: number) {
@@ -152,48 +143,6 @@ export function DateSelect({
           { now: new Date(), timezone: preferences.timezone, dateFormat: preferences.dateFormat, timeFormat: preferences.timeFormat },
         )
       : null;
-
-  const timeKey = time ? `${time.hour}:${time.minute}` : `${DEFAULT_HOUR.hour}:${DEFAULT_HOUR.minute}`;
-  const hourItems = Object.fromEntries(
-    HOUR_OPTIONS.map(({ hour, minute }) => [`${hour}:${minute}`, formatHourOption(hour, minute, preferences.timeFormat)]),
-  );
-
-  // Hora escribible (bloque 5.2): además de elegirla de `hourItems`, se puede
-  // tipear directamente. `timeDraft` es un borrador local, independiente del
-  // valor guardado hasta que se confirma (Enter o blur) — así escribir no
-  // reformatea el texto en cada tecla. Se resincroniza con el valor guardado
-  // cada vez que cambia por otra vía (la lista, un acceso rápido, o el
-  // propio commit), comparando contra la última clave sincronizada en vez
-  // de un efecto — ajustar el estado durante el render evita el
-  // re-render en cascada de un `setState` dentro de `useEffect`.
-  const timeSyncKey = `${timeKey}:${preferences.timeFormat}`;
-  const [timeDraft, setTimeDraft] = useState(() => {
-    const t = time ?? DEFAULT_HOUR;
-    return formatHourOption(t.hour, t.minute, preferences.timeFormat);
-  });
-  const [timeError, setTimeError] = useState<string | null>(null);
-  const [syncedTimeKey, setSyncedTimeKey] = useState(timeSyncKey);
-
-  if (timeSyncKey !== syncedTimeKey) {
-    setSyncedTimeKey(timeSyncKey);
-    const t = time ?? DEFAULT_HOUR;
-    setTimeDraft(formatHourOption(t.hour, t.minute, preferences.timeFormat));
-    setTimeError(null);
-  }
-
-  function commitTypedTime() {
-    if (timeDraft.trim() === "") {
-      setTimeError(null);
-      return;
-    }
-    const parsed = parseTimeInput(timeDraft);
-    if (!parsed) {
-      setTimeError("No reconocimos esa hora. Probá con 13:47 o 1:47 pm.");
-      return;
-    }
-    setTimeError(null);
-    changeTime(parsed.hour, parsed.minute);
-  }
 
   // Duración escribible con unidad (bloque 5.3): `duration_minutes` sigue
   // siendo la única columna guardada — `durationDraft` es solo cómo se
@@ -245,7 +194,7 @@ export function DateSelect({
           ctx={ctx}
           selectedDate={selectedDay}
           onCommitText={applyParsed}
-          onSelectDate={(day) => withDay(day, hasTime ? (time ?? DEFAULT_HOUR) : null)}
+          onSelectDate={(day) => withDay(day, hasTime ? (time ?? DEFAULT_TIME) : null)}
         />
 
         <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
@@ -260,56 +209,12 @@ export function DateSelect({
           </label>
 
           {hasTime && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-1.5">
-                <label htmlFor="date-select-time-input" className="text-xs text-text-secondary">
-                  Hora
-                </label>
-                <Select
-                  items={hourItems}
-                  value={timeKey}
-                  onValueChange={(next) => {
-                    if (!next) return;
-                    const [hour, minute] = next.split(":").map(Number);
-                    changeTime(hour, minute);
-                  }}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    aria-label="Elegir hora de una lista"
-                    className="h-6 gap-1 border-none px-1.5 text-xs text-text-secondary hover:bg-surface"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    {HOUR_OPTIONS.map(({ hour, minute }) => (
-                      <SelectItem key={`${hour}:${minute}`} value={`${hour}:${minute}`}>
-                        {formatHourOption(hour, minute, preferences.timeFormat)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Input
-                id="date-select-time-input"
-                value={timeDraft}
-                onChange={(event) => setTimeDraft(event.target.value)}
-                onBlur={commitTypedTime}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    commitTypedTime();
-                  }
-                }}
-                placeholder={preferences.timeFormat === 24 ? "Ej: 13:47" : "Ej: 1:47 p. m."}
-                className="h-8 text-sm"
-              />
-              {timeError && (
-                <p role="alert" className="text-xs text-error">
-                  {timeError}
-                </p>
-              )}
-            </div>
+            <TimeField
+              id="date-select-time-input"
+              value={time ?? DEFAULT_TIME}
+              onChange={(next) => changeTime(next.hour, next.minute)}
+              timeFormat={preferences.timeFormat}
+            />
           )}
 
           <div className="space-y-1.5">

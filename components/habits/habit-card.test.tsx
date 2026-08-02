@@ -28,9 +28,12 @@ vi.mock("@/lib/habits/mutations", () => ({
 
 const setOverride = vi.fn();
 const removeOverride = vi.fn();
+// Controlable por test (`sin-controles-nativos`): la reprogramación se
+// comporta distinto según el día ya tenga un horario elegido o no.
+let overrideTimeMock: string | null = null;
 
 vi.mock("@/lib/habits/schedule-overrides", () => ({
-  useHabitScheduleOverride: () => ({ data: null, isLoading: false }),
+  useHabitScheduleOverride: () => ({ data: overrideTimeMock, isLoading: false }),
   useSetHabitScheduleOverride: () => ({ mutate: setOverride, isPending: false }),
   useRemoveHabitScheduleOverride: () => ({ mutate: removeOverride, isPending: false }),
 }));
@@ -82,6 +85,7 @@ function renderCard(props: Partial<React.ComponentProps<typeof HabitCard>> = {})
 describe("HabitCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    overrideTimeMock = null;
   });
 
   it("no muestra casillero cuando el hábito no toca hoy (spec 'El casillero no aparece si el hábito no toca hoy')", () => {
@@ -148,5 +152,40 @@ describe("HabitCard", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
 
     expect(screen.queryByRole("checkbox", { name: /seleccionar/i })).not.toBeInTheDocument();
+  });
+
+  it("reprogramar sin horario existente: Guardar queda deshabilitado hasta elegir una hora (sin-controles-nativos)", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar el horario de Meditar" }));
+
+    expect(screen.queryByLabelText("Horario")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Agregar horario" }));
+
+    expect(screen.getByLabelText("Horario")).toHaveValue("09:00");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(setOverride).toHaveBeenCalledWith(
+      expect.objectContaining({ habitId: "habit-1", date: TODAY, scheduledTime: "09:00" }),
+      expect.anything(),
+    );
+  });
+
+  it("reprogramar con un horario ya elegido lo muestra precargado y deja guardar sin retipear", async () => {
+    overrideTimeMock = "10:30";
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar el horario de Meditar" }));
+
+    expect(screen.getByLabelText("Horario")).toHaveValue("10:30");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(setOverride).toHaveBeenCalledWith(expect.objectContaining({ scheduledTime: "10:30" }), expect.anything());
   });
 });
