@@ -13,8 +13,8 @@
  */
 
 const FREQUENCY_HZ = 520; // Registro medio, apagado — nunca agudo ni brillante.
-const DURATION_SECONDS = 0.09; // Bien por debajo de 200 ms.
-const PEAK_GAIN = 0.18; // Volumen del pico, justo antes de la caída exponencial.
+const DURATION_SECONDS = 0.17; // Con cuerpo pero lejos de los ~250 ms donde empieza a sonar a campanita.
+const PEAK_GAIN = 0.15; // Bajado desde 0.18: a igual pico, más duración se escucha más fuerte.
 
 type AudioContextCtor = typeof AudioContext;
 
