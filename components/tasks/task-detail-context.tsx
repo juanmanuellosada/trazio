@@ -4,12 +4,13 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 /**
  * Campo a enfocar apenas se abre el detalle (bloque 7.8, capacidad
- * `atajos-de-teclado`): el menú contextual de una tarea (`T`, `Y`) abre el
- * detalle y de una vez su selector de fecha o de prioridad, en vez de solo
- * abrir el detalle a secas. `TaskDetailContent` lo consume una sola vez al
- * montar y lo limpia (`consumeFocusField`).
+ * `atajos-de-teclado`; `deadline`/`reminders` sumados por
+ * `menu-contextual-de-tarea`, D-B: esos dos ítems del menú de una tarea
+ * delegan en su selector abriendo el detalle, a diferencia de fecha y
+ * prioridad, que el menú resuelve sin abrir nada). `TaskDetailContent` lo
+ * consume una sola vez al montar y lo limpia (`consumeFocusField`).
  */
-export type TaskDetailFocusField = "date" | "priority";
+export type TaskDetailFocusField = "date" | "priority" | "deadline" | "reminders";
 
 type TaskDetailContextValue = {
   openTaskId: string | null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeIndent, computeOutdent, positionAfterOriginal, siblingsOfTask } from "./tree";
+import { computeIndent, computeOutdent, positionAfterOriginal, positionBeforeOriginal, siblingsOfTask } from "./tree";
 import type { TaskRow } from "./use-tasks";
 
 function task(overrides: Partial<TaskRow> & { id: string }): TaskRow {
@@ -93,5 +93,27 @@ describe("positionAfterOriginal (duplicar, F2 del design)", () => {
   it("cuando la original es la última de su contexto, la copia queda después de todas", () => {
     const position = positionAfterOriginal(tasks, C);
     expect(position).toBeGreaterThan(C.position);
+  });
+});
+
+describe("positionBeforeOriginal (agregar tarea encima, menu-contextual-de-tarea)", () => {
+  it("ubica la nueva tarea justo antes de la referencia entre sus hermanos", () => {
+    const position = positionBeforeOriginal(tasks, B);
+    expect(position).toBeGreaterThan(A.position);
+    expect(position).toBeLessThan(B.position);
+  });
+
+  it("cuando la referencia es la primera de su contexto, la nueva queda antes de todas", () => {
+    const position = positionBeforeOriginal(tasks, A);
+    expect(position).toBeGreaterThan(0);
+    expect(position).toBeLessThan(A.position);
+  });
+
+  it("funciona igual entre subtareas (misma agrupación por parent_id)", () => {
+    const B2 = task({ id: "B2", parent_id: "B", position: 2000 });
+    const withB2 = [...tasks, B2];
+    const position = positionBeforeOriginal(withB2, B2);
+    expect(position).toBeGreaterThan(B1.position);
+    expect(position).toBeLessThan(B2.position);
   });
 });

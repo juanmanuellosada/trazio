@@ -105,3 +105,24 @@ export function positionAfterOriginal(tasks: TaskRow[], original: TaskRow): numb
   // La original siempre está en su propia lista de hermanos (no se excluyó), así que index >= 0.
   return positionForSwapInsertAfter(siblings, index);
 }
+
+/**
+ * Posición para insertar una tarea nueva inmediatamente antes de `reference`,
+ * en su mismo contexto de hermanos ("Agregar tarea encima" del menú de
+ * `menu-contextual-de-tarea`, D-D). Simétrica de `positionAfterOriginal`:
+ * `positionForIndex` ya resuelve "antes del primero" con la misma convención
+ * que usa `positionForSwap` (mitad de la posición del primero), así que no
+ * hace falta una variante propia de `positionForSwapInsertAfter`.
+ */
+export function positionBeforeOriginal(tasks: TaskRow[], reference: TaskRow): number {
+  const siblings = siblingsOfTask(tasks, {
+    projectId: reference.project_id,
+    sectionId: reference.section_id,
+    parentId: reference.parent_id,
+  });
+  const index = siblings.findIndex((t) => t.id === reference.id);
+  return positionForIndex(
+    siblings.map((t) => t.position),
+    index,
+  );
+}

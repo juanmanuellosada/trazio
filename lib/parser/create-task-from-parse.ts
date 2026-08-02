@@ -50,6 +50,14 @@ export type CreateTaskFromParseVariables = {
   /** Resultado del parser ya filtrado por los matches que el usuario no desactivó. */
   result: ParseResult;
   /**
+   * Posición explícita (bloque `menu-contextual-de-tarea`, "Agregar tarea
+   * encima/debajo", D-D): quien llama ya la calculó con las primitivas de
+   * `lib/tasks/tree.ts` (`positionBeforeOriginal`/`positionAfterOriginal`).
+   * Sin especificar, se mantiene el comportamiento de siempre: última
+   * hermana del contexto (`nextSiblingPositionInContext`).
+   */
+  position?: number;
+  /**
    * Recordatorios elegidos en `ReminderPicker` en modo borrador (bloque
    * `alta-de-tareas-en-contexto`, D-E): todavía no existe ningún `taskId`
    * contra el cual persistirlos, así que viajan acá y se insertan en el
@@ -84,6 +92,7 @@ export function useCreateTaskFromParse() {
       deadline,
       result,
       reminders,
+      position: explicitPosition,
     }: CreateTaskFromParseVariables) => {
       const {
         data: { session },
@@ -106,7 +115,7 @@ export function useCreateTaskFromParse() {
       }
 
       const list = queryClient.getQueryData<TaskRow[]>(tasksQueryKey(projectId)) ?? [];
-      const position = nextSiblingPositionInContext(list, { projectId, sectionId, parentId });
+      const position = explicitPosition ?? nextSiblingPositionInContext(list, { projectId, sectionId, parentId });
 
       const { data: task, error } = await supabase
         .from("tasks")

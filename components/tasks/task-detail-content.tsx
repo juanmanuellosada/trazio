@@ -167,11 +167,14 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   // Solo el padre directo: no se resuelve la cadena de ancestros.
   const { data: parentTask } = useTask(task.parent_id);
 
-  // El menú contextual de una tarea (`T`, `Y` — bloque 7.8) abre el detalle
-  // y de una vez su selector de fecha o de prioridad, en vez de solo abrir
-  // el detalle a secas: se consume una sola vez al montar, con la tarea ya
-  // resuelta (el `key={task.id}` de quien monta este formulario asegura que
-  // esto corre de nuevo si se abre otra tarea).
+  // El menú contextual de una tarea (bloque 7.8; `menu-contextual-de-tarea`
+  // D-B para fecha límite y recordatorios) abre el detalle y de una vez el
+  // selector correspondiente, en vez de solo abrir el detalle a secas: se
+  // consume una sola vez al montar, con la tarea ya resuelta (el
+  // `key={task.id}` de quien monta este formulario asegura que esto corre de
+  // nuevo si se abre otra tarea). `T`/`Y` ya no pasan por acá (D-C: resuelven
+  // fecha y prioridad dentro del propio menú) — lo que queda usando esto es
+  // "Más fechas…" (fecha) y "Fecha límite"/"Recordatorios" del menú.
   //
   // Dos cuidados acá, los dos confirmados reproduciendo el bug de `Y` en un
   // test antes de tocar nada:
@@ -195,6 +198,8 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
     const frame = requestAnimationFrame(() => {
       if (focusField === "date") clickFirstButton(dateFieldRef.current);
       if (focusField === "priority") clickFirstButton(priorityFieldRef.current);
+      if (focusField === "deadline") clickFirstButton(deadlineFieldRef.current);
+      if (focusField === "reminders") clickFirstButton(remindersFieldRef.current);
     });
     return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -19,6 +19,14 @@ export type AppContextMenuEntry =
       label: string;
       icon?: ReactNode;
       items: AppContextMenuEntry[];
+      /**
+       * Apertura controlada del submenú desde afuera (`menu-contextual-de-tarea`,
+       * D-C): `T`/`Y` abren la fila de fecha/prioridad del menú de una tarea sin
+       * pasar por el hover o la flecha derecha. Sin especificar, el submenú
+       * maneja su propio estado como siempre.
+       */
+      open?: boolean;
+      onOpenChange?: (open: boolean) => void;
     }
   | {
       type?: "item";
@@ -27,6 +35,8 @@ export type AppContextMenuEntry =
       icon?: ReactNode;
       destructive?: boolean;
       disabled?: boolean;
+      /** Contenido alineado al final de la fila (`menu-contextual-de-tarea`): el indicador de atajo de teclado o una marca de "valor actual" (ej. la prioridad vigente). */
+      trailing?: ReactNode;
     };
 
 function renderEntries(items: AppContextMenuEntry[]) {
@@ -34,7 +44,7 @@ function renderEntries(items: AppContextMenuEntry[]) {
     if (item.type === "separator") return <ContextMenuSeparator key={index} />;
     if (item.type === "submenu") {
       return (
-        <ContextMenuSub key={index}>
+        <ContextMenuSub key={index} open={item.open} onOpenChange={item.onOpenChange}>
           <ContextMenuSubTrigger>
             {item.icon}
             {item.label}
@@ -52,6 +62,7 @@ function renderEntries(items: AppContextMenuEntry[]) {
       >
         {item.icon}
         {item.label}
+        {item.trailing}
       </ContextMenuItem>
     );
   });
@@ -74,12 +85,27 @@ function renderEntries(items: AppContextMenuEntry[]) {
  * `type: "submenu"` de `AppContextMenuEntry`, agregada en este bloque sobre
  * `ContextMenuSub`/`ContextMenuSubTrigger`/`ContextMenuSubContent` de
  * `ui/context-menu.tsx` (mismo manejo de teclado y foco que el resto, nada
- * reimplementado acá). Cualquier superficie futura con acciones por clic
- * derecho puede sumarse como segundo consumidor.
+ * reimplementado acá).
+ *
+ * Segundo consumidor: el menú de acciones de una tarea
+ * (`menu-contextual-de-tarea`, `components/tasks/task-row.tsx`), que además
+ * lo abre desde el botón de tres puntitos — mismas `items`, sin una segunda
+ * lista que mantener por separado (D-A). `onOpenChange` es lo único que ese
+ * consumidor necesita del root: saber cuándo el menú está abierto para
+ * habilitar sus atajos de teclado propios.
  */
-export function AppContextMenu({ trigger, items }: { trigger: ReactNode; items: AppContextMenuEntry[] }) {
+export function AppContextMenu({
+  trigger,
+  items,
+  onOpenChange,
+}: {
+  trigger: ReactNode;
+  items: AppContextMenuEntry[];
+  /** Consumida por `menu-contextual-de-tarea`: saber si el menú está abierto, sin importar por qué entrada. */
+  onOpenChange?: (open: boolean) => void;
+}) {
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={onOpenChange}>
       <ContextMenuTrigger>{trigger}</ContextMenuTrigger>
       <ContextMenuContent>{renderEntries(items)}</ContextMenuContent>
     </ContextMenu>

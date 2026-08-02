@@ -145,6 +145,8 @@ export function TaskQuickAddRow({
   defaultDueDate,
   defaultDueAt,
   defaultDurationMinutes,
+  position,
+  autoOpen,
   variant = "compact",
   onCancel,
 }: {
@@ -159,6 +161,15 @@ export function TaskQuickAddRow({
   /** Duración en minutos que acompaña a `defaultDueAt` (D-F). Sin efecto sin `defaultDueAt`. */
   defaultDurationMinutes?: number;
   /**
+   * Posición explícita entre hermanos (bloque `menu-contextual-de-tarea`,
+   * "Agregar tarea encima/debajo"): quien monta el composer ya la calculó con
+   * `lib/tasks/tree.ts`. Sin especificar, la tarea nueva queda como última
+   * hermana del contexto, el comportamiento de siempre.
+   */
+  position?: number;
+  /** Arranca desplegado sin el paso intermedio del botón "Agregar tarea" (bloque `menu-contextual-de-tarea`): la superficie que lo monta ya declaró la intención (ej. "Agregar tarea encima" del menú), así que no hace falta un clic más. Sin efecto en `variant="full"`, que ya arranca desplegado. */
+  autoOpen?: boolean;
+  /**
    * `compact` (default): tratamiento incrustado en una lista, una sección,
    * una subtarea o el calendario — la tarjeta con borde de siempre, siempre
    * desplegada (D-C). `full`: el modal de los dos diálogos globales (botón
@@ -170,7 +181,7 @@ export function TaskQuickAddRow({
   /** Solo lo usa `variant="full"`: cierra el diálogo que lo contiene en vez de solo colapsar el composer, porque acá no hay a qué colapsar (bloque 7.2). */
   onCancel?: () => void;
 }) {
-  const [adding, setAdding] = useState(variant === "full");
+  const [adding, setAdding] = useState(variant === "full" || autoOpen === true);
   // Solo importa en `full` (D-C): el modal global arranca mostrando título y
   // destino nada más; el resto de los campos aparece recién al desplegar.
   // `compact` no usa este estado — siempre muestra todo apenas se abre, ya
@@ -390,6 +401,7 @@ export function TaskQuickAddRow({
         deadline,
         result: { ...final, labels, dueDate: date.dueDate, dueAt: date.dueAt, durationMinutes: date.durationMinutes, priority },
         reminders: remindersOverride,
+        position,
       },
       {
         onSuccess: () => {
