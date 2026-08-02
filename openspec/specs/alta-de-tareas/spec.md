@@ -70,7 +70,13 @@ título, un campo de descripción, y accesos para asignar fecha, prioridad,
 fecha límite, **etiquetas, recordatorios** y **proyecto y sección de destino**.
 
 El destino SHALL mostrarse en las dos superficies, como un control que indica a
-dónde va a quedar la tarea y permite cambiarlo. Los controles de fecha, fecha
+dónde va a quedar la tarea y permite cambiarlo, **salvo cuando el alta se abre con una
+tarea padre**: una subtarea hereda el proyecto de su padre y no puede estar en otro, así
+que ahí el control de destino NUNCA SHALL mostrarse. La excepción rige por tener padre, no
+por tratamiento: dentro de una lista o de una sección, sin padre, el destino se muestra
+igual.
+
+Los controles de fecha, fecha
 límite y prioridad SHALL ser los selectores definidos por la capacidad
 `selectores-de-atributos` en las dos superficies; este requisito no redefine su
 comportamiento interno, solo exige que el alta los use. Los de etiquetas y
@@ -90,6 +96,19 @@ recordatorios SHALL ser los mismos que usa el detalle de una tarea.
 - **THEN** SHALL mostrarse a qué proyecto y, si corresponde, a qué sección va a
   quedar la tarea
 - **AND** ese control SHALL permitir cambiarlo sin salir del alta
+
+#### Scenario: El alta de una subtarea no ofrece destino
+
+- **WHEN** se abre el componente de alta para crear una subtarea, desde el menú de una
+  fila o desde el detalle de una tarea
+- **THEN** NUNCA SHALL mostrarse el control de destino
+- **AND** la subtarea SHALL quedar en el mismo proyecto y la misma sección que su padre
+
+#### Scenario: La excepción no alcanza al alta sin padre en una sección
+
+- **WHEN** se abre el componente de alta dentro de una sección de un proyecto, sin tarea
+  padre
+- **THEN** el destino SHALL mostrarse igual que siempre
 
 ### Requirement: El alta sigue entendiendo lenguaje natural en el título
 

@@ -27,9 +27,18 @@ dispositivo.
 Una tarea SHALL poder tener varios recordatorios. Cada recordatorio SHALL
 configurarse como un momento puntual (fecha y hora concretas) o como un
 momento relativo a la tarea: a la hora de la tarea, 10, 30 o 45 minutos
-antes, 1, 2 o 3 horas antes, o 1, 2 o 3 días antes, o una semana antes. Un
-recordatorio relativo MUST exigir que la tarea tenga fecha y hora (`due_at`);
-NUNCA SHALL poder crearse un recordatorio relativo sobre una tarea sin hora.
+antes, 1, 2 o 3 horas antes, o 1, 2 o 3 días antes, o una semana antes.
+
+Las opciones relativas ofrecidas SHALL depender de lo que la tarea tenga:
+
+- Con fecha y hora, SHALL ofrecerse todas, incluida "a la hora de la tarea".
+- Con solo fecha, SHALL ofrecerse las de desfase, calculadas desde la **hora de
+  referencia** configurada por el usuario. "A la hora de la tarea" NUNCA SHALL ofrecerse
+  en este caso: la tarea no tiene hora, y anunciarla como tal sería falso.
+- Sin ninguna fecha, NUNCA SHALL ofrecerse una opción relativa; solo puntuales.
+
+El instante de un recordatorio relativo sobre una tarea con solo fecha SHALL resolverse
+combinando esa fecha, la hora de referencia y la zona horaria del usuario.
 
 #### Scenario: Una tarea puede tener varios recordatorios
 
@@ -42,11 +51,24 @@ NUNCA SHALL poder crearse un recordatorio relativo sobre una tarea sin hora.
 - **WHEN** se agrega a una tarea un recordatorio con fecha y hora concretas
 - **THEN** el recordatorio queda creado con ese `remind_at` exacto
 
-#### Scenario: Un recordatorio relativo exige que la tarea tenga fecha y hora
+#### Scenario: Un relativo sobre una tarea con solo fecha usa la hora de referencia
 
-- **WHEN** se intenta agregar un recordatorio relativo (por ejemplo "30
-  minutos antes") a una tarea que no tiene `due_at`
-- **THEN** la operación se rechaza y no se crea ningún recordatorio
+- **WHEN** se agrega "un día antes" a una tarea que vence un día determinado, sin hora
+- **THEN** el recordatorio SHALL quedar agendado un día antes de ese día, a la hora de
+  referencia del usuario, resuelta en su zona horaria
+
+#### Scenario: "A la hora de la tarea" no se ofrece sin hora
+
+- **WHEN** se abre el selector de recordatorios sobre una tarea que tiene fecha pero no
+  hora
+- **THEN** SHALL ofrecerse las opciones de desfase
+- **AND** NUNCA SHALL ofrecerse "a la hora de la tarea"
+
+#### Scenario: Una tarea sin ninguna fecha solo admite puntuales
+
+- **WHEN** se abre el selector de recordatorios sobre una tarea sin fecha
+- **THEN** NUNCA SHALL ofrecerse ninguna opción relativa
+- **AND** SHALL poder agregarse un recordatorio puntual
 
 ### Requirement: Entrega de la notificación push
 
@@ -85,23 +107,45 @@ recordatorios a enviar, antes de intentar el envío.
 
 ### Requirement: Recálculo de recordatorios relativos ante cambios de fecha u hora
 
-Los recordatorios relativos SHALL recalcularse cuando cambia la fecha o la
-hora de vencimiento de la tarea, siempre que aún no hayan sido entregados
-(`delivered_at` nulo). Un recordatorio ya entregado NUNCA SHALL
-recalcularse.
+Los recordatorios relativos aún no entregados SHALL recalcularse cuando cambia la hora de
+vencimiento de su tarea. SHALL recalcularse también cuando cambia el **día** de
+vencimiento de una tarea que no tiene hora, contra la hora de referencia.
 
-#### Scenario: Cambiar la hora de la tarea recalcula el recordatorio relativo pendiente
+Quitarle la hora a una tarea que conserva su día NUNCA SHALL borrar sus recordatorios
+relativos: SHALL recalcularlos contra la hora de referencia. Solo cuando la tarea queda
+**sin ninguna fecha** SHALL eliminarse sus recordatorios relativos pendientes, porque
+dejan de tener referencia.
 
-- **WHEN** se cambia la hora de vencimiento de una tarea que tiene un
-  recordatorio relativo de "1 hora antes" aún no entregado
-- **THEN** el `remind_at` de ese recordatorio se recalcula en función de la
-  nueva hora
+Los recordatorios ya entregados NUNCA SHALL recalcularse, y los puntuales NUNCA SHALL
+verse afectados por cambios en la tarea.
 
-#### Scenario: Un recordatorio ya entregado no se recalcula
+#### Scenario: Mover la hora de la tarea mueve sus relativos
 
-- **WHEN** se cambia la fecha de vencimiento de una tarea que tiene un
-  recordatorio relativo ya entregado (`delivered_at` con valor)
-- **THEN** ese recordatorio no se modifica
+- **WHEN** una tarea con hora y un recordatorio "30 minutos antes" cambia de hora
+- **THEN** ese recordatorio SHALL quedar 30 minutos antes de la hora nueva
+
+#### Scenario: Mover el día de una tarea sin hora mueve sus relativos
+
+- **WHEN** una tarea con solo fecha y un recordatorio "un día antes" cambia de día
+- **THEN** ese recordatorio SHALL quedar un día antes del día nuevo, a la hora de
+  referencia
+
+#### Scenario: Quitarle la hora a una tarea no borra sus recordatorios
+
+- **WHEN** una tarea con hora y recordatorios relativos pendientes pasa a tener solo
+  fecha
+- **THEN** esos recordatorios NUNCA SHALL borrarse
+- **AND** SHALL recalcularse contra la hora de referencia
+
+#### Scenario: Quitarle toda la fecha sí los elimina
+
+- **WHEN** una tarea con recordatorios relativos pendientes queda sin ninguna fecha
+- **THEN** esos recordatorios SHALL eliminarse, porque quedan sin referencia
+
+#### Scenario: Los puntuales y los ya entregados no se tocan
+
+- **WHEN** una tarea con un recordatorio puntual y otro ya entregado cambia de fecha
+- **THEN** ninguno de los dos SHALL modificarse
 
 ### Requirement: Suscripciones inválidas se eliminan
 
