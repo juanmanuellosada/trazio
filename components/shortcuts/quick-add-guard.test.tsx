@@ -30,6 +30,7 @@ const TEST_PREFERENCES = {
   dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
+  defaultProjectId: null,
 };
 
 function chain(result: unknown) {
@@ -68,7 +69,7 @@ function renderHarness(onUndo: () => void) {
         <UndoProvider>
           <ShortcutProvider inboxProjectId="p1">
             <UndoButton onUndo={onUndo} />
-            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultExpanded variant="full" />
+            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} variant="full" />
           </ShortcutProvider>
         </UndoProvider>
       </PreferencesProvider>

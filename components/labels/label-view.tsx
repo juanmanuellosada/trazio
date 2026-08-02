@@ -27,6 +27,7 @@ import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskRow } from "@/components/tasks/task-row";
 import { cn } from "@/lib/utils";
 import { useLabels, type Label } from "@/lib/labels/use-labels";
+import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { LabelFormDialog } from "./label-form-dialog";
 import { DeleteLabelDialog } from "./delete-label-dialog";
 
@@ -78,6 +79,12 @@ export function LabelView({
   const updateLabel = useUpdateLabel();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): una etiqueta
+  // agrupa tareas de proyectos distintos, sin un destino propio — publica
+  // "sin contexto" para que el modal global caiga al proyecto por defecto de
+  // las preferencias, o a Bandeja de entrada si tampoco hay uno.
+  usePublishComposeContext({ projectId: null, sectionId: null, defaultDueDate: null });
 
   useEffect(() => {
     if (!label) router.push("/etiquetas");

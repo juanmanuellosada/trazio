@@ -8,8 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OVERLAY_MODAL } from "@/components/primitives/overlay";
-import { useReminders } from "@/lib/reminders/use-reminders";
-import { useAddReminder, useRemoveReminder } from "@/lib/reminders/mutations";
+import { useReminders, type DraftReminder, type ReminderRow } from "@/lib/reminders/use-reminders";
+import { useAddReminder, useRemoveReminder, computeRemindAt, type NewReminderInput } from "@/lib/reminders/mutations";
 import { RELATIVE_REMINDER_OPTIONS, relativeOffsetLabel } from "@/lib/reminders/relative-options";
 
 function formatReminderMoment(iso: string): string {
@@ -23,25 +23,68 @@ function formatReminderMoment(iso: string): string {
  * opciones relativas quedan deshabilitadas sin `due_at` — requirement "un
  * recordatorio relativo exige que la tarea tenga fecha y hora" — en vez de
  * dejar que la mutación las rechace después de un click.
+ *
+ * Modo borrador (`drafts`/`onChange`, sin `taskId`): el alta de una tarea
+ * (bloque `alta-de-tareas-en-contexto`, D-E) lo usa antes de que la tarea
+ * exista — no hay ningún `taskId` contra el cual mutar todavía, y crear uno
+ * solo para poder agregar un recordatorio violaría "cancelar no crea nada".
+ * `computeRemindAt` (la misma función pura que usa `useAddReminder`) resuelve
+ * `remind_at`/`offset_minutes` acá también, para no duplicar esa cuenta; el
+ * alta persiste los recordatorios elegidos en el mismo viaje que crea la
+ * tarea (`useCreateTaskFromParse`).
  */
-export function ReminderPicker({ taskId, dueAt }: { taskId: string; dueAt: string | null }) {
+export function ReminderPicker({
+  taskId,
+  dueAt,
+  drafts,
+  onChange,
+}: {
+  taskId?: string;
+  dueAt: string | null;
+  drafts?: DraftReminder[];
+  onChange?: (drafts: DraftReminder[]) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"relativo" | "puntual">(dueAt ? "relativo" : "puntual");
   const [puntualValue, setPuntualValue] = useState("");
-  const { data: reminders } = useReminders(taskId);
-  const addReminder = useAddReminder(taskId);
-  const removeReminder = useRemoveReminder(taskId);
+  const { data: taskReminders } = useReminders(taskId ?? "");
+  const addReminder = useAddReminder(taskId ?? "");
+  const removeReminder = useRemoveReminder(taskId ?? "");
 
-  const pendingCount = reminders?.filter((reminder) => !reminder.delivered_at).length ?? 0;
+  const reminders: (ReminderRow | DraftReminder)[] = taskId ? (taskReminders ?? []) : (drafts ?? []);
+  const pendingCount = reminders.filter((reminder) => !reminder.delivered_at).length;
+
+  function addDraft(input: NewReminderInput) {
+    const { remind_at, offset_minutes } = computeRemindAt(input);
+    onChange?.([...(drafts ?? []), { id: crypto.randomUUID(), remind_at, offset_minutes, delivered_at: null }]);
+  }
 
   function addPuntual() {
     if (!puntualValue) return;
-    addReminder.mutate({ kind: "puntual", remindAt: new Date(puntualValue).toISOString() });
+    const input: NewReminderInput = { kind: "puntual", remindAt: new Date(puntualValue).toISOString() };
+    if (taskId) {
+      addReminder.mutate(input);
+    } else {
+      addDraft(input);
+    }
     setPuntualValue("");
   }
 
   function addRelative(offsetMinutes: number) {
-    addReminder.mutate({ kind: "relativo", offsetMinutes, dueAt });
+    const input: NewReminderInput = { kind: "relativo", offsetMinutes, dueAt };
+    if (taskId) {
+      addReminder.mutate(input);
+    } else {
+      addDraft(input);
+    }
+  }
+
+  function removeOne(id: string) {
+    if (taskId) {
+      removeReminder.mutate(id);
+    } else {
+      onChange?.((drafts ?? []).filter((reminder) => reminder.id !== id));
+    }
   }
 
   return (
@@ -54,7 +97,7 @@ export function ReminderPicker({ taskId, dueAt }: { taskId: string; dueAt: strin
         {pendingCount > 0 ? `Recordatorios (${pendingCount})` : "Agregar recordatorio"}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80">
-        {reminders && reminders.length > 0 && (
+        {reminders.length > 0 && (
           <ul className="space-y-1">
             {reminders.map((reminder) => (
               <li
@@ -70,7 +113,7 @@ export function ReminderPicker({ taskId, dueAt }: { taskId: string; dueAt: strin
                   variant="ghost"
                   size="icon-xs"
                   aria-label="Quitar recordatorio"
-                  onClick={() => removeReminder.mutate(reminder.id)}
+                  onClick={() => removeOne(reminder.id)}
                 >
                   <X className="size-3.5" />
                 </Button>

@@ -11,6 +11,15 @@ export type ReminderRow = {
   delivered_at: string | null;
 };
 
+/**
+ * Recordatorio todavía no persistido (bloque `alta-de-tareas-en-contexto`,
+ * D-E): lo arma `ReminderPicker` en modo borrador, antes de que la tarea
+ * exista. Mismos campos que `ReminderRow` salvo `task_id` (todavía no hay
+ * ninguna) — `delivered_at` siempre `null`, para que las dos formas rendericen
+ * con el mismo código.
+ */
+export type DraftReminder = { id: string; remind_at: string; offset_minutes: number | null; delivered_at: null };
+
 export function remindersQueryKey(taskId: string) {
   return ["reminders", "task", taskId] as const;
 }
@@ -27,6 +36,16 @@ export async function fetchReminders(taskId: string): Promise<ReminderRow[]> {
   return data ?? [];
 }
 
+/**
+ * `enabled` cierra la consulta cuando todavía no hay `taskId` real (modo
+ * borrador de `ReminderPicker` en el alta, D-E) — sin esto, pedir
+ * recordatorios de una tarea que no existe fallaría contra la base en cada
+ * apertura del alta.
+ */
 export function useReminders(taskId: string) {
-  return useQuery({ queryKey: remindersQueryKey(taskId), queryFn: () => fetchReminders(taskId) });
+  return useQuery({
+    queryKey: remindersQueryKey(taskId),
+    queryFn: () => fetchReminders(taskId),
+    enabled: taskId !== "",
+  });
 }

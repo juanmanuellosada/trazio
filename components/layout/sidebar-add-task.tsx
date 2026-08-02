@@ -2,38 +2,28 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { AppDialog } from "@/components/primitives/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
+import { GlobalQuickAddDialog } from "@/components/shortcuts/global-quick-add-dialog";
 import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
 import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { cn } from "@/lib/utils";
 
 /**
  * Acceso directo para agregar una tarea desde el panel lateral (bloque
- * 10.2, ahora "el modal completo" del bloque 7): antes solo se podía crear
- * una tarea desde dentro de una vista, y es lo primero que busca alguien
- * que quiere anotar algo rápido. Abre `TaskQuickAddRow` (el mismo
- * componente de alta que ya usan Bandeja, Hoy, Proyecto y las secciones,
- * acá en `variant="full"`) dentro de un diálogo — sin una segunda
- * implementación acá. Se precarga con la Bandeja de entrada como destino,
- * igual que el resto de los accesos rápidos de alta.
- *
- * Se le pasa `defaultExpanded` para que el formulario aparezca ya
- * desplegado, con el foco en el título: abrir este diálogo ya es la acción
- * de "quiero agregar una tarea". `size="lg"` es la misma variante nombrada
- * que ya usa `AppDialog` para "formularios con más campos" — acá los cuatro
- * selectores en fila (fecha, fecha límite, prioridad, proyecto) la
- * necesitan para no amontonarse. `onCancel` cierra el diálogo: en `full` no
- * hay un botón colapsado al que volver, así que cancelar tiene que cerrarlo
- * de verdad.
+ * 10.2, ahora el modal global de `alta-de-tareas-en-contexto`): antes solo
+ * se podía crear una tarea desde dentro de una vista, y es lo primero que
+ * busca alguien que quiere anotar algo rápido. Monta `GlobalQuickAddDialog`
+ * —el mismo diálogo que abre el atajo `Q`, hasta hace poco copiado a mano
+ * acá y en `shortcut-provider.tsx`— en vez de una segunda implementación:
+ * los dos disparadores comparten un único componente que hereda el
+ * contexto de la vista actual y resuelve su propio destino (D-A/D-B).
  */
 export function SidebarAddTask({
   collapsed,
   inboxProjectId,
 }: {
   collapsed: boolean;
-  /** `null` solo si la Bandeja de entrada todavía no se resolvió entre `initialProjects`; no debería pasar en uso normal (D27: todo usuario tiene una). */
+  /** Último eslabón de la cadena de destino (D-B), no un destino fijo: solo se usa sin contexto de vista ni proyecto por defecto. `null` solo si la Bandeja de entrada todavía no se resolvió entre `initialProjects`; no debería pasar en uso normal (D27: todo usuario tiene una). */
   inboxProjectId: string | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -64,18 +54,7 @@ export function SidebarAddTask({
       ) : (
         trigger
       )}
-      {inboxProjectId && (
-        <AppDialog open={open} onOpenChange={setOpen} title="Nueva tarea" size="lg">
-          <TaskQuickAddRow
-            projectId={inboxProjectId}
-            sectionId={null}
-            parentId={null}
-            defaultExpanded
-            variant="full"
-            onCancel={() => setOpen(false)}
-          />
-        </AppDialog>
-      )}
+      <GlobalQuickAddDialog open={open} onOpenChange={setOpen} inboxProjectId={inboxProjectId} />
     </>
   );
 }

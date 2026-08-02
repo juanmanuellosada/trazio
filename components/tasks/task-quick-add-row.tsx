@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,16 +9,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect, type DateSelectValue } from "@/components/selectors/date-select";
 import { DeadlineSelect } from "@/components/selectors/deadline-select";
 import { PrioritySelect } from "@/components/selectors/priority-select";
+import { ReminderPicker } from "@/components/reminders/reminder-picker";
 import { applyDisabledMatches, matchKey } from "@/lib/parser/apply-disabled";
 import { useCreateTaskFromParse } from "@/lib/parser/create-task-from-parse";
 import { buildLabelMenuOptions, buildProjectMenuOptions, type ParserMenuOption } from "@/lib/parser/menu-options";
 import { findMenuTrigger, type MenuTrigger } from "@/lib/parser/menu-trigger";
 import { parse } from "@/lib/parser/parse";
-import type { ParseMatch, ParsedProject, ParseResult, ParserContext } from "@/lib/parser/types";
+import type { ParsedLabel, ParseMatch, ParsedProject, ParseResult, ParserContext } from "@/lib/parser/types";
 import { useParserContext } from "@/lib/parser/use-parser-context";
+import type { DraftReminder } from "@/lib/reminders/use-reminders";
 import type { Json } from "@/lib/supabase/database.types";
+import type { LabelChip } from "@/lib/tasks/use-tasks";
 import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { cn } from "@/lib/utils";
+import { LabelPicker } from "./label-picker";
 import { ParserMenu } from "./parser-menu";
 import { TaskDestinationSelect, type TaskDestination } from "./task-destination-select";
 
@@ -73,26 +77,41 @@ function descriptionDoc(text: string): Json | null {
  * Combina lo que reconoció el parser con lo que la persona haya elegido a
  * mano en cada selector (bloque 5.3): **el selector explícito siempre gana**
  * sobre el título — ver el comentario junto a `dateOverride` más abajo para
- * el motivo. Estas tres funciones son esa misma regla aplicada a fecha,
- * prioridad y destino; la fecha límite no la toca el parser, así que no
+ * el motivo. Estas funciones son esa misma regla aplicada a fecha, prioridad,
+ * etiquetas y destino; la fecha límite no la toca el parser, así que no
  * necesita una.
+ *
+ * `fallback` de `mergeDate` es el contexto de fecha/hora de quien montó el
+ * composer (bloque `alta-de-tareas-en-contexto`, D-F): antes solo podía ser
+ * un día (`defaultDueDate`, Hoy/Próximos); ahora también puede traer hora y
+ * duración (el rango arrastrado del calendario). El parser sigue ganándole
+ * al contexto — igual que ya le ganaba a `defaultDueDate` — y el selector
+ * explícito sigue ganándole a los dos.
  */
 function mergeDate(
   parsed: Pick<ParseResult, "dueDate" | "dueAt" | "durationMinutes"> | null,
   override: DateSelectValue | undefined,
-  fallbackDueDate: string | null,
+  fallback: DateSelectValue,
 ): DateSelectValue {
   if (override) return override;
-  if (!parsed) return { dueDate: fallbackDueDate, dueAt: null, durationMinutes: null };
-  return {
-    dueDate: parsed.dueAt ? null : (parsed.dueDate ?? fallbackDueDate),
-    dueAt: parsed.dueAt,
-    durationMinutes: parsed.durationMinutes,
-  };
+  if (!parsed) return fallback;
+  if (parsed.dueAt) {
+    return { dueDate: null, dueAt: parsed.dueAt, durationMinutes: parsed.durationMinutes ?? fallback.durationMinutes };
+  }
+  if (parsed.dueDate) {
+    return { dueDate: parsed.dueDate, dueAt: null, durationMinutes: parsed.durationMinutes ?? fallback.durationMinutes };
+  }
+  return fallback;
 }
 
 function mergePriority(parsedPriority: number | null | undefined, override: number | undefined): number {
   return override ?? parsedPriority ?? DEFAULT_TASK_PRIORITY;
+}
+
+/** Mismo criterio que el resto de los atributos (bloque `alta-de-tareas-en-contexto`, D-E): lo elegido en `LabelPicker` reemplaza por completo a lo que detectó el `@` del parser, en vez de sumarse. */
+function mergeLabels(parsedLabels: ParsedLabel[], override: LabelChip[] | undefined): ParsedLabel[] {
+  if (override) return override.map((label) => ({ id: label.id, name: label.name }));
+  return parsedLabels;
 }
 
 function mergeDestination(
@@ -107,15 +126,16 @@ function mergeDestination(
 }
 
 /**
- * Alta de una tarea o subtarea (bloque 5, ahora con las dos superficies del
- * bloque 7): título con reconocimiento de lenguaje natural en vivo
- * (resaltado + doble clic para desactivar, R7, sin tocar), más descripción y
- * accesos a fecha, prioridad, fecha límite y proyecto destino. Un solo
- * componente, montado igual en Bandeja de entrada, Hoy, Proyecto, dentro de
- * cada sección, al crear una subtarea y en el diálogo del panel lateral — lo
- * que cambia entre superficies es el contexto
- * (`projectId`/`sectionId`/`parentId`/`defaultDueDate`) y la variante
- * (`variant`), nunca la implementación (E2 del design).
+ * Alta de una tarea o subtarea (bloque 5, con las dos superficies del bloque
+ * 7 y el contexto heredado de `alta-de-tareas-en-contexto`): título con
+ * reconocimiento de lenguaje natural en vivo (resaltado + doble clic para
+ * desactivar, R7, sin tocar), destino, descripción y accesos a fecha,
+ * prioridad, fecha límite, etiquetas y recordatorios. Un solo componente,
+ * montado igual en Bandeja de entrada, Hoy, Proyecto, dentro de cada
+ * sección, al crear una subtarea, al arrastrar sobre el calendario y en los
+ * dos diálogos globales — lo que cambia entre superficies es el contexto
+ * (`projectId`/`sectionId`/`parentId`/`defaultDueDate`/`defaultDueAt`) y la
+ * variante (`variant`), nunca la implementación (E2 del design).
  */
 export function TaskQuickAddRow({
   projectId,
@@ -123,7 +143,8 @@ export function TaskQuickAddRow({
   parentId,
   indent,
   defaultDueDate,
-  defaultExpanded,
+  defaultDueAt,
+  defaultDurationMinutes,
   variant = "compact",
   onCancel,
 }: {
@@ -131,23 +152,32 @@ export function TaskQuickAddRow({
   sectionId: string | null;
   parentId: string | null;
   indent?: boolean;
-  /** Fecha (`yyyy-MM-dd`) precargada cuando el parser no reconoció ninguna (bloque 8.2: el alta rápida de Hoy). */
+  /** Fecha (`yyyy-MM-dd`) precargada cuando el parser no reconoció ninguna (bloque 8.2: el alta rápida de Hoy y Próximos). Excluyente con `defaultDueAt`. */
   defaultDueDate?: string;
-  /** Arranca ya desplegado en vez de mostrar primero el botón "Agregar tarea" (bloque 10.2: el diálogo del panel lateral no necesita ese clic extra, porque abrirlo ya es la acción de "quiero agregar una tarea"). Sin efecto sobre las demás superficies, que no la pasan y siguen arrancando colapsadas. */
-  defaultExpanded?: boolean;
+  /** Instante ISO precargado cuando el contexto trae hora, no solo día (D-F de `alta-de-tareas-en-contexto`: el rango arrastrado en el calendario). Excluyente con `defaultDueDate`. */
+  defaultDueAt?: string;
+  /** Duración en minutos que acompaña a `defaultDueAt` (D-F). Sin efecto sin `defaultDueAt`. */
+  defaultDurationMinutes?: number;
   /**
-   * `compact` (default): tratamiento incrustado en una lista, una sección o
-   * una subtarea — la tarjeta con borde de siempre, sin selector de proyecto
-   * ni de sección porque el contexto ya lo determina (E1/E2 del design,
-   * bloque 7.3). `full`: el modal completo del panel lateral — mismos
-   * campos más el selector de proyecto destino, sin la tarjeta propia
-   * porque ya vive dentro de un `AppDialog` (bloque 7.2).
+   * `compact` (default): tratamiento incrustado en una lista, una sección,
+   * una subtarea o el calendario — la tarjeta con borde de siempre, siempre
+   * desplegada (D-C). `full`: el modal de los dos diálogos globales (botón
+   * del panel lateral y atajo `Q`) — mismos campos, sin la tarjeta propia
+   * porque ya vive dentro de un `AppDialog`, y arranca plegado: solo título
+   * y destino hasta que se use el control de desplegar (D-C).
    */
   variant?: "compact" | "full";
   /** Solo lo usa `variant="full"`: cierra el diálogo que lo contiene en vez de solo colapsar el composer, porque acá no hay a qué colapsar (bloque 7.2). */
   onCancel?: () => void;
 }) {
-  const [adding, setAdding] = useState(defaultExpanded ?? false);
+  const [adding, setAdding] = useState(variant === "full");
+  // Solo importa en `full` (D-C): el modal global arranca mostrando título y
+  // destino nada más; el resto de los campos aparece recién al desplegar.
+  // `compact` no usa este estado — siempre muestra todo apenas se abre, ya
+  // desplegado, porque llegar ahí (clic en "Agregar tarea") ya declaró la
+  // intención.
+  const [fieldsExpanded, setFieldsExpanded] = useState(false);
+  const showAllFields = variant === "compact" || fieldsExpanded;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [disabledMatches, setDisabledMatches] = useState<Set<string>>(new Set());
@@ -173,6 +203,10 @@ export function TaskQuickAddRow({
   const [priorityOverride, setPriorityOverride] = useState<number | undefined>(undefined);
   const [deadlineOverride, setDeadlineOverride] = useState<string | null | undefined>(undefined);
   const [destinationOverride, setDestinationOverride] = useState<TaskDestination | undefined>(undefined);
+  /** Mismo criterio `undefined` = "no tocado todavía, sigue el `@` del parser" (D-E de `alta-de-tareas-en-contexto`). */
+  const [labelsOverride, setLabelsOverride] = useState<LabelChip[] | undefined>(undefined);
+  /** Recordatorios en borrador (D-E): sin equivalente en el parser, así que no hay nada que puedan pisar — arranca vacío, no `undefined`. */
+  const [remindersOverride, setRemindersOverride] = useState<DraftReminder[]>([]);
 
   /**
    * El menú de `#`/`@` (bloque 3, A3 del design): funcionalidad nueva que
@@ -290,7 +324,15 @@ export function TaskQuickAddRow({
     requestAnimationFrame(() => titleInputRef.current?.setSelectionRange(cursor, cursor));
   }
 
-  const previewDate = mergeDate(preview, dateOverride, defaultDueDate ?? null);
+  // Contexto de fecha/hora de quien montó el composer (D-F): un día solo
+  // (Hoy/Próximos) o, si vino del calendario, hora y duración también.
+  const dateFallback: DateSelectValue = {
+    dueDate: defaultDueDate ?? null,
+    dueAt: defaultDueAt ?? null,
+    durationMinutes: defaultDurationMinutes ?? null,
+  };
+
+  const previewDate = mergeDate(preview, dateOverride, dateFallback);
   const previewPriority = mergePriority(preview?.priority, priorityOverride);
   const previewDeadline = deadlineOverride !== undefined ? deadlineOverride : null; // el parser no reconoce fecha límite
   const previewDestination = mergeDestination(preview?.project, destinationOverride, projectId, sectionId);
@@ -304,6 +346,8 @@ export function TaskQuickAddRow({
     setPriorityOverride(undefined);
     setDeadlineOverride(undefined);
     setDestinationOverride(undefined);
+    setLabelsOverride(undefined);
+    setRemindersOverride([]);
     setMenuTrigger(null);
   }
 
@@ -330,10 +374,11 @@ export function TaskQuickAddRow({
     const final = applyDisabledMatches(trimmed, fresh, disabledMatches);
     const finalTitle = final.title || trimmed; // nunca crear con título vacío (bloque 9.20)
 
-    const date = mergeDate(final, dateOverride, defaultDueDate ?? null);
+    const date = mergeDate(final, dateOverride, dateFallback);
     const priority = mergePriority(final.priority, priorityOverride);
     const deadline = deadlineOverride !== undefined ? deadlineOverride : null;
     const destination = mergeDestination(final.project, destinationOverride, projectId, sectionId);
+    const labels = mergeLabels(final.labels, labelsOverride);
 
     createTask.mutate(
       {
@@ -343,7 +388,8 @@ export function TaskQuickAddRow({
         parentId,
         description: descriptionDoc(description),
         deadline,
-        result: { ...final, dueDate: date.dueDate, dueAt: date.dueAt, durationMinutes: date.durationMinutes, priority },
+        result: { ...final, labels, dueDate: date.dueDate, dueAt: date.dueAt, durationMinutes: date.durationMinutes, priority },
+        reminders: remindersOverride,
       },
       {
         onSuccess: () => {
@@ -383,10 +429,9 @@ export function TaskQuickAddRow({
             // borde y su fondo (bloque 7.2) — repetirlos acá sería un marco
             // doble.
             "space-y-4"
-          : // Sin `max-w-xl`: al no mostrar el selector de proyecto/sección,
-            // el compacto aprovecha el ancho disponible de la lista o
-            // sección donde está incrustado (bloque 7.3) en vez de quedar
-            // angosto a propósito.
+          : // Sin `max-w-xl`: el compacto aprovecha el ancho disponible de la
+            // lista o sección donde está incrustado (bloque 7.3) en vez de
+            // quedar angosto a propósito.
             cn("space-y-2 rounded-lg border border-border bg-surface p-2.5", indent && "ml-6")
       }
       onKeyDown={(event) => {
@@ -487,43 +532,69 @@ export function TaskQuickAddRow({
         )}
       </div>
 
-      <Textarea
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-        placeholder="Descripción (opcional)"
-        aria-label={parentId ? "Descripción de la nueva subtarea" : "Descripción de la nueva tarea"}
-        rows={2}
-        className="min-h-0 resize-none text-sm"
-      />
-
       {/*
-        Lugar reservado para recordatorios y etiquetas (bloque 5.6): fase 2.
-        Ningún control acá todavía, ni siquiera deshabilitado — sumarlos más
-        adelante es agregar un chip a esta misma fila, no rehacer el
-        composer.
+        Destino: siempre visible en las dos superficies
+        (`alta-de-tareas-en-contexto`, D-D) y nunca detrás del plegado de
+        `full` — el requirement "el destino se ve antes de confirmar" exige
+        que esté ahí incluso plegado. Revierte la versión anterior, que lo
+        ocultaba en `compact` por considerarlo ruido: con el destino
+        llegando también de preferencias y del contexto de la vista (D-B),
+        no verlo pasa a ser peor que verlo.
       */}
-      <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
-        <AttributeField variant={variant} label="Fecha">
-          <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
-        </AttributeField>
-        <AttributeField variant={variant} label="Fecha límite">
-          <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
-        </AttributeField>
-        <AttributeField variant={variant} label="Prioridad">
-          <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
-        </AttributeField>
-        {/*
-          El selector de proyecto/sección solo existe en `full` (bloque 7.2,
-          E1/E2 del design): en `compact` — dentro de una lista, una sección
-          o una subtarea — el destino ya lo determina el contexto donde se
-          abrió el composer, y mostrarlo ahí es ruido.
-        */}
-        {variant === "full" && (
-          <AttributeField variant={variant} label="Proyecto">
-            <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
-          </AttributeField>
-        )}
-      </div>
+      <AttributeField variant={variant} label="Proyecto">
+        <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
+      </AttributeField>
+
+      {showAllFields && (
+        <>
+          <Textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Descripción (opcional)"
+            aria-label={parentId ? "Descripción de la nueva subtarea" : "Descripción de la nueva tarea"}
+            rows={2}
+            className="min-h-0 resize-none text-sm"
+          />
+
+          <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
+            <AttributeField variant={variant} label="Fecha">
+              <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
+            </AttributeField>
+            <AttributeField variant={variant} label="Fecha límite">
+              <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
+            </AttributeField>
+            <AttributeField variant={variant} label="Prioridad">
+              <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
+            </AttributeField>
+            {/* Etiquetas y recordatorios entran al alta (D-E): mismos selectores que el detalle, en modo borrador porque acá todavía no hay ningún `taskId` real. */}
+            <AttributeField variant={variant} label="Etiquetas">
+              <LabelPicker
+                projectId={previewDestination.projectId}
+                assigned={labelsOverride ?? []}
+                onChange={setLabelsOverride}
+                triggerClassName="h-8 w-auto max-w-56"
+              />
+            </AttributeField>
+            <AttributeField variant={variant} label="Recordatorios">
+              <ReminderPicker dueAt={previewDate.dueAt} drafts={remindersOverride} onChange={setRemindersOverride} />
+            </AttributeField>
+          </div>
+        </>
+      )}
+
+      {/* Control de desplegar (D-C): solo en `full`, y solo hasta usarlo — una vez desplegado no hace falta volver a plegar. */}
+      {variant === "full" && !fieldsExpanded && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-text-secondary"
+          onClick={() => setFieldsExpanded(true)}
+        >
+          <ChevronDown className="size-3.5" />
+          Mostrar más campos
+        </Button>
+      )}
 
       <div className="flex items-center justify-end gap-2 pt-0.5">
         <Button type="button" variant="ghost" size="sm" onClick={cancel}>

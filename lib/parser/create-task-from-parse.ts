@@ -8,6 +8,7 @@ import { reportTaskError } from "@/lib/tasks/errors";
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
 import { PROJECT_COLOR_IDS } from "@/lib/validation/colors";
+import type { DraftReminder } from "@/lib/reminders/use-reminders";
 import type { ParseResult } from "./types";
 
 /**
@@ -48,6 +49,13 @@ export type CreateTaskFromParseVariables = {
   deadline: string | null;
   /** Resultado del parser ya filtrado por los matches que el usuario no desactivó. */
   result: ParseResult;
+  /**
+   * Recordatorios elegidos en `ReminderPicker` en modo borrador (bloque
+   * `alta-de-tareas-en-contexto`, D-E): todavía no existe ningún `taskId`
+   * contra el cual persistirlos, así que viajan acá y se insertan en el
+   * mismo viaje que la tarea, igual patrón que las etiquetas de `#`.
+   */
+  reminders?: DraftReminder[];
 };
 
 /**
@@ -75,6 +83,7 @@ export function useCreateTaskFromParse() {
       description,
       deadline,
       result,
+      reminders,
     }: CreateTaskFromParseVariables) => {
       const {
         data: { session },
@@ -125,6 +134,18 @@ export function useCreateTaskFromParse() {
           .from("task_labels")
           .insert(labelIds.map((labelId) => ({ task_id: task.id, label_id: labelId, user_id: session.user.id })));
         if (taskLabelsError) throw taskLabelsError;
+      }
+
+      if (reminders && reminders.length > 0) {
+        const { error: remindersError } = await supabase.from("reminders").insert(
+          reminders.map((reminder) => ({
+            user_id: session.user.id,
+            task_id: task.id,
+            remind_at: reminder.remind_at,
+            offset_minutes: reminder.offset_minutes,
+          })),
+        );
+        if (remindersError) throw remindersError;
       }
 
       return { finalProjectId: projectId, createdLabel: result.labels.some((l) => !l.id) };

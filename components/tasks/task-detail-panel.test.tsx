@@ -19,6 +19,7 @@ const TEST_PREFERENCES = {
   dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
+  defaultProjectId: null,
 };
 
 /** Mismo mock de `createClient()` que `task-detail-content.test.tsx`: acá también hace falta que `.single()`/`.maybeSingle()` devuelvan una fila. */

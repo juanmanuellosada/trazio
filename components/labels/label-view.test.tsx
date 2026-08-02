@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Label } from "@/lib/labels/use-labels";
 import { defaultOptionsForViewKey, type ViewOptions } from "@/lib/view-options/schema";
+import { ComposeContextProvider } from "@/components/tasks/compose-context";
 import { LabelView } from "./label-view";
 
 /**
@@ -56,14 +57,16 @@ function renderView(overrides: Partial<Label> = {}, initialLabels?: Label[]) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
-      <LabelView
-        labelId="label-1"
-        initialLabels={initialLabels ?? [label(overrides)]}
-        userId="user-1"
-        timezone="America/Argentina/Buenos_Aires"
-        initialTasks={[]}
-        initialOptions={BASE_OPTIONS}
-      />
+      <ComposeContextProvider>
+        <LabelView
+          labelId="label-1"
+          initialLabels={initialLabels ?? [label(overrides)]}
+          userId="user-1"
+          timezone="America/Argentina/Buenos_Aires"
+          initialTasks={[]}
+          initialOptions={BASE_OPTIONS}
+        />
+      </ComposeContextProvider>
     </QueryClientProvider>,
   );
 }

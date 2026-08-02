@@ -11,6 +11,7 @@ import { normalize } from "@/lib/parser/normalize";
 import type { FilterRow } from "@/lib/filters/use-filters";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskRow } from "@/components/tasks/task-row";
+import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
@@ -59,6 +60,10 @@ export function FilterResultsView({
   const { data: projects } = useProjects();
   const results = useFilterResults(filterId, query);
   const { options } = useViewOptions(`filtro:${filterId}`, initialOptions);
+
+  // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): un filtro
+  // cruza proyectos, sin destino propio — mismo criterio que Etiqueta.
+  usePublishComposeContext({ projectId: null, sectionId: null, defaultDueDate: null });
 
   const missingLabels = missingReferences(query, (labels ?? []).map((l) => l.name), "label");
   const missingProjects = missingReferences(query, (projects ?? []).map((p) => p.name), "project");

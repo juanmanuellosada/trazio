@@ -23,6 +23,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 const ORDERED_IDS = ["a", "b", "c", "d", "e", "f", "g"];

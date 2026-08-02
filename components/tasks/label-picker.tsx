@@ -8,6 +8,7 @@ import { useLabels } from "@/lib/labels/use-labels";
 import { useReplaceTaskLabels } from "@/lib/tasks/mutations";
 import type { LabelChip } from "@/lib/tasks/use-tasks";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -30,17 +31,28 @@ import { OVERLAY_MODAL } from "@/components/primitives/overlay";
  * alterna esa etiqueta en el conjunto local y dispara
  * `replaceLabels.mutate` con el conjunto completo ya actualizado — nunca
  * alta/baja incremental contra el servidor, como pide el requirement.
+ *
+ * Modo borrador (`onChange`, sin `taskId`): el alta de una tarea (bloque
+ * `alta-de-tareas-en-contexto`, D-E) lo usa antes de que la tarea exista —
+ * mutar contra un `taskId` real ahí crearía la tarea con solo tocar el
+ * selector, violando "cancelar no crea nada". Con `onChange`, `toggle`
+ * informa el conjunto elegido a quien llama en vez de mutar; el alta lo
+ * persiste junto con el resto de los atributos al confirmar.
  */
 export function LabelPicker({
   taskId,
   projectId,
   assigned,
   disabled,
+  onChange,
+  triggerClassName,
 }: {
-  taskId: string;
+  taskId?: string;
   projectId: string;
   assigned: LabelChip[];
   disabled?: boolean;
+  onChange?: (labels: LabelChip[]) => void;
+  triggerClassName?: string;
 }) {
   const { data: labels } = useLabels();
   const replaceLabels = useReplaceTaskLabels();
@@ -55,7 +67,11 @@ export function LabelPicker({
 
   function toggle(label: LabelChip) {
     const next = assignedIds.has(label.id) ? assigned.filter((l) => l.id !== label.id) : [...assigned, label];
-    replaceLabels.mutate({ taskId, projectId, labels: next });
+    if (onChange) {
+      onChange(next);
+      return;
+    }
+    if (taskId) replaceLabels.mutate({ taskId, projectId, labels: next });
   }
 
   if (!labels || labels.length === 0) {
@@ -72,7 +88,10 @@ export function LabelPicker({
       <PopoverTrigger
         disabled={disabled}
         aria-label="Etiquetas de la tarea"
-        className="flex h-9 w-full max-w-sm items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50"
+        className={cn(
+          "flex h-9 w-full max-w-sm items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
+          triggerClassName,
+        )}
       >
         {assigned.length === 0 ? (
           <span className="text-text-secondary">Sin etiquetas</span>

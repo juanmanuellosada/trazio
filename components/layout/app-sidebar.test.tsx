@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsProvider } from "@/components/settings/settings-context";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { ComposeContextProvider } from "@/components/tasks/compose-context";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 
 // `SidebarAddEvent` (bloque 7.6) necesita el contexto de preferencias
@@ -16,6 +17,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 /**
@@ -48,16 +50,18 @@ function renderSidebar(inboxTaskCount = 0) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={PREFERENCES}>
-        <SettingsProvider>
-          <AppSidebar
-            fullName="Ana"
-            email="ana@example.com"
-            todayCount={0}
-            inboxTaskCount={inboxTaskCount}
-            projects={[]}
-            initialProjects={[]}
-          />
-        </SettingsProvider>
+        <ComposeContextProvider>
+          <SettingsProvider>
+            <AppSidebar
+              fullName="Ana"
+              email="ana@example.com"
+              todayCount={0}
+              inboxTaskCount={inboxTaskCount}
+              projects={[]}
+              initialProjects={[]}
+            />
+          </SettingsProvider>
+        </ComposeContextProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

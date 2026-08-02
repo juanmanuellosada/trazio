@@ -6,6 +6,8 @@ export type UserPreferences = {
   dateFormat: DateFormatPreference;
   timeFormat: TimeFormatPreference;
   weekStartsOn: 0 | 1 | 6;
+  /** Proyecto destino cuando el alta no tiene contexto propio (D-B de `alta-de-tareas-en-contexto`): existe en la base desde fase 1 y hasta acá no se leía. `null` sin uno configurado, caso en el que la cadena de destino sigue a Bandeja de entrada. */
+  defaultProjectId: string | null;
 };
 
 /** Mismos defaults que B4 del design de fase 1, para el caso sin fila todavía (no debería pasar tras el aprovisionamiento, pero evita reventar la vista). */
@@ -14,6 +16,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 /**
@@ -26,7 +29,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
   const supabase = await createClient();
   const { data } = await supabase
     .from("user_preferences")
-    .select("timezone, date_format, time_format, week_starts_on")
+    .select("timezone, date_format, time_format, week_starts_on, default_project_id")
     .eq("user_id", userId)
     .single();
 
@@ -37,5 +40,6 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     dateFormat: data.date_format as DateFormatPreference,
     timeFormat: data.time_format as TimeFormatPreference,
     weekStartsOn: data.week_starts_on as UserPreferences["weekStartsOn"],
+    defaultProjectId: data.default_project_id,
   };
 }

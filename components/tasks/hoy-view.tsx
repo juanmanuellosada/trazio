@@ -15,6 +15,7 @@ import { SelectionProvider } from "@/components/selection/selection-context";
 import type { Habit } from "@/lib/habits/habit-columns";
 import { HabitsTodayBlock } from "@/components/habits/habits-today-block";
 import { TodayEventsBlock } from "@/components/calendar/today-events-block";
+import { usePublishComposeContext } from "./compose-context";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
@@ -75,6 +76,11 @@ export function HoyView({
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const tasks = data ?? [];
+
+  // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): el modal
+  // global hereda la Bandeja de entrada y el día de hoy, igual que ya hace
+  // el alta rápida embebida de esta misma vista un poco más abajo.
+  usePublishComposeContext({ projectId: inboxProjectId, sectionId: null, defaultDueDate: todayDate });
 
   const overdueRaw = tasks.filter((t) => !t.completed_at && isTaskOverdue(t, timezone, now));
   const todayRaw = tasks.filter((t) => !t.completed_at && isTaskDueToday(t, timezone, now));

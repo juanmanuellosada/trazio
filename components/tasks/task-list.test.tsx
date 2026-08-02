@@ -16,6 +16,7 @@ const TEST_PREFERENCES = {
   dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
+  defaultProjectId: null,
 };
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));

@@ -10,15 +10,14 @@ import { TaskQuickAddRow } from "./task-quick-add-row";
 
 /**
  * Tests del componente de alta (bloque 5.12, con las dos superficies del
- * bloque 7): además de R7 (resaltado en vivo y doble clic), cubre que los
- * selectores carguen su atributo, que un selector tocado a mano le gane al
- * parser, que cancelar no persista nada, que se pueda cargar más de una
- * tarea seguida sin tocar el mouse, que todos los controles del alta sean
- * alcanzables solo con teclado, y — lo nuevo del bloque 7 — que `compact`
- * (default, incrustada en listas/secciones/subtareas) conserve la
- * descripción y omita el proyecto destino, mientras que `full` (el modal
- * del panel lateral, probado también desde `sidebar-add-task.test.tsx`) lo
- * ofrece.
+ * bloque 7 y el contexto/plegado de `alta-de-tareas-en-contexto`): además de
+ * R7 (resaltado en vivo y doble clic), cubre que los selectores carguen su
+ * atributo, que un selector tocado a mano le gane al parser, que cancelar no
+ * persista nada, que se pueda cargar más de una tarea seguida sin tocar el
+ * mouse, que todos los controles del alta sean alcanzables solo con teclado,
+ * que el destino se vea en las dos superficies (D-D), que `full` arranque
+ * plegado y se despliegue (D-C), y que etiquetas y recordatorios se ofrezcan
+ * en las dos (D-E).
  */
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -28,6 +27,7 @@ const TEST_PREFERENCES = {
   dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
+  defaultProjectId: null,
 };
 
 // Dos proyectos (bloque 5.4): "p1" es el contexto por defecto donde vive el
@@ -93,11 +93,11 @@ function dataFor(table: string): unknown {
 }
 
 function createSupabaseMock() {
-  const insertCalls: { table: string; payload: Record<string, unknown> }[] = [];
+  const insertCalls: { table: string; payload: Record<string, unknown> | Record<string, unknown>[] }[] = [];
 
   const from = vi.fn((table: string) => ({
     select: vi.fn(() => chain({ data: dataFor(table), error: null })),
-    insert: vi.fn((payload: Record<string, unknown>) => {
+    insert: vi.fn((payload: Record<string, unknown> | Record<string, unknown>[]) => {
       insertCalls.push({ table, payload });
       if (table === "tasks") return chain({ data: { id: "new-task" }, error: null });
       if (table === "labels") return chain({ data: { id: `label-${insertCalls.length}` }, error: null });
@@ -128,7 +128,12 @@ function renderRow(overrides: Partial<ComponentProps<typeof TaskQuickAddRow>> = 
 }
 
 function insertedTask() {
-  return mock.insertCalls.find((c) => c.table === "tasks")?.payload;
+  return mock.insertCalls.find((c) => c.table === "tasks")?.payload as Record<string, unknown> | undefined;
+}
+
+/** Recordatorios insertados (`alta-de-tareas-en-contexto`, D-E): siempre un array, un insert por tarea creada. */
+function insertedReminders() {
+  return (mock.insertCalls.find((c) => c.table === "reminders")?.payload ?? []) as Record<string, unknown>[];
 }
 
 describe("TaskQuickAddRow — resaltado en vivo y R7", () => {
@@ -293,7 +298,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
 
   it("en variant=\"full\", el destino muestra el proyecto de contexto por defecto y respeta el que se elija a mano", async () => {
     const user = userEvent.setup();
-    renderRow({ variant: "full", defaultExpanded: true });
+    renderRow({ variant: "full" });
     const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
     // `proyectos` tarda en resolver (mock async): espera a que el destino
     // por defecto se pinte antes de leerlo, en vez de asumirlo ya listo en
@@ -340,26 +345,31 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
 
     await user.keyboard("Segunda tarea{Enter}");
     await waitFor(() => expect(mock.insertCalls.filter((c) => c.table === "tasks")).toHaveLength(2));
-    const tasks = mock.insertCalls.filter((c) => c.table === "tasks").map((c) => c.payload);
+    const tasks = mock.insertCalls.filter((c) => c.table === "tasks").map((c) => c.payload as Record<string, unknown>);
     expect(tasks[0].title).toBe("Primera tarea");
     expect(tasks[1].title).toBe("Segunda tarea");
   });
 
-  it("en compact (sin proyecto destino), todos los controles del alta son alcanzables con Tab, en el orden esperado", async () => {
+  it("en compact, todos los controles del alta —incluido el destino, etiquetas y recordatorios— son alcanzables con Tab, en el orden esperado (D-D/D-E)", async () => {
     const user = userEvent.setup();
     renderRow();
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
 
     const title = screen.getByLabelText("Título de la nueva tarea");
+    const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
     const description = screen.getByLabelText("Descripción de la nueva tarea");
     const dateTrigger = screen.getByRole("button", { name: "Fecha de vencimiento" });
     const deadlineTrigger = screen.getByRole("button", { name: "Fecha límite" });
     const priorityTrigger = screen.getByRole("button", { name: "P4 · Baja" });
+    const labelsTrigger = screen.getByRole("button", { name: "Etiquetas de la tarea" });
+    const remindersTrigger = screen.getByRole("button", { name: "Recordatorios" });
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
     const confirmButton = screen.getByRole("button", { name: "Agregar tarea" });
 
     expect(title).toHaveFocus();
+    await user.tab();
+    expect(destinationTrigger).toHaveFocus();
     await user.tab();
     expect(description).toHaveFocus();
     await user.tab();
@@ -369,46 +379,120 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     await user.tab();
     expect(priorityTrigger).toHaveFocus();
     await user.tab();
+    expect(labelsTrigger).toHaveFocus();
+    await user.tab();
+    expect(remindersTrigger).toHaveFocus();
+    await user.tab();
     expect(cancelButton).toHaveFocus();
     await user.tab();
     expect(confirmButton).toHaveFocus();
   });
 
-  it("en variant=\"full\", el proyecto destino se suma al final del orden de Tab (bloque 7.2)", async () => {
+  it("en variant=\"full\", plegado, solo título y destino son alcanzables antes de desplegar (D-C)", async () => {
     const user = userEvent.setup();
-    renderRow({ variant: "full", defaultExpanded: true });
+    renderRow({ variant: "full" });
 
-    const priorityTrigger = screen.getByRole("button", { name: "P4 · Baja" });
-    const destinationTrigger = screen.getByRole("button", { name: "Proyecto destino" });
+    const title = screen.getByLabelText("Título de la nueva tarea");
+    const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
+    const expandButton = screen.getByRole("button", { name: "Mostrar más campos" });
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
 
-    priorityTrigger.focus();
+    expect(title).toHaveFocus();
     await user.tab();
     expect(destinationTrigger).toHaveFocus();
+    await user.tab();
+    expect(expandButton).toHaveFocus();
     await user.tab();
     expect(cancelButton).toHaveFocus();
   });
 
-  it("sin defaultExpanded arranca colapsado, mostrando el botón 'Agregar tarea' (comportamiento sin cambios en listas y secciones)", () => {
+  it("sin variant=\"full\" arranca colapsado, mostrando el botón 'Agregar tarea' (comportamiento sin cambios en listas y secciones)", () => {
     renderRow();
 
     expect(screen.getByRole("button", { name: "Agregar tarea" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Título de la nueva tarea")).not.toBeInTheDocument();
   });
 
-  it("con defaultExpanded arranca ya desplegado y con el foco en el título, sin necesitar el clic extra (bloque 10.2)", () => {
-    const queryClient = new QueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PreferencesProvider preferences={TEST_PREFERENCES}>
-          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultExpanded />
-        </PreferencesProvider>
-      </QueryClientProvider>,
-    );
+  it("variant=\"full\" arranca ya desplegado (sin el botón \"Agregar tarea\" de más) y con el foco en el título, sin necesitar el clic extra (bloque 10.2)", () => {
+    renderRow({ variant: "full" });
 
     const title = screen.getByLabelText("Título de la nueva tarea");
     expect(title).toBeInTheDocument();
     expect(title).toHaveFocus();
+  });
+
+  it("variant=\"full\" arranca plegado: solo título y destino, nada más, hasta usar el control de desplegar (D-C)", async () => {
+    renderRow({ variant: "full" });
+
+    expect(screen.getByLabelText("Título de la nueva tarea")).toBeInTheDocument();
+    await screen.findByRole("button", { name: "Proyecto destino" });
+    expect(screen.queryByLabelText("Descripción de la nueva tarea")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Fecha de vencimiento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Etiquetas de la tarea" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recordatorios" })).not.toBeInTheDocument();
+  });
+
+  it("desplegar el modal global muestra el resto de los campos (D-C)", async () => {
+    const user = userEvent.setup();
+    renderRow({ variant: "full" });
+
+    await user.click(screen.getByRole("button", { name: "Mostrar más campos" }));
+
+    expect(screen.getByLabelText("Descripción de la nueva tarea")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fecha de vencimiento" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fecha límite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "P4 · Baja" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Etiquetas de la tarea" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recordatorios" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mostrar más campos" })).not.toBeInTheDocument();
+  });
+
+  it("elegir una etiqueta del selector le gana a lo detectado por @ en el título (D-E)", async () => {
+    const user = userEvent.setup();
+    renderRow({ variant: "full" });
+
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar leche @personal ");
+    await user.click(screen.getByRole("button", { name: "Mostrar más campos" }));
+    await user.click(screen.getByRole("button", { name: "Etiquetas de la tarea" }));
+    await user.click(await screen.findByRole("option", { name: "casa" }));
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    const taskLabelInsert = mock.insertCalls.find((c) => c.table === "task_labels");
+    expect(taskLabelInsert?.payload).toEqual([{ task_id: "new-task", label_id: "l1", user_id: "user-1" }]); // "casa" (l1), no "personal" (l2, detectada por @)
+  });
+
+  it("un recordatorio agregado en el alta se persiste junto con la tarea (D-E)", async () => {
+    const user = userEvent.setup();
+    renderRow({ variant: "full" });
+
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+    await user.click(screen.getByRole("button", { name: "Mostrar más campos" }));
+    await user.click(screen.getByRole("button", { name: "Recordatorios" }));
+    fireEvent.change(screen.getByLabelText("Fecha y hora del recordatorio"), { target: { value: "2026-08-05T09:00" } });
+    await user.click(screen.getByRole("button", { name: "Agregar recordatorio puntual" }));
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    const reminders = insertedReminders();
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0]).toMatchObject({ task_id: "new-task", offset_minutes: null });
+  });
+
+  it("con defaultDueAt y defaultDurationMinutes (D-F, alta del calendario), la tarea se crea con esa hora y duración en una sola mutación", async () => {
+    renderRow({ variant: "full", defaultDueAt: "2026-08-05T13:00:00.000Z", defaultDurationMinutes: 45 });
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Reunión de equipo");
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.due_at).toBe("2026-08-05T13:00:00.000Z");
+    expect(insertedTask()!.duration_minutes).toBe(45);
+    expect(insertedTask()!.due_date).toBeNull();
+    expect(mock.insertCalls.filter((c) => c.table === "tasks")).toHaveLength(1); // una sola mutación, sin encadenar un update
   });
 
   it("con defaultDueDate (bloque 8.2, vista Hoy), la tarea se crea con esa fecha si el título no reconoce ninguna", async () => {
@@ -458,7 +542,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     }
   });
 
-  it("no muestra selector de proyecto destino al crear una subtarea: el proyecto es el de la tarea padre", async () => {
+  it("una subtarea también muestra el destino (D-D), preconfigurado con el proyecto de la tarea padre", async () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();
     render(
@@ -470,7 +554,8 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Agregar subtarea" }));
-    expect(screen.queryByRole("button", { name: "Proyecto destino" })).not.toBeInTheDocument();
+    const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
+    await waitFor(() => expect(destinationTrigger).toHaveTextContent("Bandeja de entrada")); // "p1", el de la tarea padre
 
     await user.type(screen.getByLabelText("Título de la nueva subtarea"), "Una subtarea");
     await user.keyboard("{Enter}");
@@ -480,14 +565,15 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(insertedTask()!.project_id).toBe("p1");
   });
 
-  it("compact (dentro de una sección) conserva la descripción y omite el selector de proyecto destino (bloque 7.3)", async () => {
+  it("compact (dentro de una sección) conserva la descripción y también muestra el destino (D-D, revierte el ruido de fase 1)", async () => {
     const user = userEvent.setup();
     renderRow({ projectId: "p2", sectionId: "sec1" }); // default variant="compact"
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
 
     expect(screen.getByLabelText("Descripción de la nueva tarea")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Proyecto destino" })).not.toBeInTheDocument();
+    const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
+    await waitFor(() => expect(destinationTrigger).toHaveTextContent("En curso")); // "Trabajo · En curso" (p2/sec1)
   });
 
   it("la tarea creada desde el compacto de una sección cae en esa sección (bloque 7.3)", async () => {
@@ -510,7 +596,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
 
   it("full y compact comparten el mismo reconocimiento del parser en vivo: es un solo componente, dos presentaciones (bloque 7.4)", async () => {
     const user = userEvent.setup();
-    renderRow({ variant: "full", defaultExpanded: true });
+    renderRow({ variant: "full" });
 
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana");
 

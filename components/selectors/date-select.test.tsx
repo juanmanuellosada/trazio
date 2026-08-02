@@ -26,6 +26,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 const EMPTY_VALUE: DateSelectValue = { dueDate: null, dueAt: null, durationMinutes: null };

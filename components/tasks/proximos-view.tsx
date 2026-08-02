@@ -24,6 +24,7 @@ import { orderTasks } from "@/lib/view-options/order-tasks";
 import { isDragEnabled, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { cn } from "@/lib/utils";
+import { usePublishComposeContext } from "./compose-context";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
@@ -87,6 +88,16 @@ export function ProximosView({
   const { data: undatedData } = useUndatedTasks(userId, undefined, options.showCompleted);
   const updateTask = useUpdateTask();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
+
+  // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): el modal
+  // global hereda la Bandeja de entrada y hoy, el ancla de la ventana de esta
+  // vista — no hay "el día" de Próximos más allá de eso, cada grupo tiene el
+  // suyo propio en el alta embebida de más abajo, que ya lo recibe por props.
+  usePublishComposeContext({
+    projectId: inboxProjectId,
+    sectionId: null,
+    defaultDueDate: todayInTimeZone(now, timezone),
+  });
   const tasks = applyQuickFilters(data ?? [], options.quickFilters, options.showCompleted);
   const undatedTasks = applyQuickFilters(undatedData ?? [], options.quickFilters, options.showCompleted);
 

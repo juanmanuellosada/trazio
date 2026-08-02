@@ -29,6 +29,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 function UndoButton({ onUndo }: { onUndo: () => void }) {

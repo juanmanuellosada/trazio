@@ -18,6 +18,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 vi.mock("@/components/calendar/create-event-dialog", () => ({

@@ -13,6 +13,7 @@ const TEST_PREFERENCES = {
   dateFormat: "dd-MM-yyyy" as const,
   timeFormat: 24 as const,
   weekStartsOn: 1 as const,
+  defaultProjectId: null,
 };
 
 function renderRow(ui: React.ReactElement) {

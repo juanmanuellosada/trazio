@@ -21,6 +21,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
+import { ComposeContextProvider } from "@/components/tasks/compose-context";
 import { SettingsProvider } from "@/components/settings/settings-context";
 import { SettingsModal } from "@/components/settings/settings-modal";
 
@@ -64,21 +65,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <RealtimeProvider userId={user.id}>
             <TaskDetailProvider>
               <SettingsProvider>
-                <ShortcutProvider inboxProjectId={inboxProjectId}>
-                  <OfflineBanner />
-                  <GoogleReconnectBanner />
-                  <OfflineBoundary>
-                    <div className="flex min-h-dvh">
-                      <AppSidebar
-                        fullName={fullName}
-                        email={user.email}
-                        todayCount={todayCount}
-                        inboxTaskCount={inboxTaskCount}
-                        projects={projects}
-                        initialProjects={initialProjects}
-                      />
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <MobileNav
+                {/* Por encima de `ShortcutProvider` y de `AppSidebar` (bloque
+                    `alta-de-tareas-en-contexto`, D-A): la vista actual (dentro
+                    de `children`) publica acá su proyecto/sección/fecha, y los
+                    dos diálogos globales —el del panel lateral y el del atajo
+                    `Q`, ambos descendientes de este mismo punto— lo leen. */}
+                <ComposeContextProvider>
+                  <ShortcutProvider inboxProjectId={inboxProjectId}>
+                    <OfflineBanner />
+                    <GoogleReconnectBanner />
+                    <OfflineBoundary>
+                      <div className="flex min-h-dvh">
+                        <AppSidebar
                           fullName={fullName}
                           email={user.email}
                           todayCount={todayCount}
@@ -86,13 +84,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                           projects={projects}
                           initialProjects={initialProjects}
                         />
-                        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <MobileNav
+                            fullName={fullName}
+                            email={user.email}
+                            todayCount={todayCount}
+                            inboxTaskCount={inboxTaskCount}
+                            projects={projects}
+                            initialProjects={initialProjects}
+                          />
+                          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                        </div>
                       </div>
-                    </div>
-                    <TaskDetailPanel />
-                    <SettingsModal />
-                  </OfflineBoundary>
-                </ShortcutProvider>
+                      <TaskDetailPanel />
+                      <SettingsModal />
+                    </OfflineBoundary>
+                  </ShortcutProvider>
+                </ComposeContextProvider>
               </SettingsProvider>
             </TaskDetailProvider>
           </RealtimeProvider>

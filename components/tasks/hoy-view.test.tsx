@@ -2,6 +2,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { defaultOptionsForViewKey } from "@/lib/view-options/schema";
+import { ComposeContextProvider } from "./compose-context";
 import { HoyView } from "./hoy-view";
 
 /**
@@ -53,16 +54,18 @@ vi.mock("@/lib/calendar/use-today-events", () => ({
 describe("HoyView — centrado", () => {
   it("aplica mx-auto junto con max-w-content al encabezado y al contenido", () => {
     const { container } = render(
-      <HoyView
-        userId="user-1"
-        timezone="America/Argentina/Buenos_Aires"
-        inboxProjectId={null}
-        initialTasks={[]}
-        initialHabits={[]}
-        nowIso="2026-07-29T12:00:00.000Z"
-        todayDate="2026-07-29"
-        initialOptions={defaultOptionsForViewKey("hoy")}
-      />,
+      <ComposeContextProvider>
+        <HoyView
+          userId="user-1"
+          timezone="America/Argentina/Buenos_Aires"
+          inboxProjectId={null}
+          initialTasks={[]}
+          initialHabits={[]}
+          nowIso="2026-07-29T12:00:00.000Z"
+          todayDate="2026-07-29"
+          initialOptions={defaultOptionsForViewKey("hoy")}
+        />
+      </ComposeContextProvider>,
     );
 
     const contentDivs = container.querySelectorAll(".max-w-content");

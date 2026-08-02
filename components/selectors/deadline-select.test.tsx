@@ -23,6 +23,7 @@ const PREFERENCES: UserPreferences = {
   dateFormat: "dd-MM-yyyy",
   timeFormat: 24,
   weekStartsOn: 1,
+  defaultProjectId: null,
 };
 
 function ControlledDeadlineSelect({ onChange }: { onChange: (deadline: string | null) => void }) {
