@@ -2,7 +2,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { playCompletionSound } from "@/lib/completion-sound";
 import { useMarkHabitDone, useUnmarkHabitDone } from "./mutations";
@@ -40,6 +40,14 @@ function wrapper({ children }: { children: ReactNode }) {
 describe("useMarkHabitDone / useUnmarkHabitDone — sonido al completar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // `assertIsToday` (lib/habits/mutations.ts) compara contra el reloj
+    // real: sin fijarlo, esta fecha queda vieja apenas cambia el día y la
+    // mutación rechaza por "no es hoy" en vez de llegar a `isSuccess`.
+    vi.setSystemTime(new Date("2026-08-02T12:00:00-03:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("marcar un hábito reproduce el sonido de confirmación", async () => {
