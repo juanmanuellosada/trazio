@@ -38,7 +38,7 @@
 
 - [x] 4.1 Dos líneas de título. Hoy corta en una, con unos 125px reales, o sea unos dieciséis caracteres — `line-clamp-2` en `task-row.tsx`, confirmado en las capturas
 - [x] 4.2 El panel usa **el ancho disponible** (**D-E**), excepción acotada a **D39**. Lista y calendario **no cambian** — verificado en las tres pantallas, en el navegador
-- [x] 4.3 **Miralo con pocas columnas**, no solo con muchas: tres columnas angostas con un vacío enorme a la derecha es un resultado posible y feo — **pasó exactamente eso**: a 1920px con 3 columnas queda casi 2/3 de la pantalla vacíos a la derecha. Lo dejo tal cual (no inventé una solución) — ver mi reporte final
+- [x] 4.3 **Miralo con pocas columnas**, no solo con muchas: tres columnas angostas con un vacío enorme a la derecha es un resultado posible y feo — resuelto por decisión del dueño: las columnas se reparten el ancho disponible con `flex-1`, entre un piso de `min-w-72` (288px, el mismo de siempre, nunca se encoge) y un tope de `max-w-96` (384px, elegido con `ui-ux-pro-max` a la vista, no de memoria). Con pocas columnas cada una crece hasta el tope; con muchas, todas quedan en el piso y el tablero se desplaza en horizontal como antes — verificado en el navegador a 1920px, 1024px y 390px con 4, 6 y 11 columnas
 - [x] 4.4 El alto de la tarjeta ya es variable —las etiquetas envuelven sin tope—. Con dos líneas de título, mirá si hace falta acotarlo — mirado en las capturas, no se ve roto ni desbordado; no hizo falta acotarlo
 
 ## 5. Agregar desde el panel

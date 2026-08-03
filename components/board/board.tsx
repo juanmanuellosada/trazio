@@ -139,7 +139,7 @@ export function Board({
     >
       <div className="flex h-full items-start gap-3 overflow-x-auto pb-2">
         {columns.map((column) => (
-          <div key={column.id} className="flex w-72 shrink-0 flex-col gap-2 rounded-lg bg-surface/60 p-2">
+          <div key={column.id} className="flex min-w-72 max-w-96 flex-1 flex-col gap-2 rounded-lg bg-surface/60 p-2">
             <h3 className="flex items-center justify-between px-1 text-sm font-semibold text-foreground">
               <span className="truncate">{column.title}</span>
               <span className="shrink-0 text-xs font-normal text-text-secondary">{column.tasks.length}</span>
