@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { ComposeContextProvider } from "@/components/tasks/compose-context";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { SidebarAddTask } from "./sidebar-add-task";
 
 /**
@@ -48,9 +49,11 @@ function renderAddTask(inboxProjectId: string | null = "inbox-1") {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <ComposeContextProvider>
-          <SidebarAddTask collapsed={false} inboxProjectId={inboxProjectId} />
-        </ComposeContextProvider>
+        <TaskDetailProvider>
+          <ComposeContextProvider>
+            <SidebarAddTask collapsed={false} inboxProjectId={inboxProjectId} />
+          </ComposeContextProvider>
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

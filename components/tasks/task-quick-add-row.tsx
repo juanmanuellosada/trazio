@@ -24,6 +24,7 @@ import { DEFAULT_TASK_PRIORITY } from "@/lib/validation/tasks";
 import { cn } from "@/lib/utils";
 import { LabelPicker } from "./label-picker";
 import { ParserMenu } from "./parser-menu";
+import { useTaskDetail } from "./task-detail-context";
 import { TaskDestinationSelect, type TaskDestination } from "./task-destination-select";
 
 const DEBOUNCE_MS = 120;
@@ -243,6 +244,7 @@ export function TaskQuickAddRow({
   const preferences = useUserPreferences();
   const { proyectos, etiquetas } = useParserContext();
   const createTask = useCreateTaskFromParse();
+  const { open: openTaskDetail } = useTaskDetail();
 
   const parserContext = useMemo(
     (): Omit<ParserContext, "ahora"> => ({
@@ -362,12 +364,14 @@ export function TaskQuickAddRow({
     setMenuTrigger(null);
   }
 
-  function cancel() {
-    resetComposer();
-    // En `full` no hay botón colapsado al que volver (bloque 7.2: el
-    // composer siempre está desplegado dentro del diálogo) — cancelar tiene
-    // que cerrar el diálogo, no dejarlo abierto mostrando un formulario
-    // vacío sin salida.
+  // Cierra la superficie del alta sin decidir qué pasa con lo cargado: lo
+  // usan tanto `cancel()` (que antes descarta con `resetComposer`) como
+  // `submitAndOpenDetail()` (que ya creó la tarea y solo necesita sacar de
+  // el medio el alta para que se vea el detalle, bloque `saltar-al-detalle`).
+  // En `full` no hay botón colapsado al que volver (bloque 7.2: el composer
+  // siempre está desplegado dentro del diálogo) — hay que cerrar el diálogo
+  // en vez de dejarlo abierto mostrando un formulario vacío sin salida.
+  function closeComposerSurface() {
     if (variant === "full") {
       onCancel?.();
     } else {
@@ -375,12 +379,13 @@ export function TaskQuickAddRow({
     }
   }
 
-  function submit() {
-    const trimmed = title.trim();
-    if (!trimmed) {
-      cancel();
-      return;
-    }
+  function cancel() {
+    resetComposer();
+    closeComposerSurface();
+  }
+
+  /** Arma la variable de la mutación a partir de lo cargado (bloque 5.4/5.5): comparte la resolución de título, fecha, prioridad, destino y etiquetas entre confirmar y "crear y abrir detalle" — las dos crean la tarea de la misma forma, solo cambia qué pasa después (bloque `saltar-al-detalle`, D-D). */
+  function buildCreateVariables(trimmed: string) {
     const fresh = parse(trimmed, { ahora: new Date(), ...parserContext });
     const final = applyDisabledMatches(trimmed, fresh, disabledMatches);
     const finalTitle = final.title || trimmed; // nunca crear con título vacío (bloque 9.20)
@@ -391,28 +396,58 @@ export function TaskQuickAddRow({
     const destination = mergeDestination(final.project, destinationOverride, projectId, sectionId);
     const labels = mergeLabels(final.labels, labelsOverride);
 
-    createTask.mutate(
-      {
-        title: finalTitle,
-        projectId: destination.projectId,
-        sectionId: destination.sectionId,
-        parentId,
-        description: descriptionDoc(description),
-        deadline,
-        result: { ...final, labels, dueDate: date.dueDate, dueAt: date.dueAt, durationMinutes: date.durationMinutes, priority },
-        reminders: remindersOverride,
-        position,
+    return {
+      title: finalTitle,
+      projectId: destination.projectId,
+      sectionId: destination.sectionId,
+      parentId,
+      description: descriptionDoc(description),
+      deadline,
+      result: { ...final, labels, dueDate: date.dueDate, dueAt: date.dueAt, durationMinutes: date.durationMinutes, priority },
+      reminders: remindersOverride,
+      position,
+    };
+  }
+
+  function submit() {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      cancel();
+      return;
+    }
+    createTask.mutate(buildCreateVariables(trimmed), {
+      onSuccess: () => {
+        // Foco de vuelta en el título (bloque 5, "cargar varias tareas
+        // seguidas sin tocar el mouse"): el composer queda abierto y
+        // vacío, listo para escribir la próxima sin usar el mouse.
+        resetComposer();
+        titleInputRef.current?.focus();
       },
-      {
-        onSuccess: () => {
-          // Foco de vuelta en el título (bloque 5, "cargar varias tareas
-          // seguidas sin tocar el mouse"): el composer queda abierto y
-          // vacío, listo para escribir la próxima sin usar el mouse.
-          resetComposer();
-          titleInputRef.current?.focus();
-        },
+    });
+  }
+
+  /**
+   * Tercera acción del alta (bloque `saltar-al-detalle-desde-el-alta`, D-A):
+   * crea la tarea con lo mismo que confirmar y, en vez de dejar el alta
+   * lista para la próxima, abre su detalle reutilizando el mecanismo que ya
+   * deja su entrada en el historial (`useTaskDetail`, D-C del design) — así
+   * volver atrás cierra el detalle en vez de sacar de la aplicación. No hay
+   * forma de "ver el detalle" sin este insert: comentarios y subtareas
+   * cuelgan de una tarea que existe (D-A).
+   */
+  function submitAndOpenDetail() {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      cancel();
+      return;
+    }
+    createTask.mutate(buildCreateVariables(trimmed), {
+      onSuccess: (data) => {
+        openTaskDetail(data.taskId);
+        resetComposer();
+        closeComposerSurface();
       },
-    );
+    });
   }
 
   function toggleDisabled(match: ParseMatch) {
@@ -643,9 +678,30 @@ export function TaskQuickAddRow({
         </Button>
       )}
 
-      <div className="flex items-center justify-end gap-2 pt-0.5">
+      {/*
+        Tres acciones, no dos (bloque `saltar-al-detalle-desde-el-alta`,
+        D-B/D-C): la de siempre sigue siendo la única con color sólido —
+        "Cancelar" y la nueva comparten el mismo tratamiento discreto
+        (`ghost`/`outline`, sin relleno), así que ninguna de las dos compite
+        con "Agregar tarea" al mirar la fila. Siempre en el DOM (nunca detrás
+        de "Mostrar más campos"): en `full` plegado ya se ve sin desplegar.
+        `flex-wrap` es la misma salida que ya usa la fila de título/destino
+        más arriba — en la variante compacta angosta (una subtarea indentada,
+        390px) las tres no entran cómodas en una línea; en vez de encoger el
+        texto o esconder la acción, la fila pasa a dos líneas.
+      */}
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-0.5">
         <Button type="button" variant="ghost" size="sm" onClick={cancel}>
           Cancelar
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={submitAndOpenDetail}
+          disabled={createTask.isPending}
+        >
+          Crear y abrir detalle
         </Button>
         <Button type="button" size="sm" onClick={submit} disabled={createTask.isPending}>
           {parentId ? "Agregar subtarea" : "Agregar tarea"}

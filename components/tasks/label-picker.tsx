@@ -74,15 +74,6 @@ export function LabelPicker({
     if (taskId) replaceLabels.mutate({ taskId, projectId, labels: next });
   }
 
-  if (!labels || labels.length === 0) {
-    return (
-      <p className="text-sm text-text-secondary">
-        Todavía no tenés etiquetas. Se crean solas al escribir <span className="font-mono">@nombre</span> en el
-        alta rápida, o desde la pantalla de etiquetas.
-      </p>
-    );
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
       <PopoverTrigger
@@ -111,32 +102,46 @@ export function LabelPicker({
         <ChevronsUpDown className="size-4 shrink-0 text-text-secondary" aria-hidden />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-0">
-        <Command>
-          <CommandInput placeholder="Buscar etiqueta…" aria-label="Buscar etiqueta" />
-          <CommandList>
-            <CommandEmpty>No encontramos ninguna etiqueta.</CommandEmpty>
-            <CommandGroup>
-              {labels.map((label) => {
-                const isAssigned = assignedIds.has(label.id);
-                return (
-                  <CommandItem
-                    key={label.id}
-                    value={label.name}
-                    data-checked={isAssigned}
-                    onSelect={() => toggle(label)}
-                  >
-                    <span
-                      aria-hidden
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
-                    />
-                    {label.name}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        {/*
+          Sin ninguna etiqueta creada todavía: el chip del trigger de arriba
+          ya dice "Sin etiquetas" con el mismo ancho que sus vecinos (fila de
+          atributos del alta) — la explicación larga solo aparece acá adentro,
+          al abrir, en vez de reemplazar el chip por un párrafo que rompía esa
+          fila (bloque `saltar-al-detalle-desde-el-alta`, arreglo suelto).
+        */}
+        {labels && labels.length > 0 ? (
+          <Command>
+            <CommandInput placeholder="Buscar etiqueta…" aria-label="Buscar etiqueta" />
+            <CommandList>
+              <CommandEmpty>No encontramos ninguna etiqueta.</CommandEmpty>
+              <CommandGroup>
+                {labels.map((label) => {
+                  const isAssigned = assignedIds.has(label.id);
+                  return (
+                    <CommandItem
+                      key={label.id}
+                      value={label.name}
+                      data-checked={isAssigned}
+                      onSelect={() => toggle(label)}
+                    >
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: resolveProjectColorHex(label.color, theme) }}
+                      />
+                      {label.name}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        ) : (
+          <p className="p-3 text-sm text-text-secondary">
+            Todavía no tenés etiquetas. Se crean solas al escribir <span className="font-mono">@nombre</span> en el
+            alta rápida, o desde la pantalla de etiquetas.
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   );

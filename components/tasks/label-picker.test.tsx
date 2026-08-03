@@ -101,9 +101,21 @@ describe("LabelPicker", () => {
     expect(insert).toHaveBeenCalledWith([{ task_id: "task-1", label_id: "l2", user_id: "user-1" }]);
   });
 
-  it("el estado vacío menciona @nombre, no #nombre (los símbolos se invirtieron)", async () => {
+  it("sin ninguna etiqueta, el trigger sigue siendo un chip (no un párrafo que rompa la fila de atributos)", async () => {
     order.mockResolvedValue({ data: [], error: null });
     renderPicker();
+
+    const trigger = await screen.findByRole("button", { name: "Etiquetas de la tarea" });
+    expect(trigger).toHaveTextContent("Sin etiquetas"); // mismo chip que cuando hay etiquetas sin asignar
+    expect(screen.queryByText(/Todavía no tenés etiquetas/)).not.toBeInTheDocument(); // la explicación no ocupa lugar cerrado
+  });
+
+  it("el estado vacío, al abrirse, menciona @nombre, no #nombre (los símbolos se invirtieron)", async () => {
+    order.mockResolvedValue({ data: [], error: null });
+    const user = userEvent.setup();
+    renderPicker();
+
+    await user.click(await screen.findByRole("button", { name: "Etiquetas de la tarea" }));
 
     expect(await screen.findByText("@nombre")).toBeInTheDocument();
   });

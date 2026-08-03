@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { TaskDetailProvider, useTaskDetail } from "./task-detail-context";
 import { TaskQuickAddRow } from "./task-quick-add-row";
 
 /**
@@ -121,7 +122,29 @@ function renderRow(overrides: Partial<ComponentProps<typeof TaskQuickAddRow>> = 
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} {...overrides} />
+        <TaskDetailProvider>
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} {...overrides} />
+        </TaskDetailProvider>
+      </PreferencesProvider>
+    </QueryClientProvider>,
+  );
+}
+
+/** Expone `openTaskId` del contexto en el DOM (mismo patrón que `task-list.test.tsx`), para verificar que "Crear y abrir detalle" abrió el modal sin montarlo de verdad. */
+function OpenTaskProbe() {
+  const { openTaskId } = useTaskDetail();
+  return <div data-testid="open-task-id">{openTaskId ?? ""}</div>;
+}
+
+function renderRowWithProbe(overrides: Partial<ComponentProps<typeof TaskQuickAddRow>> = {}) {
+  const queryClient = new QueryClient();
+  render(
+    <QueryClientProvider client={queryClient}>
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <TaskDetailProvider>
+          <OpenTaskProbe />
+          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} {...overrides} />
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );
@@ -365,6 +388,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     const labelsTrigger = screen.getByRole("button", { name: "Etiquetas de la tarea" });
     const remindersTrigger = screen.getByRole("button", { name: "Recordatorios" });
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
+    const openDetailButton = screen.getByRole("button", { name: "Crear y abrir detalle" });
     const confirmButton = screen.getByRole("button", { name: "Agregar tarea" });
 
     expect(title).toHaveFocus();
@@ -384,6 +408,8 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     expect(remindersTrigger).toHaveFocus();
     await user.tab();
     expect(cancelButton).toHaveFocus();
+    await user.tab();
+    expect(openDetailButton).toHaveFocus();
     await user.tab();
     expect(confirmButton).toHaveFocus();
   });
@@ -508,7 +534,9 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <PreferencesProvider preferences={TEST_PREFERENCES}>
-          <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+          <TaskDetailProvider>
+            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+          </TaskDetailProvider>
         </PreferencesProvider>
       </QueryClientProvider>,
     );
@@ -532,7 +560,9 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
       render(
         <QueryClientProvider client={queryClient}>
           <PreferencesProvider preferences={TEST_PREFERENCES}>
-            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+            <TaskDetailProvider>
+              <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} defaultDueDate="2026-08-01" />
+            </TaskDetailProvider>
           </PreferencesProvider>
         </QueryClientProvider>,
       );
@@ -555,7 +585,9 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <PreferencesProvider preferences={TEST_PREFERENCES}>
-          <TaskQuickAddRow projectId="p1" sectionId={null} parentId="task-parent" />
+          <TaskDetailProvider>
+            <TaskQuickAddRow projectId="p1" sectionId={null} parentId="task-parent" />
+          </TaskDetailProvider>
         </PreferencesProvider>
       </QueryClientProvider>,
     );
@@ -611,6 +643,100 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
       expect(marks.length).toBe(1); // mismo resaltado en vivo que ya prueba el describe de arriba en compact
       expect(marks[0].textContent).toBe("mañana");
     });
+  });
+});
+
+describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-desde-el-alta)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.insertCalls.length = 0;
+  });
+
+  it("crea la tarea con todo lo cargado y abre su detalle (D-A/D-D)", async () => {
+    const user = userEvent.setup();
+    renderRowWithProbe();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana p1");
+    await user.type(screen.getByLabelText("Descripción de la nueva tarea"), "Con más detalle");
+
+    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.title).toBe("Comprar pan"); // lo que el parser interpretó ("mañana", "p1") se quita del título igual que al confirmar
+    expect(insertedTask()!.due_date).not.toBeNull();
+    expect(insertedTask()!.priority).toBe(1);
+    expect(insertedTask()!.description).not.toBeNull();
+
+    // El detalle se abre sobre la tarea recién creada (reusa `useTaskDetail`, D-C del design).
+    await waitFor(() => expect(screen.getByTestId("open-task-id")).toHaveTextContent("new-task"));
+  });
+
+  it("es visible sin desplegar, incluso en el modal que abre plegado (D-C)", () => {
+    renderRow({ variant: "full" });
+
+    // Plegado: solo título y destino, sin haber tocado "Mostrar más campos" todavía.
+    expect(screen.queryByLabelText("Descripción de la nueva tarea")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear y abrir detalle" })).toBeInTheDocument();
+  });
+
+  it("en variant=\"full\", crear y abrir detalle también cierra el diálogo que lo contiene (no queda un alta vacía detrás del detalle)", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={TEST_PREFERENCES}>
+          <TaskDetailProvider>
+            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} variant="full" onCancel={onCancel} />
+          </TaskDetailProvider>
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
+  });
+
+  it("en compact, tras crear y abrir detalle el alta vuelve a su botón colapsado (no queda un formulario vacío al lado del detalle)", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
+    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(screen.queryByLabelText("Título de la nueva tarea")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar tarea" })).toBeInTheDocument();
+  });
+
+  it("desde el alta de una subtarea, crea la subtarea del mismo padre y abre su detalle (sin selector de destino)", async () => {
+    const user = userEvent.setup();
+    renderRowWithProbe({ parentId: "task-parent" });
+
+    await user.click(screen.getByRole("button", { name: "Agregar subtarea" }));
+    await user.type(screen.getByLabelText("Título de la nueva subtarea"), "Una subtarea");
+    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.parent_id).toBe("task-parent");
+    expect(insertedTask()!.project_id).toBe("p1"); // heredado del padre, como al confirmar
+    await waitFor(() => expect(screen.getByTestId("open-task-id")).toHaveTextContent("new-task"));
+  });
+
+  it("con título vacío, no crea nada ni abre ningún detalle (mismo resguardo que confirmar)", async () => {
+    const user = userEvent.setup();
+    renderRowWithProbe();
+
+    await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+
+    expect(mock.insertCalls.find((c) => c.table === "tasks")).toBeUndefined();
+    expect(screen.getByTestId("open-task-id")).toHaveTextContent("");
   });
 });
 

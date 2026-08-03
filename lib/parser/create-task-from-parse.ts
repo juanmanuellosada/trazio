@@ -157,7 +157,7 @@ export function useCreateTaskFromParse() {
         if (remindersError) throw remindersError;
       }
 
-      return { finalProjectId: projectId, createdLabel: result.labels.some((l) => !l.id) };
+      return { taskId: task.id, finalProjectId: projectId, createdLabel: result.labels.some((l) => !l.id) };
     },
     onError: reportTaskError,
     onSettled: (data) => {

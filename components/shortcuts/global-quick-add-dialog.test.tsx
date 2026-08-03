@@ -7,6 +7,7 @@ import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { ComposeContextProvider, usePublishComposeContext, type ComposeContext } from "@/components/tasks/compose-context";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { GlobalQuickAddDialog } from "./global-quick-add-dialog";
 
 /**
@@ -97,10 +98,12 @@ function renderDialog({
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={preferences}>
-        <ComposeContextProvider>
-          <ViewContextHarness context={viewContext} />
-          <GlobalQuickAddDialog open onOpenChange={() => {}} inboxProjectId={inboxProjectId} />
-        </ComposeContextProvider>
+        <TaskDetailProvider>
+          <ComposeContextProvider>
+            <ViewContextHarness context={viewContext} />
+            <GlobalQuickAddDialog open onOpenChange={() => {}} inboxProjectId={inboxProjectId} />
+          </ComposeContextProvider>
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

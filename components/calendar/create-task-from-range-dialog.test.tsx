@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { CreateTaskFromRangeDialog } from "./create-task-from-range-dialog";
 
@@ -94,12 +95,14 @@ function renderDialog(fixedProjectId: string | null) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={PREFERENCES}>
-        <CreateTaskFromRangeDialog
-          open
-          onOpenChange={() => {}}
-          range={{ start: new Date("2026-08-05T13:00:00.000Z"), end: new Date("2026-08-05T13:45:00.000Z") }}
-          fixedProjectId={fixedProjectId}
-        />
+        <TaskDetailProvider>
+          <CreateTaskFromRangeDialog
+            open
+            onOpenChange={() => {}}
+            range={{ start: new Date("2026-08-05T13:00:00.000Z"), end: new Date("2026-08-05T13:45:00.000Z") }}
+            fixedProjectId={fixedProjectId}
+          />
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

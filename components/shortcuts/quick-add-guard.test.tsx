@@ -7,6 +7,7 @@ import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { UndoProvider, useUndoStack } from "@/components/providers/undo-provider";
 import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { ShortcutProvider } from "./shortcut-provider";
 
 /**
@@ -66,12 +67,14 @@ function renderHarness(onUndo: () => void) {
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <UndoProvider>
-          <ShortcutProvider inboxProjectId="p1">
-            <UndoButton onUndo={onUndo} />
-            <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} variant="full" />
-          </ShortcutProvider>
-        </UndoProvider>
+        <TaskDetailProvider>
+          <UndoProvider>
+            <ShortcutProvider inboxProjectId="p1">
+              <UndoButton onUndo={onUndo} />
+              <TaskQuickAddRow projectId="p1" sectionId={null} parentId={null} variant="full" />
+            </ShortcutProvider>
+          </UndoProvider>
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );

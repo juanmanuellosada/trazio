@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { TaskDetailProvider } from "@/components/tasks/task-detail-context";
 import { SectionList } from "./section-list";
 import type { SectionRow } from "@/lib/sections/use-sections";
 
@@ -66,7 +67,9 @@ function renderList(initialSections: SectionRow[] = sections) {
   render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
-        <SectionList projectId="p1" initialSections={initialSections} />
+        <TaskDetailProvider>
+          <SectionList projectId="p1" initialSections={initialSections} />
+        </TaskDetailProvider>
       </PreferencesProvider>
     </QueryClientProvider>,
   );
