@@ -25,5 +25,12 @@ export function useTodayEvents(todayDate: string, timezone: string) {
   return useQuery({
     queryKey: ["calendar-events", "today", todayDate, timezone] as const,
     queryFn: () => fetchEventsForRange(startISO, endISO),
+    // Sin esto, la precarga de `HoyEventsSeed` (`components/calendar/hoy-events-seed.tsx`)
+    // no ahorra nada: con `staleTime` en 0 (el default), React Query sirve el
+    // caché al instante pero igual dispara un refetch de fondo apenas
+    // `useHoyEvents` se monta en Hoy, duplicando la llamada a Google en vez
+    // de evitarla. Un minuto es más que suficiente entre la precarga (al
+    // montar el layout) y la llegada a Hoy.
+    staleTime: 60_000,
   });
 }

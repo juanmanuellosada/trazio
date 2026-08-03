@@ -53,24 +53,44 @@
 ## 6. Verificación
 
 - [x] 6.1 `pnpm lint && pnpm typecheck && pnpm test`
-- [ ] 6.2 **Con Google desconectado**: Hoy idéntica a antes. Es la prueba de que no se rompió nada para quien no usa calendario
-- [ ] 6.3 **Con Google conectado y sin eventos hoy**: sin marcas ni huecos
-- [ ] 6.4 **Con Google fallando**: las tareas se ven, un solo aviso
-- [ ] 6.5 **Con Google lento**: mirar el salto al insertarse los eventos. Está asumido, pero puede molestar más de lo que suena por escrito
-- [ ] 6.6 Una lista mezclada de verdad: eventos con hora, uno de todo el día, **uno que viene de ayer**, tareas con y sin hora, y una atrasada
-- [ ] 6.7 Un evento de un calendario de **solo lectura**
-- [ ] 6.8 Los tres formatos, y que el calendario abra en día sin navegación ni selector de formato
-- [ ] 6.9 **Que una tarea siga comportándose igual**: completar, doble clic, clic derecho, selección múltiple, con eventos en la misma lista
-- [ ] 6.10 En escritorio y en 390px
-- [ ] 6.11 Usar el simulador de Google, **nunca la cuenta real del dueño**
+- [x] 6.2 **Con Google desconectado**: Hoy idéntica a antes. Es la prueba de que no se rompió nada para quien no usa calendario
+- [x] 6.3 **Con Google conectado y sin eventos hoy**: sin marcas ni huecos
+- [x] 6.4 **Con Google fallando**: las tareas se ven, un solo aviso
+- [x] 6.5 **Con Google lento**: mirar el salto al insertarse los eventos. Está asumido, pero puede molestar más de lo que suena por escrito
+- [x] 6.6 Una lista mezclada de verdad: eventos con hora, uno de todo el día, **uno que viene de ayer**, tareas con y sin hora, y una atrasada
+- [x] 6.7 Un evento de un calendario de **solo lectura**
+- [x] 6.8 Los tres formatos, y que el calendario abra en día sin navegación ni selector de formato
+- [x] 6.9 **Que una tarea siga comportándose igual**: completar, doble clic, clic derecho, selección múltiple, con eventos en la misma lista
+- [x] 6.10 En escritorio y en 390px
+- [x] 6.11 Usar el simulador de Google, **nunca la cuenta real del dueño**
 - [x] 6.12 Sumar pruebas de Hoy. Hay **una sola** y es sobre centrado: el orden de los tres tramos y el desacople merecen quedar cubiertos
 
-**Nota de esta tanda:** 6.2–6.11 piden verificación en navegador (Playwright + simulador
-de Google, Docker local) y no se corrieron en esta pasada — quedan pendientes de una
-verificación manual o e2e antes de dar por cerrado el grupo 6 entero. Lo que sí quedó
-cubierto por pruebas de componente (6.12): desacople, los tres tramos del orden, el
-empate, el evento arrastrado de ayer, atrasadas nunca mezcladas, el orden no-default
-(2.6) y el aviso del panel.
+**Nota de esta tanda (verificación en navegador, Playwright + simulador de Google contra
+Supabase local):** 6.2, 6.3, 6.4, 6.7, 6.8, 6.9, 6.10 y 6.11 verificados y en orden. 6.5
+verificado con un juicio: el salto sí se nota (ver reporte de la tanda). **6.6 queda sin
+marcar a propósito**: el orden de los tres tramos, el empate y el bloque de atrasadas
+están bien, pero el evento arrastrado de ayer **sí muestra la hora de ayer** ("20:00 –
+02:00", literal, sin ningún indicador de que empezó el día anterior) — el defecto que
+D-A de `design.md` dice haber arreglado no está resuelto en la fila, solo en el orden.
+Es una decisión de diseño (qué mostrar en su lugar), no un bug chico: se paró sin
+arreglar. Ver el reporte de esta tanda para el detalle y la captura.
+
+**Siguiente tanda — arreglo de `formatEventTimeLabel` (`event-row.tsx`):** el defecto
+de 6.6 quedó resuelto. Un evento que empezó ayer ahora lee "Desde ayer · hasta las
+HH:mm" (se muestra cuándo termina, no cuándo empezó); el caso simétrico, uno que
+empieza hoy y sigue mañana, lee "HH:mm · hasta mañana". La comparación es por día
+calendario en la zona horaria del usuario contra el día de hoy (recibido por props
+como `now`, ya no leído del reloj del cliente), misma lógica para las dos direcciones.
+Verificado en el navegador (Playwright, chromium, Docker local, simulador de Google
+contra Supabase local, usuario e2e nuevo, nunca la cuenta real): una lista con los tres
+casos a la vez — "Reunión de ayer" ("Desde ayer · hasta las 02:30"), "Reunión que
+sigue" ("20:00 · hasta mañana") y "Reunión de hoy" ("10:00 – 11:00") — se distinguen
+entre sí de un vistazo, en escritorio y en 390px, sin la hora cruda del otro día en
+ningún nodo del documento. `hoy-view.test.tsx` tenía una prueba sobre este mismo
+defecto que nunca podía fallar (comparaba texto exacto contra un nodo que ya traía más
+texto, `queryByText("23:30")` contra `"23:30 – 09:00"`): se confirmó que fallaba contra
+el código viejo antes de arreglarla, junto con `event-row.test.tsx`, que ahora también
+cubre los tres casos a nivel de componente.
 
 ## 7. Lo escrito
 

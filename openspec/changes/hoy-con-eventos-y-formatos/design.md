@@ -115,18 +115,33 @@ ofrecer el formulario completo termina en un rechazo de Google después de que e
 **En teléfono no hay doble clic**: la fila de tarea ya resuelve eso abriendo con un toque. El evento
 sigue la misma regla, para que el gesto no dependa del tipo de fila.
 
-### D-E. Los eventos llegan después, y se nota
+### D-E. Los eventos llegan después — mitigado con precarga, salvo en frío
 
-Conservar la independencia tiene un costo visible: las tareas se pintan primero y **las filas de
-evento se insertan después, empujando a las tareas hacia abajo**.
+Conservar la independencia tiene el mismo costo de siempre: las tareas se pintan primero y **las
+filas de evento se insertan después, empujando a las tareas hacia abajo**. Verificado en el
+navegador, el salto molesta de verdad —entre 250 y 300px, con clics que caen en la fila equivocada
+en vez de la que se apuntaba—. El dueño decidió mitigarlo, no eliminarlo: reservar el lugar de
+antemano sigue exigiendo saber cuántos eventos va a haber, y eso sigue sin saberse hasta que Google
+responde.
 
-Se acepta, y no se disimula con un esqueleto de carga: reservar el lugar exige saber cuántos eventos
-va a haber, que es justamente lo que todavía no se sabe. Un esqueleto del alto equivocado salta dos
-veces en vez de una.
+**La mitigación es precargar, no bloquear.** `HoyEventsSeed`
+(`components/calendar/hoy-events-seed.tsx`), montado desde `app/(app)/layout.tsx`, dispara la misma
+consulta que usa `useHoyEvents` en Hoy —mismo `queryKey`— apenas se monta el layout, no recién al
+entrar a Hoy. Es un `useQuery` en un componente que no devuelve nada: no hay `Suspense`, no hay
+`isLoading` compartido, ninguna otra pantalla espera esta consulta. **El desacople sigue intacto**:
+precargar es empezar antes, nunca esperar. Sigue sin haber esqueleto de carga y las tareas siguen sin
+esperar a Google — eso no cambió.
 
-Lo que **no** se puede hacer es lo contrario: esperar a Google para pintar las tareas. Es la
-propiedad que hoy existe y la que más fácil se rompe sin querer, con un `Suspense` o un
-`isLoading` compartido.
+**Se dispara una vez por carga completa de página, no en cada navegación.** El layout no se remonta
+al navegar entre pantallas de `app/(app)/`, así que `HoyEventsSeed` monta una sola vez por carga
+dura. Ir de Bandeja a Proyecto a Hoy sin recargar reusa el resultado que ya llegó; la consulta a
+Google sale una vez, no una por clic.
+
+**El salto sigue existiendo al entrar directo a Hoy en frío** —por URL, por marcador, o recargando
+estando ya ahí—: en esos casos el layout se monta junto con la propia página, `HoyEventsSeed` y
+`useHoyEvents` arrancan al mismo tiempo, y no hay ninguna ventaja que aprovechar. Esto es
+deliberado, no un olvido: la precarga se acota al caso más frecuente —navegar dentro de la app hasta
+Hoy— y no resuelve el menos frecuente —aterrizar ahí en frío—. No se disimula.
 
 | Estado de Google | Qué se ve |
 | --- | --- |
@@ -134,6 +149,30 @@ propiedad que hoy existe y la que más fácil se rompe sin querer, con un `Suspe
 | Cargando | Las tareas, ya ordenadas entre sí |
 | Falla pasajera | Las tareas, más **un** aviso al pie. Nunca uno por fila |
 | Sin eventos hoy | Las tareas, sin ninguna marca |
+
+**El defecto que apareció al construirlo**: la consulta de `useTodayEvents` no tenía `staleTime`.
+Con el default en cero, React Query servía el resultado cacheado al instante pero igual disparaba un
+refetch de fondo apenas `useHoyEvents` se montaba en Hoy con el mismo `queryKey` —dos pedidos
+idénticos a Google en la misma visita, en vez de uno—. Se corrigió con `staleTime: 60_000` en
+`lib/calendar/use-today-events.ts`. **No es lo mismo que el caché de un minuto que ya existía**: ese
+vive en el servidor (`lib/calendar/events-cache.ts`), es un mapa en memoria por proceso que evita
+golpear la API de Google dos veces por el mismo rango de fechas; el `staleTime` nuevo vive en el
+cliente y evita que el propio navegador pida lo mismo dos veces en la misma visita. Son dos cachés
+distintos, en dos capas distintas, que resuelven dos problemas distintos.
+
+**Caso borde sin resolver: la zona horaria puede desincronizarse.** La precarga usa la zona horaria
+que el layout renderizó en la última carga completa de página; Hoy usa la de su propia consulta de
+preferencias, que se repite en cada navegación a la pantalla. Si alguien cambia su zona horaria en
+Configuración y después navega a Hoy sin recargar, el layout no se vuelve a montar —sigue con la
+zona horaria vieja—, mientras que la página de Hoy sí trae la nueva: las dos claves de caché dejan de
+coincidir, y esa visita en particular no encuentra nada precargado. No es un error de corrección —Hoy
+igual pide y muestra los eventos correctos, con la zona horaria correcta— sino que se pierde la
+mitigación: para esa visita, el salto vuelve a pasar como si la precarga no existiera. Se corrige
+solo en la próxima carga completa de página.
+
+Lo que **no** se puede hacer es lo contrario: esperar a Google para pintar las tareas. Es la
+propiedad que hoy existe y la que más fácil se rompe sin querer, con un `Suspense` o un
+`isLoading` compartido.
 
 ### D-F. El calendario de Hoy: modo día, fijo y sin navegación
 
@@ -152,8 +191,10 @@ contradicción: si querés mañana, la vista es Próximos.
 **Perder el desacople con Google** → D-E. Es el riesgo más serio y el más fácil de introducir sin
 querer. Se verifica con Google caído, no razonando sobre el código.
 
-**El salto al llegar los eventos** → D-E, asumido. Puede molestar más de lo que parece por escrito,
-y solo se juzga mirándolo con una conexión lenta.
+**El salto al llegar los eventos** → D-E, mitigado con precarga para quien navega hasta Hoy dentro
+de la app. Sigue intacto para quien entra en frío —por URL, marcador o recargando estando ya ahí—,
+y ese residuo se verifica con una carga directa a Hoy y una conexión lenta, no navegando desde otra
+pantalla.
 
 **Una fila que se parece a una tarea pero no lo es** → D-C. Si el tratamiento queda tímido, alguien
 va a buscar la casilla para tildar un evento. Se juzga mirando una lista mezclada, no una fila

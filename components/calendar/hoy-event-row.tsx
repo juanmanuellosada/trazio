@@ -34,11 +34,14 @@ export function HoyEventRow({
   calendarName,
   canEdit,
   timezone,
+  now,
 }: {
   event: CalendarEventInstance;
   calendarName: string;
   canEdit: boolean;
   timezone: string;
+  /** Para que `EventRow` sepa si el evento viene de ayer o sigue mañana. */
+  now: Date;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -75,6 +78,7 @@ export function HoyEventRow({
         event={event}
         calendarName={calendarName}
         canEdit={canEdit}
+        now={now}
         onEdit={() => setEditing(true)}
         onOpenInGoogleCalendar={handleOpenInGoogleCalendar}
         onDelete={handleDelete}

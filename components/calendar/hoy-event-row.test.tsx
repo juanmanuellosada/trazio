@@ -50,11 +50,21 @@ function event(overrides: Partial<CalendarEventInstance> = {}): CalendarEventIns
   };
 }
 
+// Cae dentro del 05/08 en BA (2026-08-05T15:00:00Z == 12:00 BA), mismo día que `event()`.
+const NOW = new Date("2026-08-05T15:00:00.000Z");
+
 function renderRow(props: Partial<Parameters<typeof HoyEventRow>[0]> = {}) {
   render(
     <PreferencesProvider preferences={TEST_PREFERENCES}>
       <ul>
-        <HoyEventRow event={event()} calendarName="Trabajo" canEdit timezone="America/Argentina/Buenos_Aires" {...props} />
+        <HoyEventRow
+          event={event()}
+          calendarName="Trabajo"
+          canEdit
+          timezone="America/Argentina/Buenos_Aires"
+          now={NOW}
+          {...props}
+        />
       </ul>
     </PreferencesProvider>,
   );

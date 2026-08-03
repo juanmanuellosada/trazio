@@ -34,6 +34,9 @@ function event(overrides: Partial<CalendarEventInstance> = {}): CalendarEventIns
   };
 }
 
+// Cae dentro del 05/08 en BA (2026-08-05T15:00:00Z == 12:00 BA).
+const NOW = new Date("2026-08-05T15:00:00.000Z");
+
 function renderRow(props: Partial<Parameters<typeof EventRow>[0]> = {}) {
   const onEdit = vi.fn();
   const onOpenInGoogleCalendar = vi.fn();
@@ -45,6 +48,7 @@ function renderRow(props: Partial<Parameters<typeof EventRow>[0]> = {}) {
           event={event()}
           calendarName="Trabajo"
           canEdit
+          now={NOW}
           onEdit={onEdit}
           onOpenInGoogleCalendar={onOpenInGoogleCalendar}
           onDelete={onDelete}
@@ -110,5 +114,24 @@ describe("EventRow (hoy-con-eventos, D-C)", () => {
 
     const menuItems = await screen.findAllByRole("menuitem");
     expect(menuItems.map((item) => item.textContent)).toEqual(["Editar", "Abrir en Google Calendar"]);
+  });
+});
+
+describe("EventRow — el rango horario cuando el evento cruza medianoche", () => {
+  it("evento de hoy: hora de inicio y de fin, sin marca de otro día", () => {
+    renderRow();
+    expect(screen.getByText("08:00 – 09:00")).toBeInTheDocument();
+  });
+
+  it("empezó ayer y termina hoy: 'Desde ayer', y la hora de fin, nunca la de inicio", () => {
+    renderRow({ event: event({ start: "2026-08-04T23:30:00-03:00", end: "2026-08-05T02:30:00-03:00" }) });
+    expect(screen.getByText("Desde ayer · hasta las 02:30")).toBeInTheDocument();
+    expect(screen.queryByText("23:30", { exact: true })).not.toBeInTheDocument();
+  });
+
+  it("empieza hoy y sigue mañana: la hora de inicio, y 'hasta mañana', nunca la de fin", () => {
+    renderRow({ event: event({ start: "2026-08-05T20:00:00-03:00", end: "2026-08-06T02:00:00-03:00" }) });
+    expect(screen.getByText("20:00 · hasta mañana")).toBeInTheDocument();
+    expect(screen.queryByText("02:00", { exact: true })).not.toBeInTheDocument();
   });
 });

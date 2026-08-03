@@ -161,6 +161,7 @@ export function HoyView({
         calendarName={eventsState.status === "ok" ? eventsState.calendarName(event.calendarId) : ""}
         canEdit={eventsState.status === "ok" ? eventsState.canEdit(event) : false}
         timezone={timezone}
+        now={now}
       />
     );
   }

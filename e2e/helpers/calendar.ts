@@ -90,6 +90,30 @@ export async function seedRecurringEvent(options: {
   return response.json();
 }
 
+/** Siembra un evento suelto (sin recurrencia) directo en el mock: `recurrence: []` es lo que lo distingue de una serie para `listInstances` (`google-calendar-mock-server.ts`). */
+export async function seedEvent(options: {
+  accountId: string;
+  calendarId?: string;
+  summary: string;
+  startISO: string;
+  endISO: string;
+  timeZone: string;
+}): Promise<{ id: string }> {
+  const response = await fetch(`${MOCK_GOOGLE_BASE_URL}/__test__/seed-recurring-event`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accountId: options.accountId,
+      calendarId: options.calendarId ?? "primary",
+      summary: options.summary,
+      start: { dateTime: options.startISO, timeZone: options.timeZone },
+      end: { dateTime: options.endISO, timeZone: options.timeZone },
+      recurrence: [],
+    }),
+  });
+  return response.json();
+}
+
 type MockEvent = { id: string; summary: string; start: { dateTime?: string; date?: string }; recurringEventId?: string };
 
 /** Inspecciona el estado guardado en el mock (tarea 8.11): para verificar sin ambigüedad qué quedó persistido después de arrastrar o editar, en vez de inferirlo de la posición en píxeles de la grilla. */

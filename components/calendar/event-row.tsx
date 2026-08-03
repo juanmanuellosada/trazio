@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { CalendarEventInstance } from "@/lib/calendar/events";
+import { todayInTimeZone } from "@/lib/dates/today";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,11 +41,28 @@ function renderDropdownEntries(items: AppContextMenuEntry[]): ReactNode[] {
   });
 }
 
-function formatEventTimeLabel(event: CalendarEventInstance, timezone: string, timeFormat: 12 | 24): string {
+/**
+ * Un evento arrastrado de ayer mostraba su hora de inicio cruda ("20:00 –
+ * 02:00"), leída como si durara seis horas al revés en vez de haber
+ * empezado el día anterior (bug reportado en tarea 6.6 de
+ * `hoy-con-eventos-y-formatos`). La corrección compara el día calendario
+ * (en `timezone`) del inicio y del fin contra el de hoy: si alguno de los
+ * dos no es hoy, se lo nombra ("ayer"/"mañana") en vez de mostrar su hora,
+ * misma lógica para el caso simétrico (empieza hoy, sigue mañana).
+ */
+function formatEventTimeLabel(event: CalendarEventInstance, timezone: string, timeFormat: 12 | 24, now: Date): string {
   if (event.allDay) return "Todo el día";
   const pattern = timeFormat === 24 ? "HH:mm" : "h:mm aaaa";
   const start = formatInTimeZone(parseISO(event.start), timezone, pattern, { locale: es });
   const end = formatInTimeZone(parseISO(event.end), timezone, pattern, { locale: es });
+
+  const today = todayInTimeZone(now, timezone);
+  const startsToday = formatInTimeZone(parseISO(event.start), timezone, "yyyy-MM-dd") === today;
+  const endsToday = formatInTimeZone(parseISO(event.end), timezone, "yyyy-MM-dd") === today;
+
+  if (!startsToday && !endsToday) return "Desde ayer · sigue mañana";
+  if (!startsToday) return `Desde ayer · hasta las ${end}`;
+  if (!endsToday) return `${start} · hasta mañana`;
   return `${start} – ${end}`;
 }
 
@@ -104,6 +122,7 @@ export function EventRow({
   event,
   calendarName,
   canEdit,
+  now,
   onEdit,
   onOpenInGoogleCalendar,
   onDelete,
@@ -112,13 +131,15 @@ export function EventRow({
   calendarName: string;
   /** Resuelto afuera (permiso del calendario, no del evento): esta fila no cruza contra la lista de calendarios. */
   canEdit: boolean;
+  /** Para saber si el inicio o el fin del evento caen fuera del día de hoy (ver `formatEventTimeLabel`). */
+  now: Date;
   onEdit: () => void;
   onOpenInGoogleCalendar: () => void;
   onDelete: () => void;
 }) {
   const preferences = useUserPreferences();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const timeLabel = formatEventTimeLabel(event, preferences.timezone, preferences.timeFormat);
+  const timeLabel = formatEventTimeLabel(event, preferences.timezone, preferences.timeFormat, now);
 
   // Mismo problema de ancho que el proyecto anclado de `TaskRow` (D-F de
   // `fila-de-tarea-en-niveles`): en 390px el nombre del calendario a la

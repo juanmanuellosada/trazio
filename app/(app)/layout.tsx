@@ -7,6 +7,8 @@ import { getAllProjects } from "@/lib/projects/get-all-projects";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getAllSections } from "@/lib/sections/get-all-sections";
 import { AllSectionsSeed } from "@/components/providers/all-sections-seed";
+import { HoyEventsSeed } from "@/components/calendar/hoy-events-seed";
+import { todayInTimeZone } from "@/lib/dates/today";
 import { getTodayTaskCount } from "@/lib/tasks/today-count";
 import { getThemePreference } from "@/lib/preferences/get-theme-preference";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
@@ -55,6 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const todayCount = await getTodayTaskCount(user.id, preferences.timezone);
   const fullName = profile?.full_name ?? null;
+  const todayDate = todayInTimeZone(new Date(), preferences.timezone);
 
   return (
     <QueryProvider>
@@ -64,6 +67,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           nunca encuentra una registración y se queda esperando para siempre. */}
       <RegisterServiceWorker />
       <AllSectionsSeed initialSections={initialSections} />
+      {/* Precarga los eventos de hoy antes de llegar a Hoy, para que la
+          pantalla no salte al insertarlos (ver el comentario del propio
+          componente). */}
+      <HoyEventsSeed todayDate={todayDate} timezone={preferences.timezone} />
       <ThemeSync serverTheme={theme} />
       <PreferencesProvider preferences={preferences}>
         <UndoProvider>

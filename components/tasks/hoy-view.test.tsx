@@ -262,8 +262,13 @@ describe("HoyView — el orden de los tres tramos (D-A, grupo 2)", () => {
     );
 
     expect(screen.getByText("Reunión de ayer")).toBeInTheDocument();
-    // Formateado en 24hs (`TEST_PREFERENCES`): la hora de ayer sería "23:30".
-    expect(screen.queryByText("23:30")).not.toBeInTheDocument();
+    // El defecto real (tarea 6.6): mostraba "23:30 – 09:00", la hora cruda
+    // de ayer, como si el evento durara seis horas al revés hoy. Ahora se
+    // lee "Desde ayer" y la hora en la que termina; la hora de ayer no
+    // aparece en ningún nodo del documento (chequeo por texto completo, no
+    // por una coincidencia exacta que un nodo compuesto nunca cumple).
+    expect(screen.getByText("Desde ayer · hasta las 09:00")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("23:30");
     expect(indexOfText(container, "Reunión de ayer")).toBeLessThan(indexOfText(container, "Llamar al contador"));
   });
 

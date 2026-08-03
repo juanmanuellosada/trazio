@@ -1073,3 +1073,63 @@ tramo de "con hora" por instante absoluto ascendente y, a igual instante,
 antepone la entrada de tipo evento — cubierto por la prueba "empate a la misma
 hora: primero el evento" en `lib/tasks/hoy-sequence.test.ts` y en
 `components/tasks/hoy-view.test.tsx`.
+
+---
+
+## D45 — El salto de Hoy se mitiga con precarga en el layout; se acepta un residuo en frío
+
+**Fecha.** 2026-08-03
+
+**Contexto.** D-E de `openspec/changes/hoy-con-eventos-y-formatos/design.md`
+daba por aceptado el salto que producen las filas de evento al insertarse
+después de las tareas —entre 250 y 300px, con clics que terminan cayendo en la
+fila equivocada—. Verificado en el navegador, el dueño lo consideró
+intolerable y pidió mitigarlo.
+
+**Decisión.** Se agrega `HoyEventsSeed`
+(`components/calendar/hoy-events-seed.tsx`), montado desde
+`app/(app)/layout.tsx`, que dispara la misma consulta que usa Hoy —mismo
+`queryKey`— apenas se monta el layout, en vez de recién al llegar a Hoy. Es
+una precarga, no una espera: sigue sin haber esqueleto de carga ni
+`isLoading` compartido, y las tareas de Hoy siguen sin esperar a Google. Al
+vivir en el layout, que no se remonta entre pantallas de `app/(app)/`, la
+consulta sale una vez por carga completa de página, no una vez por
+navegación.
+
+**El precio aceptado.** Toda pantalla de la app dispara ahora una llamada a
+Google Calendar aunque esa pantalla no muestre ningún evento —Bandeja, un
+Proyecto, Configuración, lo que sea, con tal de que sea la primera pantalla de
+la sesión—. Acotado por el caché de un minuto del lado del cliente (ver más
+abajo): solo la primera pantalla de cada carga completa paga esa llamada; el
+resto de la navegación dentro de esa carga la reusa.
+
+**Lo que no se resuelve.** El salto sigue existiendo al entrar directo a Hoy
+en frío —por URL, marcador o recargando estando ya ahí—: ahí no hay ventaja
+que precargar, porque la precarga y la propia pantalla arrancan al mismo
+tiempo. Es deliberado: se mitiga el caso frecuente (navegar dentro de la app
+hasta Hoy), no el menos frecuente (aterrizar ahí en frío).
+
+**El defecto real que apareció.** La consulta
+(`lib/calendar/use-today-events.ts`) no tenía `staleTime`, así que la
+precarga y el montaje de Hoy —mismo `queryKey`— disparaban dos pedidos
+idénticos a Google en vez de uno: React Query servía el caché al instante
+pero igual refetcheaba en el fondo con el default en cero. Se corrigió con
+`staleTime: 60_000`. Esto es distinto del caché de un minuto que ya existía
+del lado del servidor (`lib/calendar/events-cache.ts`, un mapa en memoria por
+proceso): ese evita pedirle dos veces lo mismo a la API de Google; el nuevo
+evita que el propio navegador dispare el pedido dos veces en una misma
+visita.
+
+**Caso borde que queda anotado, sin resolver.** La precarga toma la zona
+horaria que el layout renderizó en la última carga completa de página; Hoy la
+lee de su propia consulta de preferencias, que se repite en cada navegación a
+la pantalla. Si alguien cambia su zona horaria en Configuración y navega a
+Hoy sin recargar, las dos claves de caché quedan con zonas horarias
+distintas y esa visita no encuentra nada precargado — no es un error de
+corrección, los eventos que se terminan mostrando son igual los correctos,
+pero esa visita puntual pierde la mitigación y el salto vuelve a pasar. Se
+corrige solo en la próxima carga completa de página.
+
+**Consecuencia.** `openspec/changes/hoy-con-eventos-y-formatos/design.md`
+(D-E) queda actualizado para describir la precarga en vez del salto asumido
+sin mitigar.
