@@ -49,14 +49,19 @@ export function CreateEventDialog({
     createEvent.mutate(input, { onSuccess: () => onOpenChange(false) });
   }
 
-  const rangeLabel = `${format(start, "EEEE d 'de' MMMM, HH:mm", { locale: es })}–${format(end, "HH:mm", { locale: es })}`;
-
   return (
     <EventFormDialog
       open={open}
       onOpenChange={onOpenChange}
       dialogTitle="Evento nuevo"
-      dialogDescription={rangeLabel}
+      // Función, no texto fijo (`event-form-dialog.tsx`): tiene que seguir
+      // la fecha/hora vigente del formulario, no la propuesta inicial —
+      // "todo el día" no tiene horario, así que el resumen tampoco.
+      dialogDescription={(current) =>
+        current.allDay
+          ? format(current.start, "EEEE d 'de' MMMM", { locale: es })
+          : `${format(current.start, "EEEE d 'de' MMMM, HH:mm", { locale: es })}–${format(current.end, "HH:mm", { locale: es })}`
+      }
       submitLabel="Crear evento"
       blockWhenNoCalendars
       isSubmitting={createEvent.isPending}

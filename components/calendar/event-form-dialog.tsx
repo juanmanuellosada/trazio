@@ -164,7 +164,14 @@ export function EventFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dialogTitle: string;
-  dialogDescription?: string;
+  /**
+   * Función en vez de texto fijo para el alta (`create-event-dialog.tsx`):
+   * el resumen tiene fecha y hora, que cambian con "todo el día" y con los
+   * campos de fecha/hora del formulario — un texto fijo calculado una sola
+   * vez a partir del rango propuesto (como estaba antes) quedaba mostrando
+   * un horario después de activar "todo el día".
+   */
+  dialogDescription?: string | ((current: { allDay: boolean; start: Date; end: Date }) => string);
   submitLabel: string;
   initial: EventFormInitialValues;
   blockWhenNoCalendars: boolean;
@@ -232,39 +239,50 @@ export function EventFormDialog({
   const startParts = allDay ? null : splitDateTimeLocal(timedStart);
   const endParts = allDay ? null : splitDateTimeLocal(timedEnd);
   const endBeforeStart = !allDay && new Date(timedEnd).getTime() <= new Date(timedStart).getTime();
-  const recurrenceDate = allDay ? parseISO(allDayDate) : new Date(timedStart);
+  // Rango vigente en cualquiera de los dos modos, para no repetirlo entre el
+  // resumen del encabezado (`resolvedDescription`) y `handleSubmit`.
+  const currentRange = allDay
+    ? { start: parseISO(allDayDate), end: addDays(parseISO(allDayDate), allDaySpanDays) }
+    : { start: new Date(timedStart), end: new Date(timedEnd) };
+  const recurrenceDate = currentRange.start;
+
+  const resolvedDescription = typeof dialogDescription === "function" ? dialogDescription({ allDay, ...currentRange }) : dialogDescription;
 
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
+  }
+
+  // Sincroniza la fecha (y, al volver a horario, la hora) entre las dos
+  // representaciones al cruzar el interruptor: sin esto, cambiar la fecha
+  // en un modo y después cruzar al otro dejaba la fecha vieja del montaje
+  // en vez de la recién elegida (`timedStart`/`timedEnd`/`allDayDate` viven
+  // como estados independientes, ver el comentario de más arriba).
+  function handleAllDayChange(next: boolean) {
+    if (next) {
+      setAllDayDate(splitDateTimeLocal(timedStart).date);
+    } else {
+      const { time: startTime } = splitDateTimeLocal(timedStart);
+      const { time: endTime } = splitDateTimeLocal(timedEnd);
+      setTimedStart(joinDateTimeLocal(allDayDate, startTime));
+      setTimedEnd(joinDateTimeLocal(allDayDate, endTime));
+    }
+    setAllDay(next);
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!title.trim() || !effectiveCalendarId || endBeforeStart) return;
 
-    const values: EventFormValues = allDay
-      ? {
-          title: title.trim(),
-          calendarId: effectiveCalendarId,
-          allDay: true,
-          start: parseISO(allDayDate),
-          end: addDays(parseISO(allDayDate), allDaySpanDays),
-          description: description.trim() || null,
-          location: location.trim() || null,
-          recurrence,
-        }
-      : {
-          title: title.trim(),
-          calendarId: effectiveCalendarId,
-          allDay: false,
-          start: new Date(timedStart),
-          end: new Date(timedEnd),
-          description: description.trim() || null,
-          location: location.trim() || null,
-          recurrence,
-        };
-
-    onSubmit(values);
+    onSubmit({
+      title: title.trim(),
+      calendarId: effectiveCalendarId,
+      allDay,
+      start: currentRange.start,
+      end: currentRange.end,
+      description: description.trim() || null,
+      location: location.trim() || null,
+      recurrence,
+    });
   }
 
   const blockForm = blockWhenNoCalendars && (unavailableCalendars || noWritableCalendars);
@@ -275,7 +293,7 @@ export function EventFormDialog({
       open={open}
       onOpenChange={handleOpenChange}
       title={dialogTitle}
-      description={dialogDescription}
+      description={resolvedDescription}
       size="lg"
       className="max-h-[85vh] overflow-y-auto"
     >
@@ -323,7 +341,7 @@ export function EventFormDialog({
 
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor={`${titleId}-all-day`}>Todo el día</Label>
-            <Switch id={`${titleId}-all-day`} checked={allDay} onCheckedChange={setAllDay} />
+            <Switch id={`${titleId}-all-day`} checked={allDay} onCheckedChange={handleAllDayChange} />
           </div>
 
           {allDay ? (
