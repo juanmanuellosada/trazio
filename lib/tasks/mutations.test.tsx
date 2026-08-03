@@ -5,12 +5,12 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { UndoProvider } from "@/components/providers/undo-provider";
-import { playCompletionSound } from "@/lib/completion-sound";
+import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
 import { useUpdateTask } from "./mutations";
 import { taskDetailQueryKey, type TaskDetail } from "./use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
-vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn() }));
+vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn(), playUncompletionSound: vi.fn() }));
 
 /** Mock mínimo: solo `update().eq()`, que es todo lo que usa `useUpdateTask` acá (sin `completed_at`, no dispara `createNextRecurringOccurrence`). */
 function createSupabaseMock() {
@@ -312,12 +312,12 @@ describe("useUpdateTask — deshacer completar una recurrente elimina la instanc
 });
 
 /**
- * `sonido-al-completar` (D-B/D-C): el sonido cuelga del callback de éxito de
- * esta mutación, condicionado a que el patch traiga `completed_at` con
- * valor — nunca a "la mutación de tarea salió bien". Cubre completar,
- * descompletar y el camino que más importa: el autoguardado de la
+ * `sonido-al-completar`/`sonido-al-descompletar` (D-B/D-C): el sonido cuelga
+ * del callback de éxito de esta mutación, condicionado a que el patch traiga
+ * la clave `completed_at` — nunca a "la mutación de tarea salió bien". Cubre
+ * completar, descompletar y el camino que más importa: el autoguardado de la
  * descripción, que pasa por este mismo `onSuccess` sin ningún gesto de
- * completar.
+ * completar ni de descompletar.
  */
 describe("useUpdateTask — sonido al completar", () => {
   beforeEach(() => {
@@ -340,9 +340,10 @@ describe("useUpdateTask — sonido al completar", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(playCompletionSound).toHaveBeenCalledTimes(1);
+    expect(playUncompletionSound).not.toHaveBeenCalled();
   });
 
-  it("descompletar una tarea nunca reproduce ningún sonido", async () => {
+  it("descompletar una tarea reproduce el sonido grave, no el de completar", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(taskDetailQueryKey(baseTask.id), { ...baseTask, completed_at: "2026-08-01T00:00:00.000Z" });
     const { result } = renderHook(() => useUpdateTask(), { wrapper: wrapperWithUndo(queryClient) });
@@ -352,6 +353,7 @@ describe("useUpdateTask — sonido al completar", () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(playUncompletionSound).toHaveBeenCalledTimes(1);
     expect(playCompletionSound).not.toHaveBeenCalled();
   });
 
@@ -370,5 +372,30 @@ describe("useUpdateTask — sonido al completar", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(playCompletionSound).not.toHaveBeenCalled();
+    expect(playUncompletionSound).not.toHaveBeenCalled();
+  });
+
+  it("deshacer un completar no reproduce ningún sonido (el undo pisa la fila directo, no pasa por este onSuccess)", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(taskDetailQueryKey(baseTask.id), baseTask);
+    const { result } = renderHook(() => useUpdateTask(), { wrapper: wrapperWithUndo(queryClient) });
+
+    act(() => {
+      result.current.mutate({
+        id: baseTask.id,
+        projectId: baseTask.project_id,
+        patch: { completed_at: "2026-08-02T12:00:00.000Z" },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(playCompletionSound).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    act(() => pressUndoShortcut());
+    await waitFor(() => expect(mock.updateCalls).toHaveLength(2));
+
+    expect(playCompletionSound).not.toHaveBeenCalled();
+    expect(playUncompletionSound).not.toHaveBeenCalled();
   });
 });

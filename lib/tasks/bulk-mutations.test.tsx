@@ -5,12 +5,12 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { UndoProvider } from "@/components/providers/undo-provider";
-import { playCompletionSound } from "@/lib/completion-sound";
+import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
 import { useBulkDeleteTasks, useBulkUpdateTasks } from "./mutations";
 import { tasksQueryKey, type TaskRow } from "./use-tasks";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
-vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn() }));
+vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn(), playUncompletionSound: vi.fn() }));
 
 vi.mock("./restore", () => ({
   snapshotTaskSubtree: vi.fn(async (_supabase: unknown, rootId: string) => ({
@@ -155,6 +155,36 @@ describe("useBulkUpdateTasks — una sola entrada de deshacer para todo el lote 
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(playCompletionSound).toHaveBeenCalledTimes(1);
+    expect(playUncompletionSound).not.toHaveBeenCalled();
+  });
+
+  /**
+   * `sonido-al-descompletar`: mismo razonamiento preventivo que el test de
+   * arriba, para la otra dirección — si `patch` trae `completed_at: null`,
+   * el sonido grave suena una vez por lote.
+   */
+  it("un patch con completed_at: null reproduce el sonido grave una sola vez, sin importar cuántas tareas trae el lote", async () => {
+    const queryClient = new QueryClient();
+    const tasks = [baseTask("t1", "p1"), baseTask("t2", "p1"), baseTask("t3", "p2")];
+    queryClient.setQueryData(tasksQueryKey("p1"), [tasks[0], tasks[1]]);
+    queryClient.setQueryData(tasksQueryKey("p2"), [tasks[2]]);
+
+    const { result } = renderHook(() => useBulkUpdateTasks(), { wrapper: wrapper(queryClient) });
+
+    act(() => {
+      result.current.mutate({
+        tasks: [
+          { id: "t1", projectId: "p1" },
+          { id: "t2", projectId: "p1" },
+          { id: "t3", projectId: "p2" },
+        ],
+        patch: { completed_at: null },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(playUncompletionSound).toHaveBeenCalledTimes(1);
+    expect(playCompletionSound).not.toHaveBeenCalled();
   });
 });
 

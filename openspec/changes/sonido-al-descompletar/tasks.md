@@ -6,28 +6,28 @@
 
 ## 1. El sonido
 
-- [ ] 1.1 Una variante grave en `lib/completion-sound.ts`. **Misma duración, misma envolvente, mismo volumen**: solo cambia la frecuencia, hacia abajo
-- [ ] 1.2 Mantener las constantes con nombre y sus comentarios al día. El dueño las toca a mano para afinar y son lo único que tiene que buscar
-- [ ] 1.3 **Un solo evento sonoro** (**D-A**). Nada de dos notas descendentes: sería una secuencia, y ahí empieza a sonar a melodía, que es la frontera con la gamificación que el diseño original trazó
+- [x] 1.1 Una variante grave en `lib/completion-sound.ts`. **Misma duración, misma envolvente, mismo volumen**: solo cambia la frecuencia, hacia abajo
+- [x] 1.2 Mantener las constantes con nombre y sus comentarios al día. El dueño las toca a mano para afinar y son lo único que tiene que buscar
+- [x] 1.3 **Un solo evento sonoro** (**D-A**). Nada de dos notas descendentes: sería una secuencia, y ahí empieza a sonar a melodía, que es la frontera con la gamificación que el diseño original trazó
 
 ## 2. Dónde se dispara
 
-- [ ] 2.1 La condición que distingue completar de descompletar **ya existe** y se usa para el texto de la tostada de deshacer. Es la misma, leída al revés
-- [ ] 2.2 Sigue colgado del callback de éxito de la mutación, **nunca de un efecto que observe los datos**. Eso es lo que mantiene excluidos por construcción deshacer, el tiempo real y las reversiones
-- [ ] 2.3 **Desmarcar un hábito sigue sin sonar** (**D-C**). No es una inconsistencia: marcar un hábito no tiene deshacer, y desmarcarlo es la corrección de un error
+- [x] 2.1 La condición que distingue completar de descompletar **ya existe** y se usa para el texto de la tostada de deshacer. Es la misma, leída al revés
+- [x] 2.2 Sigue colgado del callback de éxito de la mutación, **nunca de un efecto que observe los datos**. Eso es lo que mantiene excluidos por construcción deshacer, el tiempo real y las reversiones
+- [x] 2.3 **Desmarcar un hábito sigue sin sonar** (**D-C**). No es una inconsistencia: marcar un hábito no tiene deshacer, y desmarcarlo es la corrección de un error
 
 ## 3. El ajuste
 
-- [ ] 3.1 El interruptor que existe pasa a cubrir los dos. **No agregues un segundo**
-- [ ] 3.2 Actualizar el texto del ajuste si hoy nombra solo el completar
+- [x] 3.1 El interruptor que existe pasa a cubrir los dos. **No agregues un segundo**
+- [x] 3.2 Actualizar el texto del ajuste si hoy nombra solo el completar
 
 ## 4. Verificación
 
-- [ ] 4.1 `pnpm lint && pnpm typecheck && pnpm test`
-- [ ] 4.2 **Completar y descompletar la misma tarea, alternando cinco veces.** Es la prueba que importa: si los dos sonidos no se distinguen sin pensarlo, la nota está mal elegida
-- [ ] 4.3 Descompletar diez tareas seguidas: que no canse
-- [ ] 4.4 **Desmarcar un hábito no suena**
-- [ ] 4.5 **Deshacer no suena**, ni al completar ni al descompletar
-- [ ] 4.6 Con dos pestañas: descompletar en una no suena en la otra
-- [ ] 4.7 El interruptor apaga los dos
-- [ ] 4.8 Dejá anotados los valores elegidos y dónde se cambian: el dueño los va a escuchar y va a querer afinarlos sin buscar
+- [x] 4.1 `pnpm lint && pnpm typecheck && pnpm test`
+- [x] 4.2 **Completar y descompletar la misma tarea, alternando cinco veces.** Es la prueba que importa: si los dos sonidos no se distinguen sin pensarlo, la nota está mal elegida — instrumentado por Playwright (no hay oído de este lado): 520Hz vs 340Hz, ~735 cents de distancia (más de una quinta justa), medido en cada alternancia. La confirmación final de que "no hay que pensarlo" la da el dueño escuchando
+- [ ] 4.3 Descompletar diez tareas seguidas: que no canse — pendiente del oído del dueño, no es medible
+- [x] 4.4 **Desmarcar un hábito no suena**
+- [x] 4.5 **Deshacer no suena**, ni al completar ni al descompletar
+- [x] 4.6 Con dos pestañas: descompletar en una no suena en la otra
+- [x] 4.7 El interruptor apaga los dos
+- [x] 4.8 Dejá anotados los valores elegidos y dónde se cambian: el dueño los va a escuchar y va a querer afinarlos sin buscar

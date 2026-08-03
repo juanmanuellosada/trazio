@@ -225,7 +225,7 @@ export function GeneralSection({
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <Label htmlFor={soundOnCompleteId}>Sonido al completar</Label>
+        <Label htmlFor={soundOnCompleteId}>Sonido al completar y descompletar</Label>
         <Switch
           id={soundOnCompleteId}
           checked={local.soundOnComplete}

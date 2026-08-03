@@ -128,7 +128,7 @@ describe("GeneralSection", () => {
     const user = userEvent.setup();
     renderSection({ soundOnComplete: true });
 
-    const toggle = screen.getByRole("switch", { name: "Sonido al completar" });
+    const toggle = screen.getByRole("switch", { name: "Sonido al completar y descompletar" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
 
     await user.click(toggle);
@@ -141,6 +141,9 @@ describe("GeneralSection", () => {
   it("el interruptor de sonido arranca apagado si la preferencia ya lo estaba", () => {
     renderSection({ soundOnComplete: false });
 
-    expect(screen.getByRole("switch", { name: "Sonido al completar" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("switch", { name: "Sonido al completar y descompletar" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
   });
 });

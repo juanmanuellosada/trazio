@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useUndoStack } from "@/components/providers/undo-provider";
-import { playCompletionSound } from "@/lib/completion-sound";
+import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
 import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
 import { createClient } from "@/lib/supabase/client";
@@ -252,15 +252,20 @@ export function useUpdateTask() {
       reportTaskError(error);
     },
     onSuccess: (data, { id, projectId, patch }, context) => {
-      // `sonido-al-completar` (D-B/D-C): antes del retorno temprano de abajo,
-      // o se pierde el caso donde no había valor anterior en caché (sin
-      // `inversePatch` no hay nada para deshacer, pero el sonido igual tiene
-      // que sonar). Condicionado a la forma del cambio —que el patch traiga
-      // `completed_at` con valor—, no a "la mutación de tarea salió bien":
-      // el autoguardado de la descripción pasa por este mismo callback sin
-      // gesto del usuario, y `patch.completed_at` nunca viaja ahí. Nunca al
-      // descompletar (`patch.completed_at` sería `null`, falsy).
-      if (patch.completed_at) playCompletionSound();
+      // `sonido-al-completar`/`sonido-al-descompletar` (D-B/D-C): antes del
+      // retorno temprano de abajo, o se pierde el caso donde no había valor
+      // anterior en caché (sin `inversePatch` no hay nada para deshacer, pero
+      // el sonido igual tiene que sonar). Condicionado a la forma del cambio
+      // —que el patch traiga la clave `completed_at`—, no a "la mutación de
+      // tarea salió bien": el autoguardado de la descripción pasa por este
+      // mismo callback sin gesto del usuario, y `completed_at` nunca viaja
+      // en su patch, así que no entra acá. Misma condición que
+      // `describePatch` (arriba), leída al revés: truthy es completar,
+      // falsy (`null`) es descompletar.
+      if ("completed_at" in patch) {
+        if (patch.completed_at) playCompletionSound();
+        else playUncompletionSound();
+      }
 
       // Bloque 5.11: empuja completar/descompletar y cualquier edición de
       // campos a la pila de deshacer. Sin toast acá (`.claude/rules/frontend.md`
@@ -646,13 +651,17 @@ export function useBulkUpdateTasks() {
       reportTaskError(error);
     },
     onSuccess: (_data, { tasks, patch }, context) => {
-      // `sonido-al-completar` (2.5, preventivo): no hay hoy un "completar en
-      // lote" en la interfaz —esta mutación solo se usa para prioridad y
-      // fecha (ver el docstring de arriba)—, pero si `patch` alguna vez trae
-      // `completed_at`, tiene que sonar **una vez por lote**, no una por
-      // tarea: por eso el llamado va acá, en el único `onSuccess` del lote,
-      // y no adentro del `for`/`Promise.all` de `mutationFn`.
-      if (patch.completed_at) playCompletionSound();
+      // `sonido-al-completar`/`sonido-al-descompletar` (2.5, preventivo): no
+      // hay hoy un "completar en lote" en la interfaz —esta mutación solo se
+      // usa para prioridad y fecha (ver el docstring de arriba)—, pero si
+      // `patch` alguna vez trae la clave `completed_at`, tiene que sonar
+      // **una vez por lote**, no una por tarea: por eso el llamado va acá,
+      // en el único `onSuccess` del lote, y no adentro del `for`/`Promise.all`
+      // de `mutationFn`.
+      if ("completed_at" in patch) {
+        if (patch.completed_at) playCompletionSound();
+        else playUncompletionSound();
+      }
 
       if (!context) return;
       const inverses = tasks

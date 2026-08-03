@@ -88,3 +88,56 @@ describe("playCompletionSound", () => {
     expect(() => mod.playCompletionSound()).not.toThrow();
   });
 });
+
+describe("playUncompletionSound (sonido-al-descompletar D-A)", () => {
+  let mod: typeof CompletionSoundModule;
+
+  beforeEach(async () => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+    mod = await import("./completion-sound");
+  });
+
+  it("usa una nota más grave que la de completar, con la misma duración (D-A)", async () => {
+    const { oscillator: completeOscillator, gain: completeGain } = installAudioContextMock();
+    mod.playCompletionSound();
+    const completeFrequency = completeOscillator.frequency.value;
+    const completeStopAt = completeOscillator.stop.mock.calls[0][0];
+    const completePeakGain = completeGain.gain.linearRampToValueAtTime.mock.calls[0][0];
+
+    vi.unstubAllGlobals();
+    vi.resetModules();
+    const freshMod = await import("./completion-sound");
+    const { oscillator: uncompleteOscillator, gain: uncompleteGain } = installAudioContextMock();
+    freshMod.playUncompletionSound();
+
+    expect(uncompleteOscillator.frequency.value).toBeLessThan(completeFrequency);
+    // Misma duración y mismo pico de ganancia (D-A): solo cambia la frecuencia.
+    expect(uncompleteOscillator.stop.mock.calls[0][0]).toBe(completeStopAt);
+    expect(uncompleteGain.gain.linearRampToValueAtTime.mock.calls[0][0]).toBe(completePeakGain);
+  });
+
+  it("arranca y para el oscilador una sola vez por llamado (un solo evento sonoro, D-A)", () => {
+    const { oscillator } = installAudioContextMock();
+
+    mod.playUncompletionSound();
+
+    expect(oscillator.start).toHaveBeenCalledTimes(1);
+    expect(oscillator.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("no reproduce nada si el interruptor está apagado (mismo interruptor que completar, D-B)", () => {
+    const { ctor } = installAudioContextMock();
+    mod.setSoundOnCompleteEnabled(false);
+
+    mod.playUncompletionSound();
+
+    expect(ctor).not.toHaveBeenCalled();
+  });
+
+  it("no explota si el navegador no soporta AudioContext (falla en silencio)", () => {
+    vi.stubGlobal("AudioContext", undefined);
+
+    expect(() => mod.playUncompletionSound()).not.toThrow();
+  });
+});
