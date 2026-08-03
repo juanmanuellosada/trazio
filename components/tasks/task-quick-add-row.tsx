@@ -388,7 +388,11 @@ export function TaskQuickAddRow({
   function buildCreateVariables(trimmed: string) {
     const fresh = parse(trimmed, { ahora: new Date(), ...parserContext });
     const final = applyDisabledMatches(trimmed, fresh, disabledMatches);
-    const finalTitle = final.title || trimmed; // nunca crear con título vacío (bloque 9.20)
+    // `submit()` (confirmar) nunca llega hasta acá con `trimmed` vacío — tiene
+    // su propia guarda más abajo. `submitAndOpenDetail()` sí puede: desde
+    // D46, "Abrir detalle" sin nada escrito crea la tarea con título vacío a
+    // propósito, y el detalle la borra si se cierra sin haberla titulado.
+    const finalTitle = final.title || trimmed;
 
     const date = mergeDate(final, dateOverride, dateFallback);
     const priority = mergePriority(final.priority, priorityOverride);
@@ -434,16 +438,18 @@ export function TaskQuickAddRow({
    * volver atrás cierra el detalle en vez de sacar de la aplicación. No hay
    * forma de "ver el detalle" sin este insert: comentarios y subtareas
    * cuelgan de una tarea que existe (D-A).
+   *
+   * Sin nada escrito (D46: reporte del dueño, "Abrir detalle" cerraba todo
+   * en vez de abrir algo) esto también crea la tarea, con título vacío, y
+   * abre su detalle igual — nunca cancela. El detalle se hace cargo de que
+   * esa tarea no quede sin título: pide el foco ahí (`focusField: "title"`)
+   * y la borra si se cierra sin haberlo cargado (`task-detail-content.tsx`).
    */
   function submitAndOpenDetail() {
     const trimmed = title.trim();
-    if (!trimmed) {
-      cancel();
-      return;
-    }
     createTask.mutate(buildCreateVariables(trimmed), {
       onSuccess: (data) => {
-        openTaskDetail(data.taskId);
+        openTaskDetail(data.taskId, trimmed ? undefined : "title");
         resetComposer();
         closeComposerSurface();
       },

@@ -1133,3 +1133,76 @@ corrige solo en la próxima carga completa de página.
 **Consecuencia.** `openspec/changes/hoy-con-eventos-y-formatos/design.md`
 (D-E) queda actualizado para describir la precarga en vez del salto asumido
 sin mitigar.
+
+---
+
+## D46 — "Abrir detalle" sin título crea la tarea vacía y la abre; si se cierra sin titularla, no queda
+
+**Fecha.** 2026-08-03
+
+**Contexto.** Reporte del dueño: *"Cuando le doy al botón de abrir detalle
+se cierran los modals si no escribí nada, debería abrirse vacío."*
+Verificado: `submitAndOpenDetail()` (`task-quick-add-row.tsx`) trataba un
+título vacío igual que "Cancelar" —`if (!trimmed) { cancel(); return; }`—,
+así que ni creaba la tarea ni abría nada. En la superficie embebida esto
+colapsaba el compositor a su botón "Agregar tarea"; en el modal global
+(`variant="full"`), `cancel()` además cierra el diálogo entero
+(`closeComposerSurface` → `onCancel?.()`), así que el reporte del dueño
+("se cierran los modals") era literal: apretar el botón hacía desaparecer
+todo sin mostrar nada en su lugar.
+
+**Decisión.** "Abrir detalle" ya no cancela con el título vacío: crea la
+tarea igual —el esquema lo permite, `tasks.title` es `not null` pero sin
+`check` contra la cadena vacía— y abre su detalle, con el foco puesto en el
+título (`TaskDetailFocusField` suma el valor `"title"`, mismo mecanismo que
+ya usan `T`/`Y` para fecha y prioridad).
+
+Ese detalle recién abierto se hace cargo de que la tarea no quede sin
+título de forma permanente: si se cierra —`X`, `Escape`, clic afuera,
+Atrás, o pasar a otro detalle— sin haber cargado uno, la tarea se borra,
+silenciosa (sin el toast "Tarea eliminada" ni el deshacer de
+`useDeleteTask`: la persona nunca llegó a percibir que existía, así que no
+hay nada que ofrecerle deshacer — nueva mutación `useDeleteEmptyTask`). Si
+sí se llegó a escribir algo pero el autoguardado con debounce todavía no
+disparó, el cierre lo fuerza (`flush`) en vez de perderlo.
+
+Este resguardo solo se activa para la tarea que nació sin título por este
+camino (`wasCreatedEmptyRef`, fijado al primer render con
+`task.title === ""`): el cierre del detalle de cualquier tarea que ya tenía
+título al abrirse —la inmensa mayoría— no pasa por acá y no cambia en nada.
+
+**Convive con D42, no lo contradice.** D42 dice que cerrar el detalle sin
+tocar nada deja la tarea "con lo que tenía al crearse" — esa decisión asume
+una tarea que **ya tenía título** al crearse, que sigue siendo el caso
+normal (alta con título, "Abrir detalle"). D46 cubre el caso nuevo que D42
+no contemplaba: una tarea que **todavía no tiene título** en el momento de
+cerrar. Las dos leen distinto en aislamiento porque hablan de dos estados
+de partida distintos; juntas: con título, se queda tal cual (D42); sin
+título, no queda (D46).
+
+**El límite aceptado, sin resolver.** El borrado de acá arriba depende de
+que se ejecute JavaScript de React al desmontar el formulario — cubre todo
+cierre dentro de la aplicación, pero no una recarga de página (F5) ni
+cerrar la pestaña con ese detalle vacío todavía abierto: ahí no corre nada
+que borre la tarea, y queda huérfana en la base con título vacío. Se decide
+**no** resolver esto con filtrado cruzado (excluir `title = ''` de cada
+consulta de lista y de búsqueda — son más de diez sitios distintos,
+`lib/tasks/get-*.ts`, `use-*-tasks.ts`, `lib/search/use-search.ts`, entre
+otros) ni con un `beforeunload`/cron de limpieza: el disparador es angosto
+(hace falta dejar el título vacío a propósito y además abandonar la pestaña
+sin cerrar el detalle primero) y las dos soluciones agregan superficie
+permanente para un caso raro. El precio: una recarga en esas condiciones
+puede dejar una fila en blanco, sin texto, visible y clickeable en la lista
+del proyecto correspondiente hasta que alguien la abra y la cierre de
+nuevo (ahí sí se borra, por el mismo mecanismo) o la borre a mano.
+
+**Consecuencia.** `components/tasks/task-quick-add-row.tsx` (ya no cancela
+con título vacío; pide foco de título al abrir sin uno),
+`components/tasks/task-detail-context.tsx` (`TaskDetailFocusField` suma
+`"title"`), `components/tasks/task-detail-content.tsx` (foco de título al
+abrir; borrado o `flush` al cerrar una tarea nacida vacía) y
+`lib/tasks/mutations.ts` (`useDeleteEmptyTask`) quedan actualizados, con sus
+tests. El requirement "El alta ofrece continuar en el detalle de la tarea"
+de `openspec/specs/alta-de-tareas/spec.md` queda corregido para pedir que
+la acción abra siempre, con o sin título, y para separar el escenario de
+cerrar con título (D42) del de cerrar sin él (D46).

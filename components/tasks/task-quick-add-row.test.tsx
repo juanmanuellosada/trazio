@@ -728,15 +728,16 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
     await waitFor(() => expect(screen.getByTestId("open-task-id")).toHaveTextContent("new-task"));
   });
 
-  it("con título vacío, no crea nada ni abre ningún detalle (mismo resguardo que confirmar)", async () => {
+  it("con título vacío, igual crea la tarea (título vacío) y abre su detalle (D46: nunca cierra sin abrir nada)", async () => {
     const user = userEvent.setup();
     renderRowWithProbe();
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
     await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
-    expect(mock.insertCalls.find((c) => c.table === "tasks")).toBeUndefined();
-    expect(screen.getByTestId("open-task-id")).toHaveTextContent("");
+    await waitFor(() => expect(insertedTask()).toBeDefined());
+    expect(insertedTask()!.title).toBe("");
+    await waitFor(() => expect(screen.getByTestId("open-task-id")).toHaveTextContent("new-task"));
   });
 });
 

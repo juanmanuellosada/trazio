@@ -8,10 +8,13 @@ import { addRecentTaskId } from "@/lib/search/recent-tasks";
  * `atajos-de-teclado`; `deadline`/`reminders` sumados por
  * `menu-contextual-de-tarea`, D-B: esos dos ítems del menú de una tarea
  * delegan en su selector abriendo el detalle, a diferencia de fecha y
- * prioridad, que el menú resuelve sin abrir nada). `TaskDetailContent` lo
- * consume una sola vez al montar y lo limpia (`consumeFocusField`).
+ * prioridad, que el menú resuelve sin abrir nada; `title` sumado por
+ * `alta-de-tareas-en-contexto` D46: "Abrir detalle" sin nada escrito crea la
+ * tarea vacía y necesita que el foco caiga en su título, no en ningún
+ * selector). `TaskDetailContent` lo consume una sola vez al montar y lo
+ * limpia (`consumeFocusField`).
  */
-export type TaskDetailFocusField = "date" | "priority" | "deadline" | "reminders";
+export type TaskDetailFocusField = "date" | "priority" | "deadline" | "reminders" | "title";
 
 type TaskDetailContextValue = {
   openTaskId: string | null;

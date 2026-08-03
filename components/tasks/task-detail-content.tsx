@@ -24,7 +24,14 @@ import { useParserContext } from "@/lib/parser/use-parser-context";
 import { recurrenceEndsAtDay, recurrenceEndsAtOf } from "@/lib/recurrence/ends-at";
 import { toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask, type TaskPatch } from "@/lib/tasks/mutations";
+import {
+  useDeleteEmptyTask,
+  useDeleteTask,
+  useDuplicateTask,
+  useMoveTask,
+  useUpdateTask,
+  type TaskPatch,
+} from "@/lib/tasks/mutations";
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { useAutosave } from "@/lib/tasks/use-autosave";
 import { useTask, type TaskDetail } from "@/lib/tasks/use-task";
@@ -56,6 +63,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   const updateTask = useUpdateTask();
   const duplicateTask = useDuplicateTask();
   const deleteTask = useDeleteTask();
+  const deleteEmptyTask = useDeleteEmptyTask();
   const moveTask = useMoveTask();
   const { proyectos } = useParserContext();
 
@@ -84,6 +92,78 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
     }
     titleAutosave.flush(title);
   }
+
+  // Último título tipeado, para la limpieza al desmontar de acá abajo: un
+  // efecto con `[task.id]` en las dependencias corre su cleanup recién al
+  // desmontarse (o al cambiar de tarea), así que necesita leer el título
+  // vigente en ese momento por una ref, no por la variable `title` del
+  // render en que se creó el efecto — esa quedaría pegada al valor de cuando
+  // se montó.
+  const titleRef = useRef(title);
+  useEffect(() => {
+    titleRef.current = title;
+  });
+
+  // Si esta tarea llegó al detalle sin título, es la que "Abrir detalle"
+  // acaba de crear vacía (D46) — nunca una tarea preexistente, que
+  // `saveTitleNow` protege de quedar sin título (D42, sin cambios). Fijo en
+  // el primer render (`useRef`, no una variable derivada de `task.title` en
+  // cada render): si el título se guarda mientras el detalle sigue abierto,
+  // este valor no se tiene que mover, para no reevaluar la limpieza de acá
+  // abajo a mitad de camino.
+  const wasCreatedEmptyRef = useRef(task.title === "");
+
+  // Nada de esto corre para una tarea que ya tenía título al abrir el
+  // detalle (ver `wasCreatedEmptyRef` de acá arriba): guarda el `id` del
+  // `setTimeout` diferido de más abajo para poder cancelarlo.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Solo para la tarea que "Abrir detalle" creó vacía: que su detalle no
+   * quede a mitad de camino ("una tarea sin título no se puede leer ni
+   * buscar; no titularla equivale a no haberla creado"). El desmontaje del
+   * formulario —cierre por la `X`, `Escape`, clic afuera, Atrás, o pasar a
+   * otro detalle— decide entre las dos cosas que puede significar un título
+   * vacío en ese instante: nunca se cargó nada (se borra la tarea,
+   * silencioso, sin el toast de "Tarea eliminada" de `useDeleteTask` — nunca
+   * llegó a percibirse que existía) o se cargó pero el autoguardado con
+   * debounce todavía no llegó a disparar (se fuerza a guardar ya, `flush`,
+   * para no perder esas últimas teclas).
+   *
+   * Cualquier otra tarea sale de acá en el primer chequeo, sin tocar nada:
+   * este resguardo no le agrega ningún comportamiento nuevo al cierre del
+   * detalle de una tarea que ya existía con título (por ejemplo, "Eliminar"
+   * del menú no tiene que competir con esto).
+   *
+   * El trabajo de la limpieza va diferido un tick (`setTimeout(…, 0)`), y el
+   * montaje de acá arriba cancela cualquiera que hubiera quedado pendiente:
+   * sin esto, el doble montaje de Strict Mode en desarrollo —React monta,
+   * desmonta y vuelve a montar cada efecto una vez, a propósito, para
+   * encontrar cleanups no preparados para correr más de una vez— borraba la
+   * tarea recién creada antes de que la persona llegara a verla, apenas
+   * abría el detalle. El desmontaje sintético de Strict Mode y uno real
+   * disparan el mismo cleanup; lo único que los distingue es que al real no
+   * lo sigue un montaje que cancele el timer.
+   */
+  useEffect(() => {
+    const wasCreatedEmpty = wasCreatedEmptyRef.current;
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    return () => {
+      if (!wasCreatedEmpty) return;
+      closeTimerRef.current = setTimeout(() => {
+        const trimmed = titleRef.current.trim();
+        if (trimmed) {
+          titleAutosave.flush(titleRef.current);
+        } else {
+          deleteEmptyTask.mutate({ id: task.id, projectId: task.project_id });
+        }
+      }, 0);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id]);
 
   function patch(fields: TaskPatch) {
     updateTask.mutate({ id: task.id, projectId: task.project_id, patch: fields });
@@ -174,6 +254,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   const destinationFieldRef = useRef<HTMLDivElement>(null);
   const labelsFieldRef = useRef<HTMLDivElement>(null);
   const subtasksFieldRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const { consumeFocusField, open: openTaskDetail } = useTaskDetail();
 
@@ -216,6 +297,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
       if (focusField === "priority") clickFirstButton(priorityFieldRef.current);
       if (focusField === "deadline") clickFirstButton(deadlineFieldRef.current);
       if (focusField === "reminders") clickFirstButton(remindersFieldRef.current);
+      if (focusField === "title") titleInputRef.current?.focus();
     });
     return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,6 +344,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
           </button>
 
           <Input
+            ref={titleInputRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             onBlur={saveTitleNow}

@@ -263,11 +263,28 @@ necesita anunciar que además crea la tarea (**D42**): el dueño evaluó el
 riesgo de que alguien la pulse creyendo que solo muestra más campos y lo
 aceptó a propósito, con el nombre "Abrir detalle".
 
+La acción SHALL abrir el detalle **siempre**, con o sin nada cargado —
+NUNCA SHALL cerrar el alta sin abrir nada en su lugar (**D46**: reporte del
+dueño, "Abrir detalle" con el título vacío cerraba todo en vez de abrir
+algo). Sin título, la tarea SHALL crearse igual, con el título vacío, y el
+foco SHALL caer en el título del detalle recién abierto para que la persona
+pueda empezar a escribirlo ahí. Si el detalle se cierra sin que esa tarea
+haya llegado a tener título, la tarea NO SHALL quedar creada — una tarea sin
+título no se puede leer ni buscar, así que no titularla equivale a no
+haberla creado.
+
 #### Scenario: Continuar en el detalle crea la tarea y la abre
 
 - **WHEN** el usuario escribe una tarea en el alta y elige continuar en el detalle
 - **THEN** la tarea SHALL quedar creada
 - **AND** SHALL abrirse su detalle
+
+#### Scenario: Sin nada escrito, igual abre el detalle vacío
+
+- **WHEN** el usuario elige continuar en el detalle sin haber escrito ningún título
+- **THEN** la tarea SHALL crearse con el título vacío
+- **AND** SHALL abrirse su detalle
+- **AND** el foco SHALL caer en el título del detalle
 
 #### Scenario: No se pierde nada de lo cargado
 
@@ -288,6 +305,13 @@ aceptó a propósito, con el nombre "Abrir detalle".
 
 #### Scenario: Cerrar el detalle no deshace la creación
 
-- **WHEN** el usuario continúa en el detalle y después lo cierra sin editar nada
+- **WHEN** el usuario continúa en el detalle con un título ya cargado y después lo cierra sin
+  editar nada
 - **THEN** la tarea SHALL seguir existiendo, con lo que tenía al crearse
+
+#### Scenario: Cerrar el detalle sin título no deja la tarea creada
+
+- **WHEN** el usuario continúa en el detalle sin ningún título cargado y lo cierra sin haber
+  escrito uno
+- **THEN** la tarea NO SHALL quedar creada
 

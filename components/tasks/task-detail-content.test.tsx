@@ -32,6 +32,7 @@ const TEST_PREFERENCES = {
 function createSupabaseMock() {
   const tableData: Record<string, unknown> = { tasks: [], labels: [] };
   const updateCalls: Array<{ table: string; patch: Record<string, unknown> }> = [];
+  const deleteCalls: Array<{ table: string; id: unknown }> = [];
 
   function unwrapSingle(result: { data: unknown; error: unknown }) {
     if (Array.isArray(result.data)) {
@@ -68,10 +69,15 @@ function createSupabaseMock() {
       }),
     })),
     insert: vi.fn(() => chain({ data: null, error: null })),
-    delete: vi.fn(() => chain({ data: null, error: null })),
+    delete: vi.fn(() => ({
+      eq: vi.fn((column: string, value: unknown) => {
+        if (column === "id") deleteCalls.push({ table, id: value });
+        return chain({ data: null, error: null });
+      }),
+    })),
   }));
 
-  return { from, tableData, updateCalls };
+  return { from, tableData, updateCalls, deleteCalls };
 }
 
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
@@ -104,6 +110,9 @@ const baseTask: TaskDetail = {
   recurrence_anchor: null,
   labels: [],
 };
+
+/** Misma forma que `baseTask`, pero con el título vacío con el que "Abrir detalle" crea la tarea sin nada escrito (D46). */
+const emptyTask: TaskDetail = { ...baseTask, id: "t-empty", title: "" };
 
 /**
  * Proyectos y secciones del selector del detalle (bloque 6): `p1` es la
@@ -143,7 +152,7 @@ mock.tableData.sections = [{ id: "s1", project_id: "p2", name: "En curso" }];
 function renderDetail(task: TaskDetail = baseTask) {
   mock.tableData.tasks = [task];
   const queryClient = new QueryClient();
-  render(
+  const { unmount } = render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider preferences={TEST_PREFERENCES}>
         <UndoProvider>
@@ -154,7 +163,7 @@ function renderDetail(task: TaskDetail = baseTask) {
       </PreferencesProvider>
     </QueryClientProvider>,
   );
-  return { queryClient };
+  return { queryClient, unmount };
 }
 
 /** Igual que `renderDetail`, con `<ShortcutProvider>` montado: para los tests de los atajos del detalle (bloque 7.6), que necesitan el único listener de `lib/shortcuts/`. */
@@ -385,5 +394,44 @@ describe("TaskDetailContent — atajos del detalle de tarea (bloque 7.6)", () =>
 
     fireEvent.keyDown(titleInput, { key: "s", ctrlKey: true });
     expect(mock.updateCalls.some((c) => c.table === "tasks" && "title" in c.patch)).toBe(false);
+  });
+});
+
+describe("TaskDetailContent — la tarea que \"Abrir detalle\" crea vacía (D46)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateCalls.length = 0;
+    mock.deleteCalls.length = 0;
+  });
+
+  it("cerrar el detalle sin cargar título borra la tarea, sin dejarla huérfana", async () => {
+    const { unmount } = renderDetail(emptyTask);
+    unmount();
+
+    await waitFor(() => expect(mock.deleteCalls.some((c) => c.table === "tasks" && c.id === "t-empty")).toBe(true));
+  });
+
+  it("si se llegó a escribir algo, cerrar el detalle guarda ese título en vez de borrar la tarea", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderDetail(emptyTask);
+
+    // Sin perder el foco todavía (el autoguardado con debounce de acá abajo
+    // no llegó a disparar): el cierre tiene que forzarlo (`flush`) en vez de
+    // interpretar el título como si nunca se hubiera cargado.
+    await user.type(screen.getByLabelText("Título de la tarea"), "Comprar pan");
+    unmount();
+
+    await waitFor(() =>
+      expect(mock.updateCalls.some((c) => c.table === "tasks" && c.patch.title === "Comprar pan")).toBe(true),
+    );
+    expect(mock.deleteCalls.some((c) => c.table === "tasks" && c.id === "t-empty")).toBe(false);
+  });
+
+  it("una tarea que ya tenía título no se borra al cerrar su detalle sin tocar nada (D42, sin cambios)", async () => {
+    const { unmount } = renderDetail(baseTask);
+    unmount();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mock.deleteCalls.some((c) => c.table === "tasks" && c.id === "t1")).toBe(false);
   });
 });

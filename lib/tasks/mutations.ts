@@ -521,6 +521,33 @@ export function useDeleteTask() {
 }
 
 /**
+ * Borra una tarea sin título (bloque `saltar-al-detalle-desde-el-alta`, D46):
+ * a diferencia de `useDeleteTask`, sin toast ni deshacer — no titularla
+ * equivale a no haberla creado, así que la persona nunca llegó a percibir
+ * que existía y no hay nada que ofrecerle deshacer. La usa
+ * `task-detail-content.tsx` al desmontarse el detalle de una tarea que
+ * "Abrir detalle" creó vacía y que se cierra sin haber cargado un título.
+ */
+export function useDeleteEmptyTask() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
+    mutationFn: async ({ id }: { id: string; projectId: string }) => {
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onError: reportTaskError,
+    onSettled: (_data, _error, { id, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) });
+      invalidateCrossViewCaches(queryClient);
+    },
+  });
+}
+
+/**
  * Reemplaza el conjunto completo de etiquetas de una tarea (bloque 7.12,
  * requirement "Asignar y quitar etiquetas desde el detalle de la tarea"):
  * borra todas las asignaciones existentes e inserta las nuevas, nunca altas

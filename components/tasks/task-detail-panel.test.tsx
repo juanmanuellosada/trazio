@@ -90,7 +90,7 @@ const baseTask: TaskDetail = {
 };
 
 /** Botón de prueba que abre el modal a través del mismo contexto que usa cualquier fila de tarea real (`useTaskDetail`). */
-function OpenButton({ taskId, focusField }: { taskId: string; focusField?: "date" | "priority" }) {
+function OpenButton({ taskId, focusField }: { taskId: string; focusField?: "date" | "priority" | "title" }) {
   const { open } = useTaskDetail();
   return (
     <button type="button" onClick={() => open(taskId, focusField)}>
@@ -99,7 +99,7 @@ function OpenButton({ taskId, focusField }: { taskId: string; focusField?: "date
   );
 }
 
-function renderPanel(task: TaskDetail = baseTask, focusField?: "date" | "priority") {
+function renderPanel(task: TaskDetail = baseTask, focusField?: "date" | "priority" | "title") {
   mock.tableData.tasks = [task];
   const queryClient = new QueryClient();
   render(
@@ -185,6 +185,22 @@ describe("TaskDetailPanel — abre con un selector ya enfocado (bloque 7.8, ataj
     await screen.findByRole("dialog");
 
     expect(await screen.findByLabelText("Escribí la fecha de vencimiento")).toBeInTheDocument();
+  });
+
+  // D46 (reporte del dueño): "Abrir detalle" sin nada escrito crea la tarea
+  // vacía igual y pide este mismo mecanismo (`open(taskId, "title")`) para
+  // que el foco caiga en el título, no en la `X` de cerrar ni en ningún otro
+  // control — el mismo cuidado de la carrera contra Base UI que ya cubren
+  // los dos tests de acá arriba, pero enfocando el `<input>` en vez de
+  // clickear un trigger.
+  it('"title": abre el detalle con el foco ya en el título, para una tarea creada sin nada escrito', async () => {
+    const user = userEvent.setup();
+    renderPanel({ ...baseTask, title: "" }, "title");
+
+    await user.click(screen.getByRole("button", { name: "Abrir tarea" }));
+    await screen.findByRole("dialog");
+
+    await waitFor(() => expect(screen.getByLabelText("Título de la tarea")).toHaveFocus());
   });
 });
 
