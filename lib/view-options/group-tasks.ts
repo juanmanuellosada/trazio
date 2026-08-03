@@ -1,6 +1,6 @@
 import { priorityLabel, TASK_PRIORITIES } from "@/lib/validation/tasks";
 import type { LabelChip, TaskRow } from "@/lib/tasks/use-tasks";
-import type { GroupByOption } from "./schema";
+import { effectiveListGroupBy, type GroupByOption } from "./schema";
 
 export type TaskGroup<T> = { key: string; label: string; tasks: T[] };
 
@@ -10,15 +10,22 @@ export type TaskGroup<T> = { key: string; label: string; tasks: T[] };
  * grupo sin encabezado (`label: ""`), para que quien llama pueda tratar
  * agrupado y no agrupado con el mismo camino de render.
  *
+ * "sección" y "fecha" son valores del panel (D-A/D-B de
+ * `openspec/changes/panel-con-columnas-por-campo/design.md`): la lista no
+ * sabe agruparlos, así que `effectiveListGroupBy` los trata como "nada" acá
+ * mismo, sin pisar el valor guardado (quien llama sigue leyendo y
+ * escribiendo el `groupBy` crudo).
+ *
  * "etiqueta": una tarea con más de una etiqueta aparece en cada uno de sus
  * grupos (igual trato que el resto de la app le da a una tarea
  * multi-etiquetada); las sin ninguna etiqueta se juntan aparte, al final
  * (requirement "las tareas sin ninguna etiqueta se agrupan aparte").
  */
 export function groupTasks<T extends TaskRow>(tasks: T[], groupBy: GroupByOption): TaskGroup<T>[] {
-  if (groupBy === "nada") return [{ key: "todas", label: "", tasks }];
+  const effectiveGroupBy = effectiveListGroupBy(groupBy);
+  if (effectiveGroupBy === "nada") return [{ key: "todas", label: "", tasks }];
 
-  if (groupBy === "prioridad") {
+  if (effectiveGroupBy === "prioridad") {
     return TASK_PRIORITIES.map((p) => ({
       key: String(p.value),
       label: priorityLabel(p.value),

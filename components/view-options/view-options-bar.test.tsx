@@ -228,21 +228,21 @@ describe("ViewOptionsBar — orden y filtro (secciones Orden y Filtro, tareas 3.
   });
 });
 
-describe("ViewOptionsBar — agrupar por en panel no ofrece etiqueta (D-B, panel-con-columnas-por-campo)", () => {
+describe("ViewOptionsBar — agrupar por: cada forma de ver ofrece lo que sabe manejar (D-B y su espejo, panel-con-columnas-por-campo)", () => {
   beforeEach(() => {
     setOption.mockClear();
   });
 
-  it("en lista, agrupar por ofrece las cinco opciones, etiqueta incluida", async () => {
+  it("en lista, agrupar por ofrece nada, prioridad y etiqueta, pero nunca sección ni fecha", async () => {
     const user = userEvent.setup();
     renderBar({ viewShape: "lista" });
     await openPanel(user);
     await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
     expect(await screen.findByRole("option", { name: "Nada" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Sección" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Fecha" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Etiqueta" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Sección" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Fecha" })).not.toBeInTheDocument();
   });
 
   it("en panel, agrupar por ofrece sección, fecha y prioridad, pero nunca etiqueta", async () => {
@@ -259,6 +259,13 @@ describe("ViewOptionsBar — agrupar por en panel no ofrece etiqueta (D-B, panel
   it("con la preferencia guardada en etiqueta, el panel la muestra como 'Nada' sin pisarla", async () => {
     const user = userEvent.setup();
     renderBar({ viewShape: "panel", groupBy: "etiqueta" });
+    await openPanel(user);
+    expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Nada");
+  });
+
+  it("con la preferencia guardada en sección o fecha (traída del panel), la lista la muestra como 'Nada' sin pisarla", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista", groupBy: "seccion" });
     await openPanel(user);
     expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Nada");
   });

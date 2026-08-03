@@ -134,3 +134,16 @@ export function isDragEnabled(options: Pick<ViewOptions, "order" | "groupBy">): 
 export function effectivePanelGroupBy(groupBy: GroupByOption): GroupByOption {
   return groupBy === "etiqueta" ? "nada" : groupBy;
 }
+
+/**
+ * Espejo de `effectivePanelGroupBy` para la lista (bloque "hueco" de
+ * `openspec/changes/panel-con-columnas-por-campo`): "sección" y "fecha" son
+ * valores nuevos, pensados para las columnas del panel, y la lista no sabe
+ * agruparlos — cada forma de ver ofrece lo que sabe manejar y trata lo que
+ * no entiende como "nada", sin pisar la preferencia guardada. Quien llama
+ * sigue leyendo y escribiendo el valor crudo tal cual; esta función solo
+ * resuelve qué grupo usar *dentro* de la lista.
+ */
+export function effectiveListGroupBy(groupBy: GroupByOption): GroupByOption {
+  return groupBy === "seccion" || groupBy === "fecha" ? "nada" : groupBy;
+}

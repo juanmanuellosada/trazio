@@ -18,6 +18,7 @@ import {
   ORDER_OPTIONS,
   VIEW_SHAPE_OPTIONS,
   defaultOptionsForViewKey,
+  effectiveListGroupBy,
   effectivePanelGroupBy,
   type DeadlineFilterOption,
   type GroupByOption,
@@ -46,6 +47,9 @@ const GROUP_BY_LABELS: Record<GroupByOption, string> = {
 
 /** El panel no ofrece agrupar por etiqueta (D-B, capacidad `modo-panel`): ver `effectivePanelGroupBy` en `lib/view-options/schema.ts`. */
 const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "etiqueta");
+
+/** La lista no ofrece agrupar por sección ni por fecha, valores pensados para las columnas del panel: ver `effectiveListGroupBy` en `lib/view-options/schema.ts`. */
+const LIST_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion" && groupBy !== "fecha");
 
 const DEADLINE_FILTER_LABELS: Record<DeadlineFilterOption, string> = {
   cualquiera: "Cualquiera",
@@ -196,13 +200,20 @@ export function ViewOptionsBar({
   const priorityId = useId();
   const labelFilterId = useId();
 
-  // Panel no ofrece etiqueta (D-B): la lista sigue viendo las cinco opciones.
-  // El valor mostrado usa `effectivePanelGroupBy` para que, si la preferencia
-  // guardada es "etiqueta" (traída de la lista), el desplegable del panel
-  // muestre "Nada" sin escribir nada — `setOption` solo se llama cuando la
-  // persona elige algo.
-  const groupByOptions = options.viewShape === "panel" ? PANEL_GROUP_BY_OPTIONS : GROUP_BY_OPTIONS;
-  const groupByDisplayValue = options.viewShape === "panel" ? effectivePanelGroupBy(options.groupBy) : options.groupBy;
+  // Panel no ofrece etiqueta (D-B) y lista no ofrece sección ni fecha
+  // (espejo de D-B): cada forma de ver ofrece solo lo que sabe agrupar. El
+  // valor mostrado usa `effectivePanelGroupBy`/`effectiveListGroupBy` para
+  // que una preferencia guardada desde la otra forma de ver se muestre como
+  // "Nada" sin escribir nada — `setOption` solo se llama cuando la persona
+  // elige algo.
+  const groupByOptions =
+    options.viewShape === "panel" ? PANEL_GROUP_BY_OPTIONS : options.viewShape === "lista" ? LIST_GROUP_BY_OPTIONS : GROUP_BY_OPTIONS;
+  const groupByDisplayValue =
+    options.viewShape === "panel"
+      ? effectivePanelGroupBy(options.groupBy)
+      : options.viewShape === "lista"
+        ? effectiveListGroupBy(options.groupBy)
+        : options.groupBy;
 
   const defaults = defaultOptionsForViewKey(viewKey);
   const hasActiveOptions =

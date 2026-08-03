@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { UPCOMING_WINDOW_DEFAULT_DAYS } from "@/lib/tasks/upcoming-filter";
-import { GROUP_BY_OPTIONS, defaultOptionsForViewKey, effectivePanelGroupBy, isDragEnabled, parseViewOptions } from "./schema";
+import {
+  GROUP_BY_OPTIONS,
+  defaultOptionsForViewKey,
+  effectiveListGroupBy,
+  effectivePanelGroupBy,
+  isDragEnabled,
+  parseViewOptions,
+} from "./schema";
 
 describe("defaultOptionsForViewKey (bloque 6.1, D25 y specs/opciones-de-vista)", () => {
   it("Bandeja y Proyecto tienen orden manual por defecto", () => {
@@ -128,5 +135,29 @@ describe("effectivePanelGroupBy (D-B: el panel no ofrece etiqueta, sin pisar la 
     expect(effectivePanelGroupBy(stored.groupBy)).toBe("nada");
     // Releer de nuevo (ej. al volver a la lista) sigue encontrando "etiqueta" intacto.
     expect(parseViewOptions("bandeja", { groupBy: stored.groupBy }).groupBy).toBe("etiqueta");
+  });
+});
+
+describe("effectiveListGroupBy (espejo de D-B: la lista no ofrece sección ni fecha, sin pisar la preferencia guardada)", () => {
+  it("sección y fecha se resuelven a nada dentro de la lista", () => {
+    expect(effectiveListGroupBy("seccion")).toBe("nada");
+    expect(effectiveListGroupBy("fecha")).toBe("nada");
+  });
+
+  it("los demás valores pasan sin cambios", () => {
+    expect(effectiveListGroupBy("nada")).toBe("nada");
+    expect(effectiveListGroupBy("prioridad")).toBe("prioridad");
+    expect(effectiveListGroupBy("etiqueta")).toBe("etiqueta");
+  });
+
+  it("una preferencia guardada en 'sección' desde el panel sigue siendo 'sección' al ir y volver entre lista y panel", () => {
+    const stored = parseViewOptions("proyecto:1", { groupBy: "seccion" });
+    expect(stored.groupBy).toBe("seccion");
+    // La lista la trata como "nada"...
+    expect(effectiveListGroupBy(stored.groupBy)).toBe("nada");
+    // ...pero no la pisa: volver a leerla (ej. al volver al panel) la encuentra intacta.
+    const rereadInList = parseViewOptions("proyecto:1", { groupBy: stored.groupBy });
+    expect(rereadInList.groupBy).toBe("seccion");
+    expect(effectivePanelGroupBy(rereadInList.groupBy)).toBe("seccion");
   });
 });

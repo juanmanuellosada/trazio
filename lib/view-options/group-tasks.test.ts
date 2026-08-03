@@ -29,6 +29,12 @@ describe("groupTasks (bloque 6.6, requirement Agrupar por)", () => {
     expect(groups[0].tasks.map((t) => t.id)).toEqual(["a", "b"]);
   });
 
+  it('"sección" y "fecha" son valores del panel que la lista no sabe agrupar: se tratan como "nada" (espejo de D-B, hueco de panel-con-columnas-por-campo)', () => {
+    const tasks = [task({ id: "a" }), task({ id: "b" })];
+    expect(groupTasks(tasks, "seccion")).toEqual(groupTasks(tasks, "nada"));
+    expect(groupTasks(tasks, "fecha")).toEqual(groupTasks(tasks, "nada"));
+  });
+
   it('"prioridad" arma un grupo por cada prioridad presente, sin grupos vacíos', () => {
     const tasks = [task({ id: "urgente", priority: 1 }), task({ id: "baja", priority: 4 })];
     const groups = groupTasks(tasks, "prioridad");
