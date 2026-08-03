@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { HoyEventsResult } from "@/components/calendar/use-hoy-events";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
+import type { SectionRow } from "@/lib/sections/use-sections";
 import { defaultOptionsForViewKey, type ViewOptions } from "@/lib/view-options/schema";
 import { ComposeContextProvider } from "./compose-context";
 import { TaskDetailProvider } from "./task-detail-context";
@@ -54,17 +55,59 @@ vi.mock("@/lib/calendar/use-delete-event", () => ({ useDeleteEvent: () => ({ mut
 // `TaskGroupList`) trae cuatro mutaciones de tarea y una consulta mayorista
 // de secciones: ajenas al propósito de estas pruebas (orden y desacople),
 // mismo criterio que `screen-calendar.test.tsx` mockea las suyas.
+// `updateTaskMutate`/`moveTaskMutate` quedan estables entre renders (a
+// diferencia de un `vi.fn()` nuevo por llamada) para que el grupo "panel —
+// cableado" de más abajo pueda comprobar qué patch escribió cada mover.
+const updateTaskMutate = vi.fn();
+const moveTaskMutate = vi.fn();
 vi.mock("@/lib/tasks/mutations", () => ({
-  useUpdateTask: () => ({ mutate: vi.fn() }),
-  useMoveTask: () => ({ mutate: vi.fn() }),
+  useUpdateTask: () => ({ mutate: updateTaskMutate }),
+  useMoveTask: () => ({ mutate: moveTaskMutate }),
   useDuplicateTask: () => ({ mutate: vi.fn() }),
   useDeleteTask: () => ({ mutate: vi.fn() }),
 }));
-vi.mock("@/lib/sections/use-sections", () => ({ useAllSections: () => ({ data: [] }), useSections: () => ({ data: [] }) }));
+let currentAllSections: SectionRow[] = [];
+vi.mock("@/lib/sections/use-sections", () => ({
+  useAllSections: () => ({ data: currentAllSections }),
+  useSections: () => ({ data: [] }),
+}));
 vi.mock("@/lib/tasks/use-tasks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/tasks/use-tasks")>();
   return { ...actual, useTasks: () => ({ data: [] }) };
 });
+
+// Panel (grupo "cableado" de más abajo, hueco 7.2 de `tasks.md`): `Board` se
+// mockea para invocar `onMoveAcrossColumns`/`onReorderWithinColumn` directo,
+// sin simular un arrastre real de `@dnd-kit` (no funciona sobre jsdom, y el
+// navegador ya lo verifica de verdad, tarea 7.3). Sigue mostrando los
+// títulos de tarea, para no romper las pruebas de "formatos (D-F)" de más
+// abajo que ya dependían del `Board` real.
+type BoardMockProps = {
+  columns: { id: string; title: string; tasks: TaskRowData[] }[];
+  onReorderWithinColumn: (columnId: string, taskId: string, position: number) => void;
+  onMoveAcrossColumns: (taskId: string, fromColumnId: string, toColumnId: string) => void;
+};
+let lastBoardProps: BoardMockProps | null = null;
+vi.mock("@/components/board/board", () => ({
+  Board: (props: BoardMockProps) => {
+    lastBoardProps = props;
+    return (
+      <div data-testid="board">
+        {props.columns.map((column) => (
+          <div key={column.id} data-testid={`column-${column.id}`}>
+            <h3>{column.title}</h3>
+            <span>{column.tasks.length}</span>
+            <ul>
+              {column.tasks.map((t) => (
+                <li key={t.id}>{t.title}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    );
+  },
+}));
 
 // El puente hacia `lib/calendar/` (D-D/D-E): controlable por prueba, para
 // simular "cargando", "sin conectar", "Google caído" y "ok" sin tocar
@@ -113,6 +156,13 @@ function event(overrides: Partial<TestEvent> = {}): TestEvent {
     ...overrides,
   };
 }
+
+beforeEach(() => {
+  updateTaskMutate.mockClear();
+  moveTaskMutate.mockClear();
+  currentAllSections = [];
+  lastBoardProps = null;
+});
 
 /** Estado "ok" completo del puente `useHoyEvents`, con `calendarName`/`canEdit` de verdad (D-D) en vez de un `as` que taparía el error. */
 function eventsOk(events: TestEvent[]): HoyEventsResult {
@@ -326,5 +376,74 @@ describe("HoyView — formatos (D-F)", () => {
   it("panel: sin eventos hoy, no avisa nada", () => {
     renderHoy([task({ id: "t1", title: "Pagar el alquiler", due_date: "2026-08-05" })], eventsOk([]), { viewShape: "panel" });
     expect(screen.queryByText(/no muestra los eventos de hoy/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Hueco 7.2 de `openspec/changes/panel-con-columnas-por-campo/tasks.md`: el
+ * cableado del panel de Hoy (caso especial de D-A: "nada" es prioridad, no
+ * lo natural de otra pantalla) no tenía ninguna prueba propia más allá de
+ * "formatos (D-F)" de arriba — se había verificado a mano en el navegador.
+ */
+describe("HoyView — panel, 'nada' es prioridad (caso especial de D-A)", () => {
+  it("agrupando por 'nada', las columnas son las cuatro prioridades fijas", () => {
+    renderHoy([task({ id: "t1", title: "Tarea urgente", priority: 1, due_date: "2026-08-05" })], eventsOk([]), {
+      viewShape: "panel",
+      groupBy: "nada",
+    });
+
+    const titles = lastBoardProps!.columns.map((c) => c.title);
+    expect(titles).toEqual(["Urgente", "Alta", "Media", "Baja"]);
+  });
+});
+
+describe("HoyView — cambiar el agrupador cambia las columnas", () => {
+  it("'fecha' produce columnas por día en vez de por prioridad", () => {
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05" })], eventsOk([]), {
+      viewShape: "panel",
+      groupBy: "fecha",
+    });
+
+    const titles = lastBoardProps!.columns.map((c) => c.title);
+    expect(titles).not.toEqual(["Urgente", "Alta", "Media", "Baja"]);
+    expect(titles[titles.length - 1]).toBe("Sin fecha");
+  });
+
+  it("'sección' produce las secciones de todos los proyectos (Hoy cruza proyectos)", () => {
+    currentAllSections = [{ id: "s1", project_id: "project-1", name: "Trabajo", description: null, position: 1000, is_collapsed: false }];
+    renderHoy([task({ id: "t1", title: "Tarea", section_id: "s1", due_date: "2026-08-05" })], eventsOk([]), {
+      viewShape: "panel",
+      groupBy: "seccion",
+    });
+
+    expect(lastBoardProps!.columns.map((c) => c.title)).toEqual(["Sin sección", "Trabajo"]);
+  });
+});
+
+describe("HoyView — mover entre columnas escribe el campo correcto (D-C)", () => {
+  it("mover a otra columna de prioridad escribe priority", () => {
+    renderHoy([task({ id: "t1", title: "Tarea", priority: 4, due_date: "2026-08-05" })], eventsOk([]), {
+      viewShape: "panel",
+      groupBy: "nada",
+    });
+
+    lastBoardProps!.onMoveAcrossColumns("t1", "4", "1");
+
+    expect(updateTaskMutate).toHaveBeenCalledWith({ id: "t1", projectId: "project-1", patch: { priority: 1 } });
+  });
+});
+
+describe("HoyView — reordenar dentro de una columna nunca persiste (D25, Hoy cruza proyectos)", () => {
+  it("reordenar dentro de una columna no escribe nada, sin importar el orden", () => {
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05" })], eventsOk([]), {
+      viewShape: "panel",
+      groupBy: "nada",
+      order: "manual",
+    });
+
+    lastBoardProps!.onReorderWithinColumn("4", "t1", 500);
+
+    expect(moveTaskMutate).not.toHaveBeenCalled();
+    expect(updateTaskMutate).not.toHaveBeenCalled();
   });
 });
