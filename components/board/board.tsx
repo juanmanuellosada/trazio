@@ -1,8 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
@@ -10,15 +11,16 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { positionForIndex } from "@/lib/tasks/tree";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Inbox } from "lucide-react";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { TaskRow } from "@/components/tasks/task-row";
+import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
+import { COLUMN_DROPPABLE_PREFIX, resolveDragEnd } from "./resolve-drag-end";
 
 export type BoardColumn = { id: string; title: string; tasks: TaskRowData[] };
-
-const COLUMN_DROPPABLE_PREFIX = "board-column:";
 
 function ColumnDropZone({ column, children }: { column: BoardColumn; children: ReactNode }) {
   const { setNodeRef } = useDroppable({ id: `${COLUMN_DROPPABLE_PREFIX}${column.id}` });
@@ -44,6 +46,21 @@ function ColumnDropZone({ column, children }: { column: BoardColumn; children: R
  * bloque 6.10) apaga el arrastre: sin manija ni `SortableContext`, las
  * tarjetas quedan como una lista de solo lectura por columna (el
  * `DndContext` sigue montado, pero sin nada arrastrable no hace nada).
+ *
+ * `openspec/changes/panel-con-columnas-por-campo/design.md`, D-D: la
+ * tarjeta que se arrastra se dibuja en un `DragOverlay` (un portal al
+ * cuerpo del documento, por dentro de `@dnd-kit`) en vez del nodo original.
+ * El tablero mismo tiene desplazamiento horizontal, y eso también recorta
+ * en vertical (CSS); encima el contenedor de la pantalla y `<main>` recortan
+ * de nuevo — tres capas. El portal es la única forma de que la tarjeta
+ * arrastrada quede fuera de las tres a la vez. `activeId` guarda cuál es
+ * la tarjeta activa al empezar (nadie lo necesitaba antes de esto), para
+ * poder dibujar su copia en el overlay: se busca en `columns`, no en
+ * `allTasks` (que en Próximos no incluye las tareas sin fecha).
+ * `wrapperElement="ul"` porque `TaskRow` ya devuelve su propio `<li>`
+ * (ver el comentario de `variant` en `task-row.tsx`): sin esto quedaría un
+ * `<li>` sin `<ul>`/`<ol>` que lo contenga, el mismo tipo de marcado
+ * inválido que la tarea 6.1 corrige para las columnas.
  */
 export function Board({
   columns,
@@ -51,55 +68,43 @@ export function Board({
   draggable,
   onReorderWithinColumn,
   onMoveAcrossColumns,
-  emptyColumnLabel = "Sin tareas.",
+  renderColumnEmptyAction,
 }: {
   columns: BoardColumn[];
   allTasks: TaskRowData[];
   draggable: boolean;
   onReorderWithinColumn: (columnId: string, taskId: string, position: number) => void;
   onMoveAcrossColumns: (taskId: string, fromColumnId: string, toColumnId: string) => void;
-  emptyColumnLabel?: string;
+  /**
+   * Hueco para "agregar tarea" dentro de la columna vacía (grupo 5, D-F):
+   * esa acción la agrega otra tanda de `panel-con-columnas-por-campo`, con
+   * el campo de esta columna ya puesto. Sin nada acá, la columna vacía
+   * queda solo con el texto que explica qué va a aparecer (tarea 6.2).
+   */
+  renderColumnEmptyAction?: (column: BoardColumn) => ReactNode;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeTask = activeId ? columns.flatMap((column) => column.tasks).find((t) => t.id === activeId) : undefined;
 
   // Selección múltiple (bloque 7.10-7.13): orden visual para `⇧clic`, todas
   // las columnas de izquierda a derecha, cada una de arriba a abajo — el
   // mismo orden en que se ven las tarjetas en pantalla.
   const selectionOrderIds = columns.flatMap((column) => column.tasks.map((t) => t.id));
 
-  function columnOf(taskId: string): BoardColumn | undefined {
-    return columns.find((column) => column.tasks.some((t) => t.id === taskId));
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over) return;
-
-    const fromColumn = columnOf(active.id as string);
-    if (!fromColumn) return;
-
-    const overIdStr = String(over.id);
-    const toColumn = overIdStr.startsWith(COLUMN_DROPPABLE_PREFIX)
-      ? columns.find((c) => c.id === overIdStr.slice(COLUMN_DROPPABLE_PREFIX.length))
-      : columnOf(over.id as string);
-    if (!toColumn) return;
-
-    if (toColumn.id === fromColumn.id) {
-      const activeIndex = fromColumn.tasks.findIndex((t) => t.id === active.id);
-      const overIndex = fromColumn.tasks.findIndex((t) => t.id === over.id);
-      if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return;
-
-      const reordered = arrayMove(fromColumn.tasks, activeIndex, overIndex);
-      const newIndex = reordered.findIndex((t) => t.id === active.id);
-      const others = fromColumn.tasks.filter((t) => t.id !== active.id).map((t) => t.position);
-      onReorderWithinColumn(fromColumn.id, active.id as string, positionForIndex(others, newIndex));
-      return;
-    }
-
-    onMoveAcrossColumns(active.id as string, fromColumn.id, toColumn.id);
+    setActiveId(null);
+    const action = resolveDragEnd(columns, String(event.active.id), event.over ? String(event.over.id) : null);
+    if (!action) return;
+    if (action.type === "reorder") onReorderWithinColumn(action.columnId, action.taskId, action.position);
+    else onMoveAcrossColumns(action.taskId, action.fromColumnId, action.toColumnId);
   }
 
   return (
@@ -112,7 +117,14 @@ export function Board({
     // explícito a `components/calendar/calendar-view.tsx`; acá quedaba el
     // mismo riesgo latente desde la fase 2, descartado entonces como
     // artefacto de desarrollo sin serlo.
-    <DndContext id="board-drag" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      id="board-drag"
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
       <div className="flex h-full items-start gap-3 overflow-x-auto pb-2">
         {columns.map((column) => (
           <div key={column.id} className="flex w-72 shrink-0 flex-col gap-2 rounded-lg bg-surface/60 p-2">
@@ -125,42 +137,52 @@ export function Board({
                 <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                   <ul className="flex flex-col gap-1">
                     {column.tasks.map((task) => (
-                      <li key={task.id} className="rounded-md bg-background">
-                        <TaskRow
-                          task={task}
-                          allTasks={allTasks}
-                          siblings={[]}
-                          depth={0}
-                          variant="flat"
-                          showDragHandle
-                          sortableData={{ columnId: column.id }}
-                          selectionOrderIds={selectionOrderIds}
-                        />
-                      </li>
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        allTasks={allTasks}
+                        siblings={[]}
+                        depth={0}
+                        variant="board"
+                        showDragHandle
+                        sortableData={{ columnId: column.id }}
+                        selectionOrderIds={selectionOrderIds}
+                      />
                     ))}
                   </ul>
                 </SortableContext>
               ) : (
                 <ul className="flex flex-col gap-1">
                   {column.tasks.map((task) => (
-                    <li key={task.id} className="rounded-md bg-background">
-                      <TaskRow
-                        task={task}
-                        allTasks={allTasks}
-                        siblings={[]}
-                        depth={0}
-                        variant="flat"
-                        selectionOrderIds={selectionOrderIds}
-                      />
-                    </li>
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      allTasks={allTasks}
+                      siblings={[]}
+                      depth={0}
+                      variant="board"
+                      selectionOrderIds={selectionOrderIds}
+                    />
                   ))}
                 </ul>
               )}
-              {column.tasks.length === 0 && <p className="px-1 py-2 text-xs text-text-secondary">{emptyColumnLabel}</p>}
+              {column.tasks.length === 0 && (
+                <TaskListEmptyState
+                  icon={Inbox}
+                  title="Esta columna está vacía."
+                  description="Las tareas que agregues o muevas para acá van a aparecer en este lugar."
+                  action={renderColumnEmptyAction?.(column)}
+                />
+              )}
             </ColumnDropZone>
           </div>
         ))}
       </div>
+      <DragOverlay wrapperElement="ul" className="pointer-events-none">
+        {activeTask ? (
+          <TaskRow task={activeTask} allTasks={allTasks} siblings={[]} depth={0} variant="board" dragOverlay />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

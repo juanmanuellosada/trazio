@@ -167,13 +167,20 @@ export function TaskRow({
   selectionOrderIds,
   showProject = false,
   hideLabelId,
+  dragOverlay = false,
 }: {
   task: TaskRowData;
   allTasks: TaskRowData[];
   siblings: TaskRowData[];
   depth: number;
-  variant?: "list" | "flat";
-  /** Por defecto, el mismo criterio de siempre (`variant === "list"`). El modo panel (`components/board/`) lo pasa explícitamente en `true` sobre `variant="flat"`, para arrastrar una tarjeta entre columnas sin heredar indentar/subtareas. */
+  /**
+   * `"board"` (`openspec/changes/panel-con-columnas-por-campo/`, D-D del
+   * design): la tarjeta del tablero, mismo comportamiento sin niveles que
+   * `"flat"` (no indenta, no expande subtareas) más dos líneas de título en
+   * vez de una y el fondo/radio propio de tarjeta — ver `isFlat` más abajo.
+   */
+  variant?: "list" | "flat" | "board";
+  /** Por defecto, el mismo criterio de siempre (`variant === "list"`). El modo panel (`components/board/`) lo pasa explícitamente en `true` sobre `variant="board"`, para arrastrar una tarjeta entre columnas sin heredar indentar/subtareas. */
   showDragHandle?: boolean;
   /** Datos que dnd-kit adjunta al evento de arrastre (bloque 6.7): el modo panel los usa para saber de qué columna salió la tarjeta. */
   sortableData?: Record<string, unknown>;
@@ -197,6 +204,17 @@ export function TaskRow({
   showProject?: boolean;
   /** La página de una etiqueta no repite esa misma etiqueta en cada fila (bloque 4.4): ya la dice el encabezado. */
   hideLabelId?: string;
+  /**
+   * La copia visual que el tablero dibuja en el `DragOverlay` mientras se
+   * arrastra (D-D): mismo aspecto que la tarjeta original, pero inerte
+   * (`inert`, más abajo) — nadie interactúa con la copia, así que no debe
+   * competir por foco ni duplicar el nombre accesible de la original.
+   * `useSortable` se sigue llamando (las reglas de hooks no dejan hacerlo
+   * condicional), pero con un id propio y deshabilitado: si usara el mismo
+   * id que la fila real, las dos quedarían registradas para la misma
+   * tarjeta dentro de `@dnd-kit`.
+   */
+  dragOverlay?: boolean;
 }) {
   const { open } = useTaskDetail();
   const selection = useSelection();
@@ -241,11 +259,15 @@ export function TaskRow({
     }
   }
 
-  const isFlat = variant === "flat";
+  const isFlat = variant !== "list";
   const dragHandleVisible = showDragHandle ?? !isFlat;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.id,
+    // Id propio para la copia del overlay (ver el comentario de `dragOverlay`
+    // más arriba): con el mismo id que la fila real, quedarían dos
+    // registradas para la misma tarjeta.
+    id: dragOverlay ? `board-drag-overlay:${task.id}` : task.id,
     data: sortableData,
+    disabled: dragOverlay,
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const children = isFlat ? [] : allTasks.filter((t) => t.parent_id === task.id);
@@ -673,7 +695,19 @@ export function TaskRow({
               isCompleted && "text-text-secondary",
             )}
           >
-            <span className={cn("block min-w-0 max-w-lg truncate", isCompleted && "line-through")}>{task.title}</span>
+            {/* Dos líneas en el tablero (D-D, tarea 4.1): en una columna de
+                288px al título le quedaban unos 125px reales (~16
+                caracteres) con `truncate`. La lista sigue truncando a una
+                línea, sin cambios. */}
+            <span
+              className={cn(
+                "block min-w-0 max-w-lg",
+                variant === "board" ? "line-clamp-2" : "truncate",
+                isCompleted && "line-through",
+              )}
+            >
+              {task.title}
+            </span>
           </button>
 
           {projectInFirstLevel && (
@@ -725,7 +759,20 @@ export function TaskRow({
   );
 
   return (
-    <li ref={setNodeRef} style={style} className={cn("group", isDragging && "opacity-50")}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      // `inert` (D-D): la copia del `DragOverlay` no debe ser alcanzable ni
+      // por mouse ni por teclado — sin esto, el botón "…" y el casillero de
+      // completar quedarían duplicados y tabulables mientras se arrastra.
+      inert={dragOverlay}
+      className={cn(
+        "group",
+        isDragging && "opacity-50",
+        variant === "board" && "rounded-md bg-background",
+        dragOverlay && "w-72 shadow-lg",
+      )}
+    >
       {!isFlat && addingAbove && (
         <div style={{ paddingLeft: depth * 24 }} className="py-0.5">
           <TaskQuickAddRow
