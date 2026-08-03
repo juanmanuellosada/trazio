@@ -5,92 +5,159 @@ TBD - created by archiving change fase-2-potencia. Update Purpose after archive.
 ## Requirements
 ### Requirement: El modo panel está disponible en Bandeja, Proyecto y Próximos
 
-El modo panel SHALL estar disponible como forma de ver alternativa a la lista únicamente en las vistas Bandeja de entrada, Proyecto y Próximos. El modo calendario es una forma de ver aparte, definida por la capacidad `vista-calendario`, y no forma parte de esta capacidad.
+El modo panel SHALL estar disponible como forma de ver alternativa a la lista en las vistas Bandeja de entrada, Proyecto, Próximos y **Hoy**. El modo calendario es una forma de ver aparte, definida por la capacidad `vista-calendario`, y no forma parte de esta capacidad.
+
+En Hoy el panel SHALL mostrar únicamente tareas, según ya define la capacidad `hoy-con-eventos`.
 
 #### Scenario: El selector de forma de ver ofrece panel en Bandeja
 
 - **WHEN** el usuario abre la barra de opciones de vista en la Bandeja de entrada
 - **THEN** el selector de forma de ver ofrece "panel" entre sus opciones
 
-#### Scenario: El modo panel no existe fuera de esas tres vistas
+#### Scenario: El modo panel no existe en Etiqueta ni en Filtro
 
-- **WHEN** el usuario abre la barra de opciones de vista en Hoy, en la página de una etiqueta o en la página de un filtro
+- **WHEN** el usuario abre la barra de opciones de vista en la página de una etiqueta o en la de un filtro
 - **THEN** el selector de forma de ver no ofrece la opción "panel"
 
-### Requirement: Las columnas del panel son las secciones en Bandeja y Proyecto
+### Requirement: Las columnas del panel salen del agrupador
 
-En Bandeja de entrada y en Proyecto, el modo panel SHALL mostrar una columna por sección, incluida una columna para las tareas sin sección.
+Las columnas del modo panel SHALL salir del valor del control de agrupar por, y NUNCA SHALL estar cableadas a la pantalla.
 
-#### Scenario: Un proyecto con dos secciones muestra tres columnas
+Con el agrupador en "nada", las columnas SHALL ser la agrupación natural de la pantalla: las secciones en Bandeja de entrada y Proyecto, y los días de la ventana configurada en Próximos. NUNCA SHALL producirse una sola columna: un tablero de una columna no es un tablero.
 
-- **WHEN** un proyecto tiene las secciones "En curso" y "Bloqueado", y
-  además tareas sin sección
-- **THEN** el modo panel de ese proyecto muestra tres columnas: la de
-  tareas sin sección, "En curso" y "Bloqueado"
+Con los demás valores, las columnas SHALL ser: una por sección más "Sin sección"; una por día con tareas más "Sin fecha"; o las cuatro prioridades.
 
-### Requirement: Las columnas del panel son los días en Próximos
+Agrupar por etiqueta NUNCA SHALL producir columnas: una tarea puede tener varias y aparecería repetida. La capacidad `opciones-de-vista` define que ese valor no se ofrece en panel y que una preferencia ya guardada se trata como "nada" sin pisarse.
 
-En Próximos, el modo panel SHALL mostrar una columna por cada día dentro de la ventana configurada, más una columna "Sin fecha".
+Agrupar por sección NUNCA SHALL producir columnas en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una columna de sección podía pertenecer a un proyecto distinto del de la tarea que se arrastra, algo que la base siempre rechaza. La capacidad `opciones-de-vista` define que ese valor no se ofrece en esas dos pantallas y que una preferencia ya guardada se trata como "nada" sin pisarse.
 
-#### Scenario: Una ventana de 7 días muestra 8 columnas
+Cuando no hay ninguna columna que mostrar, SHALL mostrarse un estado vacío, y NUNCA SHALL quedar la pantalla en blanco.
 
-- **WHEN** Próximos está configurado con la ventana por defecto de 7 días
-- **THEN** el modo panel muestra 7 columnas de día más la columna "Sin
-  fecha", 8 en total
+#### Scenario: Sin agrupar, un proyecto muestra sus secciones
 
-#### Scenario: La columna "Sin fecha" muestra las tareas que la lista excluye
+- **WHEN** un proyecto tiene las secciones "En curso" y "Bloqueado", además de tareas sin sección, y el agrupador está en "nada"
+- **THEN** el modo panel SHALL mostrar tres columnas: la de tareas sin sección, "En curso" y "Bloqueado"
 
-- **WHEN** una tarea no tiene fecha de vencimiento asignada
-- **THEN** en modo panel de Próximos esa tarea aparece en la columna "Sin
-  fecha"
-- **AND** en modo lista de Próximos esa misma tarea no aparece en ningún
-  grupo, según ya establece `vista-proximos`
+#### Scenario: Agrupar por prioridad cambia las columnas
 
-### Requirement: Arrastrar entre columnas cambia sección o fecha, pero no es la única forma
+- **WHEN** el usuario está en modo panel de un proyecto y elige agrupar por prioridad
+- **THEN** las columnas SHALL pasar a ser las cuatro prioridades
+- **AND** NUNCA SHALL seguir mostrándose una columna por sección
 
-Arrastrar una tarea a otra columna SHALL cambiarle la sección (en Bandeja y Proyecto) o la fecha de vencimiento (en Próximos, incluida la columna "Sin fecha", que la deja sin fecha). Por D24, el arrastre entre columnas MUST NOT ser la única forma de mover una tarea de sección o de cambiarle la fecha: ambas acciones SHALL seguir disponibles desde el menú contextual de la tarea.
+#### Scenario: Sin agrupar, Próximos muestra sus días
 
-#### Scenario: Arrastrar una tarea a otra sección la mueve
+- **WHEN** Próximos está en modo panel con la ventana por defecto de 7 días y el agrupador en "nada"
+- **THEN** SHALL mostrar 7 columnas de día más la columna "Sin fecha"
 
-- **WHEN** el usuario arrastra una tarea desde la columna "En curso" hasta
-  la columna "Bloqueado" en el modo panel de un proyecto
-- **THEN** la tarea queda asignada a la sección "Bloqueado"
+#### Scenario: Sin columnas no queda la pantalla en blanco
 
-#### Scenario: Arrastrar una tarea a otra columna de día le cambia la fecha
+- **WHEN** el agrupador produce cero columnas porque no hay ninguna tarea
+- **THEN** SHALL mostrarse un estado vacío
+- **AND** NUNCA SHALL quedar la pantalla en blanco
 
-- **WHEN** el usuario arrastra una tarea desde la columna de "Hoy" hasta la
-  columna de "Mañana" en el modo panel de Próximos
-- **THEN** la fecha de vencimiento de la tarea pasa a ser la de mañana
+### Requirement: Arrastrar entre columnas escribe el campo que las define
 
-#### Scenario: Cambiar de sección sin arrastrar sigue siendo posible
+Arrastrar una tarea entre columnas SHALL escribir el campo que define esas columnas: la sección, la fecha de vencimiento o la prioridad, según el agrupador activo. Los tres son de cardinalidad uno, de modo que mover SHALL significar una sola cosa.
 
-- **WHEN** el usuario abre el menú contextual de una tarea en modo panel y
-  elige mover a otra sección
-- **THEN** la tarea cambia de sección
-- **AND** el usuario no necesitó arrastrarla para lograrlo
+Mover entre columnas de fecha NUNCA SHALL borrar la hora de la tarea: cambia el día, no el momento del día.
 
-#### Scenario: Cambiar la fecha sin arrastrar sigue siendo posible
+Mover entre columnas de sección NUNCA SHALL aceptar una sección de otro proyecto, que la base rechaza. En la práctica esto solo puede ocurrir en Bandeja y Proyecto (los únicos que ofrecen columnas de sección): ahí toda sección visible ya pertenece al proyecto que se está mostrando, así que el rechazo es un cinturón de seguridad, no un camino esperado.
 
-- **WHEN** el usuario abre el menú contextual de una tarea en el modo panel
-  de Próximos y le cambia la fecha desde ahí
-- **THEN** la tarea cambia de columna según la nueva fecha
-- **AND** el usuario no necesitó arrastrarla para lograrlo
+Por **D24**, arrastrar NUNCA SHALL ser la única forma de cambiar esos campos: todos SHALL seguir siendo alcanzables desde el detalle y desde el menú de la tarea.
 
-### Requirement: El arrastre entre columnas solo está habilitado con orden manual y sin agrupación
+#### Scenario: Mover entre columnas de prioridad cambia la prioridad
 
-Arrastrar una tarea entre columnas del modo panel SHALL estar habilitado únicamente cuando el orden configurado es manual y no hay ninguna agrupación activa, la misma condición que ya rige el arrastre en el modo lista.
+- **WHEN** el usuario arrastra una tarea de la columna "P3" a la columna "P1"
+- **THEN** la prioridad de esa tarea SHALL pasar a ser P1
 
-#### Scenario: Con agrupación activa, el arrastre entre columnas está deshabilitado
+#### Scenario: Mover entre días conserva la hora
 
-- **WHEN** el modo panel de un proyecto tiene activada la agrupación por
-  prioridad
-- **THEN** arrastrar una tarea de una columna a otra no produce ningún
-  cambio de sección
+- **WHEN** el usuario arrastra una tarea con hora de un día a otro
+- **THEN** la fecha SHALL cambiar al día de destino
+- **AND** la hora NUNCA SHALL borrarse
 
-#### Scenario: Con orden por fecha, el arrastre entre columnas está deshabilitado
+### Requirement: El arrastre entre columnas está habilitado con cualquier agrupación
 
-- **WHEN** el modo panel de Próximos tiene configurado el orden por fecha
-  en vez de manual
-- **THEN** arrastrar una tarea de una columna de día a otra no le cambia la
-  fecha
+Arrastrar una tarea entre columnas SHALL estar habilitado con cualquier valor del agrupador, porque es el agrupador el que define qué campo se escribe al mover.
+
+Reordenar **dentro** de una columna SHALL seguir requiriendo el orden manual, que es lo único que puede persistir una posición elegida a mano.
+
+#### Scenario: Con agrupación por prioridad se puede arrastrar entre columnas
+
+- **WHEN** el modo panel de un proyecto tiene activada la agrupación por prioridad
+- **THEN** arrastrar una tarea de una columna a otra SHALL cambiarle la prioridad
+
+#### Scenario: Reordenar dentro de una columna requiere orden manual
+
+- **WHEN** el orden configurado no es manual
+- **THEN** cambiar la posición de una tarea dentro de su columna NUNCA SHALL persistirse
+
+### Requirement: La tarjeta arrastrada sigue al puntero fuera del tablero
+
+La tarjeta que se está arrastrando SHALL seguir al puntero en toda la pantalla, y NUNCA SHALL recortarse ni desaparecer al salir del área del tablero.
+
+Para eso SHALL dibujarse en una capa superpuesta, fuera de los contenedores que recortan por desbordamiento.
+
+#### Scenario: La tarjeta sale del tablero y sigue visible
+
+- **WHEN** el usuario arrastra una tarjeta más allá del borde del tablero
+- **THEN** la tarjeta SHALL seguir visible y siguiendo al puntero
+
+### Requirement: La tarjeta muestra dos líneas de título
+
+La tarjeta del panel SHALL mostrar hasta dos líneas del título antes de recortarlo, en vez de una.
+
+#### Scenario: Un título largo se lee en dos líneas
+
+- **WHEN** una tarea tiene un título que no entra en el ancho de la columna
+- **THEN** la tarjeta SHALL mostrar hasta dos líneas de ese título
+
+### Requirement: El panel usa el ancho disponible de la pantalla
+
+En la forma de ver "panel", el contenido SHALL ocupar el ancho disponible en vez de detenerse en el tope de la columna de contenido, de modo que entren más columnas en una pantalla ancha.
+
+Esta es una excepción acotada a **D39**, que fija el centrado de la columna de contenido: las formas de ver "lista" y "calendario" NUNCA SHALL verse afectadas. Un tablero no es una línea de texto — cada columna tiene su propio ancho corto, y el tope solo limita cuántas se ven a la vez.
+
+#### Scenario: En una pantalla ancha entran más columnas
+
+- **WHEN** el usuario mira el modo panel en una pantalla más ancha que el tope de la columna de contenido
+- **THEN** SHALL verse más columnas que las que entrarían dentro de ese tope
+
+#### Scenario: La lista no cambia
+
+- **WHEN** el usuario vuelve a la forma de ver "lista"
+- **THEN** el contenido SHALL seguir respetando el tope y el centrado que fija D39
+
+### Requirement: Cada columna ofrece agregar una tarea
+
+Cada columna del panel SHALL ofrecer agregar una tarea, y esa alta SHALL llegar con el campo de la columna ya puesto: la sección si las columnas son secciones, la fecha si son fechas, la prioridad si son prioridades.
+
+Una columna sin tareas SHALL explicar qué va a aparecer ahí y ofrecer esa acción, y NUNCA SHALL limitarse a decir que está vacía.
+
+#### Scenario: Agregar una tarea desde una columna de sección
+
+- **WHEN** el usuario agrega una tarea desde la columna "En curso"
+- **THEN** la tarea SHALL crearse en la sección "En curso"
+
+#### Scenario: Agregar una tarea desde una columna de prioridad
+
+- **WHEN** el usuario agrega una tarea desde la columna "P1"
+- **THEN** la tarea SHALL crearse con prioridad P1
+
+### Requirement: El panel ofrece crear una sección cuando las columnas son secciones
+
+El modo panel SHALL ofrecer crear una sección únicamente cuando las columnas son secciones, y NUNCA SHALL ofrecerlo con otro agrupador: en un tablero por prioridad, crear una sección no crea ninguna columna.
+
+El atajo de teclado que crea una sección SHALL funcionar en modo panel cuando esa acción está disponible, y NUNCA SHALL quedar sin efecto en silencio.
+
+#### Scenario: Crear una sección desde el panel
+
+- **WHEN** el usuario está en el modo panel de un proyecto con el agrupador en "nada"
+- **THEN** SHALL ver una acción para crear una sección
+- **AND** al crearla SHALL aparecer como una columna nueva
+
+#### Scenario: Agrupando por prioridad no se ofrece crear sección
+
+- **WHEN** el usuario agrupa el panel por prioridad
+- **THEN** NUNCA SHALL verse la acción de crear una sección
 
