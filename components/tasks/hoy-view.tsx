@@ -1,57 +1,95 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import { AlertTriangle, Sun } from "lucide-react";
+import { useMounted } from "@/hooks/use-mounted";
 import { isTaskCompletedToday, isTaskDueToday, isTaskOverdue } from "@/lib/dates/today";
 import { useHoyTasks } from "@/lib/tasks/use-hoy-tasks";
+import { buildHoySequence } from "@/lib/tasks/hoy-sequence";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
+import { useProjects } from "@/lib/projects/use-projects";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
+import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import type { ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
+import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import type { Habit } from "@/lib/habits/habit-columns";
 import { HabitsTodayBlock } from "@/components/habits/habits-today-block";
-import { TodayEventsBlock } from "@/components/calendar/today-events-block";
+import { Board, type BoardColumn } from "@/components/board/board";
+import { ScreenCalendar } from "@/components/calendar/screen-calendar";
+import { HoyEventRow } from "@/components/calendar/hoy-event-row";
+import { useHoyEvents } from "@/components/calendar/use-hoy-events";
 import { usePublishComposeContext } from "./compose-context";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
+import { TaskRow } from "./task-row";
 
 const VIEW_KEY = "hoy";
 
 /**
- * Vista Hoy (bloque 8.2): atrasadas destacadas, tareas de hoy, y —
- * solo si el usuario lo pide — completadas de hoy, en ese orden fijo. Un
- * único caché cruza proyectos (`useHoyTasks`); el bucketing en bloques se
- * recalcula acá en memoria con `lib/dates/today.ts`, así que completar una
- * tarea la reubica de bloque sola, sin tocar tres cachés distintos.
+ * Vista Hoy (capacidad `hoy-con-eventos`): atrasadas en su propio bloque
+ * arriba, después una única secuencia con las tareas de hoy **y** los
+ * eventos del día de hoy intercalados, hábitos, y — si el usuario lo pide —
+ * completadas de hoy. Ofrece los tres formatos (lista, panel y calendario,
+ * D-F): antes de esta capacidad era la única vista de tareas sin selector
+ * de forma de ver, porque no tenía modo panel.
  *
- * `nowIso` viene del Server Component (bloque 8, D1): usar el mismo
- * instante que ya usó el servidor evita que el bucketing del primer render
- * del cliente diverja por el simple paso del reloj entre el render y la
- * hidratación.
+ * **El desacople con Google es lo más importante de este archivo** (grupo
+ * 1 de `openspec/changes/hoy-con-eventos-y-formatos/tasks.md`): `useHoyTasks`
+ * y `useHoyEvents` son dos consultas hermanas, cada una con su propio
+ * estado, nunca un `Suspense` ni un `isLoading` compartido. Las tareas se
+ * pintan solas; los eventos se insertan cuando llegan, sin esqueleto de
+ * carga (D-E: no se sabe de antemano cuántos van a ser, y uno del alto
+ * equivocado desplaza el contenido dos veces en vez de una). Sin Google
+ * conectado, Hoy se ve exactamente como si esta capacidad no existiera —
+ * `useHoyEvents` trata "no conectado" y "cargando" igual (ver su propio
+ * comentario), así que no hay huecos ni avisos. Solo cuando Google
+ * realmente falla (`status: "unavailable"`) aparece **un** aviso al pie,
+ * nunca uno por fila.
  *
- * Bloque 6 (`opciones-de-vista`): sin selector de forma de ver ni de días
- * adelante acá (no hay modo panel en Hoy, y la ventana es de Próximos). El
- * control "mostrar completadas" de la barra reemplaza al botón propio que
- * tenía antes esta vista para el bloque de completadas de hoy — ahora
- * persiste en `view_preferences` en vez de resetear al recargar.
+ * `components/tasks/` tiene prohibido importar de `lib/calendar/`
+ * (`lib/calendar/tasks-and-habits-never-publish-to-google.test.ts`): este
+ * archivo nunca lo hace. Los eventos llegan ya resueltos por
+ * `useHoyEvents`/`HoyEventRow` (`components/calendar/`), que son el único
+ * puente permitido — Hoy no conoce ningún tipo de `lib/calendar/`.
  *
- * Bloque de hábitos del día (fase 3, tareas 4.1-4.5, spec `vistas-lista`
- * "Vista Hoy"): entre las tareas de hoy y los eventos, detrás del control
- * "mostrar hábitos" (`options.showHabits`, ya existente en el esquema desde
- * la fase 2). `HabitsTodayBlock` trae su propio hook y se devuelve `null`
- * sola si no hay ningún hábito para hoy, así que acá solo hace falta el
- * `if` de la opción. Un hábito no participa de la selección múltiple (tarea
- * 4.4): no usa `SelectionCheckbox` ni entra en `candidateTasks`.
+ * **El orden (D-A, tarea 2.6).** El cruce por hora entre tareas y eventos
+ * (`buildHoySequence`, tres tramos: todo el día/arrastrado de ayer, con
+ * hora mezclado, sin hora) solo tiene sentido con el orden y la agrupación
+ * por default de esta pantalla — orden "fecha", sin agrupar. Elegir
+ * "nombre" o "prioridad" en la barra de opciones, o agrupar por prioridad o
+ * etiqueta, deja a un evento sin nada con qué participar: no tiene nombre
+ * que alfabetizar contra el de una tarea con sentido, ni prioridad, ni
+ * etiqueta. Para esos casos, los eventos se muestran aparte, arriba de las
+ * tareas, en su propio orden cronológico (todo el día primero, después por
+ * hora — el mismo criterio de los tramos 1 y 2 de `buildHoySequence`, acá
+ * con la lista de tareas vacía) y las tareas siguen debajo con el criterio
+ * elegido. Sigue siendo una sola lista, sin encabezado propio de "Eventos":
+ * la fila del evento ya se distingue sola por su forma (D-C).
  *
- * Bloque de eventos de hoy (fase 4, bloque 7.8): entre hábitos y
- * completadas, el orden que fija el spec. Igual que `HabitsTodayBlock`,
- * `TodayEventsBlock` trae su propio hook y se devuelve `null` sola cuando no
- * hay nada que mostrar (sin conexión, o conectado pero sin eventos hoy).
+ * Las atrasadas (tarea 2.5) nunca se mezclan con esta secuencia: siguen en
+ * su bloque propio arriba, como antes de esta capacidad.
+ *
+ * **Los formatos (D-F).** El panel muestra solo tareas (D-B): sus columnas
+ * salen de "agrupar por" (nada, prioridad, etiqueta) — un evento no tiene
+ * ninguno de los tres, así que quedaría en una columna de "sin nada" que no
+ * le sirve a nadie. Cuando hay eventos hoy, una línea avisa que este
+ * formato no los muestra. Sin columna propia de atrasadas en el panel,
+ * mismo criterio que ya usa Próximos: se suman a la misma columna que Hoy.
+ * El calendario **siempre** se dibuja en modo día, forzado al montar
+ * (`formato_calendario: "dia"` sobrescrito acá, nunca leído de lo
+ * guardado) y sin navegación entre días (`hideNav`, `screen-calendar.tsx`):
+ * en una vista que es hoy por definición, ir a otro día es una
+ * contradicción. La barra de opciones de vista tampoco ofrece el selector
+ * de formato de calendario acá (`showCalendarFormat={false}`), ni
+ * deshabilitado.
  */
 export function HoyView({
   userId,
@@ -74,6 +112,7 @@ export function HoyView({
 }) {
   const { data } = useHoyTasks(userId, timezone, initialTasks);
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
+  const { weekStartsOn, timeFormat } = useUserPreferences();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const tasks = data ?? [];
 
@@ -81,6 +120,12 @@ export function HoyView({
   // global hereda la Bandeja de entrada y el día de hoy, igual que ya hace
   // el alta rápida embebida de esta misma vista un poco más abajo.
   usePublishComposeContext({ projectId: inboxProjectId, sectionId: null, defaultDueDate: todayDate });
+
+  // Desacoplado de `useHoyTasks` de arriba: ver el comentario de esta
+  // función al principio del archivo.
+  const eventsState = useHoyEvents(todayDate, timezone);
+  const events = eventsState.status === "ok" ? eventsState.events : [];
+  const hasEventsToday = events.length > 0;
 
   const overdueRaw = tasks.filter((t) => !t.completed_at && isTaskOverdue(t, timezone, now));
   const todayRaw = tasks.filter((t) => !t.completed_at && isTaskDueToday(t, timezone, now));
@@ -91,10 +136,58 @@ export function HoyView({
   const completedToday = options.showCompleted
     ? orderTasks(applyQuickFilters(completedTodayRaw, options.quickFilters, true), options.order, timezone)
     : [];
-  const isEmpty = overdue.length === 0 && today.length === 0;
+
+  // Ver "El orden (D-A, tarea 2.6)" en el comentario de arriba.
+  const useDefaultSequence = options.order === "fecha" && options.groupBy === "nada";
+  const eventSequence = buildHoySequence<TaskRowData, (typeof events)[number]>([], events, now, timezone);
+  const mixedSequence = useDefaultSequence ? buildHoySequence(today, events, now, timezone) : [];
+  // Orden visual real de las tareas de la secuencia (sin los eventos, que no
+  // son seleccionables) para `⇧clic` (bloque 7.10-7.13).
+  const todaySequenceTaskIds = useDefaultSequence
+    ? mixedSequence.flatMap((entry) => (entry.kind === "task" ? [entry.task.id] : []))
+    : today.map((task) => task.id);
+
+  const isEmpty = overdue.length === 0 && today.length === 0 && !hasEventsToday;
   // Selección múltiple (bloque 7.10-7.13): cualquier tarea visible de Hoy es
-  // candidata, atrasada, de hoy o completada de hoy por igual.
+  // candidata, atrasada, de hoy o completada de hoy por igual. Un evento
+  // nunca es candidato (`vistas-lista`, "un evento no se puede seleccionar").
   const candidateTasks = [...overdue, ...today, ...completedToday].map((t) => ({ id: t.id, projectId: t.project_id }));
+
+  function renderEventRow(event: (typeof events)[number]) {
+    return (
+      <HoyEventRow
+        key={event.id}
+        event={event}
+        calendarName={eventsState.status === "ok" ? eventsState.calendarName(event.calendarId) : ""}
+        canEdit={eventsState.status === "ok" ? eventsState.canEdit(event) : false}
+        timezone={timezone}
+      />
+    );
+  }
+
+  // Color por proyecto para el calendario (D-F): mismo criterio que
+  // `ProximosView`/`SectionedTasks`.
+  const { data: projects } = useProjects();
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
+  const resolveTaskColor = (task: TaskRowData) =>
+    resolveProjectColorHex(projects?.find((p) => p.id === task.project_id)?.color ?? null, theme);
+
+  // Panel (D-B): columnas por "agrupar por", nunca por eventos. Sin columna
+  // propia de atrasadas, mismo criterio que el panel de Próximos.
+  const panelColumns: BoardColumn[] = groupTasks([...overdue, ...today], options.groupBy).map((group) => ({
+    id: group.key,
+    title: group.label || "Hoy",
+    tasks: group.tasks,
+  }));
+  // En Hoy no hay arrastre (grupo 2 de `tasks.md`): el orden por default es
+  // por fecha, sin `position` comparable entre proyectos (D25) con el que
+  // reordenar manualmente tendría sentido — mismo motivo por el que
+  // `ProximosView` tampoco persiste el reordenamiento dentro de una
+  // columna.
+  function noopReorderWithinColumn() {}
+  function noopMoveAcrossColumns() {}
 
   return (
     <SelectionProvider>
@@ -105,60 +198,133 @@ export function HoyView({
               <Sun aria-hidden className="size-5 text-primary" />
               <h1 className="text-2xl font-semibold text-foreground">Hoy</h1>
             </div>
-            <ViewOptionsBar viewKey={VIEW_KEY} initialOptions={initialOptions} showViewShape={false} showDaysAhead={false} />
+            <ViewOptionsBar
+              viewKey={VIEW_KEY}
+              initialOptions={initialOptions}
+              showViewShape
+              showCalendarFormat={false}
+              showDaysAhead={false}
+            />
           </div>
         </header>
-        <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
-          {inboxProjectId && (
-            <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={todayDate} />
-          )}
 
-          {isEmpty ? (
-            <TaskListEmptyState
-              icon={Sun}
-              title="No tenés tareas para hoy."
-              description="Acá van a aparecer las tareas atrasadas y las que venzan hoy. Usá el botón de arriba para agregar una."
+        {options.viewShape === "panel" ? (
+          <div className="w-full max-w-content mx-auto flex-1 overflow-y-auto p-4 sm:p-6">
+            {hasEventsToday && (
+              <p className="mb-3 text-sm text-text-secondary">
+                Este formato no muestra los eventos de hoy: cambiá a lista o calendario para verlos.
+              </p>
+            )}
+            <Board
+              columns={panelColumns}
+              allTasks={tasks}
+              draggable={false}
+              onReorderWithinColumn={noopReorderWithinColumn}
+              onMoveAcrossColumns={noopMoveAcrossColumns}
             />
-          ) : (
-            <>
-              {overdue.length > 0 && (
-                <section>
-                  {/* No usa el rojo de marca (#EC1E2A): ese color queda reservado
-                      para prioridad Urgente y el ícono de la app
-                      (docs/design-system.md §1). "Atrasadas" usa --warning, el
-                      token semántico pensado para esto. */}
-                  <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-warning">
-                    <AlertTriangle aria-hidden className="size-4" />
-                    Atrasadas
-                  </h2>
-                  <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject />
-                </section>
-              )}
+          </div>
+        ) : options.viewShape === "calendario" ? (
+          <div className="flex w-full max-w-content mx-auto flex-1 flex-col overflow-hidden p-4 sm:p-6">
+            <ScreenCalendar
+              timezone={timezone}
+              weekStartsOn={weekStartsOn}
+              timeFormat={timeFormat}
+              options={{ ...options, formato_calendario: "dia" }}
+              tasks={today}
+              resolveTaskColor={resolveTaskColor}
+              createTaskProjectId={inboxProjectId}
+              hideNav
+            />
+          </div>
+        ) : (
+          <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+            {inboxProjectId && (
+              <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={todayDate} />
+            )}
 
-              {today.length > 0 && (
-                <section>
-                  <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Hoy</h2>
-                  <TaskGroupList tasks={today} allTasks={tasks} groupBy={options.groupBy} showProject />
-                </section>
-              )}
-            </>
-          )}
+            {isEmpty ? (
+              <TaskListEmptyState
+                icon={Sun}
+                title="No tenés tareas para hoy."
+                description="Acá van a aparecer las tareas atrasadas y las que venzan hoy. Usá el botón de arriba para agregar una."
+              />
+            ) : (
+              <>
+                {overdue.length > 0 && (
+                  <section>
+                    {/* No usa el rojo de marca (#EC1E2A): ese color queda reservado
+                        para prioridad Urgente y el ícono de la app
+                        (docs/design-system.md §1). "Atrasadas" usa --warning, el
+                        token semántico pensado para esto. */}
+                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-warning">
+                      <AlertTriangle aria-hidden className="size-4" />
+                      Atrasadas
+                    </h2>
+                    <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject />
+                  </section>
+                )}
 
-          {options.showHabits && (
-            <HabitsTodayBlock timezone={timezone} now={now} todayDate={todayDate} initialHabits={initialHabits} />
-          )}
+                {(today.length > 0 || hasEventsToday) && (
+                  <section>
+                    <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Hoy</h2>
+                    {useDefaultSequence ? (
+                      <ul className="flex flex-col divide-y divide-border/60">
+                        {mixedSequence.map((entry) =>
+                          entry.kind === "event" ? (
+                            renderEventRow(entry.event)
+                          ) : (
+                            <TaskRow
+                              key={entry.task.id}
+                              task={entry.task}
+                              allTasks={tasks}
+                              siblings={[]}
+                              depth={0}
+                              variant="flat"
+                              selectionOrderIds={todaySequenceTaskIds}
+                              showProject
+                            />
+                          ),
+                        )}
+                      </ul>
+                    ) : (
+                      <>
+                        {hasEventsToday && (
+                          <ul className="mb-1 flex flex-col divide-y divide-border/60">
+                            {eventSequence.map((entry) => (entry.kind === "event" ? renderEventRow(entry.event) : null))}
+                          </ul>
+                        )}
+                        {today.length > 0 && (
+                          <TaskGroupList tasks={today} allTasks={tasks} groupBy={options.groupBy} showProject />
+                        )}
+                      </>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
 
-          <TodayEventsBlock todayDate={todayDate} timezone={timezone} />
+            {options.showHabits && (
+              <HabitsTodayBlock timezone={timezone} now={now} todayDate={todayDate} initialHabits={initialHabits} />
+            )}
 
-          {completedToday.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
-                Completadas de hoy ({completedToday.length})
-              </h2>
-              <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy={options.groupBy} showProject />
-            </section>
-          )}
-        </div>
+            {eventsState.status === "unavailable" && (
+              <p className="text-sm text-text-secondary">
+                {eventsState.reason === "needs_reauth"
+                  ? "No pudimos cargar tus eventos de hoy porque la conexión con Google necesita reconectarse."
+                  : "No pudimos cargar tus eventos de hoy porque Google no respondió. Volvé a intentar en un momento."}
+              </p>
+            )}
+
+            {completedToday.length > 0 && (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
+                  Completadas de hoy ({completedToday.length})
+                </h2>
+                <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy={options.groupBy} showProject />
+              </section>
+            )}
+          </div>
+        )}
 
         <SelectionActionBar candidateTasks={candidateTasks} />
       </div>

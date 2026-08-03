@@ -188,12 +188,27 @@ Vista como lista, panel agrupado por sección, o calendario. Vacía muestra:
 
 ### Hoy
 
-Bloques en este orden: atrasadas (destacadas en rojo), tareas de hoy, hábitos del
-día (con contador de cuántos se hicieron), eventos de hoy, y — si se activa la
-opción — las completadas. El botón de agregar precarga la fecha de hoy. Dentro de
-cada bloque, orden por hora y no manual (D25): primero las tareas con hora en
-orden cronológico, después las de todo el día; en atrasadas, la más vencida
-primero.
+Bloques en este orden: atrasadas (destacadas en rojo, la más vencida primero),
+**una sola secuencia con las tareas de hoy y los eventos de hoy intercalados**,
+hábitos del día (con contador de cuántos se hicieron), y — si se activa la
+opción — las completadas. El botón de agregar precarga la fecha de hoy.
+
+La secuencia de tareas y eventos ordena en tres tramos: primero los eventos de
+todo el día y los que vienen de un día anterior, después todo lo que tiene hora
+—tareas y eventos juntos, por hora, y a igual hora el evento va primero—, y por
+último las tareas sin hora. Un evento nunca lleva casillero de completar, punto
+de prioridad ni manija de arrastre: se distingue de una tarea por su forma, con
+el color de su calendario y el nombre del calendario anclado a la derecha.
+Doble clic sobre un evento lo abre para editar (o para verlo sin editar, si el
+calendario es de solo lectura); el mismo camino está en su menú contextual y en
+su botón de acciones.
+
+Tres formas de verlo, igual que Próximos y Proyecto: **lista** (la secuencia de
+arriba), **panel** (columnas por "agrupar por"; solo tareas — un evento no
+tiene prioridad ni etiqueta con la que armar una columna, y si hay eventos ese
+día el panel avisa que no los muestra) y **calendario**, siempre en modo día y
+sin navegación entre días: Hoy es un solo día por definición, así que no ofrece
+el selector de formato de calendario ni un control para ir a otro día.
 
 ### Próximos
 
@@ -252,6 +267,9 @@ fila aparte arriba para eventos de todo el día y una línea marcando la hora ac
   arrastrándolos a una hora.
 - Opción para mostrar las repeticiones futuras de una tarea recurrente como bloques
   de vista previa.
+- En Hoy, siempre en modo día, forzado y sin navegación entre días ni selector de
+  formato de calendario: las demás pantallas eligen entre día, cuatro días, semana
+  y mes, y navegan libremente.
 
 ### Barra de opciones de vista
 

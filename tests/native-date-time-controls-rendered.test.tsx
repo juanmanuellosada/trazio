@@ -124,6 +124,7 @@ describe("sin controles nativos: lo que se renderiza (tarea 4.2)", () => {
       isRecurring: false,
       recurringEventId: null,
       originalStartTime: null,
+      htmlLink: null,
     };
     vi.stubGlobal(
       "fetch",
@@ -150,6 +151,7 @@ describe("sin controles nativos: lo que se renderiza (tarea 4.2)", () => {
       isRecurring: false,
       recurringEventId: null,
       originalStartTime: null,
+      htmlLink: null,
     };
     vi.stubGlobal(
       "fetch",

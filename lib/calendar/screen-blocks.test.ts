@@ -101,6 +101,7 @@ describe("eventToCalendarBlock", () => {
       isRecurring: false,
       recurringEventId: null,
       originalStartTime: null,
+      htmlLink: null,
     };
     expect(eventToCalendarBlock(event)).toEqual({
       id: "event-1",
@@ -128,6 +129,7 @@ describe("eventToCalendarBlock", () => {
       isRecurring: false,
       recurringEventId: null,
       originalStartTime: null,
+      htmlLink: null,
     };
     expect(eventToCalendarBlock(event).color).toBe("#6B7280");
   });

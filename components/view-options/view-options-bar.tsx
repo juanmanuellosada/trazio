@@ -155,18 +155,27 @@ function countActiveQuickFilters(quickFilters: QuickFilters): number {
  *
  * `showViewShape` y `showDaysAhead` acotan qué controles aparecen según la
  * pantalla (`specs/opciones-de-vista`: forma de ver solo donde existe modo
- * panel — Bandeja, Proyecto y Próximos —, días adelante solo en Próximos).
+ * panel — Bandeja, Proyecto, Próximos y Hoy —, días adelante solo en
+ * Próximos).
+ *
+ * `showCalendarFormat` (`hoy-con-eventos`, D-F): Hoy es la única pantalla
+ * con forma de ver que fuerza el calendario a modo día y no lo persiste —
+ * ofrecer el control ahí invitaría a cambiar un valor que la pantalla
+ * ignora. Por default `true`: las demás pantallas (Bandeja, Proyecto,
+ * Próximos) no necesitan pasarlo.
  */
 export function ViewOptionsBar({
   viewKey,
   initialOptions,
   showViewShape,
   showDaysAhead,
+  showCalendarFormat = true,
 }: {
   viewKey: string;
   initialOptions: ViewOptions;
   showViewShape: boolean;
   showDaysAhead: boolean;
+  showCalendarFormat?: boolean;
 }) {
   const { options, setOption, setQuickFilters, reset } = useViewOptions(viewKey, initialOptions);
   const { data: labels } = useLabels();
@@ -236,7 +245,7 @@ export function ViewOptionsBar({
                 </FieldRow>
               )}
 
-              {showViewShape && options.viewShape === "calendario" && (
+              {showViewShape && showCalendarFormat && options.viewShape === "calendario" && (
                 <FieldRow label="Formato de calendario" htmlFor={calendarFormatId}>
                   <Select
                     items={CALENDAR_FORMAT_LABELS}

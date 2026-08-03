@@ -53,6 +53,8 @@ export type CalendarEventInstance = {
   recurringEventId: string | null;
   /** Cuándo "debería" empezar esta ocurrencia según la regla, aunque se haya movido. Necesario para partir la serie (tarea 3.5). */
   originalStartTime: string | null;
+  /** Enlace de Google al evento (tarea 4.3, "Abrir en Google Calendar"), `null` si Google no lo trajo. */
+  htmlLink: string | null;
 };
 
 export type EventsRange = { startISO: string; endISO: string };
@@ -160,6 +162,7 @@ function normalizeInstance(resource: GoogleEventResource, calendarId: string, ca
     isRecurring: Boolean(resource.recurringEventId),
     recurringEventId: resource.recurringEventId ?? null,
     originalStartTime: originalStart ? (originalStart.dateTime ?? originalStart.date ?? null) : null,
+    htmlLink: resource.htmlLink ?? null,
   };
 }
 

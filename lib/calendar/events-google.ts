@@ -60,6 +60,8 @@ export type GoogleEventResource = GoogleEventBody & {
   status?: string;
   recurringEventId?: string;
   originalStartTime?: GoogleEventDateTime;
+  /** Enlace propio de Google al evento (tarea 4.3, "Abrir en Google Calendar"): Google ya lo devuelve en cada respuesta, sin `fields` que lo filtre. */
+  htmlLink?: string;
 };
 
 type GoogleEventListResponse = { items?: GoogleEventResource[] };

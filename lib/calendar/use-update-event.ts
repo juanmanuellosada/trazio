@@ -15,18 +15,20 @@ import type { CalendarEventInstance, EventInput, EventsResult, OccurrenceTarget,
  *
  * A diferencia de `useUpdateTask` (una sola `queryKey` por proyecto), acá
  * no hay una única caché "canónica": `useCalendarRangeEvents` cachea por
- * rango exacto de días visibles, así que el mismo evento puede estar
- * presente en varias queries a la vez (semana actual, mes actual, etc.) —
- * se parchea con un `predicate` cualquier query de rango que lo tenga, en
- * vez de una `queryKey` fija.
+ * rango exacto de días visibles y `useTodayEvents` (`hoy-con-eventos`) por
+ * el día de hoy solo, así que el mismo evento puede estar presente en
+ * varias queries a la vez (semana actual, mes actual, hoy) — se parchea con
+ * un `predicate` cualquier query de eventos que lo tenga, en vez de una
+ * `queryKey` fija. Las dos formas de caché comparten la misma forma
+ * (`EventsResult`), así que un solo `predicate` alcanza para las dos.
  */
 
-function isRangeEventsQuery(query: { queryKey: readonly unknown[] }): boolean {
-  return query.queryKey[0] === "calendar-events" && query.queryKey[1] === "range";
+function isCalendarEventsQuery(query: { queryKey: readonly unknown[] }): boolean {
+  return query.queryKey[0] === "calendar-events" && (query.queryKey[1] === "range" || query.queryKey[1] === "today");
 }
 
 function patchEventInCache(queryClient: QueryClient, eventId: string, changes: EventInput) {
-  queryClient.setQueriesData<EventsResult>({ predicate: isRangeEventsQuery }, (old) => {
+  queryClient.setQueriesData<EventsResult>({ predicate: isCalendarEventsQuery }, (old) => {
     if (!old || old.status !== "ok") return old;
     return { ...old, events: old.events.map((event) => (event.id === eventId ? { ...event, ...changes } : event)) };
   });
@@ -53,8 +55,8 @@ export function useUpdateEvent() {
         changes,
       }),
     onMutate: async ({ target, changes }) => {
-      await queryClient.cancelQueries({ predicate: isRangeEventsQuery });
-      const previous = queryClient.getQueriesData<EventsResult>({ predicate: isRangeEventsQuery });
+      await queryClient.cancelQueries({ predicate: isCalendarEventsQuery });
+      const previous = queryClient.getQueriesData<EventsResult>({ predicate: isCalendarEventsQuery });
       patchEventInCache(queryClient, target.eventId, changes);
       return { previous };
     },
@@ -63,6 +65,6 @@ export function useUpdateEvent() {
       reportCalendarAdminError(error);
     },
     onSuccess: () => toastSuccess("Evento editado."),
-    onSettled: () => queryClient.invalidateQueries({ predicate: isRangeEventsQuery }),
+    onSettled: () => queryClient.invalidateQueries({ predicate: isCalendarEventsQuery }),
   });
 }

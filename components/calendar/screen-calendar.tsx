@@ -78,6 +78,14 @@ function calendarDateFromKey(dateKey: string): CalendarDate {
  * `lib/calendar/use-recurring-task-fields.ts`), y
  * `lib/recurrence/expand-range.ts` calcula las fechas futuras dentro del
  * rango visible — nunca interactivos, la grilla ya los fuerza (`isPreview`).
+ *
+ * `hideNav` (`hoy-con-eventos`, D-F): Hoy monta este componente sin
+ * `CalendarNav` — en una vista que es hoy por definición, un control para
+ * ir a otro día se contradice con la vista que lo contiene. Sin
+ * `CalendarNav` no hay forma de llamar a `setAnchorDateOverride`, así que
+ * `anchorDate` queda derivado de `now` para siempre: "sin navegación" es
+ * una consecuencia de no montar el control, no una rama de código aparte
+ * que haya que mantener sincronizada.
  */
 export function ScreenCalendar({
   timezone,
@@ -87,6 +95,7 @@ export function ScreenCalendar({
   tasks,
   resolveTaskColor,
   createTaskProjectId,
+  hideNav = false,
 }: {
   timezone: string;
   weekStartsOn: 0 | 1 | 6;
@@ -96,6 +105,8 @@ export function ScreenCalendar({
   tasks: TaskRow[];
   resolveTaskColor: (task: TaskRow) => string;
   createTaskProjectId: string | null;
+  /** Sin navegación entre días (D-F de `hoy-con-eventos`): la usa Hoy, siempre en modo día. */
+  hideNav?: boolean;
 }) {
   const mounted = useMounted();
   const now = useMemo(() => (mounted ? new Date() : null), [mounted]);
@@ -273,14 +284,16 @@ export function ScreenCalendar({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <CalendarNav
-        format={options.formato_calendario}
-        anchorDate={anchorDate}
-        visibleDays={visibleDays}
-        timezone={timezone}
-        now={now}
-        onNavigate={setAnchorDateOverride}
-      />
+      {!hideNav && (
+        <CalendarNav
+          format={options.formato_calendario}
+          anchorDate={anchorDate}
+          visibleDays={visibleDays}
+          timezone={timezone}
+          now={now}
+          onNavigate={setAnchorDateOverride}
+        />
+      )}
 
       {rangeEvents.data?.status === "unavailable" && (
         <p className="mb-2 text-sm text-text-secondary">

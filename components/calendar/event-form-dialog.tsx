@@ -41,6 +41,13 @@ function toDatetimeLocalValue(date: Date): string {
   return format(date, "yyyy-MM-dd'T'HH:mm");
 }
 
+/** Resumen de fecha/hora del resumen de solo lectura (`readOnly`): mismo criterio que `toDatetimeLocalValue` de arriba, en la hora local del navegador. */
+function readOnlyRangeLabel(allDay: boolean, start: Date, end: Date, timeFormat: 12 | 24, dateFormat: DateFormatPreference): string {
+  if (allDay) return format(start, dateFormat);
+  const timePattern = timeFormat === 24 ? "HH:mm" : "h:mm aaaa";
+  return `${format(start, dateFormat)} · ${format(start, timePattern)} – ${format(end, timePattern)}`;
+}
+
 function splitDateTimeLocal(value: string): { date: string; time: TimeValue } {
   const [date, time] = value.split("T");
   const [hour, minute] = time.split(":").map(Number);
@@ -149,6 +156,13 @@ export type EventFormInitialValues = {
  * (`blockWhenNoCalendars` — al crear, sin calendario no hay dónde guardar el
  * evento nuevo; al editar, el evento ya tiene uno, así que una falla de
  * Google al listar calendarios no debe bloquear el resto de los cambios).
+ *
+ * `readOnly` (`hoy-con-eventos`, D-D): el calendario del evento no admite
+ * escritura para esta cuenta. En vez de mostrar el formulario completo —que
+ * Google terminaría rechazando al guardar— se muestra un resumen sin
+ * campos editables ni botón de confirmar, con una línea que explica por
+ * qué. El diálogo se abre igual: no responder al gesto sería peor que
+ * mostrar el evento sin poder tocarlo.
  */
 export function EventFormDialog({
   open,
@@ -160,6 +174,7 @@ export function EventFormDialog({
   blockWhenNoCalendars,
   isSubmitting,
   onSubmit,
+  readOnly = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -177,6 +192,8 @@ export function EventFormDialog({
   blockWhenNoCalendars: boolean;
   isSubmitting: boolean;
   onSubmit: (values: EventFormValues) => void;
+  /** El calendario del evento es de solo lectura para esta cuenta (`hoy-con-eventos`, D-D): muestra un resumen, nunca el formulario editable. */
+  readOnly?: boolean;
 }) {
   const titleId = useId();
   const { timezone, timeFormat, weekStartsOn, dateFormat } = useUserPreferences();
@@ -297,9 +314,43 @@ export function EventFormDialog({
       size="lg"
       className="max-h-[85vh] overflow-y-auto"
     >
-      {calendarsLoading && <p className="text-sm text-muted-foreground">Cargando tus calendarios…</p>}
+      {readOnly && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Este evento pertenece a un calendario de solo lectura: podés verlo, pero no editarlo desde Trazio.
+          </p>
+          <dl className="space-y-2 text-sm">
+            <div>
+              <dt className="sr-only">Título</dt>
+              <dd className="font-medium text-foreground">{initial.title}</dd>
+            </div>
+            <div>
+              <dt className="sr-only">Calendario</dt>
+              <dd className="text-text-secondary">{calendars.find((c) => c.id === initial.calendarId)?.summary ?? "Calendario"}</dd>
+            </div>
+            <div>
+              <dt className="sr-only">Cuándo</dt>
+              <dd className="text-text-secondary">{readOnlyRangeLabel(initial.allDay, initial.start, initial.end, timeFormat, dateFormat)}</dd>
+            </div>
+            {initial.location && (
+              <div>
+                <dt className="sr-only">Ubicación</dt>
+                <dd className="text-text-secondary">{initial.location}</dd>
+              </div>
+            )}
+            {initial.description && (
+              <div>
+                <dt className="sr-only">Descripción</dt>
+                <dd className="whitespace-pre-wrap text-text-secondary">{initial.description}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
 
-      {blockForm && (
+      {!readOnly && calendarsLoading && <p className="text-sm text-muted-foreground">Cargando tus calendarios…</p>}
+
+      {!readOnly && blockForm && (
         <p className="text-sm text-muted-foreground">
           {isError
             ? unavailableMessage(error)
@@ -309,7 +360,7 @@ export function EventFormDialog({
         </p>
       )}
 
-      {!calendarsLoading && !blockForm && (
+      {!readOnly && !calendarsLoading && !blockForm && (
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={titleId}>Título</Label>

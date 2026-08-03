@@ -31,6 +31,7 @@ const EVENT: CalendarEventInstance = {
   isRecurring: false,
   recurringEventId: null,
   originalStartTime: null,
+  htmlLink: null,
 };
 
 const CHANGES: EventInput = {

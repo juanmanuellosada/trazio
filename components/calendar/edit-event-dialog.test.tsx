@@ -47,6 +47,7 @@ const SIMPLE_EVENT: CalendarEventInstance = {
   isRecurring: false,
   recurringEventId: null,
   originalStartTime: null,
+  htmlLink: null,
 };
 
 const RECURRING_EVENT: CalendarEventInstance = {

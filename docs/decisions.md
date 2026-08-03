@@ -1018,3 +1018,58 @@ qué pasa al pulsarlo.
 actualizados con el nombre nuevo. El requisito de
 `openspec/specs/alta-de-tareas/spec.md` se corrige para pedir que el nombre
 describa el destino de la acción en vez de exigir que anuncie la creación.
+
+---
+
+## D43 — El panel de Hoy no muestra eventos, y lo dice
+
+**Fecha.** 2026-08-03
+
+**Contexto.** Con la capacidad `hoy-con-eventos`, Hoy pasa a ofrecer los tres
+formatos (lista, panel, calendario) como Próximos y Proyecto. En panel, las
+columnas de esas dos pantallas salen de un criterio de agrupación —día en
+Próximos, sección en Proyecto— y acá el único disponible es "agrupar por"
+(nada, prioridad, etiqueta). Un evento no tiene prioridad ni etiqueta: metido
+en cualquier columna sería ruido, y una columna "Eventos" aparte sería
+inventar un cuarto criterio que no convive con los otros tres.
+
+**Decisión.** El panel de Hoy muestra únicamente tareas. Cuando el usuario
+tiene eventos hoy y mira Hoy en formato panel, una línea avisa que ese formato
+no los muestra. Sin esa línea, alguien mira el panel y concluye que no tiene
+reuniones — omitir en silencio es peor que no ofrecer el dato.
+
+**Riesgo aceptado.** Quien vive del panel tiene que cambiar a lista o
+calendario para ver sus eventos de hoy. Se acepta: la alternativa —forzar un
+evento dentro de un criterio de agrupación que no le corresponde— es peor.
+
+**Consecuencia.** `components/tasks/hoy-view.tsx` arma las columnas del panel
+con `groupTasks` sobre atrasadas y tareas de hoy juntas (sin columna propia de
+atrasadas, mismo criterio que ya usa el panel de Próximos), y muestra el aviso
+cuando `useHoyEvents` trae al menos un evento. El contador de eventos no
+descuenta según el formato activo: la capacidad `hoy-con-eventos` sigue
+trayendo los eventos aunque el panel no los pinte.
+
+---
+
+## D44 — En el empate de Hoy, el evento va primero
+
+**Fecha.** 2026-08-03
+
+**Contexto.** La capacidad `hoy-con-eventos` intercala tareas y eventos por
+hora en una sola secuencia. Cuando una tarea y un evento caen exactamente a la
+misma hora, hace falta un criterio de desempate: sin uno, el orden depende de
+en qué orden respondieron las dos consultas (`useHoyTasks`/`useHoyEvents`),
+que llegan por caminos independientes a propósito (el desacople con Google es
+la propiedad más importante de Hoy) y por lo tanto no tienen un orden de
+llegada estable entre sí.
+
+**Decisión.** A igual hora, el evento se muestra primero. Un evento es un
+compromiso con otra gente —una reunión no se corre sola—; una tarea a esa
+misma hora sí se puede mover. Con ese criterio el orden queda total y
+determinístico, sin depender de qué consulta respondió antes.
+
+**Consecuencia.** `buildHoySequence` (`lib/tasks/hoy-sequence.ts`) ordena el
+tramo de "con hora" por instante absoluto ascendente y, a igual instante,
+antepone la entrada de tipo evento — cubierto por la prueba "empate a la misma
+hora: primero el evento" en `lib/tasks/hoy-sequence.test.ts` y en
+`components/tasks/hoy-view.test.tsx`.

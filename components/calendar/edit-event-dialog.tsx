@@ -27,17 +27,26 @@ import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
  * `CustomRecurrenceDialog` de sembrar el estado una sola vez al montar, acá
  * aplicado a cuándo montar el formulario entero, en vez de resincronizarlo
  * por efecto cuando el pedido de red termina después.
+ *
+ * `readOnly` (`hoy-con-eventos`, D-D): el calendario del evento no admite
+ * escritura para esta cuenta. Se abre igual, pero `EventFormDialog` muestra
+ * un resumen en vez del formulario — este componente no necesita leer la
+ * repetición vigente para eso, así que ni siquiera espera a
+ * `recurrenceReady` en ese caso.
  */
 export function EditEventDialog({
   open,
   onOpenChange,
   event,
   timezone,
+  readOnly = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: CalendarEventInstance;
   timezone: string;
+  /** El calendario de este evento es de solo lectura para esta cuenta (D-D): abre sin permitir editar. */
+  readOnly?: boolean;
 }) {
   const updateEvent = useUpdateEvent();
   const [pendingChanges, setPendingChanges] = useState<{ changes: EventInput; recurrenceChanged: boolean } | null>(null);
@@ -98,7 +107,7 @@ export function EditEventDialog({
     submitChanges(changes);
   }
 
-  if (!recurrenceReady) {
+  if (!readOnly && !recurrenceReady) {
     return (
       <AppDialog open={open} onOpenChange={handleOpenChange} title="Editar evento" size="lg">
         <p className="text-sm text-muted-foreground">Cargando el evento…</p>
@@ -111,11 +120,14 @@ export function EditEventDialog({
       <EventFormDialog
         open={open}
         onOpenChange={handleOpenChange}
-        dialogTitle="Editar evento"
-        dialogDescription="Cambiá el título, el calendario, el horario, la repetición, la descripción o la ubicación."
+        dialogTitle={readOnly ? "Evento" : "Editar evento"}
+        dialogDescription={
+          readOnly ? undefined : "Cambiá el título, el calendario, el horario, la repetición, la descripción o la ubicación."
+        }
         submitLabel="Guardar cambios"
         blockWhenNoCalendars={false}
         isSubmitting={updateEvent.isPending}
+        readOnly={readOnly}
         initial={{
           title: event.title,
           calendarId: event.calendarId,

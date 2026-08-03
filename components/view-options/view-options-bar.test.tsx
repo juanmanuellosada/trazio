@@ -28,7 +28,10 @@ vi.mock("@/lib/view-options/use-view-options", () => ({
   }),
 }));
 
-function renderBar(overrides: Partial<ViewOptions> = {}, props: { showViewShape?: boolean; showDaysAhead?: boolean } = {}) {
+function renderBar(
+  overrides: Partial<ViewOptions> = {},
+  props: { showViewShape?: boolean; showDaysAhead?: boolean; showCalendarFormat?: boolean } = {},
+) {
   currentOptions = { ...defaultOptionsForViewKey("proyecto:1"), ...overrides };
   return render(
     <ViewOptionsBar
@@ -36,6 +39,7 @@ function renderBar(overrides: Partial<ViewOptions> = {}, props: { showViewShape?
       initialOptions={currentOptions}
       showViewShape={props.showViewShape ?? true}
       showDaysAhead={props.showDaysAhead ?? false}
+      showCalendarFormat={props.showCalendarFormat}
     />,
   );
 }
@@ -136,6 +140,15 @@ describe("ViewOptionsBar — formato de calendario y repeticiones futuras (bloqu
     await openPanel(user);
     expect(screen.getByRole("combobox", { name: "Formato de calendario" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /repeticiones futuras/i })).toBeInTheDocument();
+  });
+
+  it("no aparece con showCalendarFormat en false, ni con la forma de ver en calendario (Hoy, D-F)", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "calendario" }, { showCalendarFormat: false });
+    await openPanel(user);
+    expect(screen.queryByRole("combobox", { name: "Formato de calendario" })).not.toBeInTheDocument();
+    // No queda ni deshabilitado: directamente no está.
+    expect(screen.queryByText("Formato de calendario")).not.toBeInTheDocument();
   });
 
   it("el formato de calendario ofrece día, 4 días, semana y mes, y elegir uno llama a setOption", async () => {
