@@ -54,14 +54,16 @@ error y no necesita confirmarse con el mismo peso.
 - **THEN** NUNCA SHALL reproducirse ningún sonido, aunque el guardado atraviese el mismo
   camino que completar
 
-### Requirement: Ajuste para apagar el sonido al completar
+## ADDED Requirements
 
-La sección General de la configuración SHALL ofrecer un interruptor para apagar el sonido
-que suena al completar o descompletar una tarea y al marcar un hábito. La preferencia SHALL
-guardarse en las preferencias del usuario y SHALL venir encendida.
+### Requirement: Ajuste para apagar el sonido al completar o descompletar
 
-Ese interruptor SHALL cubrir **todos** los sonidos de la aplicación: NUNCA SHALL existir un
-ajuste separado para el sonido de descompletar, que es la otra cara de la misma acción.
+La sección General de la configuración SHALL seguir ofreciendo el interruptor para apagar el
+sonido, que ya existía desde que se sumó el sonido al completar una tarea o marcar un hábito.
+La preferencia SHALL guardarse en las preferencias del usuario y SHALL venir encendida.
+
+Ese interruptor SHALL cubrir también, sin sumar uno nuevo, el sonido de descompletar: NUNCA
+SHALL existir un ajuste separado para él, que es la otra cara de la misma acción.
 
 #### Scenario: Apagar el sonido silencia también el de descompletar
 
