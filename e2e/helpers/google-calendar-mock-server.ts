@@ -163,7 +163,13 @@ function listInstances(calendar: CalendarState, timeMin: Date, timeMax: Date): S
   const result: StoredEvent[] = [];
   for (const event of calendar.events.values()) {
     if (event.status === "cancelled") continue;
-    if (event.recurrence) {
+    // `recurrence: []` (no solo `undefined`) es lo que manda el cliente para
+    // "no se repite" desde que el alta de evento incluye el selector de
+    // repetición (commit "el alta de evento deja de tener el horario
+    // fijo"): un array vacío es un valor truthy, así que sin este chequeo de
+    // longitud un evento sin repetición se trataba como maestro de una serie
+    // sin ninguna regla, y `expandMaster` no devolvía ninguna instancia.
+    if (event.recurrence && event.recurrence.length > 0) {
       result.push(...expandMaster(event, calendar.exceptionsByMaster.get(event.id), timeMin, timeMax));
     } else if (toDate(event.end) > timeMin && toDate(event.start) < timeMax) {
       result.push(event);

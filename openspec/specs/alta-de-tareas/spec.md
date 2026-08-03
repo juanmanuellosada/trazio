@@ -154,11 +154,25 @@ las preferencias del usuario; y por último Bandeja de entrada.
 - **THEN** ese destino se muestra en el componente antes de que se confirme la
   creación de la tarea
 
-#### Scenario: El modal global hereda el contexto de la vista
+El modal global hereda el proyecto de la vista, pero nunca su sección, aunque
+la vista sea una sección de un proyecto. La sección se descartó a propósito:
+se derivaba del último control de sección que tuvo el foco, y ese foco queda
+pegado más tiempo del que dura la intención del usuario — abrir y cerrar el
+detalle de una tarea de una sección dejaba el foco marcado ahí, y el alta
+global seguía ofreciendo esa sección como destino aunque el usuario ya no
+estuviera en ese contexto. El proyecto de la vista sí es una señal confiable;
+la sección de la vista, no. Esto no alcanza al alta incrustada al pie de una
+sección (`El tratamiento incrustado también muestra el destino`, más arriba):
+ahí el destino llega por props desde el lugar exacto donde se abrió el alta,
+nunca del foco, así que el contexto no puede quedar desactualizado de esa
+forma.
+
+#### Scenario: El modal global hereda el proyecto de la vista, nunca la sección
 
 - **WHEN** se abre el alta desde el botón del panel lateral o desde su atajo
   global, estando en un proyecto o en una sección
-- **THEN** el destino SHALL ser ese proyecto y esa sección
+- **THEN** el destino SHALL ser ese proyecto
+- **AND** la sección NUNCA SHALL heredarse en este caso
 - **AND** NUNCA SHALL caer en Bandeja de entrada por el solo hecho de haberse
   abierto desde una superficie global
 

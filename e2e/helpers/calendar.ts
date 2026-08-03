@@ -42,10 +42,22 @@ export async function closeSettings(page: Page) {
   await page.keyboard.press("Escape");
 }
 
-/** Cambia Próximos a la vista de calendario (`options.viewShape === "calendario"`, `components/tasks/proximos-view.tsx`). */
+/**
+ * Cambia Próximos a la vista de calendario (`options.viewShape === "calendario"`,
+ * `components/tasks/proximos-view.tsx`). La barra de opciones pasó a ser el panel
+ * desplegable "Formato" (`components/view-options/view-options-bar.tsx`): ya no
+ * hay radios, hay que abrir el panel y elegir "Calendario" en el desplegable
+ * "Forma de ver".
+ */
 export async function openCalendarView(page: Page) {
   await page.goto("/proximos");
-  await page.getByRole("radio", { name: "Ver en calendario" }).click();
+  await page.getByRole("button", { name: /^Formato/ }).click();
+  await page.getByRole("combobox", { name: "Forma de ver" }).click();
+  await page.getByRole("option", { name: "Calendario" }).click();
+  // Elegir la opción cierra el desplegable, pero no el panel "Formato" (es
+  // modal, `OVERLAY_MODAL`): sin cerrarlo, su overlay queda inerte y
+  // bloquea los clics siguientes.
+  await page.keyboard.press("Escape");
 }
 
 /**
