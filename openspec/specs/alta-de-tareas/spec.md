@@ -244,8 +244,10 @@ antes de desplegar nada.
 SHALL ser una acción **secundaria**: la principal del alta sigue siendo agregar la tarea, y la
 nueva NUNCA SHALL competir visualmente con ella.
 
-Su nombre SHALL dejar claro que **crea** la tarea, para que nadie la pulse creyendo que solo
-muestra más campos.
+Su nombre SHALL describir el destino de la acción —abrir el detalle— y NO
+necesita anunciar que además crea la tarea (**D42**): el dueño evaluó el
+riesgo de que alguien la pulse creyendo que solo muestra más campos y lo
+aceptó a propósito, con el nombre "Abrir detalle".
 
 #### Scenario: Continuar en el detalle crea la tarea y la abre
 

@@ -986,3 +986,35 @@ Una línea tenue separa tareas hermanas de primer nivel (`divide-y` en cada
 `<ul>` de fila); las subtareas y la fila de "Agregar tarea" no llevan línea.
 `docs/design-system.md` §5.1 queda actualizado para describir el layout de
 dos niveles.
+
+---
+
+## D42 — El botón de continuar en el detalle se llama "Abrir detalle", sin anunciar que crea
+
+**Fecha.** 2026-08-03
+
+**Contexto.** El botón decía "Crear y abrir detalle". El dueño, después de usarlo:
+*"no me gusta que el botón sea crear y abrir detalle. Que sea solo abrir detalle y
+obviamente que se lleve todo el progreso de lo que hice."* Esto contradice el
+requisito escrito el mismo día en `openspec/specs/alta-de-tareas/spec.md` (bloque
+`saltar-al-detalle-desde-el-alta`), que pedía que el nombre dejara claro que la
+acción crea la tarea — precisamente para que nadie la pulsara creyendo que solo
+muestra más campos.
+
+**Decisión.** El botón pasa a llamarse "Abrir detalle" en las dos superficies del
+alta. El comportamiento no cambia: sigue creando la tarea con todo lo cargado
+(título, descripción, prioridad, fecha, fecha límite, etiquetas y recordatorios)
+y después abre su detalle, igual que antes.
+
+**Riesgo aceptado.** El nombre ya no anuncia que la acción crea una tarea. Alguien
+puede pulsar "Abrir detalle" pensando que solo va a ver más campos, y cerrar el
+detalle sin tocar nada — la tarea queda creada igual, silenciosamente, porque
+comentarios y subtareas cuelgan de una tarea real y no hay forma de mostrar un
+detalle sin haberla creado antes (decisión ya tomada, sin cambios). El dueño
+evaluó ese riesgo y lo aceptó a cambio de un nombre más corto y más claro sobre
+qué pasa al pulsarlo.
+
+**Consecuencia.** `components/tasks/task-quick-add-row.tsx` y sus tests quedan
+actualizados con el nombre nuevo. El requisito de
+`openspec/specs/alta-de-tareas/spec.md` se corrige para pedir que el nombre
+describa el destino de la acción en vez de exigir que anuncie la creación.

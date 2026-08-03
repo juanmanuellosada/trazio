@@ -130,7 +130,7 @@ function renderRow(overrides: Partial<ComponentProps<typeof TaskQuickAddRow>> = 
   );
 }
 
-/** Expone `openTaskId` del contexto en el DOM (mismo patrón que `task-list.test.tsx`), para verificar que "Crear y abrir detalle" abrió el modal sin montarlo de verdad. */
+/** Expone `openTaskId` del contexto en el DOM (mismo patrón que `task-list.test.tsx`), para verificar que "Abrir detalle" abrió el modal sin montarlo de verdad. */
 function OpenTaskProbe() {
   const { openTaskId } = useTaskDetail();
   return <div data-testid="open-task-id">{openTaskId ?? ""}</div>;
@@ -388,7 +388,7 @@ describe("TaskQuickAddRow — componente de alta rico (bloque 5)", () => {
     const labelsTrigger = screen.getByRole("button", { name: "Etiquetas de la tarea" });
     const remindersTrigger = screen.getByRole("button", { name: "Recordatorios" });
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
-    const openDetailButton = screen.getByRole("button", { name: "Crear y abrir detalle" });
+    const openDetailButton = screen.getByRole("button", { name: "Abrir detalle" });
     const confirmButton = screen.getByRole("button", { name: "Agregar tarea" });
 
     expect(title).toHaveFocus();
@@ -660,7 +660,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan mañana p1");
     await user.type(screen.getByLabelText("Descripción de la nueva tarea"), "Con más detalle");
 
-    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+    await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(insertedTask()!.title).toBe("Comprar pan"); // lo que el parser interpretó ("mañana", "p1") se quita del título igual que al confirmar
@@ -677,7 +677,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
 
     // Plegado: solo título y destino, sin haber tocado "Mostrar más campos" todavía.
     expect(screen.queryByLabelText("Descripción de la nueva tarea")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Crear y abrir detalle" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abrir detalle" })).toBeInTheDocument();
   });
 
   it("en variant=\"full\", crear y abrir detalle también cierra el diálogo que lo contiene (no queda un alta vacía detrás del detalle)", async () => {
@@ -695,7 +695,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
     );
 
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
-    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+    await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
@@ -707,7 +707,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
     await user.type(screen.getByLabelText("Título de la nueva tarea"), "Comprar pan");
-    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+    await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(screen.queryByLabelText("Título de la nueva tarea")).not.toBeInTheDocument();
@@ -720,7 +720,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
 
     await user.click(screen.getByRole("button", { name: "Agregar subtarea" }));
     await user.type(screen.getByLabelText("Título de la nueva subtarea"), "Una subtarea");
-    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+    await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
     await waitFor(() => expect(insertedTask()).toBeDefined());
     expect(insertedTask()!.parent_id).toBe("task-parent");
@@ -733,7 +733,7 @@ describe("TaskQuickAddRow — crear y abrir detalle (bloque saltar-al-detalle-de
     renderRowWithProbe();
 
     await user.click(screen.getByRole("button", { name: "Agregar tarea" }));
-    await user.click(screen.getByRole("button", { name: "Crear y abrir detalle" }));
+    await user.click(screen.getByRole("button", { name: "Abrir detalle" }));
 
     expect(mock.insertCalls.find((c) => c.table === "tasks")).toBeUndefined();
     expect(screen.getByTestId("open-task-id")).toHaveTextContent("");

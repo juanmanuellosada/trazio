@@ -623,43 +623,40 @@ export function TaskQuickAddRow({
           />
 
           {/*
-            Dos filas, no una (bloque 7.2, R2 de acá arriba): fecha y fecha
-            límite van juntas porque las dos son "cuándo"; prioridad se corrió
-            a la fila de etiquetas y recordatorios porque esas tres son
-            atributos secundarios de la tarea, no fechas. `space-y-2` entre
-            filas, mismo ritmo base-8 que el resto del composer.
+            Una sola fila con los cinco atributos (revierte el reparto en dos
+            filas de la versión anterior: usado y revisado, el dueño lo
+            quiere todo junto). `flex-wrap` es el mismo mecanismo de apilado
+            que ya usan la fila de título/destino y la de acciones: en
+            angosto (390px, sobre todo en una subtarea indentada) los accesos
+            que no entran bajan a su propia línea en vez de comprimirse.
           */}
-          <div className="space-y-2">
-            <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
-              <AttributeField variant={variant} label="Fecha">
-                <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
-              </AttributeField>
-              <AttributeField variant={variant} label="Fecha límite">
-                <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
-              </AttributeField>
-            </div>
-            <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
-              <AttributeField variant={variant} label="Prioridad">
-                <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
-              </AttributeField>
-              {/* Etiquetas y recordatorios entran al alta (D-E): mismos selectores que el detalle, en modo borrador porque acá todavía no hay ningún `taskId` real. */}
-              <AttributeField variant={variant} label="Etiquetas">
-                <LabelPicker
-                  projectId={previewDestination.projectId}
-                  assigned={labelsOverride ?? []}
-                  onChange={setLabelsOverride}
-                  triggerClassName="h-8 w-auto max-w-56"
-                />
-              </AttributeField>
-              <AttributeField variant={variant} label="Recordatorios">
-                <ReminderPicker
-                  dueAt={previewDate.dueAt}
-                  dueDate={previewDate.dueDate}
-                  drafts={remindersOverride}
-                  onChange={setRemindersOverride}
-                />
-              </AttributeField>
-            </div>
+          <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
+            <AttributeField variant={variant} label="Fecha">
+              <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
+            </AttributeField>
+            <AttributeField variant={variant} label="Fecha límite">
+              <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
+            </AttributeField>
+            <AttributeField variant={variant} label="Prioridad">
+              <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
+            </AttributeField>
+            {/* Etiquetas y recordatorios entran al alta (D-E): mismos selectores que el detalle, en modo borrador porque acá todavía no hay ningún `taskId` real. */}
+            <AttributeField variant={variant} label="Etiquetas">
+              <LabelPicker
+                projectId={previewDestination.projectId}
+                assigned={labelsOverride ?? []}
+                onChange={setLabelsOverride}
+                triggerClassName="h-8 w-auto max-w-56"
+              />
+            </AttributeField>
+            <AttributeField variant={variant} label="Recordatorios">
+              <ReminderPicker
+                dueAt={previewDate.dueAt}
+                dueDate={previewDate.dueDate}
+                drafts={remindersOverride}
+                onChange={setRemindersOverride}
+              />
+            </AttributeField>
           </div>
         </>
       )}
@@ -701,7 +698,7 @@ export function TaskQuickAddRow({
           onClick={submitAndOpenDetail}
           disabled={createTask.isPending}
         >
-          Crear y abrir detalle
+          Abrir detalle
         </Button>
         <Button type="button" size="sm" onClick={submit} disabled={createTask.isPending}>
           {parentId ? "Agregar subtarea" : "Agregar tarea"}
