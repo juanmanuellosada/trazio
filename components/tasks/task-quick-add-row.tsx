@@ -450,119 +450,131 @@ export function TaskQuickAddRow({
         if (event.key === "Escape") cancel();
       }}
     >
-      <div className="relative" ref={titleFieldRef}>
-        {/*
-          Capa de resaltado: el texto que de verdad se ve. `aria-hidden`
-          porque el `<input>` de abajo ya expone el mismo texto de forma
-          accesible. `pointer-events-none` en el contenedor deja pasar los
-          clics al `<input>` (para mover el cursor con el mouse); cada
-          `<mark>` reactiva `pointer-events` solo para su propio doble clic
-          (R7). Ningún span lleva padding/margen: cualquier ancho de más
-          correría el texto resaltado respecto del cursor real del
-          `<input>`, que se mueve según su propio texto (invisible).
-        */}
-        <div
-          aria-hidden
-          className="text-foreground pointer-events-none absolute inset-0 z-10 flex items-center overflow-hidden rounded-lg border border-transparent px-2.5 py-1 text-sm whitespace-pre"
-        >
-          {segments.map((segment, index) =>
-            segment.match ? (
-              <mark
-                key={index}
-                className="text-primary bg-primary/15 pointer-events-auto cursor-pointer rounded-[3px]"
-                title="Doble clic para no usarlo como dato"
-                onDoubleClick={() => toggleDisabled(segment.match!)}
-              >
-                {segment.text}
-              </mark>
-            ) : (
-              <span key={index}>{segment.text}</span>
-            ),
+      {/*
+        Título y destino en la misma fila (bloque 7.2): el título flexible
+        (`min-w-40 flex-1`, nunca por debajo de ese piso) y el destino a su
+        ancho de contenido al lado — no estirado por el flex (crece el título,
+        no el selector). `flex-wrap` es el mecanismo de apilado en angosto: si
+        no entran los dos cómodos, el destino baja a su propia línea en vez de
+        comprimir el título por debajo del piso legible; en subtarea (sin
+        destino) el título queda solo en la fila y ocupa todo el ancho, sin
+        hueco ni salto (R1 de acá arriba).
+      */}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="relative min-w-40 flex-1" ref={titleFieldRef}>
+          {/*
+            Capa de resaltado: el texto que de verdad se ve. `aria-hidden`
+            porque el `<input>` de abajo ya expone el mismo texto de forma
+            accesible. `pointer-events-none` en el contenedor deja pasar los
+            clics al `<input>` (para mover el cursor con el mouse); cada
+            `<mark>` reactiva `pointer-events` solo para su propio doble clic
+            (R7). Ningún span lleva padding/margen: cualquier ancho de más
+            correría el texto resaltado respecto del cursor real del
+            `<input>`, que se mueve según su propio texto (invisible).
+          */}
+          <div
+            aria-hidden
+            className="text-foreground pointer-events-none absolute inset-0 z-10 flex items-center overflow-hidden rounded-lg border border-transparent px-2.5 py-1 text-sm whitespace-pre"
+          >
+            {segments.map((segment, index) =>
+              segment.match ? (
+                <mark
+                  key={index}
+                  className="text-primary bg-primary/15 pointer-events-auto cursor-pointer rounded-[3px]"
+                  title="Doble clic para no usarlo como dato"
+                  onDoubleClick={() => toggleDisabled(segment.match!)}
+                >
+                  {segment.text}
+                </mark>
+              ) : (
+                <span key={index}>{segment.text}</span>
+              ),
+            )}
+          </div>
+          <Input
+            ref={titleInputRef}
+            autoFocus
+            value={title}
+            placeholder="Título de la tarea"
+            onChange={(event) => {
+              const value = event.target.value;
+              setTitle(value);
+              updateMenuTrigger(value, event.target.selectionStart ?? value.length);
+            }}
+            onSelect={(event) => {
+              const el = event.currentTarget;
+              updateMenuTrigger(el.value, el.selectionStart ?? el.value.length);
+            }}
+            onKeyDown={(event) => {
+              // Navegación del menú (bloque 3.5): solo estas teclas se
+              // interceptan, y solo mientras el menú está abierto — el resto
+              // sigue yendo derecho al `<input>` (bloque 3.6), sin lo cual
+              // escribir de corrido dejaría de funcionar.
+              if (menuTrigger && menuOptions.length > 0) {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSelectedIndex((i) => (i + 1) % menuOptions.length);
+                  return;
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSelectedIndex((i) => (i - 1 + menuOptions.length) % menuOptions.length);
+                  return;
+                }
+                if (event.key === "Enter" || event.key === "Tab") {
+                  event.preventDefault();
+                  pickMenuOption(menuOptions[selectedIndex]);
+                  return;
+                }
+              }
+              if (menuTrigger && event.key === "Escape") {
+                // Cierra solo el menú, no todo el composer: sin el
+                // `stopPropagation` de acá, este mismo Escape seguiría
+                // subiendo hasta el `onKeyDown` del contenedor y cancelaría
+                // el alta completa (bloque 3.5).
+                event.preventDefault();
+                event.stopPropagation();
+                setMenuTrigger(null);
+                return;
+              }
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            aria-label={parentId ? "Título de la nueva subtarea" : "Título de la nueva tarea"}
+            className="caret-foreground h-8 w-full text-sm text-transparent selection:bg-transparent"
+          />
+          {menuTrigger && (
+            <ParserMenu
+              symbol={menuTrigger.symbol}
+              options={menuOptions}
+              selectedIndex={selectedIndex}
+              onPick={pickMenuOption}
+            />
           )}
         </div>
-        <Input
-          ref={titleInputRef}
-          autoFocus
-          value={title}
-          placeholder="Título de la tarea"
-          onChange={(event) => {
-            const value = event.target.value;
-            setTitle(value);
-            updateMenuTrigger(value, event.target.selectionStart ?? value.length);
-          }}
-          onSelect={(event) => {
-            const el = event.currentTarget;
-            updateMenuTrigger(el.value, el.selectionStart ?? el.value.length);
-          }}
-          onKeyDown={(event) => {
-            // Navegación del menú (bloque 3.5): solo estas teclas se
-            // interceptan, y solo mientras el menú está abierto — el resto
-            // sigue yendo derecho al `<input>` (bloque 3.6), sin lo cual
-            // escribir de corrido dejaría de funcionar.
-            if (menuTrigger && menuOptions.length > 0) {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setSelectedIndex((i) => (i + 1) % menuOptions.length);
-                return;
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setSelectedIndex((i) => (i - 1 + menuOptions.length) % menuOptions.length);
-                return;
-              }
-              if (event.key === "Enter" || event.key === "Tab") {
-                event.preventDefault();
-                pickMenuOption(menuOptions[selectedIndex]);
-                return;
-              }
-            }
-            if (menuTrigger && event.key === "Escape") {
-              // Cierra solo el menú, no todo el composer: sin el
-              // `stopPropagation` de acá, este mismo Escape seguiría
-              // subiendo hasta el `onKeyDown` del contenedor y cancelaría
-              // el alta completa (bloque 3.5).
-              event.preventDefault();
-              event.stopPropagation();
-              setMenuTrigger(null);
-              return;
-            }
-            if (event.key === "Enter") {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          aria-label={parentId ? "Título de la nueva subtarea" : "Título de la nueva tarea"}
-          className="caret-foreground h-8 w-full text-sm text-transparent selection:bg-transparent"
-        />
-        {menuTrigger && (
-          <ParserMenu
-            symbol={menuTrigger.symbol}
-            options={menuOptions}
-            selectedIndex={selectedIndex}
-            onPick={pickMenuOption}
-          />
+
+        {/*
+          Destino: siempre visible en las dos superficies
+          (`alta-de-tareas-en-contexto`, D-D) y nunca detrás del plegado de
+          `full` — el requirement "el destino se ve antes de confirmar" exige
+          que esté ahí incluso plegado. Revierte la versión anterior, que lo
+          ocultaba en `compact` por considerarlo ruido: con el destino
+          llegando también de preferencias y del contexto de la vista (D-B),
+          no verlo pasa a ser peor que verlo.
+
+          Excepto en subtarea (`parentId` presente): una subtarea hereda el
+          proyecto de la tarea padre, no puede tener uno distinto, así que
+          mostrar acá un selector de destino sería engañoso — parecería que se
+          puede elegir un proyecto propio cuando en realidad no se puede.
+        */}
+        {!parentId && (
+          <AttributeField variant={variant} label="Proyecto">
+            <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
+          </AttributeField>
         )}
       </div>
-
-      {/*
-        Destino: siempre visible en las dos superficies
-        (`alta-de-tareas-en-contexto`, D-D) y nunca detrás del plegado de
-        `full` — el requirement "el destino se ve antes de confirmar" exige
-        que esté ahí incluso plegado. Revierte la versión anterior, que lo
-        ocultaba en `compact` por considerarlo ruido: con el destino
-        llegando también de preferencias y del contexto de la vista (D-B),
-        no verlo pasa a ser peor que verlo.
-
-        Excepto en subtarea (`parentId` presente): una subtarea hereda el
-        proyecto de la tarea padre, no puede tener uno distinto, así que
-        mostrar acá un selector de destino sería engañoso — parecería que se
-        puede elegir un proyecto propio cuando en realidad no se puede.
-      */}
-      {!parentId && (
-        <AttributeField variant={variant} label="Proyecto">
-          <TaskDestinationSelect value={previewDestination} onChange={setDestinationOverride} proyectos={proyectos} />
-        </AttributeField>
-      )}
 
       {showAllFields && (
         <>
@@ -575,33 +587,44 @@ export function TaskQuickAddRow({
             className="min-h-0 resize-none text-sm"
           />
 
-          <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
-            <AttributeField variant={variant} label="Fecha">
-              <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
-            </AttributeField>
-            <AttributeField variant={variant} label="Fecha límite">
-              <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
-            </AttributeField>
-            <AttributeField variant={variant} label="Prioridad">
-              <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
-            </AttributeField>
-            {/* Etiquetas y recordatorios entran al alta (D-E): mismos selectores que el detalle, en modo borrador porque acá todavía no hay ningún `taskId` real. */}
-            <AttributeField variant={variant} label="Etiquetas">
-              <LabelPicker
-                projectId={previewDestination.projectId}
-                assigned={labelsOverride ?? []}
-                onChange={setLabelsOverride}
-                triggerClassName="h-8 w-auto max-w-56"
-              />
-            </AttributeField>
-            <AttributeField variant={variant} label="Recordatorios">
-              <ReminderPicker
-                dueAt={previewDate.dueAt}
-                dueDate={previewDate.dueDate}
-                drafts={remindersOverride}
-                onChange={setRemindersOverride}
-              />
-            </AttributeField>
+          {/*
+            Dos filas, no una (bloque 7.2, R2 de acá arriba): fecha y fecha
+            límite van juntas porque las dos son "cuándo"; prioridad se corrió
+            a la fila de etiquetas y recordatorios porque esas tres son
+            atributos secundarios de la tarea, no fechas. `space-y-2` entre
+            filas, mismo ritmo base-8 que el resto del composer.
+          */}
+          <div className="space-y-2">
+            <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
+              <AttributeField variant={variant} label="Fecha">
+                <DateSelect value={previewDate} onChange={setDateOverride} preferences={preferences} />
+              </AttributeField>
+              <AttributeField variant={variant} label="Fecha límite">
+                <DeadlineSelect value={previewDeadline} onChange={setDeadlineOverride} preferences={preferences} />
+              </AttributeField>
+            </div>
+            <div className={variant === "full" ? "flex flex-wrap items-end gap-4" : "flex flex-wrap items-center gap-1.5"}>
+              <AttributeField variant={variant} label="Prioridad">
+                <PrioritySelect value={previewPriority} onChange={setPriorityOverride} />
+              </AttributeField>
+              {/* Etiquetas y recordatorios entran al alta (D-E): mismos selectores que el detalle, en modo borrador porque acá todavía no hay ningún `taskId` real. */}
+              <AttributeField variant={variant} label="Etiquetas">
+                <LabelPicker
+                  projectId={previewDestination.projectId}
+                  assigned={labelsOverride ?? []}
+                  onChange={setLabelsOverride}
+                  triggerClassName="h-8 w-auto max-w-56"
+                />
+              </AttributeField>
+              <AttributeField variant={variant} label="Recordatorios">
+                <ReminderPicker
+                  dueAt={previewDate.dueAt}
+                  dueDate={previewDate.dueDate}
+                  drafts={remindersOverride}
+                  onChange={setRemindersOverride}
+                />
+              </AttributeField>
+            </div>
           </div>
         </>
       )}
