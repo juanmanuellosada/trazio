@@ -131,14 +131,14 @@ export function HoyView({
                     <AlertTriangle aria-hidden className="size-4" />
                     Atrasadas
                   </h2>
-                  <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} />
+                  <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject />
                 </section>
               )}
 
               {today.length > 0 && (
                 <section>
                   <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Hoy</h2>
-                  <TaskGroupList tasks={today} allTasks={tasks} groupBy={options.groupBy} />
+                  <TaskGroupList tasks={today} allTasks={tasks} groupBy={options.groupBy} showProject />
                 </section>
               )}
             </>
@@ -155,7 +155,7 @@ export function HoyView({
               <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
                 Completadas de hoy ({completedToday.length})
               </h2>
-              <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy={options.groupBy} />
+              <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy={options.groupBy} showProject />
             </section>
           )}
         </div>

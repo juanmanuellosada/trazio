@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSidebarProjects } from "@/lib/projects/get-sidebar-projects";
 import { getAllProjects } from "@/lib/projects/get-all-projects";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
+import { getAllSections } from "@/lib/sections/get-all-sections";
+import { AllSectionsSeed } from "@/components/providers/all-sections-seed";
 import { getTodayTaskCount } from "@/lib/tasks/today-count";
 import { getThemePreference } from "@/lib/preferences/get-theme-preference";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
@@ -39,14 +41,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const supabase = await createClient();
-  const [{ data: profile }, preferences, sidebarProjects, initialProjects, theme, inboxProjectId] = await Promise.all([
-    supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-    getUserPreferences(user.id),
-    getSidebarProjects(user.id),
-    getAllProjects(user.id),
-    getThemePreference(),
-    getInboxProjectId(user.id),
-  ]);
+  const [{ data: profile }, preferences, sidebarProjects, initialProjects, initialSections, theme, inboxProjectId] =
+    await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      getUserPreferences(user.id),
+      getSidebarProjects(user.id),
+      getAllProjects(user.id),
+      getAllSections(user.id),
+      getThemePreference(),
+      getInboxProjectId(user.id),
+    ]);
   const { projects, inboxTaskCount } = sidebarProjects;
 
   const todayCount = await getTodayTaskCount(user.id, preferences.timezone);
@@ -59,6 +63,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           service worker igual, o "Activar" en Configuración → Notificaciones
           nunca encuentra una registración y se queda esperando para siempre. */}
       <RegisterServiceWorker />
+      <AllSectionsSeed initialSections={initialSections} />
       <ThemeSync serverTheme={theme} />
       <PreferencesProvider preferences={preferences}>
         <UndoProvider>

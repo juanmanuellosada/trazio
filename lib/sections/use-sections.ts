@@ -38,3 +38,31 @@ export function useSections(projectId: string, initialData?: SectionRow[]) {
     initialData,
   });
 }
+
+export const allSectionsQueryKey = ["sections", "all"] as const;
+
+export async function fetchAllSections(): Promise<SectionRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("sections")
+    .select(SECTION_COLUMNS)
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as SectionRow[];
+}
+
+/**
+ * Todas las secciones del usuario, de todos sus proyectos (bloque `fila-de-
+ * tarea-en-niveles`, D-D): la fuente del nombre de sección para las vistas
+ * que cruzan proyectos (Hoy, Próximos, Etiqueta, Filtro, Buscador,
+ * Completado), donde `useSections(projectId)` no sirve — no hay un único
+ * proyecto del cual pedirlas. `initialData` siembra el caché con lo que ya
+ * trajo `getAllSections` desde el layout, igual que `useProjects`.
+ */
+export function useAllSections(initialData?: SectionRow[]) {
+  return useQuery({
+    queryKey: allSectionsQueryKey,
+    queryFn: fetchAllSections,
+    initialData,
+  });
+}

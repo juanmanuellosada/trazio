@@ -17,6 +17,7 @@ import { useTasks, type TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import type { OrderOption, QuickFilters } from "@/lib/view-options/schema";
+import { cn } from "@/lib/utils";
 import { TaskQuickAddRow } from "./task-quick-add-row";
 import { TaskRow } from "./task-row";
 
@@ -116,7 +117,12 @@ export function TaskList({
         // warning en `/bandeja`, la pantalla que se pidió confirmar.
         <DndContext id="task-list-drag" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-            <ul className="flex flex-col">
+            {/* Línea entre tareas hermanas, solo en el nivel superior (`fila-
+                de-tarea-en-niveles`, D-E): entre subtareas (`depth > 0`) la
+                sangría ya comunica el anidado, y una línea ahí las haría
+                parecer hermanas sueltas. `divide-y` nunca dibuja debajo de la
+                última, así que tampoco hace falta excluirla a mano. */}
+            <ul className={cn("flex flex-col", depth === 0 && "divide-y divide-border/60")}>
               {tasks.map((task) => (
                 <TaskRow
                   key={task.id}
@@ -131,7 +137,7 @@ export function TaskList({
           </SortableContext>
         </DndContext>
       ) : (
-        <ul className="flex flex-col">
+        <ul className={cn("flex flex-col", depth === 0 && "divide-y divide-border/60")}>
           {tasks.map((task) => (
             <TaskRow
               key={task.id}

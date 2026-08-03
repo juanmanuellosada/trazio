@@ -228,7 +228,7 @@ export function SectionedTasks({
                     </h2>
                   )}
                   {/* Sin arrastre acá (D-I, bloque 6.10): la agrupación reemplaza a las secciones, y el criterio ya exige "manual y sin agrupación". */}
-                  <ul className="flex flex-col">
+                  <ul className="flex flex-col divide-y divide-border/60">
                     {group.tasks.map((task) => (
                       <TaskRowView
                         key={task.id}

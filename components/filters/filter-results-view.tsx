@@ -116,7 +116,7 @@ export function FilterResultsView({
                     {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
                   </h2>
                 )}
-                <ul className="flex flex-col">
+                <ul className="flex flex-col divide-y divide-border/60">
                   {group.tasks.map((task) => (
                     <TaskRow
                       key={task.id}
@@ -126,6 +126,7 @@ export function FilterResultsView({
                       depth={0}
                       variant="flat"
                       selectionOrderIds={orderedIds}
+                      showProject
                     />
                   ))}
                 </ul>

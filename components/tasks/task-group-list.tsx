@@ -21,10 +21,13 @@ export function TaskGroupList({
   tasks,
   allTasks,
   groupBy,
+  showProject,
 }: {
   tasks: TaskRowData[];
   allTasks: TaskRowData[];
   groupBy: GroupByOption;
+  /** Decisión explícita de la pantalla que llama (`fila-de-tarea-en-niveles`, D-B): Hoy y Próximos, los dos únicos llamadores, la pasan en `true`. */
+  showProject: boolean;
 }) {
   const groups = groupTasks(tasks, groupBy);
   const orderedIds = groups.flatMap((group) => group.tasks.map((t) => t.id));
@@ -38,7 +41,7 @@ export function TaskGroupList({
               {group.label} <span className="font-normal normal-case tracking-normal">({group.tasks.length})</span>
             </h3>
           )}
-          <ul className="flex flex-col">
+          <ul className="flex flex-col divide-y divide-border/60">
             {group.tasks.map((task) => (
               <TaskRow
                 key={task.id}
@@ -48,6 +51,7 @@ export function TaskGroupList({
                 depth={0}
                 variant="flat"
                 selectionOrderIds={orderedIds}
+                showProject={showProject}
               />
             ))}
           </ul>

@@ -289,29 +289,62 @@ había tapado, solo que a un número más alto.
 La solución no es (a) achicar la columna de nuevo ni (b) darle a la
 metadata su propia columna de ancho fijo a la derecha: es sacar la metadata
 de ser *hermana* del título en el layout de flexbox y ponerla *dentro* del
-mismo elemento clickeable, inmediatamente después del texto truncado:
+mismo elemento clickeable, inmediatamente después del texto truncado.
+
+**Actualizado por `fila-de-tarea-en-niveles`.** La metadata (fecha,
+etiquetas) ya no vive dentro del botón del título: la fila creció hacia
+abajo, en dos niveles — el título arriba, y debajo, solo si hay algo que
+mostrar, un segundo renglón con la fecha y las etiquetas. El razonamiento de
+esta sección sigue vigente igual (la distancia título-metadata es el
+problema real, no el ancho de columna), pero el mecanismo cambió de "adentro
+del botón" a "en el renglón de abajo":
 
 ```tsx
-<button className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden ...">
-  <span className="min-w-0 max-w-lg truncate ...">{task.title}</span>
-  {task.labels.map((label) => <LabelChipView key={label.id} label={label} />)}
-  {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
-</button>
+<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+  <div className="flex min-w-0 items-center gap-1.5">
+    <button className="min-w-0 flex-1 overflow-hidden ...">
+      <span className="block min-w-0 max-w-lg truncate ...">{task.title}</span>
+    </button>
+    {/* proyecto/sección, si corresponde: hermano del botón, nunca adentro */}
+    {projectInFirstLevel && <span className="shrink-0 text-xs text-text-secondary">{projectMetaLabel}</span>}
+  </div>
+  {hasSecondLevel && (
+    <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+      {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
+      {visibleLabels.map((label) => <LabelChipView key={label.id} label={label} />)}
+    </div>
+  )}
+</div>
 ```
 
 El botón entero sigue siendo `flex-1` — mantiene el área de clic amplia
 (Fitts's law) que ya tenía antes, cómoda para abrir el detalle tocando
-cualquier punto de la fila. Pero adentro, el título ya no crece: tiene su
-propio tope (`max-w-lg`, 32rem/512px — el rango de 60-75 caracteres para
-texto de escritorio que la skill documenta en *Typography & Color*,
-`line-length-control`) y las etiquetas/fecha van justo después, con
-`shrink-0`. El resultado: el conjunto título+metadata se agrupa a la
-izquierda del botón, y el espacio que sobra hasta el tope de 1152px queda
-vacío pero sigue siendo parte del área clickeable — no hay una zona muerta
-visible, porque no hay nada dibujado ahí para empezar. Solo un título
-extremadamente largo (más de 512px de texto) trunca contra el tope, que es
-el único caso donde la metadata queda a una distancia notoria del final del
-texto, y es deliberado: preferible a dejar crecer el título sin límite.
+cualquier punto de la fila. Adentro, el título sigue con su propio tope
+(`max-w-lg`, 32rem/512px — el rango de 60-75 caracteres para texto de
+escritorio que la skill documenta en *Typography & Color*,
+`line-length-control`), sin tocar: **el chip de proyecto/sección se ancla al
+borde derecho sin necesidad de agrandar ni achicar ese tope ni el de la
+columna** — el botón del título ya llega al borde derecho (es `flex-1` sin
+tope propio), así que el chip como hermano suyo, después de él, cae
+naturalmente ahí. El único nivel que **sí** se pega al borde derecho es este
+—proyecto y sección—, la única excepción al requisito de que la metadata
+nunca se pega al borde (ver `openspec/changes/fila-de-tarea-en-niveles/`).
+El resultado: el conjunto título+chip se agrupa en el nivel de arriba, y el
+espacio que sobra hasta el tope de 1152px queda vacío pero sigue siendo
+parte del área clickeable — no hay una zona muerta visible, porque no hay
+nada dibujado ahí para empezar. Solo un título extremadamente largo (más de
+512px de texto) trunca contra el tope, que es el único caso donde el chip
+queda a una distancia notoria del final del texto, y es deliberado:
+preferible a dejar crecer el título sin límite.
+
+**Cada nivel se renderiza solo si tiene contenido.** Una tarea sin fecha ni
+etiquetas (la mayoría en la Bandeja) sigue en una sola línea, igual que
+antes de esta capacidad — reservar el segundo renglón siempre desperdiciaría
+la mitad de la pantalla en cuanto la mitad de las tareas no tiene nada. En
+una pantalla de 390px, anclar el chip de proyecto/sección al lado del título
+le sacaría al título entre 60 y 100px justo donde menos sobra: ahí el chip
+baja al segundo nivel en vez de quedarse arriba (ver
+`components/tasks/task-row.tsx`, `projectInSecondLevel`).
 
 **El criterio de centrado tuvo dos versiones antes de esta, y las dos
 respondían a una observación real (decisión D35).** La primera fue centrado

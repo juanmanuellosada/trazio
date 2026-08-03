@@ -60,9 +60,9 @@ export function CompletedView({
           />
         ) : (
           <>
-            <ul className="flex flex-col">
+            <ul className="flex flex-col divide-y divide-border/60">
               {tasks.map((task) => (
-                <TaskRow key={task.id} task={task} allTasks={tasks} siblings={[]} depth={0} variant="flat" />
+                <TaskRow key={task.id} task={task} allTasks={tasks} siblings={[]} depth={0} variant="flat" showProject />
               ))}
             </ul>
             {hasMore && (

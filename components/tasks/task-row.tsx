@@ -47,6 +47,8 @@ import { toDueAt } from "@/lib/parser/dates";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionAfterOriginal, positionBeforeOriginal, positionForSwap } from "@/lib/tasks/tree";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
+import { useProjects } from "@/lib/projects/use-projects";
+import { useAllSections } from "@/lib/sections/use-sections";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
@@ -163,6 +165,8 @@ export function TaskRow({
   showDragHandle,
   sortableData,
   selectionOrderIds,
+  showProject = false,
+  hideLabelId,
 }: {
   task: TaskRowData;
   allTasks: TaskRowData[];
@@ -181,6 +185,18 @@ export function TaskRow({
    * casillero de selección (ej. las subtareas del detalle de tarea).
    */
   selectionOrderIds?: string[];
+  /**
+   * Proyecto y sección anclados a la derecha del título (`fila-de-tarea-en-
+   * niveles`, D-B): decisión explícita de quien monta la fila, nunca
+   * derivada de `variant`. La prende Hoy, Próximos, Etiqueta, Filtro,
+   * Buscador y Completado — las seis vistas que cruzan proyectos. La
+   * Bandeja, un proyecto, una sección, el tablero y las subtareas del
+   * detalle la dejan en `false` (el default) porque ahí el proyecto ya lo
+   * dice el encabezado.
+   */
+  showProject?: boolean;
+  /** La página de una etiqueta no repite esa misma etiqueta en cada fila (bloque 4.4): ya la dice el encabezado. */
+  hideLabelId?: string;
 }) {
   const { open } = useTaskDetail();
   const selection = useSelection();
@@ -236,6 +252,30 @@ export function TaskRow({
   const hasChildren = children.length > 0;
   const isCompleted = task.completed_at != null;
   const due = formatTaskDueLabel(task, { now, ...preferences });
+
+  // Proyecto y sección ancladas a la derecha (`fila-de-tarea-en-niveles`,
+  // D-B/D-D): el nombre del proyecto ya está sembrado en el caché de
+  // `useProjects` desde el layout (bloque 5) — nada nuevo que consultar acá.
+  // El de sección viene de `useAllSections`, una consulta mayorista de todas
+  // las secciones del usuario (nunca de a un proyecto por vez), sembrada
+  // igual que los proyectos por `AllSectionsSeed`. Ninguna de las dos pide
+  // nada si `showProject` es `false`: el hook igual se llama (regla de los
+  // hooks), pero lee del mismo caché que ya usan otras pantallas, sin costo
+  // de red propio.
+  const { data: projects } = useProjects();
+  const { data: allSections } = useAllSections();
+  const project = showProject ? projects?.find((p) => p.id === task.project_id) : undefined;
+  const section = showProject && task.section_id ? allSections?.find((s) => s.id === task.section_id) : undefined;
+  const projectMetaLabel = project ? (section ? `${project.name} / ${section.name}` : project.name) : null;
+
+  const visibleLabels = hideLabelId ? task.labels.filter((label) => label.id !== hideLabelId) : task.labels;
+  const hasDateOrLabels = Boolean(due) || visibleLabels.length > 0;
+  // En 390px el proyecto anclado a la derecha del título le come 60-100px
+  // justo donde menos sobra (D-F): en vez de eso, baja al segundo nivel,
+  // junto a la fecha y las etiquetas, donde el ancho es entero.
+  const projectInFirstLevel = projectMetaLabel != null && !isMobile;
+  const projectInSecondLevel = projectMetaLabel != null && isMobile;
+  const hasSecondLevel = hasDateOrLabels || projectInSecondLevel;
 
   function toggleComplete() {
     updateTask.mutate({
@@ -548,7 +588,15 @@ export function TaskRow({
       // seleccionable con el mouse, y el escenario "clic derecho sobre
       // texto seleccionado" de `handleRowContextMenu` no tendría cómo
       // darse nunca.
-      className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface select-text"
+      className={cn(
+        "flex gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface select-text",
+        // Con segundo nivel (fecha/etiquetas, o el proyecto bajado en
+        // teléfono), los controles de la izquierda se alinean con la
+        // primera línea (`items-start`) en vez de con el bloque entero de
+        // dos líneas. Sin segundo nivel — el caso más común en la Bandeja —
+        // sigue siendo `items-center`, igual que hoy: nada cambia ahí.
+        hasSecondLevel ? "items-start" : "items-center",
+      )}
       onContextMenu={handleRowContextMenu}
       onClickCapture={handleRowClickCapture}
     >
@@ -600,32 +648,57 @@ export function TaskRow({
 
       {task.priority !== DEFAULT_TASK_PRIORITY && <PriorityDot priority={task.priority} />}
 
-      {/* La metadata (etiquetas, fecha) vive DENTRO de este botón, pegada
-          al título, en vez de ser hermana suya en la fila (design.md
-          sección C1, bloque 3): así, aunque el botón siga siendo `flex-1`
-          —área de clic amplia, Fitts's law— el título y su metadata se
-          agrupan al inicio del botón y no se separan al crecer el ancho
-          de columna. El título tiene su propio tope (`max-w-lg`, ~60-75
-          caracteres — line-length-control de la skill `ui-ux-pro-max`)
-          para no dejar la metadata a kilómetros en un título larguísimo. */}
-      <button
-        type="button"
-        onClick={handleTitleClick}
-        onDoubleClick={() => open(task.id)}
-        onKeyDown={isFlat ? undefined : handleTitleKeyDown}
-        className={cn(
-          "flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          isCompleted && "text-text-secondary",
+      {/* Fila en niveles (`fila-de-tarea-en-niveles`, D-A): nivel uno (título
+          + proyecto/sección anclados a la derecha) y, solo si hay algo que
+          mostrar, el nivel dos (fecha y etiquetas) debajo. Sin nivel dos, la
+          fila queda en una sola línea, igual que antes de esta capacidad —
+          es la Bandeja el caso que lo prueba (casi ninguna tarea ahí tiene
+          fecha o etiquetas). El proyecto/sección va como hermano del botón
+          del título, nunca adentro (D-C): adentro cambiaría el nombre
+          accesible de la tarea ("Pagar el alquiler" pasaría a "Pagar el
+          alquiler Trabajo") y rompería las pruebas que buscan tareas por su
+          nombre. El botón sigue siendo `flex-1` sin tope propio — el tope
+          real es el de su `<span>` interno (`max-w-lg`, sin tocar, ver
+          docs/design-system.md §5.1) — así que anclar el chip a la derecha
+          no requiere tocar ese tope ni el de la columna. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleTitleClick}
+            onDoubleClick={() => open(task.id)}
+            onKeyDown={isFlat ? undefined : handleTitleKeyDown}
+            className={cn(
+              "min-w-0 flex-1 overflow-hidden rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              isCompleted && "text-text-secondary",
+            )}
+          >
+            <span className={cn("block min-w-0 max-w-lg truncate", isCompleted && "line-through")}>{task.title}</span>
+          </button>
+
+          {projectInFirstLevel && (
+            <span className="shrink-0 truncate text-xs text-text-secondary" title={projectMetaLabel!}>
+              {projectMetaLabel}
+            </span>
+          )}
+        </div>
+
+        {hasSecondLevel && (
+          <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+            {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
+
+            {visibleLabels.map((label) => (
+              <LabelChipView key={label.id} label={label} />
+            ))}
+
+            {projectInSecondLevel && (
+              <span className="ml-auto shrink-0 truncate text-xs text-text-secondary" title={projectMetaLabel!}>
+                {projectMetaLabel}
+              </span>
+            )}
+          </div>
         )}
-      >
-        <span className={cn("min-w-0 max-w-lg truncate", isCompleted && "line-through")}>{task.title}</span>
-
-        {task.labels.map((label) => (
-          <LabelChipView key={label.id} label={label} />
-        ))}
-
-        {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
-      </button>
+      </div>
 
       <DropdownMenu onOpenChange={handleMenuOpenChange}>
         <DropdownMenuTrigger

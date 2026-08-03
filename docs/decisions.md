@@ -919,3 +919,70 @@ de Tiptap en una superficie que no la necesita, sin ninguno de sus beneficios.
 vez de instanciar un editor de solo lectura. El veto a adjuntos en
 comentarios no cambia. `docs/product-spec.md` queda actualizado para
 describir los comentarios como texto plano.
+
+---
+
+## D41 — La fila de tarea crece hacia abajo, en niveles; el proyecto se ancla a la derecha
+
+**Fecha.** 2026-08-02
+
+**Contexto.** La fila de tarea era una sola línea: casilla, título, y pegados
+al título los chips de etiqueta y la fecha, todo comprimido en una franja
+mientras entre 260 y 810px quedaban sin usar según la tarea. El dueño lo
+pidió así: *"de ancho no, expandir para abajo me refería. Así tenés más
+lugar. Y que el proyecto se muestre alineado al título de la tarea pero todo
+a la derecha, y abajo la fecha y las etiquetas."* Además, dos cosas que
+importan no se mostraban en ningún lado: de qué proyecto y de qué sección es
+una tarea, en las vistas que cruzan proyectos (Hoy, Próximos, Etiqueta,
+Filtro, Buscador, Completado).
+
+**Decisión.** La fila pasa a dos niveles: el título con el proyecto y la
+sección anclados al borde derecho, y debajo — solo si hay algo que
+mostrar — la fecha y las etiquetas. Cada nivel se renderiza únicamente si
+tiene contenido: una tarea sin fecha ni etiquetas sigue en una sola línea,
+como antes.
+
+El proyecto y la sección se muestran en Hoy, Próximos, Etiqueta, Filtro,
+Buscador y Completado (las seis vistas que cruzan proyectos) y **no** en la
+Bandeja, un Proyecto, una sección, las subtareas del detalle ni el tablero
+de Bandeja o de Proyecto — ahí ya lo dice el encabezado. Esa condición se
+decide de forma explícita en cada uno de los nueve montajes de `TaskRow`
+(prop `showProject`), nunca derivada de `variant`: el tablero y agrupar por
+prioridad dentro de un proyecto también son compactos y ahí el proyecto
+sobra igual.
+
+El chip de proyecto/sección va como **hermano** del botón del título, nunca
+adentro: el botón toma su nombre accesible de todo su contenido, y meter el
+chip adentro cambiaría "Pagar el alquiler" por "Pagar el alquiler Trabajo"
+para quien navega por teclado o lector de pantalla, rompiendo además las
+pruebas que buscan tareas por su nombre.
+
+En 390px, anclar el chip al lado del título le sacaría 60-100px justo donde
+menos sobra (el título ya baja a 60-80px con etiquetas y hora). Ahí el chip
+baja al segundo nivel, junto a la fecha y las etiquetas, en vez de quedarse
+arriba.
+
+El nombre de sección se trae con una consulta mayorista y cacheada de todas
+las secciones del usuario (`useAllSections`, sembrada desde el layout igual
+que `useProjects`), nunca de a un proyecto por vez — el patrón que prohíbe
+`.claude/rules/database.md` para una lista que cruza proyectos.
+
+**Esto acota el requisito de `vistas-lista`** (`docs/design-system.md` §5.1)
+que decía que la metadata nunca se pega al borde derecho: la fecha y las
+etiquetas siguen sin pegarse (bajan al segundo nivel, a la izquierda); el
+proyecto y la sección son la única excepción, porque anclarlos es lo que los
+vuelve recorribles entre filas.
+
+**Consecuencia.** `components/tasks/task-row.tsx` concentra el cambio
+visual; nueve superficies (`task-group-list.tsx`, `label-view.tsx`,
+`filter-results-view.tsx`, `search-command.tsx`, `completed-view.tsx`,
+`hoy-view.tsx`, `proximos-view.tsx`, y los montajes que dejan `showProject`
+en su valor por defecto: `sectioned-tasks.tsx`, `task-list.tsx`,
+`board.tsx`) deciden explícitamente si lo muestran. Se agregan
+`lib/sections/get-all-sections.ts` y `useAllSections` en
+`lib/sections/use-sections.ts`, sembrados por
+`components/providers/all-sections-seed.tsx` desde `app/(app)/layout.tsx`.
+Una línea tenue separa tareas hermanas de primer nivel (`divide-y` en cada
+`<ul>` de fila); las subtareas y la fila de "Agregar tarea" no llevan línea.
+`docs/design-system.md` §5.1 queda actualizado para describir el layout de
+dos niveles.

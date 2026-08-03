@@ -64,7 +64,7 @@ export function SearchCommand({
               recent.data.map((task) => (
                 <CommandItem key={task.id} value={`reciente-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
                   <ul className="w-full">
-                    <TaskRow task={task} allTasks={recent.data!} siblings={[]} depth={0} variant="flat" />
+                    <TaskRow task={task} allTasks={recent.data!} siblings={[]} depth={0} variant="flat" showProject />
                   </ul>
                 </CommandItem>
               ))
@@ -92,7 +92,7 @@ export function SearchCommand({
               search.tasks.map((task) => (
                 <CommandItem key={task.id} value={`resultado-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
                   <ul className="w-full">
-                    <TaskRow task={task} allTasks={search.tasks} siblings={[]} depth={0} variant="flat" />
+                    <TaskRow task={task} allTasks={search.tasks} siblings={[]} depth={0} variant="flat" showProject />
                   </ul>
                 </CommandItem>
               ))
