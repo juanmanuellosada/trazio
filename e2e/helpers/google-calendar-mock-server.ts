@@ -19,7 +19,7 @@ const RRuleCtor = (rrulePkg as unknown as { RRule: typeof RRule }).RRule;
 // esta restricción): mantenerlas iguales si alguna cambia.
 const MOCK_GOOGLE_PORT = 5601;
 const MOCK_GOOGLE_BASE_URL = `http://127.0.0.1:${MOCK_GOOGLE_PORT}`;
-const E2E_APP_ORIGIN = "http://127.0.0.1:3000";
+const E2E_APP_ORIGIN = process.env.E2E_APP_ORIGIN ?? "http://127.0.0.1:3000";
 
 /**
  * Servidor simulado de la API de Google (tarea 8.11): implementa lo mínimo
@@ -68,6 +68,8 @@ type CalendarState = {
   summary: string;
   primary: boolean;
   backgroundColor: string;
+  /** Todo calendario en este simulador es propio de la cuenta simulada (no hay noción de compartido/importado): siempre "owner" — mismo campo que `lib/calendar/google-client.ts` lee de la respuesta real. */
+  accessRole: string;
   events: Map<string, StoredEvent>;
   exceptionsByMaster: Map<string, Map<string, ExceptionOverride>>;
   nextEventSeq: number;
@@ -87,6 +89,7 @@ function getOrCreateAccount(accountId: string): AccountState {
       summary: "Personal",
       primary: true,
       backgroundColor: "#4285f4",
+      accessRole: "owner",
       events: new Map(),
       exceptionsByMaster: new Map(),
       nextEventSeq: 1,
@@ -104,6 +107,7 @@ function getOrCreateCalendar(account: AccountState, calendarId: string): Calenda
       summary: calendarId,
       primary: false,
       backgroundColor: "#33b679",
+      accessRole: "owner",
       events: new Map(),
       exceptionsByMaster: new Map(),
       nextEventSeq: 1,
@@ -241,6 +245,7 @@ const server = createServer(async (req, res) => {
       summary: calendar.summary,
       backgroundColor: calendar.backgroundColor,
       primary: calendar.primary,
+      accessRole: calendar.accessRole,
     }));
     return json(res, 200, { items });
   }

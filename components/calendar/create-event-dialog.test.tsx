@@ -2,7 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 import { CreateEventDialog } from "./create-event-dialog";
@@ -15,13 +15,23 @@ import { CreateEventDialog } from "./create-event-dialog";
  */
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
-vi.mock("@/lib/calendar/use-google-calendars", () => ({
-  useGoogleCalendars: () => ({
-    data: { calendars: [{ id: "primary", summary: "Personal", backgroundColor: null, primary: true, accessRole: "owner" }] },
-    isLoading: false,
-    isError: false,
-  }),
+
+const DEFAULT_CALENDARS = [{ id: "primary", summary: "Personal", backgroundColor: null, primary: true, accessRole: "owner" }];
+
+// Estado mutable del hook, para poder variar los calendarios devueltos por
+// test (calendarios de solo lectura) sin perder `CalendarAdminError` ni
+// `canWriteCalendar`, que el resto del módulo real sigue exportando.
+const mockCalendarsResult = vi.hoisted(() => ({
+  data: { calendars: [] as unknown[] },
+  isLoading: false,
+  isError: false,
+  error: null as unknown,
 }));
+
+vi.mock("@/lib/calendar/use-google-calendars", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/calendar/use-google-calendars")>();
+  return { ...actual, useGoogleCalendars: () => mockCalendarsResult };
+});
 
 const PREFERENCES: UserPreferences = {
   timezone: "America/Argentina/Buenos_Aires",
@@ -58,6 +68,13 @@ function renderDialog() {
 }
 
 describe("CreateEventDialog (alta-de-evento-completa)", () => {
+  beforeEach(() => {
+    mockCalendarsResult.data = { calendars: [...DEFAULT_CALENDARS] };
+    mockCalendarsResult.isLoading = false;
+    mockCalendarsResult.isError = false;
+    mockCalendarsResult.error = null;
+  });
+
   it("el horario ya no es de solo lectura: hay campos de fecha y hora, no un texto fijo", async () => {
     renderDialog();
 
@@ -131,5 +148,59 @@ describe("CreateEventDialog (alta-de-evento-completa)", () => {
 
     const offenders = document.body.querySelectorAll('input[type="date"], input[type="time"], input[type="datetime-local"], select');
     expect(Array.from(offenders).map((el) => el.outerHTML)).toEqual([]);
+  });
+
+  // Crear un evento en un calendario de solo lectura Google lo rechaza
+  // (403): mismo defecto que ya se arregló para "eliminar calendario"
+  // (`calendars-section.tsx`), acá aplicado al selector de calendario del
+  // formulario de evento.
+  describe("calendarios de solo lectura no se ofrecen como destino", () => {
+    it("no ofrece un calendario de solo lectura entre las opciones", async () => {
+      mockCalendarsResult.data = {
+        calendars: [
+          { id: "primary", summary: "Personal", backgroundColor: null, primary: true, accessRole: "owner" },
+          { id: "feriados", summary: "Feriados", backgroundColor: null, primary: false, accessRole: "reader" },
+        ],
+      };
+      const user = userEvent.setup();
+      renderDialog();
+
+      const trigger = await screen.findByRole("combobox", { name: "Calendario" });
+      await user.click(trigger);
+
+      expect(await screen.findByRole("option", { name: "Personal" })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Feriados" })).not.toBeInTheDocument();
+    });
+
+    it("si el calendario primario es de solo lectura, no lo deja seleccionado por default", async () => {
+      mockCalendarsResult.data = {
+        calendars: [
+          { id: "primary", summary: "Personal", backgroundColor: null, primary: true, accessRole: "reader" },
+          { id: "trabajo", summary: "Trabajo", backgroundColor: null, primary: false, accessRole: "writer" },
+        ],
+      };
+      const user = userEvent.setup();
+      const fetchMock = renderDialog();
+
+      expect(await screen.findByRole("combobox", { name: "Calendario" })).toHaveTextContent("Trabajo");
+
+      await user.type(screen.getByLabelText("Título"), "Reunión");
+      await user.click(screen.getByRole("button", { name: "Crear evento" }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/calendar/events", expect.anything()));
+      const [, init] = fetchMock.mock.calls.find(([url]) => url === "/api/calendar/events")!;
+      const body = JSON.parse(init!.body as string);
+      expect(body.calendarId).toBe("trabajo");
+    });
+
+    it("si no hay ningún calendario donde escribir, no deja crear y lo explica", async () => {
+      mockCalendarsResult.data = {
+        calendars: [{ id: "primary", summary: "Personal", backgroundColor: null, primary: true, accessRole: "reader" }],
+      };
+      renderDialog();
+
+      expect(await screen.findByText(/no tenés ningún calendario donde puedas escribir/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Crear evento" })).not.toBeInTheDocument();
+    });
   });
 });

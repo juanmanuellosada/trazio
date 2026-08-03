@@ -10,4 +10,4 @@ export const MOCK_GOOGLE_BASE_URL = `http://127.0.0.1:${MOCK_GOOGLE_PORT}`;
 // de confiar en `redirect_uri` tal cual la manda `google-client.ts` (que sale
 // de `GOOGLE_REDIRECT_URI` en `.env.local`, pensada para `pnpm dev` en
 // `localhost`, un host distinto de `127.0.0.1` a efectos de cookies).
-export const E2E_APP_ORIGIN = "http://127.0.0.1:3000";
+export const E2E_APP_ORIGIN = process.env.E2E_APP_ORIGIN ?? "http://127.0.0.1:3000";

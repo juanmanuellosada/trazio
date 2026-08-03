@@ -32,9 +32,10 @@ import type { Habit } from "@/lib/habits/habit-columns";
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/lib/calendar/use-google-calendars", () => ({
-  useGoogleCalendars: () => ({ data: { calendars: [] }, isLoading: false, isError: false }),
-}));
+vi.mock("@/lib/calendar/use-google-calendars", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/calendar/use-google-calendars")>();
+  return { ...actual, useGoogleCalendars: () => ({ data: { calendars: [] }, isLoading: false, isError: false }) };
+});
 // Mismo recorte que `habit-form-dialog.test.tsx`: el dataset real de
 // emojibase-data no hace falta para este test, solo que `EmojiPicker`
 // monte sin reventar.

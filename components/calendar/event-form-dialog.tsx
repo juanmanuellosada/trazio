@@ -2,9 +2,9 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
 import { CalendarDays } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
+import { AppDialog } from "@/components/primitives/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +18,9 @@ import { DatePickerBody } from "@/components/selectors/date-picker-body";
 import { TimeField, DEFAULT_TIME, type TimeValue } from "@/components/selectors/time-field";
 import { EventRecurrenceField } from "@/components/calendar/event-recurrence-field";
 import type { ParserContext } from "@/lib/parser/types";
-import { CalendarAdminError, useGoogleCalendars } from "@/lib/calendar/use-google-calendars";
+import { CalendarAdminError, canWriteCalendar, useGoogleCalendars } from "@/lib/calendar/use-google-calendars";
 import type { EventRecurrenceValue } from "@/lib/calendar/event-recurrence";
+import type { DateFormatPreference } from "@/lib/dates/format";
 
 /** Mensaje de tres partes (`.claude/rules/copy.md`) para cuando no hay ningún calendario disponible. */
 function unavailableMessage(error: unknown): string {
@@ -61,6 +62,7 @@ function DateField({
   ariaLabel,
   value,
   ctx,
+  dateFormat,
   onChange,
 }: {
   id: string;
@@ -68,6 +70,12 @@ function DateField({
   /** `yyyy-MM-dd`. */
   value: string;
   ctx: Omit<ParserContext, "ahora">;
+  /**
+   * Formato numérico corto, según la preferencia del usuario
+   * (`dd-MM-yyyy`/`yyyy-MM-dd`, `lib/dates/format.ts`): "2 de agosto de
+   * 2026" no entraba en una sola línea junto a la hora al lado.
+   */
+  dateFormat: DateFormatPreference;
   onChange: (date: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -80,7 +88,7 @@ function DateField({
         className="flex h-9 w-full items-center gap-1.5 rounded-lg border border-input px-2.5 text-left text-sm outline-none hover:bg-surface focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <CalendarDays className="size-3.5 shrink-0 text-text-secondary" aria-hidden />
-        {format(parseISO(value), "d 'de' MMMM 'de' yyyy", { locale: es })}
+        {format(parseISO(value), dateFormat)}
       </PopoverTrigger>
       <PopoverContent align="start">
         <DatePickerBody
@@ -164,7 +172,7 @@ export function EventFormDialog({
   onSubmit: (values: EventFormValues) => void;
 }) {
   const titleId = useId();
-  const { timezone, timeFormat, weekStartsOn } = useUserPreferences();
+  const { timezone, timeFormat, weekStartsOn, dateFormat } = useUserPreferences();
   const { data, isLoading: calendarsLoading, isError, error } = useGoogleCalendars();
   const calendars = data?.calendars ?? [];
 
@@ -203,8 +211,23 @@ export function EventFormDialog({
     etiquetas: [],
   };
 
-  const effectiveCalendarId = calendarId ?? calendars.find((c) => c.primary)?.id ?? calendars[0]?.id ?? null;
+  // Solo se ofrecen como destino los calendarios donde se puede escribir:
+  // crear o editar un evento en uno de solo lectura ("reader"/
+  // "freeBusyReader") Google lo rechaza. El calendario ya elegido
+  // (`calendarId`) se conserva en la lista aunque no sea escribible —
+  // pasa al editar un evento que ya vive en uno compartido de solo
+  // lectura: sacarlo de las opciones dejaría el selector vacío en vez de
+  // mostrar dónde está guardado.
+  const writableCalendars = calendars.filter(canWriteCalendar);
+  const pinnedCalendar = calendarId ? calendars.find((c) => c.id === calendarId) : undefined;
+  const selectableCalendars =
+    pinnedCalendar && !writableCalendars.some((c) => c.id === pinnedCalendar.id)
+      ? [pinnedCalendar, ...writableCalendars]
+      : writableCalendars;
+
+  const effectiveCalendarId = calendarId ?? writableCalendars.find((c) => c.primary)?.id ?? writableCalendars[0]?.id ?? null;
   const unavailableCalendars = !calendarsLoading && (isError || calendars.length === 0);
+  const noWritableCalendars = !calendarsLoading && !isError && calendars.length > 0 && writableCalendars.length === 0;
 
   const startParts = allDay ? null : splitDateTimeLocal(timedStart);
   const endParts = allDay ? null : splitDateTimeLocal(timedEnd);
@@ -244,139 +267,150 @@ export function EventFormDialog({
     onSubmit(values);
   }
 
-  const blockForm = blockWhenNoCalendars && unavailableCalendars;
+  const blockForm = blockWhenNoCalendars && (unavailableCalendars || noWritableCalendars);
   const submitDisabled = !title.trim() || !effectiveCalendarId || endBeforeStart || isSubmitting || blockForm;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-sm max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          {dialogDescription && <DialogDescription>{dialogDescription}</DialogDescription>}
-        </DialogHeader>
+    <AppDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={dialogTitle}
+      description={dialogDescription}
+      size="lg"
+      className="max-h-[85vh] overflow-y-auto"
+    >
+      {calendarsLoading && <p className="text-sm text-muted-foreground">Cargando tus calendarios…</p>}
 
-        {calendarsLoading && <p className="text-sm text-muted-foreground">Cargando tus calendarios…</p>}
-
-        {blockForm && (
-          <p className="text-sm text-muted-foreground">
-            {isError
-              ? unavailableMessage(error)
+      {blockForm && (
+        <p className="text-sm text-muted-foreground">
+          {isError
+            ? unavailableMessage(error)
+            : noWritableCalendars
+              ? "No pudimos crear el evento porque no tenés ningún calendario donde puedas escribir: los que tenés habilitados son todos de solo lectura. Habilitá uno donde tengas permiso de edición desde Configuración, o pedile ese permiso a quien lo comparte, y volvé a intentar."
               : "No pudimos crear el evento porque no tenés ninguna cuenta de Google conectada, o no tenés ningún calendario habilitado. Revisá la conexión desde Configuración y volvé a intentar."}
-          </p>
-        )}
+        </p>
+      )}
 
-        {!calendarsLoading && !blockForm && (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor={titleId}>Título</Label>
-              <Input id={titleId} value={title} onChange={(event) => setTitle(event.target.value)} autoFocus placeholder="Ej: Reunión con el equipo" />
-            </div>
+      {!calendarsLoading && !blockForm && (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={titleId}>Título</Label>
+            <Input id={titleId} value={title} onChange={(event) => setTitle(event.target.value)} autoFocus placeholder="Ej: Reunión con el equipo" />
+          </div>
 
-            <div className="space-y-1.5">
-              <Label>Calendario</Label>
-              {unavailableCalendars ? (
-                <p className="text-sm text-muted-foreground">
-                  No pudimos cargar la lista de calendarios: el evento se guarda en el calendario que ya tenía. Volvé a intentar
-                  más tarde si querés cambiarlo.
-                </p>
-              ) : (
-                <Select value={effectiveCalendarId ?? undefined} onValueChange={(next) => next && setCalendarId(next)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue>{calendars.find((c) => c.id === effectiveCalendarId)?.summary}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {calendars.map((calendar) => (
-                      <SelectItem key={calendar.id} value={calendar.id}>
-                        {calendar.summary}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor={`${titleId}-all-day`}>Todo el día</Label>
-              <Switch id={`${titleId}-all-day`} checked={allDay} onCheckedChange={setAllDay} />
-            </div>
-
-            {allDay ? (
-              <div className="space-y-1.5">
-                <Label htmlFor={`${titleId}-start`}>Fecha</Label>
-                <DateField id={`${titleId}-start`} ariaLabel="Fecha" value={allDayDate} ctx={ctx} onChange={setAllDayDate} />
-              </div>
+          <div className="space-y-1.5">
+            <Label>Calendario</Label>
+            {unavailableCalendars ? (
+              <p className="text-sm text-muted-foreground">
+                No pudimos cargar la lista de calendarios: el evento se guarda en el calendario que ya tenía. Volvé a intentar
+                más tarde si querés cambiarlo.
+              </p>
             ) : (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <span className="text-sm font-medium text-foreground">Empieza</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <DateField
-                      id={`${titleId}-start-date`}
-                      ariaLabel="Fecha en que empieza"
-                      value={startParts!.date}
-                      ctx={ctx}
-                      onChange={(date) => setTimedStart(joinDateTimeLocal(date, startParts!.time))}
-                    />
-                    <TimeField
-                      id={`${titleId}-start-time`}
-                      label="Hora"
-                      value={startParts!.time}
-                      onChange={(time) => setTimedStart(joinDateTimeLocal(startParts!.date, time))}
-                      timeFormat={timeFormat}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <span className="text-sm font-medium text-foreground">Termina</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <DateField
-                      id={`${titleId}-end-date`}
-                      ariaLabel="Fecha en que termina"
-                      value={endParts!.date}
-                      ctx={ctx}
-                      onChange={(date) => setTimedEnd(joinDateTimeLocal(date, endParts!.time))}
-                    />
-                    <TimeField
-                      id={`${titleId}-end-time`}
-                      label="Hora"
-                      value={endParts!.time}
-                      onChange={(time) => setTimedEnd(joinDateTimeLocal(endParts!.date, time))}
-                      timeFormat={timeFormat}
-                    />
-                  </div>
-                </div>
-                {endBeforeStart && <p className="text-xs text-error">La hora de fin tiene que ser después del inicio.</p>}
-              </div>
+              <Select value={effectiveCalendarId ?? undefined} onValueChange={(next) => next && setCalendarId(next)}>
+                <SelectTrigger aria-label="Calendario" className="w-full">
+                  <SelectValue>{selectableCalendars.find((c) => c.id === effectiveCalendarId)?.summary}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {selectableCalendars.map((calendar) => (
+                    <SelectItem key={calendar.id} value={calendar.id}>
+                      {calendar.summary}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
+          </div>
 
-            <div className="space-y-1.5">
-              <Label>Repetición</Label>
-              <EventRecurrenceField value={recurrence} onChange={setRecurrence} date={recurrenceDate} weekStartsOn={weekStartsOn} />
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor={`${titleId}-all-day`}>Todo el día</Label>
+            <Switch id={`${titleId}-all-day`} checked={allDay} onCheckedChange={setAllDay} />
+          </div>
 
+          {allDay ? (
             <div className="space-y-1.5">
-              <Label htmlFor={`${titleId}-description`}>Descripción</Label>
-              <Textarea id={`${titleId}-description`} value={description} onChange={(event) => setDescription(event.target.value)} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={`${titleId}-location`}>Ubicación</Label>
-              <Input
-                id={`${titleId}-location`}
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-                placeholder="Ej: Oficina, o un link de videollamada"
+              <Label htmlFor={`${titleId}-start`}>Fecha</Label>
+              <DateField
+                id={`${titleId}-start`}
+                ariaLabel="Fecha"
+                value={allDayDate}
+                ctx={ctx}
+                dateFormat={dateFormat}
+                onChange={setAllDayDate}
               />
             </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <span className="text-sm font-medium text-foreground">Empieza</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <DateField
+                    id={`${titleId}-start-date`}
+                    ariaLabel="Fecha en que empieza"
+                    value={startParts!.date}
+                    ctx={ctx}
+                    dateFormat={dateFormat}
+                    onChange={(date) => setTimedStart(joinDateTimeLocal(date, startParts!.time))}
+                  />
+                  <TimeField
+                    id={`${titleId}-start-time`}
+                    label="Hora"
+                    value={startParts!.time}
+                    onChange={(time) => setTimedStart(joinDateTimeLocal(startParts!.date, time))}
+                    timeFormat={timeFormat}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-sm font-medium text-foreground">Termina</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <DateField
+                    id={`${titleId}-end-date`}
+                    ariaLabel="Fecha en que termina"
+                    value={endParts!.date}
+                    ctx={ctx}
+                    dateFormat={dateFormat}
+                    onChange={(date) => setTimedEnd(joinDateTimeLocal(date, endParts!.time))}
+                  />
+                  <TimeField
+                    id={`${titleId}-end-time`}
+                    label="Hora"
+                    value={endParts!.time}
+                    onChange={(time) => setTimedEnd(joinDateTimeLocal(endParts!.date, time))}
+                    timeFormat={timeFormat}
+                  />
+                </div>
+              </div>
+              {endBeforeStart && <p className="text-xs text-error">La hora de fin tiene que ser después del inicio.</p>}
+            </div>
+          )}
 
-            <DialogFooter>
-              <Button type="submit" disabled={submitDisabled}>
-                {submitLabel}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+          <div className="space-y-1.5">
+            <Label>Repetición</Label>
+            <EventRecurrenceField value={recurrence} onChange={setRecurrence} date={recurrenceDate} weekStartsOn={weekStartsOn} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`${titleId}-description`}>Descripción</Label>
+            <Textarea id={`${titleId}-description`} value={description} onChange={(event) => setDescription(event.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`${titleId}-location`}>Ubicación</Label>
+            <Input
+              id={`${titleId}-location`}
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Ej: Oficina, o un link de videollamada"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="submit" disabled={submitDisabled}>
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      )}
+    </AppDialog>
   );
 }

@@ -24,9 +24,10 @@ const PREFERENCES: UserPreferences = {
 // se elige un alcance, cuando el evento pertenece a una serie.
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
-vi.mock("@/lib/calendar/use-google-calendars", () => ({
-  useGoogleCalendars: () => ({ data: { calendars: [] }, isLoading: false, isError: false }),
-}));
+vi.mock("@/lib/calendar/use-google-calendars", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/calendar/use-google-calendars")>();
+  return { ...actual, useGoogleCalendars: () => ({ data: { calendars: [] }, isLoading: false, isError: false }) };
+});
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

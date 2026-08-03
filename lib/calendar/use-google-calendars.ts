@@ -22,6 +22,16 @@ export type GoogleCalendarListItem = {
 
 export type GoogleCalendarColorOption = { id: string; background: string; foreground: string };
 
+/**
+ * Puede crear o editar eventos en este calendario: alcanza con "owner" o
+ * "writer" (a diferencia de *eliminar* el calendario en sí, que exige
+ * específicamente "owner" — `calendars-section.tsx`). "reader" y
+ * "freeBusyReader" no alcanzan; Google rechaza la escritura con 403.
+ */
+export function canWriteCalendar(calendar: { accessRole: string }): boolean {
+  return calendar.accessRole === "owner" || calendar.accessRole === "writer";
+}
+
 export const googleCalendarsQueryKey = ["calendar-admin", "calendars"] as const;
 export const googleCalendarColorsQueryKey = ["calendar-admin", "colors"] as const;
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialog } from "@/components/primitives/dialog";
 import { useUpdateEvent } from "@/lib/calendar/use-update-event";
 import { useEventRecurrenceRule } from "@/lib/calendar/use-event-recurrence";
 import { eventRecurrenceEquals, type EventRecurrenceValue } from "@/lib/calendar/event-recurrence";
@@ -100,14 +100,9 @@ export function EditEventDialog({
 
   if (!recurrenceReady) {
     return (
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Editar evento</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">Cargando el evento…</p>
-        </DialogContent>
-      </Dialog>
+      <AppDialog open={open} onOpenChange={handleOpenChange} title="Editar evento" size="lg">
+        <p className="text-sm text-muted-foreground">Cargando el evento…</p>
+      </AppDialog>
     );
   }
 
