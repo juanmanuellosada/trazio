@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UPCOMING_WINDOW_DEFAULT_DAYS } from "@/lib/tasks/upcoming-filter";
-import { defaultOptionsForViewKey, isDragEnabled, parseViewOptions } from "./schema";
+import { GROUP_BY_OPTIONS, defaultOptionsForViewKey, effectivePanelGroupBy, isDragEnabled, parseViewOptions } from "./schema";
 
 describe("defaultOptionsForViewKey (bloque 6.1, D25 y specs/opciones-de-vista)", () => {
   it("Bandeja y Proyecto tienen orden manual por defecto", () => {
@@ -58,6 +58,17 @@ describe("parseViewOptions: clave desconocida se ignora (requirement de specs/op
     expect(result.groupBy).toBe("etiqueta");
   });
 
+  it("un valor viejo desconocido en groupBy cae al default 'nada', sin romper el resto (tarea 1.1, panel-con-columnas-por-campo)", () => {
+    const result = parseViewOptions("bandeja", { groupBy: "columna-que-ya-no-existe", order: "nombre" });
+    expect(result.groupBy).toBe("nada");
+    expect(result.order).toBe("nombre");
+  });
+
+  it("los valores nuevos de groupBy (sección y fecha) se guardan sin caer al default", () => {
+    expect(parseViewOptions("proyecto:1", { groupBy: "seccion" }).groupBy).toBe("seccion");
+    expect(parseViewOptions("proximos", { groupBy: "fecha" }).groupBy).toBe("fecha");
+  });
+
   it("respeta las opciones guardadas cuando son válidas", () => {
     const result = parseViewOptions("proyecto:casa", {
       order: "nombre",
@@ -90,5 +101,32 @@ describe("isDragEnabled (D-I, bloque 6.10)", () => {
 
   it("deshabilitado con agrupación activa, aunque el orden sea manual", () => {
     expect(isDragEnabled({ order: "manual", groupBy: "prioridad" })).toBe(false);
+  });
+});
+
+describe("GROUP_BY_OPTIONS (tarea 1.1, panel-con-columnas-por-campo)", () => {
+  it("suma sección y fecha a los valores existentes", () => {
+    expect(GROUP_BY_OPTIONS).toEqual(["nada", "seccion", "fecha", "prioridad", "etiqueta"]);
+  });
+});
+
+describe("effectivePanelGroupBy (D-B: el panel no ofrece etiqueta, sin pisar la preferencia guardada)", () => {
+  it("etiqueta se resuelve a nada dentro del panel", () => {
+    expect(effectivePanelGroupBy("etiqueta")).toBe("nada");
+  });
+
+  it("los demás valores pasan sin cambios", () => {
+    expect(effectivePanelGroupBy("nada")).toBe("nada");
+    expect(effectivePanelGroupBy("seccion")).toBe("seccion");
+    expect(effectivePanelGroupBy("fecha")).toBe("fecha");
+    expect(effectivePanelGroupBy("prioridad")).toBe("prioridad");
+  });
+
+  it("una preferencia guardada en 'etiqueta' sigue siendo 'etiqueta' al releerla, aunque el panel la trate como 'nada'", () => {
+    const stored = parseViewOptions("bandeja", { groupBy: "etiqueta" });
+    expect(stored.groupBy).toBe("etiqueta");
+    expect(effectivePanelGroupBy(stored.groupBy)).toBe("nada");
+    // Releer de nuevo (ej. al volver a la lista) sigue encontrando "etiqueta" intacto.
+    expect(parseViewOptions("bandeja", { groupBy: stored.groupBy }).groupBy).toBe("etiqueta");
   });
 });

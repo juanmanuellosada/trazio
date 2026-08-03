@@ -228,6 +228,54 @@ describe("ViewOptionsBar — orden y filtro (secciones Orden y Filtro, tareas 3.
   });
 });
 
+describe("ViewOptionsBar — agrupar por en panel no ofrece etiqueta (D-B, panel-con-columnas-por-campo)", () => {
+  beforeEach(() => {
+    setOption.mockClear();
+  });
+
+  it("en lista, agrupar por ofrece las cinco opciones, etiqueta incluida", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Nada" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Sección" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Fecha" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Etiqueta" })).toBeInTheDocument();
+  });
+
+  it("en panel, agrupar por ofrece sección, fecha y prioridad, pero nunca etiqueta", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Sección" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Fecha" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Etiqueta" })).not.toBeInTheDocument();
+  });
+
+  it("con la preferencia guardada en etiqueta, el panel la muestra como 'Nada' sin pisarla", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel", groupBy: "etiqueta" });
+    await openPanel(user);
+    expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Nada");
+  });
+
+  it("elegir sección o fecha en el panel llama a setOption con el valor real", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" });
+    await openPanel(user);
+
+    await chooseOption(user, "Agrupar por", "Sección");
+    expect(setOption).toHaveBeenCalledWith("groupBy", "seccion");
+
+    await chooseOption(user, "Agrupar por", "Fecha");
+    expect(setOption).toHaveBeenCalledWith("groupBy", "fecha");
+  });
+});
+
 describe("ViewOptionsBar — el disparador indica opciones activas (D-A, spec 'El disparador indica cuándo hay opciones activas')", () => {
   beforeEach(() => {
     setOption.mockClear();

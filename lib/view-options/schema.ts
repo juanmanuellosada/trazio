@@ -22,7 +22,7 @@ export type ViewShape = (typeof VIEW_SHAPE_OPTIONS)[number];
 export const ORDER_OPTIONS = ["manual", "nombre", "fecha", "prioridad"] as const;
 export type OrderOption = (typeof ORDER_OPTIONS)[number];
 
-export const GROUP_BY_OPTIONS = ["nada", "prioridad", "etiqueta"] as const;
+export const GROUP_BY_OPTIONS = ["nada", "seccion", "fecha", "prioridad", "etiqueta"] as const;
 export type GroupByOption = (typeof GROUP_BY_OPTIONS)[number];
 
 export const DEADLINE_FILTER_OPTIONS = ["cualquiera", "con", "sin"] as const;
@@ -120,4 +120,17 @@ export function parseViewOptions(viewKey: string, raw: unknown): ViewOptions {
 /** El arrastre entre columnas/filas solo está habilitado con orden manual y sin agrupación activa (D-I, bloque 6.10), la misma condición que ya rige el arrastre en modo lista. */
 export function isDragEnabled(options: Pick<ViewOptions, "order" | "groupBy">): boolean {
   return options.order === "manual" && options.groupBy === "nada";
+}
+
+/**
+ * El panel no ofrece agrupar por etiqueta (D-B, `openspec/changes/panel-con-columnas-por-campo`):
+ * una tarea puede tener varias y aparecería repetida en varias columnas. El
+ * agrupador es el mismo control y la misma preferencia guardada que la
+ * lista, donde "etiqueta" sí vale — así que una preferencia guardada en
+ * "etiqueta" NUNCA se pisa acá (quien llama sigue leyendo y escribiendo el
+ * valor crudo tal cual): esta función solo resuelve qué grupo usar *dentro*
+ * del panel, tratándolo como si fuera "nada".
+ */
+export function effectivePanelGroupBy(groupBy: GroupByOption): GroupByOption {
+  return groupBy === "etiqueta" ? "nada" : groupBy;
 }

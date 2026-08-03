@@ -18,6 +18,7 @@ import {
   ORDER_OPTIONS,
   VIEW_SHAPE_OPTIONS,
   defaultOptionsForViewKey,
+  effectivePanelGroupBy,
   type DeadlineFilterOption,
   type GroupByOption,
   type OrderOption,
@@ -37,9 +38,14 @@ const ORDER_LABELS: Record<OrderOption, string> = {
 
 const GROUP_BY_LABELS: Record<GroupByOption, string> = {
   nada: "Nada",
+  seccion: "Sección",
+  fecha: "Fecha",
   prioridad: "Prioridad",
   etiqueta: "Etiqueta",
 };
+
+/** El panel no ofrece agrupar por etiqueta (D-B, capacidad `modo-panel`): ver `effectivePanelGroupBy` en `lib/view-options/schema.ts`. */
+const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "etiqueta");
 
 const DEADLINE_FILTER_LABELS: Record<DeadlineFilterOption, string> = {
   cualquiera: "Cualquiera",
@@ -190,6 +196,14 @@ export function ViewOptionsBar({
   const priorityId = useId();
   const labelFilterId = useId();
 
+  // Panel no ofrece etiqueta (D-B): la lista sigue viendo las cinco opciones.
+  // El valor mostrado usa `effectivePanelGroupBy` para que, si la preferencia
+  // guardada es "etiqueta" (traída de la lista), el desplegable del panel
+  // muestre "Nada" sin escribir nada — `setOption` solo se llama cuando la
+  // persona elige algo.
+  const groupByOptions = options.viewShape === "panel" ? PANEL_GROUP_BY_OPTIONS : GROUP_BY_OPTIONS;
+  const groupByDisplayValue = options.viewShape === "panel" ? effectivePanelGroupBy(options.groupBy) : options.groupBy;
+
   const defaults = defaultOptionsForViewKey(viewKey);
   const hasActiveOptions =
     options.order !== defaults.order ||
@@ -324,14 +338,14 @@ export function ViewOptionsBar({
               <FieldRow label="Agrupar por" htmlFor={groupById}>
                 <Select
                   items={GROUP_BY_LABELS}
-                  value={options.groupBy}
+                  value={groupByDisplayValue}
                   onValueChange={(value) => setOption("groupBy", value as GroupByOption)}
                 >
                   <SelectTrigger id={groupById} className="max-w-36">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {GROUP_BY_OPTIONS.map((groupBy) => (
+                    {groupByOptions.map((groupBy) => (
                       <SelectItem key={groupBy} value={groupBy}>
                         {GROUP_BY_LABELS[groupBy]}
                       </SelectItem>
