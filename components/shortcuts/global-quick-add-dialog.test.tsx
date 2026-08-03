@@ -126,11 +126,14 @@ describe("GlobalQuickAddDialog — cadena de destino (D-B)", () => {
     await waitFor(() => expect(destinationTrigger).toHaveTextContent("Trabajo"));
   });
 
-  it("el contexto de la vista trae también la sección: parado en una sección de un proyecto", async () => {
+  it("nunca hereda la sección del contexto de la vista: el destino queda en el proyecto, no en la sección", async () => {
+    // Reporte del dueño (2026-08-03): parado en una sección de un proyecto,
+    // `Q` y el botón del panel lateral tienen que ofrecer el proyecto en su
+    // raíz, no la sección — elegirla es una decisión explícita del selector.
     renderDialog({ viewContext: { projectId: "p2", sectionId: "sec1", defaultDueDate: null } });
 
     const destinationTrigger = await screen.findByRole("button", { name: "Proyecto destino" });
-    await waitFor(() => expect(destinationTrigger).toHaveTextContent("En curso"));
+    await waitFor(() => expect(destinationTrigger).toHaveTextContent("Trabajo"));
   });
 
   it("sin contexto de vista, usa el proyecto por defecto de las preferencias antes que Bandeja", async () => {

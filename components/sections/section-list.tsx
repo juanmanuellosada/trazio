@@ -148,7 +148,6 @@ function SectionItem({
   allSections,
   taskListOptions,
   selectionOrderIds,
-  onSectionFocus,
 }: {
   section: SectionRow;
   projectId: string;
@@ -156,8 +155,6 @@ function SectionItem({
   taskListOptions?: SectionTaskListOptions;
   /** Selección múltiple (bloque 7.10-7.13): mismo orden visual combinado que le pasa `SectionedTasks` a la lista de "sin sección" — acá se reparte igual a cada sección. */
   selectionOrderIds?: string[];
-  /** Contexto de alta por foco (D-A de `alta-de-tareas-en-contexto`): el foco entrando a las tareas de esta sección anuncia "estoy parado acá" — la sección no tiene ruta propia, así que no hay otra señal. */
-  onSectionFocus?: (sectionId: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const updateSection = useUpdateSection(projectId);
@@ -252,7 +249,7 @@ function SectionItem({
       )}
       {!section.is_collapsed && <Separator className="my-1" />}
       {!section.is_collapsed && (
-        <div className="pl-7" onFocus={() => onSectionFocus?.(section.id)}>
+        <div className="pl-7">
           <TaskList
             projectId={projectId}
             sectionId={section.id}
@@ -306,7 +303,6 @@ export function SectionList({
   initialSections,
   taskListOptions,
   selectionOrderIds,
-  onSectionFocus,
 }: {
   projectId: string;
   initialSections: SectionRow[];
@@ -314,8 +310,6 @@ export function SectionList({
   taskListOptions?: SectionTaskListOptions;
   /** Selección múltiple (bloque 7.10-7.13, capacidad `seleccion-multiple`): orden visual combinado de "sin sección" + cada sección, calculado por `SectionedTasks`. */
   selectionOrderIds?: string[];
-  /** Contexto de alta por foco (D-A de `alta-de-tareas-en-contexto`): repartido a cada `SectionItem`. */
-  onSectionFocus?: (sectionId: string) => void;
 }) {
   const { data } = useSections(projectId, initialSections);
   const moveSection = useMoveSection(projectId);
@@ -357,7 +351,6 @@ export function SectionList({
                   allSections={sections}
                   taskListOptions={taskListOptions}
                   selectionOrderIds={selectionOrderIds}
-                  onSectionFocus={onSectionFocus}
                 />
               ))}
             </ul>

@@ -20,6 +20,19 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
  * selector explícito y el `#` del título, resueltos adentro de
  * `TaskQuickAddRow`, siguen ganándole a los dos.
  *
+ * Este modal **nunca hereda sección**, solo proyecto (reporte del dueño,
+ * 2026-08-03): parado en un proyecto con varias secciones y sin haber
+ * tocado el selector, `Q` tiene que ofrecer el proyecto en su raíz. Elegir
+ * una sección es una decisión explícita de quien crea la tarea, no algo
+ * para heredar de dónde había quedado el foco del teclado — la sección no
+ * tiene ruta propia, así que esa herencia terminaba resolviéndose por foco
+ * de DOM (`components/projects/sectioned-tasks.tsx`), que queda pegado al
+ * último control tocado mucho después de que el usuario dejó de estar
+ * "parado" ahí en cualquier sentido útil. El alta embebida al pie de una
+ * sección no tiene este problema: ese contexto sí es inequívoco, porque se
+ * abrió con un clic dentro de esa sección — sigue recibiendo su sección por
+ * props directas, sin pasar por acá.
+ *
  * Abre plegado (D-C): `variant="full"` sin forzar ningún campo desplegado
  * más que título y destino — el propio componente resuelve ese plegado.
  */
@@ -36,11 +49,9 @@ export function GlobalQuickAddDialog({
   const viewContext = useComposeContext();
   const preferences = useUserPreferences();
   const projectId = viewContext.projectId ?? preferences.defaultProjectId ?? inboxProjectId;
-  // La sección heredada solo tiene sentido junto con el proyecto que la
-  // publicó: si el destino terminó cayendo en el proyecto por defecto o en
-  // Bandeja (el contexto de vista no aportó proyecto), la sección de ese
-  // contexto ya no aplica.
-  const sectionId = viewContext.projectId ? viewContext.sectionId : null;
+  // Nunca hereda sección (ver el comentario de arriba): siempre el proyecto
+  // en su raíz, sin importar qué sección haya publicado el contexto de vista.
+  const sectionId = null;
 
   if (!projectId) return null;
 

@@ -4,15 +4,20 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 /**
  * Contexto de alta de la vista actual (`alta-de-tareas-en-contexto`, D-A):
- * proyecto, sección y fecha por defecto de dónde está parado el usuario. Los
- * montajes que ya reciben este contexto por props (Bandeja, Hoy, Próximos,
- * Proyecto, cada sección) no lo consumen — siguen funcionando igual, su
- * precedencia ya está resuelta (D-A). Lo consumen los dos diálogos globales
- * (botón del panel lateral y atajo `Q`), que hoy no tienen otra forma de
- * saber dónde está parado el usuario.
+ * proyecto y fecha por defecto de dónde está parado el usuario. Los montajes
+ * que ya reciben este contexto por props (Bandeja, Hoy, Próximos, Proyecto,
+ * cada sección) no lo consumen — siguen funcionando igual, su precedencia ya
+ * está resuelta (D-A). Lo consume el diálogo global compartido (botón del
+ * panel lateral y atajo `Q`, `components/shortcuts/global-quick-add-dialog.tsx`),
+ * que hoy no tiene otra forma de saber dónde está parado el usuario.
+ *
+ * `sectionId` nunca se lee: el diálogo global no hereda sección (reporte del
+ * dueño, 2026-08-03), solo proyecto. Se mantiene en el tipo por forma —
+ * publicarlo en `null` es más simple que dos formas distintas de anunciar
+ * el contexto de vista.
  *
  * Por D12 esto no es un store global: es contexto de React, publicado por la
- * vista montada y leído por los diálogos — mismo patrón que
+ * vista montada y leído por el diálogo — mismo patrón que
  * `task-detail-context.tsx` resuelve para "qué tarea está abierta en el
  * detalle".
  */
@@ -46,7 +51,7 @@ function useComposeContextValue(): ComposeContextValue {
   return ctx;
 }
 
-/** Lee el contexto de alta publicado por la vista actual (D-A): lo consumen los dos diálogos globales. */
+/** Lee el contexto de alta publicado por la vista actual (D-A): lo consume el diálogo global. */
 export function useComposeContext(): ComposeContext {
   return useComposeContextValue().context;
 }
@@ -68,15 +73,4 @@ export function usePublishComposeContext(context: ComposeContext): void {
     // realmente cambia.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publish, context.projectId, context.sectionId, context.defaultDueDate]);
-}
-
-/**
- * Publicador manual para contexto que depende de una interacción, no del
- * montaje (D-A): lo usa cada sección de un proyecto para anunciarse como "la
- * sección donde está parado el usuario" recién cuando el foco entra ahí — la
- * sección no tiene ruta propia, así que no hay otro momento para saberlo sin
- * derivarlo de la URL (descartado en D-A).
- */
-export function useComposeContextPublisher(): (context: ComposeContext) => void {
-  return useComposeContextValue().publish;
 }

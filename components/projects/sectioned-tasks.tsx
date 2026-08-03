@@ -8,7 +8,7 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
 import { SectionList } from "@/components/sections/section-list";
 import { TaskList } from "@/components/tasks/task-list";
 import { TaskRow as TaskRowView } from "@/components/tasks/task-row";
-import { useComposeContextPublisher, usePublishComposeContext } from "@/components/tasks/compose-context";
+import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { Board, type BoardColumn } from "@/components/board/board";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
@@ -102,12 +102,10 @@ export function SectionedTasks({
 
   // Contexto de alta (D-A de `alta-de-tareas-en-contexto`): esta vista es
   // tanto Bandeja como cualquier Proyecto (la Bandeja es un proyecto más,
-  // ver el comentario de arriba). La sección no tiene ruta propia, así que
-  // "estar parado en una sección" se resuelve por foco, no acá: ver
-  // `publishSectionFocus` más abajo, que cada bloque de tareas (sin sección
-  // y cada `SectionItem`) usa para afinar este mismo contexto.
+  // ver el comentario de arriba). Nunca publica sección: el diálogo global
+  // no la hereda (reporte del dueño, 2026-08-03) — ver el comentario en
+  // `components/shortcuts/global-quick-add-dialog.tsx`.
   usePublishComposeContext({ projectId, sectionId: null, defaultDueDate: null });
-  const publishSectionFocus = useComposeContextPublisher();
   useShortcutScope([
     {
       combo: isInbox ? { key: "s" } : { key: "s", shift: true },
@@ -183,31 +181,21 @@ export function SectionedTasks({
             />
           ) : options.groupBy === "nada" ? (
             <div className="space-y-4">
-              {/*
-                Contexto de alta por foco (D-A): el foco entrando acá —tareas
-                sin sección— reafirma que no hay sección, por si antes estaba
-                parado en una (más abajo, `SectionItem`). `onFocus` de React
-                burbujea, así que alcanza con un solo handler acá arriba en
-                vez de uno por fila.
-              */}
-              <div onFocus={() => publishSectionFocus({ projectId, sectionId: null, defaultDueDate: null })}>
-                <TaskList
-                  projectId={projectId}
-                  sectionId={null}
-                  parentId={null}
-                  initialTasks={initialTasks}
-                  order={options.order}
-                  quickFilters={options.quickFilters}
-                  showCompleted={options.showCompleted}
-                  timezone={timezone}
-                  selectionOrderIds={listOrderIds}
-                />
-              </div>
+              <TaskList
+                projectId={projectId}
+                sectionId={null}
+                parentId={null}
+                initialTasks={initialTasks}
+                order={options.order}
+                quickFilters={options.quickFilters}
+                showCompleted={options.showCompleted}
+                timezone={timezone}
+                selectionOrderIds={listOrderIds}
+              />
               <div ref={sectionListRef}>
                 <SectionList
                   projectId={projectId}
                   initialSections={initialSections}
-                  onSectionFocus={(sectionId) => publishSectionFocus({ projectId, sectionId, defaultDueDate: null })}
                   taskListOptions={{
                     order: options.order,
                     quickFilters: options.quickFilters,
