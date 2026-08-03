@@ -183,8 +183,8 @@ que ya existen en Google, pero las tareas y hábitos de Trazio no se publican ah
 
 ### Bandeja de entrada
 
-Vista como lista, panel agrupado por sección, o calendario. Vacía muestra:
-"Tu bandeja de entrada está vacía."
+Vista como lista, **panel** o calendario. Vacía muestra: "Tu bandeja de entrada
+está vacía."
 
 ### Hoy
 
@@ -205,10 +205,16 @@ su botón de acciones.
 
 Tres formas de verlo, igual que Próximos y Proyecto: **lista** (la secuencia de
 arriba), **panel** (columnas por "agrupar por"; solo tareas — un evento no
-tiene prioridad ni etiqueta con la que armar una columna, y si hay eventos ese
-día el panel avisa que no los muestra) y **calendario**, siempre en modo día y
-sin navegación entre días: Hoy es un solo día por definición, así que no ofrece
-el selector de formato de calendario ni un control para ir a otro día.
+tiene sección, fecha ni prioridad con la que armar una columna, y si hay
+eventos ese día el panel avisa que no los muestra) y **calendario**, siempre en
+modo día y sin navegación entre días: Hoy es un solo día por definición, así
+que no ofrece el selector de formato de calendario ni un control para ir a
+otro día.
+
+En el panel de Hoy, agrupar por "nada" muestra las cuatro columnas de
+prioridad, no una sola: Hoy cruza proyectos (no tiene secciones propias) y es
+un solo día (no hay días con los que armar columnas), así que prioridad es el
+único campo que le queda con el que agrupar signifique algo.
 
 ### Próximos
 
@@ -217,8 +223,10 @@ Tres formas de verlo:
 
 - **Lista:** agrupada por día, con "Hoy" y "Mañana" resaltados, contador por día y
   botón para agregar una tarea en ese día.
-- **Panel:** una columna por día más una columna "Sin fecha". Arrastrar una tarea a
-  otra columna le cambia la fecha.
+- **Panel:** columnas por "agrupar por". Sin agrupar, una columna por día de la
+  ventana más "Sin fecha" (las atrasadas se suman a la de "Hoy"); agrupando por
+  fecha, sección o prioridad, esas columnas en su lugar. Arrastrar una tarea a
+  otra columna le escribe el campo que las define.
 - **Calendario:** semana, cuatro días o mes en escritorio; día o mes en teléfono.
 
 ### Proyecto
@@ -227,6 +235,10 @@ Primero las tareas sin sección, después cada sección colapsable con su propio
 de agregar. Tareas y secciones se reordenan arrastrando (solo con orden manual y sin
 agrupación activa). Desde el menú del proyecto: editar, favorito, agregar sección,
 archivar, eliminar.
+
+También ofrece panel, igual que Bandeja de entrada: columnas por "agrupar por" —
+sin agrupar, una por sección — con alta al pie de cada columna y, cuando las
+columnas son secciones, la opción de crear una sección directamente ahí.
 
 ### Completado
 
@@ -281,7 +293,9 @@ por separado.**
 - Mostrar u ocultar: completadas, hábitos, repeticiones futuras.
 - Cuántos días adelante mostrar.
 - Orden: manual, por nombre, por fecha o por prioridad.
-- Agrupar por: nada, prioridad o etiqueta.
+- Agrupar por: nada, sección, fecha, prioridad o etiqueta. En el panel, el
+  agrupador define las columnas y no ofrece etiqueta (una tarea puede tener
+  varias, y aparecería repetida en varias columnas).
 - Filtrar por fecha límite, por prioridad y por etiqueta.
 - Botón para restablecer todas las opciones.
 

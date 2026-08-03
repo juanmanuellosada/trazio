@@ -415,6 +415,17 @@ colapso o expansión del panel lateral (`w-16`/`w-64`,
 columna sin ningún ajuste adicional, porque sigue siendo el mismo layout
 flex de siempre.
 
+**Excepción acotada al modo panel (D47).** Un tablero no es una línea de
+texto: cada columna tiene su propio ancho corto, y el tope de 1152px solo
+limita cuántas se ven a la vez. Por eso, en la forma de ver "panel" —Bandeja
+de entrada, Proyecto, Próximos y Hoy—, el contenedor deja de aplicar
+`max-w-content`/`mx-auto` y ocupa el ancho disponible en su lugar; "lista" y
+"calendario" siguen exactamente como se describe arriba, sin ningún cambio.
+Es la única excepción que D39 admite, y está acotada a una forma de ver, no a
+una revisión del tope en sí. `components/projects/sectioned-tasks.tsx`,
+`components/tasks/proximos-view.tsx` y `components/tasks/hoy-view.tsx` son
+las tres vistas afectadas.
+
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 
 | Token | Valor | Uso |

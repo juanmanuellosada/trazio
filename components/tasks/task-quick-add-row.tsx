@@ -105,8 +105,8 @@ function mergeDate(
   return fallback;
 }
 
-function mergePriority(parsedPriority: number | null | undefined, override: number | undefined): number {
-  return override ?? parsedPriority ?? DEFAULT_TASK_PRIORITY;
+function mergePriority(parsedPriority: number | null | undefined, override: number | undefined, fallback?: number): number {
+  return override ?? parsedPriority ?? fallback ?? DEFAULT_TASK_PRIORITY;
 }
 
 /** Mismo criterio que el resto de los atributos (bloque `alta-de-tareas-en-contexto`, D-E): lo elegido en `LabelPicker` reemplaza por completo a lo que detectó el `@` del parser, en vez de sumarse. */
@@ -146,6 +146,7 @@ export function TaskQuickAddRow({
   defaultDueDate,
   defaultDueAt,
   defaultDurationMinutes,
+  defaultPriority,
   position,
   autoOpen,
   variant = "compact",
@@ -161,6 +162,14 @@ export function TaskQuickAddRow({
   defaultDueAt?: string;
   /** Duración en minutos que acompaña a `defaultDueAt` (D-F). Sin efecto sin `defaultDueAt`. */
   defaultDurationMinutes?: number;
+  /**
+   * Prioridad precargada (grupo 5 de `panel-con-columnas-por-campo`, D-F):
+   * el alta al pie de una columna de prioridad del panel la usa para que la
+   * tarea nueva nazca con la prioridad de esa columna. Mismo criterio de
+   * prioridad que el resto de los atributos — el parser y el selector
+   * explícito le siguen ganando (ver `mergePriority`).
+   */
+  defaultPriority?: number;
   /**
    * Posición explícita entre hermanos (bloque `menu-contextual-de-tarea`,
    * "Agregar tarea encima/debajo"): quien monta el composer ya la calculó con
@@ -346,7 +355,7 @@ export function TaskQuickAddRow({
   };
 
   const previewDate = mergeDate(preview, dateOverride, dateFallback);
-  const previewPriority = mergePriority(preview?.priority, priorityOverride);
+  const previewPriority = mergePriority(preview?.priority, priorityOverride, defaultPriority);
   const previewDeadline = deadlineOverride !== undefined ? deadlineOverride : null; // el parser no reconoce fecha límite
   const previewDestination = mergeDestination(preview?.project, destinationOverride, projectId, sectionId);
 
@@ -395,7 +404,7 @@ export function TaskQuickAddRow({
     const finalTitle = final.title || trimmed;
 
     const date = mergeDate(final, dateOverride, dateFallback);
-    const priority = mergePriority(final.priority, priorityOverride);
+    const priority = mergePriority(final.priority, priorityOverride, defaultPriority);
     const deadline = deadlineOverride !== undefined ? deadlineOverride : null;
     const destination = mergeDestination(final.project, destinationOverride, projectId, sectionId);
     const labels = mergeLabels(final.labels, labelsOverride);

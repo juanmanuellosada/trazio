@@ -117,11 +117,6 @@ export function parseViewOptions(viewKey: string, raw: unknown): ViewOptions {
   };
 }
 
-/** El arrastre entre columnas/filas solo está habilitado con orden manual y sin agrupación activa (D-I, bloque 6.10), la misma condición que ya rige el arrastre en modo lista. */
-export function isDragEnabled(options: Pick<ViewOptions, "order" | "groupBy">): boolean {
-  return options.order === "manual" && options.groupBy === "nada";
-}
-
 /**
  * El panel no ofrece agrupar por etiqueta (D-B, `openspec/changes/panel-con-columnas-por-campo`):
  * una tarea puede tener varias y aparecería repetida en varias columnas. El

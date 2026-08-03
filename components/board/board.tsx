@@ -42,10 +42,16 @@ function ColumnDropZone({ column, children }: { column: BoardColumn; children: R
  * `TaskRow`: "Mover…", "Abrir detalle" con el editor de fecha) sigue
  * disponible sin arrastrar nada; acá solo se suma el atajo.
  *
- * `draggable` en `false` (orden distinto de manual, o agrupación activa —
- * bloque 6.10) apaga el arrastre: sin manija ni `SortableContext`, las
- * tarjetas quedan como una lista de solo lectura por columna (el
- * `DndContext` sigue montado, pero sin nada arrastrable no hace nada).
+ * `draggable` en `false` apaga el arrastre por completo: sin manija ni
+ * `SortableContext`, las tarjetas quedan como una lista de solo lectura por
+ * columna (el `DndContext` sigue montado, pero sin nada arrastrable no hace
+ * nada). Desde `panel-con-columnas-por-campo` (D-C/D-I del design) el
+ * arrastre entre columnas está habilitado con cualquier agrupación —
+ * escribe el campo que la columna define—, así que quien llama pasa
+ * `draggable` en `true` salvo que no haya ningún campo comparable para
+ * reordenar (Hoy no tiene ese caso: mueve prioridad, no posición). Solo
+ * reordenar **dentro** de una columna sigue exigiendo orden manual, y eso lo
+ * decide `onReorderWithinColumn` de quien llama, no este componente.
  *
  * `openspec/changes/panel-con-columnas-por-campo/design.md`, D-D: la
  * tarjeta que se arrastra se dibuja en un `DragOverlay` (un portal al
@@ -69,6 +75,7 @@ export function Board({
   onReorderWithinColumn,
   onMoveAcrossColumns,
   renderColumnEmptyAction,
+  renderColumnFooter,
 }: {
   columns: BoardColumn[];
   allTasks: TaskRowData[];
@@ -76,12 +83,17 @@ export function Board({
   onReorderWithinColumn: (columnId: string, taskId: string, position: number) => void;
   onMoveAcrossColumns: (taskId: string, fromColumnId: string, toColumnId: string) => void;
   /**
-   * Hueco para "agregar tarea" dentro de la columna vacía (grupo 5, D-F):
-   * esa acción la agrega otra tanda de `panel-con-columnas-por-campo`, con
-   * el campo de esta columna ya puesto. Sin nada acá, la columna vacía
-   * queda solo con el texto que explica qué va a aparecer (tarea 6.2).
+   * "Agregar tarea" dentro de la columna vacía (grupo 5, D-F): mismo
+   * componente que `renderColumnFooter`, para que una columna sin tareas no
+   * quede solo con el texto que explica qué va a aparecer (tarea 6.2).
    */
   renderColumnEmptyAction?: (column: BoardColumn) => ReactNode;
+  /**
+   * "Agregar tarea" al pie de una columna que ya tiene tareas (grupo 5,
+   * D-F): mutuamente excluyente con `renderColumnEmptyAction` (una columna
+   * vacía muestra la acción dentro del estado vacío, no las dos a la vez).
+   */
+  renderColumnFooter?: (column: BoardColumn) => ReactNode;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -166,13 +178,15 @@ export function Board({
                   ))}
                 </ul>
               )}
-              {column.tasks.length === 0 && (
+              {column.tasks.length === 0 ? (
                 <TaskListEmptyState
                   icon={Inbox}
                   title="Esta columna está vacía."
                   description="Las tareas que agregues o muevas para acá van a aparecer en este lugar."
                   action={renderColumnEmptyAction?.(column)}
                 />
+              ) : (
+                renderColumnFooter?.(column)
               )}
             </ColumnDropZone>
           </div>

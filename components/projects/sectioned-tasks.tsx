@@ -5,8 +5,9 @@ import type { ReactNode } from "react";
 import { useTheme } from "next-themes";
 import { useMounted } from "@/hooks/use-mounted";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
-import { SectionList } from "@/components/sections/section-list";
+import { AddSectionRow, SectionList } from "@/components/sections/section-list";
 import { TaskList } from "@/components/tasks/task-list";
+import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
 import { TaskRow as TaskRowView } from "@/components/tasks/task-row";
 import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { Board, type BoardColumn } from "@/components/board/board";
@@ -15,19 +16,19 @@ import { SelectionActionBar } from "@/components/selection/selection-action-bar"
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { clickButtonByText } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
+import { dateColumns, priorityColumns, sectionColumns, UNDATED_COLUMN_ID, UNSECTIONED_COLUMN_ID } from "@/lib/board/panel-columns";
+import { dateMovePatch, priorityMovePatch, sectionMovePatch } from "@/lib/board/panel-move";
 import { useProjects } from "@/lib/projects/use-projects";
-import { useMoveTask } from "@/lib/tasks/mutations";
+import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
 import { useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
-import { isDragEnabled, type ViewOptions } from "@/lib/view-options/schema";
+import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { cn } from "@/lib/utils";
-
-const UNSECTIONED_COLUMN_ID = "sin-seccion";
 
 /**
  * Tareas y secciones de un proyecto (bloques 6, 7 y 8, spec §3 "Proyecto":
@@ -52,10 +53,22 @@ const UNSECTIONED_COLUMN_ID = "sin-seccion";
  * no acá — este componente solo lee `options` vía `useViewOptions` con el
  * mismo `viewKey`. Con agrupación activa (por prioridad o etiqueta), la
  * agrupación por sección se reemplaza por la elegida — las secciones vuelven
- * en cuanto se restablece "nada". En modo panel, las columnas son siempre
- * las secciones (bloque 6.8), sin importar la agrupación: la agrupación ahí
- * solo apaga el arrastre (D-I, bloque 6.10), como en cualquier otra
- * combinación.
+ * en cuanto se restablece "nada".
+ *
+ * **Panel (`openspec/changes/panel-con-columnas-por-campo/`, D-A/D-C/D-F):**
+ * las columnas salen del agrupador, no están cableadas a esta pantalla.
+ * "Nada" y "sección" producen las mismas columnas acá —las secciones del
+ * proyecto, más "Sin sección" (D-A)—, así que `sectionColumns` cubre las
+ * dos; "fecha" y "prioridad" son explícitas y valen igual que en cualquier
+ * otra pantalla. Mover entre columnas escribe el campo que las define
+ * (D-C); reordenar **dentro** de una columna sigue siendo posición y solo
+ * persiste con orden manual, sin importar qué agrupe a las columnas. El
+ * panel ofrece "crear sección" (`AddSectionRow`, reusado de
+ * `section-list.tsx`) únicamente cuando sus columnas son secciones (D-F) —
+ * en un tablero por fecha o prioridad, crear una sección no crea ninguna
+ * columna. `sectionListRef` es el mismo para lista y panel: solo una de las
+ * dos monta su "Agregar sección" a la vez, así que el atajo `S`/`⇧S` sigue
+ * encontrándolo sin duplicar el registro.
  */
 export function SectionedTasks({
   projectId,
@@ -89,11 +102,11 @@ export function SectionedTasks({
   const projectColorHex = resolveProjectColorHex(project?.color ?? null, theme);
   const resolveTaskColor = () => projectColorHex;
   const moveTask = useMoveTask();
+  const updateTask = useUpdateTask();
   const sections = [...(sectionsData ?? [])].sort((a, b) => a.position - b.position);
   const allTasks = tasksData ?? [];
   const isEmpty = sections.length === 0 && allTasks.length === 0;
 
-  const dragEnabled = isDragEnabled(options);
   const topLevelTasks = allTasks.filter((t) => t.parent_id === null);
   const visibleTasks = applyQuickFilters(topLevelTasks, options.quickFilters, options.showCompleted);
 
@@ -113,6 +126,7 @@ export function SectionedTasks({
     },
   ]);
 
+  // Solo para la lista agrupada por sección (rama `options.groupBy === "nada"` más abajo): sigue igual que antes.
   function columnTasks(sectionId: string | null): TaskRow[] {
     return orderTasks(
       visibleTasks.filter((t) => t.section_id === sectionId),
@@ -121,21 +135,73 @@ export function SectionedTasks({
     );
   }
 
-  const boardColumns: BoardColumn[] = [
-    { id: UNSECTIONED_COLUMN_ID, title: "Sin sección", tasks: columnTasks(null) },
-    ...sections.map((section) => ({ id: section.id, title: section.name, tasks: columnTasks(section.id) })),
-  ];
+  // Panel (grupo 1/2 de `panel-con-columnas-por-campo`, D-A/D-C): las
+  // columnas salen del agrupador. "Nada" y "sección" son las mismas acá
+  // (D-A) — `sectionColumns` cubre las dos.
+  const panelGroupBy = effectivePanelGroupBy(options.groupBy);
+  const orderedPanelTasks = orderTasks(visibleTasks, options.order, timezone);
+  const boardColumns: BoardColumn[] =
+    panelGroupBy === "fecha"
+      ? dateColumns(orderedPanelTasks, timezone).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
+      : panelGroupBy === "prioridad"
+        ? priorityColumns(orderedPanelTasks).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
+        : sectionColumns(orderedPanelTasks, sections).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }));
 
-  function handleReorderWithinColumn(columnId: string, taskId: string, position: number) {
-    const sectionId = columnId === UNSECTIONED_COLUMN_ID ? null : columnId;
-    moveTask.mutate({ id: taskId, fromProjectId: projectId, toProjectId: projectId, sectionId, parentId: null, position });
+  // Reordenar dentro de una columna sigue siendo posición y solo tiene
+  // sentido con orden manual (D-C, tarea 2.5), sin importar qué campo
+  // definan las columnas: la tarea no cambia de sección/fecha/prioridad,
+  // solo de lugar entre sus hermanas.
+  function handleReorderWithinColumn(_columnId: string, taskId: string, position: number) {
+    if (options.order !== "manual") return;
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    moveTask.mutate({ id: taskId, fromProjectId: projectId, toProjectId: projectId, sectionId: task.section_id, parentId: null, position });
   }
 
+  // Mover entre columnas escribe el campo que las define (D-C): sección
+  // (con la posición, como cualquier otro movimiento), fecha (conservando
+  // la hora) o prioridad.
   function handleMoveAcrossColumns(taskId: string, _fromColumnId: string, toColumnId: string) {
-    const sectionId = toColumnId === UNSECTIONED_COLUMN_ID ? null : toColumnId;
-    const destination = columnTasks(sectionId);
-    const position = destination.length > 0 ? destination[destination.length - 1].position + 1000 : 1000;
-    moveTask.mutate({ id: taskId, fromProjectId: projectId, toProjectId: projectId, sectionId, parentId: null, position });
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (panelGroupBy === "fecha") {
+      updateTask.mutate({ id: taskId, projectId, patch: dateMovePatch(task, toColumnId, timezone) });
+      return;
+    }
+    if (panelGroupBy === "prioridad") {
+      const patch = priorityMovePatch(toColumnId);
+      if (patch) updateTask.mutate({ id: taskId, projectId, patch });
+      return;
+    }
+    const patch = sectionMovePatch(allTasks, projectId, toColumnId);
+    moveTask.mutate({ id: taskId, fromProjectId: projectId, toProjectId: projectId, sectionId: patch.section_id, parentId: null, position: patch.position });
+  }
+
+  // Agregar tarea al pie de cada columna, con el campo de esa columna ya
+  // puesto (grupo 5, D-F): el mismo componente para la columna vacía
+  // (`renderColumnEmptyAction`) y la que ya tiene tareas
+  // (`renderColumnFooter`) — nunca las dos a la vez (`components/board/board.tsx`).
+  function renderColumnAdd(column: BoardColumn) {
+    if (panelGroupBy === "fecha") {
+      return (
+        <TaskQuickAddRow
+          projectId={projectId}
+          sectionId={null}
+          parentId={null}
+          defaultDueDate={column.id === UNDATED_COLUMN_ID ? undefined : column.id}
+        />
+      );
+    }
+    if (panelGroupBy === "prioridad") {
+      return <TaskQuickAddRow projectId={projectId} sectionId={null} parentId={null} defaultPriority={Number(column.id)} />;
+    }
+    return (
+      <TaskQuickAddRow
+        projectId={projectId}
+        sectionId={column.id === UNSECTIONED_COLUMN_ID ? null : column.id}
+        parentId={null}
+      />
+    );
   }
 
   // Selección múltiple (bloque 7.10-7.13): orden visual para `⇧clic`, en
@@ -155,20 +221,34 @@ export function SectionedTasks({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div
           className={cn(
-            "w-full max-w-content mx-auto flex-1 p-4 sm:p-6",
+            "flex-1 p-4 sm:p-6",
+            // El panel no tiene tope propio (D-E, excepción acotada a D39):
+            // un tablero no es una línea de texto, ocupa el ancho
+            // disponible. Lista y calendario no cambian.
+            options.viewShape === "panel" ? "w-full" : "w-full max-w-content mx-auto",
             options.viewShape === "calendario" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
           )}
         >
           {isEmpty ? (
             emptyState
           ) : options.viewShape === "panel" ? (
-            <Board
-              columns={boardColumns}
-              allTasks={allTasks}
-              draggable={dragEnabled}
-              onReorderWithinColumn={handleReorderWithinColumn}
-              onMoveAcrossColumns={handleMoveAcrossColumns}
-            />
+            <>
+              <Board
+                columns={boardColumns}
+                allTasks={allTasks}
+                draggable
+                onReorderWithinColumn={handleReorderWithinColumn}
+                onMoveAcrossColumns={handleMoveAcrossColumns}
+                renderColumnEmptyAction={renderColumnAdd}
+                renderColumnFooter={renderColumnAdd}
+              />
+              {/* Crear sección solo cuando las columnas son secciones (D-F): en un tablero por fecha o prioridad, crear una sección no crea ninguna columna. */}
+              {(panelGroupBy === "nada" || panelGroupBy === "seccion") && (
+                <div ref={sectionListRef} className="mt-2">
+                  <AddSectionRow projectId={projectId} />
+                </div>
+              )}
+            </>
           ) : options.viewShape === "calendario" ? (
             <ScreenCalendar
               timezone={timezone}
@@ -215,7 +295,7 @@ export function SectionedTasks({
                       {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
                     </h2>
                   )}
-                  {/* Sin arrastre acá (D-I, bloque 6.10): la agrupación reemplaza a las secciones, y el criterio ya exige "manual y sin agrupación". */}
+                  {/* Sin arrastre acá: en la lista, agrupar por prioridad o etiqueta reemplaza a las secciones y no hay ningún campo de columna que escribir al mover — eso es solo el modo panel (D-C). */}
                   <ul className="flex flex-col divide-y divide-border/60">
                     {group.tasks.map((task) => (
                       <TaskRowView

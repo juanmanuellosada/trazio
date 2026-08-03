@@ -1206,3 +1206,54 @@ tests. El requirement "El alta ofrece continuar en el detalle de la tarea"
 de `openspec/specs/alta-de-tareas/spec.md` queda corregido para pedir que
 la acción abra siempre, con o sin título, y para separar el escenario de
 cerrar con título (D42) del de cerrar sin él (D46).
+
+---
+
+## D47 — El agrupador define las columnas del panel; etiqueta queda afuera, y el panel exceptúa el tope de ancho de D39
+
+**Fecha.** 2026-08-03
+
+**Contexto.** El modo panel tenía sus columnas cableadas por pantalla —secciones
+en Bandeja y Proyecto, días en Próximos— sin relación con el control "agrupar
+por" de la barra de opciones, que ya existía y no las tocaba. Pedido del dueño:
+*"en el modo panel, el agrupador es por lo que se muestra cada columna. O sea si
+yo no agrupo por nada, las columnas se muestran por secciones. Si yo pongo por
+fecha las columnas son las fechas disponibles. Y así con cada campo."*
+(`openspec/changes/panel-con-columnas-por-campo/`).
+
+**Decisión.** Las columnas del panel salen del agrupador, no de la pantalla:
+"nada" (la agrupación natural de cada pantalla), sección, fecha o prioridad.
+Mover una tarjeta entre columnas escribe el campo que las define — sección (con
+la posición), fecha (conservando la hora) o prioridad —, con cualquier valor del
+agrupador; reordenar **dentro** de una columna sigue exigiendo orden manual,
+porque es lo único que puede persistir una posición elegida a mano. Esto
+invierte la condición anterior, que apagaba el arrastre justo cuando había
+agrupación activa.
+
+**Etiqueta no se ofrece en el panel.** Una tarea puede tener varias, así que
+aparecería repetida en varias columnas y mover dejaría de significar una sola
+cosa. El agrupador es el mismo control y la misma preferencia guardada que la
+lista, donde etiqueta sigue disponible: una preferencia guardada en "etiqueta"
+se trata como "nada" dentro del panel, sin pisarse — volver a la lista la
+encuentra intacta.
+
+**En Hoy, "nada" es prioridad.** Hoy cruza proyectos (no tiene secciones
+propias) y es un solo día (no hay días con los que armar columnas): de los
+cuatro campos del agrupador, prioridad es el único que le queda con el que
+agrupar signifique algo. Es la única de las cuatro pantallas donde "nada" no
+reproduce lo que ya mostraba la lista antes de este cambio.
+
+**El panel exceptúa el tope de ancho de D39.** La columna de contenido se
+centra siempre en 1152px; un tablero no es una línea de texto —cada columna
+tiene su propio ancho corto, y el tope solo limita cuántas se ven a la vez—,
+así que en modo panel el contenido ocupa el ancho disponible. Es una excepción
+acotada a esa forma de ver: lista y calendario no cambian.
+
+**Consecuencia.** `components/projects/sectioned-tasks.tsx`,
+`components/tasks/proximos-view.tsx` y `components/tasks/hoy-view.tsx` arman
+sus columnas del panel con el modelo compartido (`lib/board/panel-columns.ts`,
+`lib/board/panel-move.ts`) en vez de cablearlas. `lib/view-options/schema.ts`
+pierde `isDragEnabled` (la condición que invertía) y suma `effectivePanelGroupBy`/
+`effectiveListGroupBy`. `docs/product-spec.md` y `docs/design-system.md`
+(§5.1) quedan actualizados con el modelo nuevo, el caso especial de Hoy y la
+excepción de ancho.

@@ -263,7 +263,12 @@ function SectionItem({
   );
 }
 
-function AddSectionRow({ projectId }: { projectId: string }) {
+/**
+ * Exportado (grupo 5, D-F de `panel-con-columnas-por-campo`): el modo panel
+ * lo reusa tal cual para ofrecer "crear sección" cuando sus columnas son
+ * secciones, sin duplicar el formulario ni la mutación.
+ */
+export function AddSectionRow({ projectId }: { projectId: string }) {
   const [adding, setAdding] = useState(false);
   const createSection = useCreateSection(projectId);
 

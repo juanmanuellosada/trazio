@@ -9,19 +9,22 @@ import { useMounted } from "@/hooks/use-mounted";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { isTaskOverdue, taskDueDay, todayInTimeZone } from "@/lib/dates/today";
 import { useProjects } from "@/lib/projects/use-projects";
+import { useAllSections } from "@/lib/sections/use-sections";
 import { useUndatedTasks } from "@/lib/tasks/use-undated-tasks";
 import { useUpcomingTasks } from "@/lib/tasks/use-upcoming-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { Board, type BoardColumn } from "@/components/board/board";
+import { dateColumns, priorityColumns, sectionColumns, UNDATED_COLUMN_ID } from "@/lib/board/panel-columns";
+import { dateMovePatch, priorityMovePatch, sectionMovePatch } from "@/lib/board/panel-move";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
-import { useUpdateTask } from "@/lib/tasks/mutations";
+import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
-import { isDragEnabled, type ViewOptions } from "@/lib/view-options/schema";
+import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { cn } from "@/lib/utils";
 import { usePublishComposeContext } from "./compose-context";
@@ -30,7 +33,6 @@ import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
 
 const VIEW_KEY = "proximos";
-const UNDATED_COLUMN_ID = "sin-fecha";
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -56,6 +58,18 @@ function dayGroupLabel(day: string, offset: number): string {
  * `nowIso` viaja del Server Component por el mismo motivo que en `HoyView`
  * (D1): mismo instante entre el primer render del cliente y el del
  * servidor.
+ *
+ * **Panel (`openspec/changes/panel-con-columnas-por-campo/`, D-A/D-C):** con
+ * el agrupador en "nada" las columnas son la ventana de días configurada más
+ * "Sin fecha" (igual que antes de esta capacidad, sin tocar); con "fecha"
+ * son los días que ya tienen tareas, sin ventana (`dateColumns`, distinto de
+ * "nada"); con "prioridad" son las cuatro fijas; con "sección" son todas las
+ * secciones de todos los proyectos (`useAllSections`, D-A del design:
+ * "sección... vale igual en cualquier pantalla") más "Sin sección" — mover
+ * una tarea a una sección de otro proyecto la rechaza la base, igual que
+ * cualquier otro intento de esa combinación (D24, revertido con el toast de
+ * error de siempre). Próximos no ofrece "crear sección" en ningún caso: no
+ * hay un único proyecto al que atribuirle la nueva sección.
  */
 export function ProximosView({
   userId,
@@ -87,6 +101,12 @@ export function ProximosView({
   const { data } = useUpcomingTasks(userId, timezone, windowDays, initialTasks, options.showCompleted);
   const { data: undatedData } = useUndatedTasks(userId, undefined, options.showCompleted);
   const updateTask = useUpdateTask();
+  const moveTask = useMoveTask();
+  // Todas las secciones de todos los proyectos (D-A del design: "sección"
+  // vale igual en cualquier pantalla), no `useSections(projectId)` — acá no
+  // hay un único proyecto. Ya viene sembrada desde el layout
+  // (`AllSectionsSeed`), así que esto no dispara una consulta nueva.
+  const { data: allSectionsData } = useAllSections();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
 
   // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): el modal
@@ -125,33 +145,90 @@ export function ProximosView({
   const isEmpty = overdue.length === 0 && days.every((d) => d.tasks.length === 0);
 
   function handleReorderWithinColumn() {
-    // El orden dentro de una columna de día no persiste en `position`
-    // (D25: `position` no es comparable entre proyectos): un reordenamiento
-    // manual acá no tiene ancla estable, así que no hace nada — el criterio
-    // de arrastre habilitado ya exige orden manual y sin agrupación, pero
-    // "manual" en Próximos no tiene una columna propia que grabar.
+    // El orden dentro de una columna nunca persiste en `position` (D25:
+    // `position` no es comparable entre proyectos, y Próximos cruza
+    // proyectos): sin ancla estable, no hace nada, sin importar el
+    // agrupador ni el orden configurado.
   }
 
+  // Panel (grupo 1/2, D-A/D-C): con "nada", las columnas son la ventana de
+  // días configurada (sin tocar, distinto de `dateColumns`: acá se generan
+  // los días vacíos de la ventana, no solo los que ya tienen tareas). Con
+  // los demás valores, salen del modelo compartido.
+  const panelGroupBy = effectivePanelGroupBy(options.groupBy);
+  const panelTaskPool = [...tasks, ...undatedTasks];
+  const orderedPanelPool = orderTasks(panelTaskPool, options.order, timezone);
+  const allSections = allSectionsData ?? [];
+
+  const boardColumns: BoardColumn[] =
+    panelGroupBy === "fecha"
+      ? dateColumns(orderedPanelPool, timezone).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
+      : panelGroupBy === "prioridad"
+        ? priorityColumns(orderedPanelPool).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
+        : panelGroupBy === "seccion"
+          ? sectionColumns(orderedPanelPool, allSections).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
+          : // "nada": sin columna propia de "atrasadas" (a diferencia de la
+            // lista) — se suman a la columna del primer día ("Hoy").
+            [
+              ...days.map(({ day, offset, tasks: dayTasks }) => ({
+                id: day,
+                title: dayGroupLabel(day, offset),
+                tasks: offset === 0 ? [...overdue, ...dayTasks] : dayTasks,
+              })),
+              { id: UNDATED_COLUMN_ID, title: "Sin fecha", tasks: orderTasks(undatedTasks, options.order, timezone) },
+            ];
+
+  // Mover entre columnas escribe el campo que las define (D-C). "Nada" y
+  // "fecha" comparten el mismo esquema de columnas (día ISO o
+  // `UNDATED_COLUMN_ID`), así que las dos usan `dateMovePatch`.
   function handleMoveAcrossColumns(taskId: string, _fromColumnId: string, toColumnId: string) {
-    const task = tasks.find((t) => t.id === taskId) ?? undatedTasks.find((t) => t.id === taskId);
+    const task = panelTaskPool.find((t) => t.id === taskId);
     if (!task) return;
-    const dueDate = toColumnId === UNDATED_COLUMN_ID ? null : toColumnId;
-    updateTask.mutate({ id: taskId, projectId: task.project_id, patch: { due_date: dueDate, due_at: null } });
+    if (panelGroupBy === "prioridad") {
+      const patch = priorityMovePatch(toColumnId);
+      if (patch) updateTask.mutate({ id: taskId, projectId: task.project_id, patch });
+      return;
+    }
+    if (panelGroupBy === "seccion") {
+      const patch = sectionMovePatch(panelTaskPool, task.project_id, toColumnId);
+      moveTask.mutate({
+        id: taskId,
+        fromProjectId: task.project_id,
+        toProjectId: task.project_id,
+        sectionId: patch.section_id,
+        parentId: null,
+        position: patch.position,
+      });
+      return;
+    }
+    updateTask.mutate({ id: taskId, projectId: task.project_id, patch: dateMovePatch(task, toColumnId, timezone) });
   }
 
-  // Sin columna propia de "atrasadas" en el panel (a diferencia de la
-  // lista): el spec de `modo-panel` solo pide una columna por día más "Sin
-  // fecha". Las atrasadas se suman a la columna del primer día ("Hoy"),
-  // para que sigan siendo alcanzables sin perder la estructura de columnas
-  // que pide el spec.
-  const boardColumns: BoardColumn[] = [
-    ...days.map(({ day, offset, tasks: dayTasks }) => ({
-      id: day,
-      title: dayGroupLabel(day, offset),
-      tasks: offset === 0 ? [...overdue, ...dayTasks] : dayTasks,
-    })),
-    { id: UNDATED_COLUMN_ID, title: "Sin fecha", tasks: orderTasks(undatedTasks, options.order, timezone) },
-  ];
+  // Agregar tarea al pie de cada columna, con el campo de esa columna ya
+  // puesto (grupo 5, D-F). Sin "crear sección" acá (a diferencia de Bandeja
+  // y Proyecto): no hay un único proyecto al que atribuirle la nueva.
+  function renderColumnAdd(column: BoardColumn) {
+    if (panelGroupBy === "prioridad") {
+      return inboxProjectId ? (
+        <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultPriority={Number(column.id)} />
+      ) : null;
+    }
+    if (panelGroupBy === "seccion") {
+      const section = allSections.find((s) => s.id === column.id);
+      const targetProjectId = section?.project_id ?? inboxProjectId;
+      return targetProjectId ? (
+        <TaskQuickAddRow projectId={targetProjectId} sectionId={section?.id ?? null} parentId={null} />
+      ) : null;
+    }
+    return inboxProjectId ? (
+      <TaskQuickAddRow
+        projectId={inboxProjectId}
+        sectionId={null}
+        parentId={null}
+        defaultDueDate={column.id === UNDATED_COLUMN_ID ? undefined : column.id}
+      />
+    ) : null;
+  }
 
   // Selección múltiple (bloque 7.10-7.13): en lista, las tareas sin fecha no
   // se muestran (bloque 3.9) y por lo tanto no son candidatas; en panel sí
@@ -171,13 +248,17 @@ export function ProximosView({
         </header>
 
         {options.viewShape === "panel" ? (
-        <div className={cn("w-full max-w-content mx-auto flex-1 overflow-hidden p-4 sm:p-6")}>
+        // El panel no tiene tope propio (D-E, excepción acotada a D39): un
+        // tablero no es una línea de texto, ocupa el ancho disponible.
+        <div className="w-full flex-1 overflow-hidden p-4 sm:p-6">
           <Board
             columns={boardColumns}
             allTasks={tasks}
-            draggable={isDragEnabled(options)}
+            draggable
             onReorderWithinColumn={handleReorderWithinColumn}
             onMoveAcrossColumns={handleMoveAcrossColumns}
+            renderColumnEmptyAction={renderColumnAdd}
+            renderColumnFooter={renderColumnAdd}
           />
         </div>
       ) : options.viewShape === "calendario" ? (

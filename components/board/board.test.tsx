@@ -185,13 +185,39 @@ describe("Board — columna vacía (tarea 6.2, `.claude/rules/copy.md` \"Vacíos
     expect(screen.queryByText("Sin tareas.")).not.toBeInTheDocument();
   });
 
-  it("deja el hueco para la acción de agregar (grupo 5, otra tanda)", () => {
+  it("ofrece la acción de agregar dentro del estado vacío (grupo 5)", () => {
     const columns: BoardColumn[] = [{ id: "col-a", title: "Vacía", tasks: [] }];
     renderBoard(columns, true, {
       renderColumnEmptyAction: (column) => <button type="button">{`Agregar a ${column.title}`}</button>,
     });
 
     expect(screen.getByRole("button", { name: "Agregar a Vacía" })).toBeInTheDocument();
+  });
+});
+
+describe("Board — agregar al pie de una columna con tareas (grupo 5, D-F)", () => {
+  beforeEach(async () => {
+    const supabaseClientModule = await import("@/lib/supabase/client");
+    (supabaseClientModule.createClient as ReturnType<typeof vi.fn>).mockImplementation(stubSupabaseClient);
+  });
+
+  it("una columna con tareas muestra `renderColumnFooter`, no el estado vacío", () => {
+    const columns: BoardColumn[] = [{ id: "col-a", title: "Con tareas", tasks: [task({ id: "t1", title: "Tarea" })] }];
+    renderBoard(columns, true, {
+      renderColumnFooter: (column) => <button type="button">{`Agregar a ${column.title}`}</button>,
+    });
+
+    expect(screen.getByRole("button", { name: "Agregar a Con tareas" })).toBeInTheDocument();
+    expect(screen.queryByText("Esta columna está vacía.")).not.toBeInTheDocument();
+  });
+
+  it("una columna vacía no muestra `renderColumnFooter`: la acción va dentro del estado vacío", () => {
+    const columns: BoardColumn[] = [{ id: "col-a", title: "Vacía", tasks: [] }];
+    renderBoard(columns, true, {
+      renderColumnFooter: () => <button type="button">Pie de columna</button>,
+    });
+
+    expect(screen.queryByRole("button", { name: "Pie de columna" })).not.toBeInTheDocument();
   });
 });
 

@@ -5,7 +5,6 @@ import {
   defaultOptionsForViewKey,
   effectiveListGroupBy,
   effectivePanelGroupBy,
-  isDragEnabled,
   parseViewOptions,
 } from "./schema";
 
@@ -94,20 +93,6 @@ describe("parseViewOptions: clave desconocida se ignora (requirement de specs/op
       showFutureRecurrences: false,
       formato_calendario: "semana",
     });
-  });
-});
-
-describe("isDragEnabled (D-I, bloque 6.10)", () => {
-  it("habilitado con orden manual y sin agrupación", () => {
-    expect(isDragEnabled({ order: "manual", groupBy: "nada" })).toBe(true);
-  });
-
-  it("deshabilitado con cualquier otro orden", () => {
-    expect(isDragEnabled({ order: "fecha", groupBy: "nada" })).toBe(false);
-  });
-
-  it("deshabilitado con agrupación activa, aunque el orden sea manual", () => {
-    expect(isDragEnabled({ order: "manual", groupBy: "prioridad" })).toBe(false);
   });
 });
 
