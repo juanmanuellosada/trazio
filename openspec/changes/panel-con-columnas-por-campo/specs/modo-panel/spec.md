@@ -54,6 +54,8 @@ Con los demás valores, las columnas SHALL ser: una por sección más "Sin secci
 
 Agrupar por etiqueta NUNCA SHALL producir columnas: una tarea puede tener varias y aparecería repetida. La capacidad `opciones-de-vista` define que ese valor no se ofrece en panel y que una preferencia ya guardada se trata como "nada" sin pisarse.
 
+Agrupar por sección NUNCA SHALL producir columnas en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una columna de sección podía pertenecer a un proyecto distinto del de la tarea que se arrastra, algo que la base siempre rechaza. La capacidad `opciones-de-vista` define que ese valor no se ofrece en esas dos pantallas y que una preferencia ya guardada se trata como "nada" sin pisarse.
+
 Cuando no hay ninguna columna que mostrar, SHALL mostrarse un estado vacío, y NUNCA SHALL quedar la pantalla en blanco.
 
 #### Scenario: Sin agrupar, un proyecto muestra sus secciones
@@ -84,7 +86,7 @@ Arrastrar una tarea entre columnas SHALL escribir el campo que define esas colum
 
 Mover entre columnas de fecha NUNCA SHALL borrar la hora de la tarea: cambia el día, no el momento del día.
 
-Mover entre columnas de sección NUNCA SHALL aceptar una sección de otro proyecto, que la base rechaza.
+Mover entre columnas de sección NUNCA SHALL aceptar una sección de otro proyecto, que la base rechaza. En la práctica esto solo puede ocurrir en Bandeja y Proyecto (los únicos que ofrecen columnas de sección): ahí toda sección visible ya pertenece al proyecto que se está mostrando, así que el rechazo es un cinturón de seguridad, no un camino esperado.
 
 Por **D24**, arrastrar NUNCA SHALL ser la única forma de cambiar esos campos: todos SHALL seguir siendo alcanzables desde el detalle y desde el menú de la tarea.
 

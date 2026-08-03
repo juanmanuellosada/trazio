@@ -44,4 +44,14 @@ describe("reportReminderError", () => {
       "Poné una fecha en la tarea y volvé a intentar.",
     );
   });
+
+  it("un fallo de red real de supabase-js (objeto plano, no `instanceof Error`) también se traduce", () => {
+    reportReminderError({ message: "TypeError: Failed to fetch", details: "", hint: "", code: "" });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "No pudimos guardar el cambio",
+      "se cortó la conexión",
+      "Revisá tu internet y volvé a intentar.",
+    );
+  });
 });

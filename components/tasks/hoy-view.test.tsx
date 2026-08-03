@@ -409,14 +409,14 @@ describe("HoyView — cambiar el agrupador cambia las columnas", () => {
     expect(titles[titles.length - 1]).toBe("Sin fecha");
   });
 
-  it("'sección' produce las secciones de todos los proyectos (Hoy cruza proyectos)", () => {
-    currentAllSections = [{ id: "s1", project_id: "project-1", name: "Trabajo", description: null, position: 1000, is_collapsed: false }];
+  it("'sección' se trata como 'nada' en Hoy (D-C: Hoy cruza proyectos, sección no tiene salida ahí), sin pisar la preferencia guardada", () => {
     renderHoy([task({ id: "t1", title: "Tarea", section_id: "s1", due_date: "2026-08-05" })], eventsOk([]), {
       viewShape: "panel",
       groupBy: "seccion",
     });
 
-    expect(lastBoardProps!.columns.map((c) => c.title)).toEqual(["Sin sección", "Trabajo"]);
+    // En Hoy, "nada" es prioridad (caso especial de D-A) — "sección" cae ahí, igual que "etiqueta".
+    expect(lastBoardProps!.columns.map((c) => c.title)).toEqual(["Urgente", "Alta", "Media", "Baja"]);
   });
 });
 

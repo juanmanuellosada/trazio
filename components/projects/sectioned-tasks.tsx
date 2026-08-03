@@ -138,7 +138,7 @@ export function SectionedTasks({
   // Panel (grupo 1/2 de `panel-con-columnas-por-campo`, D-A/D-C): las
   // columnas salen del agrupador. "Nada" y "sección" son las mismas acá
   // (D-A) — `sectionColumns` cubre las dos.
-  const panelGroupBy = effectivePanelGroupBy(options.groupBy);
+  const panelGroupBy = effectivePanelGroupBy(options.groupBy, viewKey);
   const orderedPanelTasks = orderTasks(visibleTasks, options.order, timezone);
   const boardColumns: BoardColumn[] =
     panelGroupBy === "fecha"

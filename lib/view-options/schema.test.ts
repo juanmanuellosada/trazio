@@ -8,6 +8,9 @@ import {
   parseViewOptions,
 } from "./schema";
 
+/** Proyecto (un solo proyecto), usado en los tests de `effectivePanelGroupBy` donde "sección" sí debe valer. */
+const SINGLE_PROJECT_VIEW_KEY = "proyecto:1";
+
 describe("defaultOptionsForViewKey (bloque 6.1, D25 y specs/opciones-de-vista)", () => {
   it("Bandeja y Proyecto tienen orden manual por defecto", () => {
     expect(defaultOptionsForViewKey("bandeja").order).toBe("manual");
@@ -103,23 +106,48 @@ describe("GROUP_BY_OPTIONS (tarea 1.1, panel-con-columnas-por-campo)", () => {
 });
 
 describe("effectivePanelGroupBy (D-B: el panel no ofrece etiqueta, sin pisar la preferencia guardada)", () => {
-  it("etiqueta se resuelve a nada dentro del panel", () => {
-    expect(effectivePanelGroupBy("etiqueta")).toBe("nada");
+  it("etiqueta se resuelve a nada dentro del panel, en cualquier pantalla", () => {
+    expect(effectivePanelGroupBy("etiqueta", "bandeja")).toBe("nada");
+    expect(effectivePanelGroupBy("etiqueta", "hoy")).toBe("nada");
   });
 
-  it("los demás valores pasan sin cambios", () => {
-    expect(effectivePanelGroupBy("nada")).toBe("nada");
-    expect(effectivePanelGroupBy("seccion")).toBe("seccion");
-    expect(effectivePanelGroupBy("fecha")).toBe("fecha");
-    expect(effectivePanelGroupBy("prioridad")).toBe("prioridad");
+  it("los demás valores pasan sin cambios en Bandeja y Proyecto", () => {
+    expect(effectivePanelGroupBy("nada", SINGLE_PROJECT_VIEW_KEY)).toBe("nada");
+    expect(effectivePanelGroupBy("seccion", SINGLE_PROJECT_VIEW_KEY)).toBe("seccion");
+    expect(effectivePanelGroupBy("fecha", SINGLE_PROJECT_VIEW_KEY)).toBe("fecha");
+    expect(effectivePanelGroupBy("prioridad", SINGLE_PROJECT_VIEW_KEY)).toBe("prioridad");
   });
 
   it("una preferencia guardada en 'etiqueta' sigue siendo 'etiqueta' al releerla, aunque el panel la trate como 'nada'", () => {
     const stored = parseViewOptions("bandeja", { groupBy: "etiqueta" });
     expect(stored.groupBy).toBe("etiqueta");
-    expect(effectivePanelGroupBy(stored.groupBy)).toBe("nada");
+    expect(effectivePanelGroupBy(stored.groupBy, "bandeja")).toBe("nada");
     // Releer de nuevo (ej. al volver a la lista) sigue encontrando "etiqueta" intacto.
     expect(parseViewOptions("bandeja", { groupBy: stored.groupBy }).groupBy).toBe("etiqueta");
+  });
+});
+
+describe("effectivePanelGroupBy (D-C: Hoy y Próximos cruzan proyectos, sección no tiene salida ahí, sin pisar la preferencia guardada)", () => {
+  it("sección se resuelve a nada dentro del panel de Hoy y de Próximos", () => {
+    expect(effectivePanelGroupBy("seccion", "hoy")).toBe("nada");
+    expect(effectivePanelGroupBy("seccion", "proximos")).toBe("nada");
+  });
+
+  it("en Bandeja y Proyecto, sección sigue ofreciéndose sin cambios", () => {
+    expect(effectivePanelGroupBy("seccion", "bandeja")).toBe("seccion");
+    expect(effectivePanelGroupBy("seccion", SINGLE_PROJECT_VIEW_KEY)).toBe("seccion");
+  });
+
+  it("fecha y prioridad no se ven afectadas en Hoy ni en Próximos: solo sección es exclusiva de un proyecto", () => {
+    expect(effectivePanelGroupBy("fecha", "proximos")).toBe("fecha");
+    expect(effectivePanelGroupBy("prioridad", "hoy")).toBe("prioridad");
+  });
+
+  it("una preferencia guardada en 'sección' desde Bandeja sigue siendo 'sección' al releerla en Próximos, aunque el panel de Próximos la trate como 'nada'", () => {
+    const stored = parseViewOptions("proximos", { groupBy: "seccion" });
+    expect(stored.groupBy).toBe("seccion");
+    expect(effectivePanelGroupBy(stored.groupBy, "proximos")).toBe("nada");
+    expect(parseViewOptions("proximos", { groupBy: stored.groupBy }).groupBy).toBe("seccion");
   });
 });
 
@@ -136,13 +164,13 @@ describe("effectiveListGroupBy (espejo de D-B: la lista no ofrece sección ni fe
   });
 
   it("una preferencia guardada en 'sección' desde el panel sigue siendo 'sección' al ir y volver entre lista y panel", () => {
-    const stored = parseViewOptions("proyecto:1", { groupBy: "seccion" });
+    const stored = parseViewOptions(SINGLE_PROJECT_VIEW_KEY, { groupBy: "seccion" });
     expect(stored.groupBy).toBe("seccion");
     // La lista la trata como "nada"...
     expect(effectiveListGroupBy(stored.groupBy)).toBe("nada");
     // ...pero no la pisa: volver a leerla (ej. al volver al panel) la encuentra intacta.
-    const rereadInList = parseViewOptions("proyecto:1", { groupBy: stored.groupBy });
+    const rereadInList = parseViewOptions(SINGLE_PROJECT_VIEW_KEY, { groupBy: stored.groupBy });
     expect(rereadInList.groupBy).toBe("seccion");
-    expect(effectivePanelGroupBy(rereadInList.groupBy)).toBe("seccion");
+    expect(effectivePanelGroupBy(rereadInList.groupBy, SINGLE_PROJECT_VIEW_KEY)).toBe("seccion");
   });
 });

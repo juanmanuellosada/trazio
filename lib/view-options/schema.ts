@@ -117,6 +117,11 @@ export function parseViewOptions(viewKey: string, raw: unknown): ViewOptions {
   };
 }
 
+/** Hoy y Próximos cruzan proyectos: listan tareas (y, en el caso de "sección", secciones) de todos los proyectos, no de uno solo. */
+export function viewKeyCrossesProjects(viewKey: string): boolean {
+  return viewKey === "hoy" || viewKey === "proximos";
+}
+
 /**
  * El panel no ofrece agrupar por etiqueta (D-B, `openspec/changes/panel-con-columnas-por-campo`):
  * una tarea puede tener varias y aparecería repetida en varias columnas. El
@@ -125,9 +130,19 @@ export function parseViewOptions(viewKey: string, raw: unknown): ViewOptions {
  * "etiqueta" NUNCA se pisa acá (quien llama sigue leyendo y escribiendo el
  * valor crudo tal cual): esta función solo resuelve qué grupo usar *dentro*
  * del panel, tratándolo como si fuera "nada".
+ *
+ * Tampoco ofrece agrupar por sección en Hoy ni en Próximos (D-C del design:
+ * la sección "solo tiene sentido dentro de un proyecto"). Esas dos pantallas
+ * cruzan proyectos, así que una columna de sección podía pertenecer a un
+ * proyecto distinto del de la tarea arrastrada — la base lo rechaza siempre
+ * con un disparador, un gesto sin salida. Mismo criterio que "etiqueta": la
+ * preferencia guardada no se pisa, se trata como "nada" solo dentro de esas
+ * dos pantallas.
  */
-export function effectivePanelGroupBy(groupBy: GroupByOption): GroupByOption {
-  return groupBy === "etiqueta" ? "nada" : groupBy;
+export function effectivePanelGroupBy(groupBy: GroupByOption, viewKey: string): GroupByOption {
+  if (groupBy === "etiqueta") return "nada";
+  if (groupBy === "seccion" && viewKeyCrossesProjects(viewKey)) return "nada";
+  return groupBy;
 }
 
 /**

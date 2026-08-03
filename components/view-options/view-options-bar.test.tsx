@@ -30,12 +30,13 @@ vi.mock("@/lib/view-options/use-view-options", () => ({
 
 function renderBar(
   overrides: Partial<ViewOptions> = {},
-  props: { showViewShape?: boolean; showDaysAhead?: boolean; showCalendarFormat?: boolean } = {},
+  props: { showViewShape?: boolean; showDaysAhead?: boolean; showCalendarFormat?: boolean; viewKey?: string } = {},
 ) {
-  currentOptions = { ...defaultOptionsForViewKey("proyecto:1"), ...overrides };
+  const viewKey = props.viewKey ?? "proyecto:1";
+  currentOptions = { ...defaultOptionsForViewKey(viewKey), ...overrides };
   return render(
     <ViewOptionsBar
-      viewKey="proyecto:1"
+      viewKey={viewKey}
       initialOptions={currentOptions}
       showViewShape={props.showViewShape ?? true}
       showDaysAhead={props.showDaysAhead ?? false}
@@ -280,6 +281,46 @@ describe("ViewOptionsBar — agrupar por: cada forma de ver ofrece lo que sabe m
 
     await chooseOption(user, "Agrupar por", "Fecha");
     expect(setOption).toHaveBeenCalledWith("groupBy", "fecha");
+  });
+});
+
+describe("ViewOptionsBar — Hoy y Próximos no ofrecen agrupar por sección en el panel (D-C, panel-con-columnas-por-campo)", () => {
+  beforeEach(() => {
+    setOption.mockClear();
+  });
+
+  it("en el panel de Hoy, agrupar por no ofrece sección, aunque sí fecha y prioridad", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" }, { viewKey: "hoy" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Fecha" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Sección" })).not.toBeInTheDocument();
+  });
+
+  it("en el panel de Próximos, agrupar por no ofrece sección", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" }, { viewKey: "proximos" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Fecha" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Sección" })).not.toBeInTheDocument();
+  });
+
+  it("en el panel de Bandeja y Proyecto, sección sigue ofreciéndose", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" }, { viewKey: "bandeja" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Sección" })).toBeInTheDocument();
+  });
+
+  it("una preferencia guardada en 'sección' desde Bandeja se muestra como 'Nada' en el panel de Próximos, sin pisarla", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel", groupBy: "seccion" }, { viewKey: "proximos" });
+    await openPanel(user);
+    expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Nada");
   });
 });
 

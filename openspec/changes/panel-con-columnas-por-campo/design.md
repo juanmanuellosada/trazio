@@ -56,6 +56,22 @@ Los demás valores son explícitos y valen igual en cualquier pantalla.
 *La alternativa descartada* es renombrar "nada" a algo como "lo de siempre". Cambia el rótulo en las
 listas, donde hoy es correcto, para arreglar una ambigüedad que solo existe en el panel.
 
+**Corrección del dueño (2026-08-03):** "los demás valores valen igual en cualquier pantalla" resultó
+falso para sección — ver **D-C**. Sección es la excepción: solo vale donde hay un único proyecto
+(Bandeja y Proyecto). Fecha y prioridad sí valen igual en todas partes.
+
+### D-A2. Sección no se ofrece en Hoy ni en Próximos (corrección del dueño, 2026-08-03)
+
+La primera versión de este cambio ofrecía "sección" como valor explícito también en Hoy y en
+Próximos, apoyada en que **D-C** ya documentaba el rechazo de la base como "cuidado" suficiente.
+En la práctica es un gesto sin salida: las dos pantallas cruzan proyectos, así que una columna de
+sección puede pertenecer a un proyecto distinto del de la tarea arrastrada, y ese movimiento
+**siempre** lo rechaza el disparador de la base. Mover ahí nunca puede terminar bien.
+
+La corrección sigue el mismo mecanismo que ya existe para "etiqueta" en **D-B**: el panel de Hoy y
+de Próximos no ofrece "sección" en el control, y una preferencia ya guardada en "sección" (por
+ejemplo, guardada desde Bandeja) se trata como "nada" sin pisarse al pasar por esas dos pantallas.
+
 ### D-B. El panel no ofrece agrupar por etiqueta
 
 Una tarea puede tener varias etiquetas, así que aparecería **repetida en varias columnas** y mover
@@ -82,7 +98,7 @@ resolver un choque que ocurre una vez.
 
 | Columnas por | Escribe | Cuidado |
 | --- | --- | --- |
-| Sección | La sección, más la posición | La base **rechaza** una sección de otro proyecto. Solo tiene sentido dentro de un proyecto |
+| Sección | La sección, más la posición | La base **rechaza** una sección de otro proyecto. Solo tiene sentido dentro de un proyecto — por eso, desde **D-A2**, ni Hoy ni Próximos la ofrecen |
 | Fecha | La fecha de vencimiento | Hoy **borra la hora** sin avisar. Debe conservarla |
 | Prioridad | La prioridad | Dominio cerrado de cuatro, sin sorpresas |
 

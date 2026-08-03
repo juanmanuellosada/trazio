@@ -34,4 +34,14 @@ describe("reportLabelError", () => {
       "Volvé a intentar en un momento.",
     );
   });
+
+  it("un fallo de red real de supabase-js (objeto plano, no `instanceof Error`) también se traduce", () => {
+    reportLabelError({ message: "TypeError: Failed to fetch", details: "", hint: "", code: "" });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "No pudimos guardar el cambio",
+      "se cortó la conexión",
+      "Revisá tu internet y volvé a intentar.",
+    );
+  });
 });

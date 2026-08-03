@@ -1,10 +1,26 @@
 import { toastError } from "@/lib/toast";
 
 /** Traducción de errores de recordatorios y push a mensajes de tres partes (`.claude/rules/copy.md`). */
+
+/**
+ * `supabase-js` (sin `.throwOnError()`) nunca lanza un `Error` real: el
+ * `error` que llega es el cuerpo JSON de la respuesta ya parseado, un
+ * objeto plano `{ message, details, hint, code }` (ver `lib/tasks/errors.ts`).
+ * Se acepta cualquier objeto con un `.message` de texto, no solo instancias
+ * de `Error`.
+ */
+function extractMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+  return "";
+}
+
 function classify(
   error: unknown,
 ): "sin-fecha" | "permiso-denegado" | "sin-soporte" | "sw-no-listo" | "network" | "desconocido" {
-  const message = error instanceof Error ? error.message : "";
+  const message = extractMessage(error);
   if (message === "recordatorio-relativo-sin-fecha") return "sin-fecha";
   if (message === "permiso-denegado") return "permiso-denegado";
   if (message === "service-worker-no-registrado") return "sw-no-listo";

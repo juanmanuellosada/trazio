@@ -9,8 +9,7 @@ import { useHoyTasks } from "@/lib/tasks/use-hoy-tasks";
 import { buildHoySequence } from "@/lib/tasks/hoy-sequence";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { useProjects } from "@/lib/projects/use-projects";
-import { useAllSections } from "@/lib/sections/use-sections";
-import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
+import { useUpdateTask } from "@/lib/tasks/mutations";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
@@ -23,8 +22,8 @@ import { SelectionProvider } from "@/components/selection/selection-context";
 import type { Habit } from "@/lib/habits/habit-columns";
 import { HabitsTodayBlock } from "@/components/habits/habits-today-block";
 import { Board, type BoardColumn } from "@/components/board/board";
-import { dateColumns, priorityColumns, sectionColumns, UNDATED_COLUMN_ID } from "@/lib/board/panel-columns";
-import { dateMovePatch, priorityMovePatch, sectionMovePatch } from "@/lib/board/panel-move";
+import { dateColumns, priorityColumns, UNDATED_COLUMN_ID } from "@/lib/board/panel-columns";
+import { dateMovePatch, priorityMovePatch } from "@/lib/board/panel-move";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { HoyEventRow } from "@/components/calendar/hoy-event-row";
 import { useHoyEvents } from "@/components/calendar/use-hoy-events";
@@ -95,10 +94,14 @@ const VIEW_KEY = "hoy";
  * no reproduce lo que ya mostraba la lista antes de esta capacidad (D-A del
  * design dice "nada nunca es una sola columna": acá tampoco lo es, mueve la
  * excepción de "qué es lo natural" en vez de la regla de no colapsar a una).
- * Con el agrupador en "fecha" o "sección" explícitos, Hoy usa el mismo
- * modelo compartido que las demás pantallas (`dateColumns`/`sectionColumns`,
- * con `useAllSections` para la segunda, igual que Próximos). El calendario
- * **siempre** se dibuja en modo día, forzado al montar
+ * Por el mismo motivo (Hoy cruza proyectos), tampoco ofrece agrupar por
+ * sección (D-C: la sección "solo tiene sentido dentro de un proyecto",
+ * corrección del dueño 2026-08-03 sobre la versión anterior de este mismo
+ * cambio, que sí la ofrecía y siempre rechazaba el movimiento) —
+ * `effectivePanelGroupBy` trata una preferencia guardada en "sección" como
+ * si fuera "nada" acá, sin pisarla. Con el agrupador en "fecha" explícito,
+ * Hoy usa el mismo modelo compartido que las demás pantallas (`dateColumns`).
+ * El calendario **siempre** se dibuja en modo día, forzado al montar
  * (`formato_calendario: "dia"` sobrescrito acá, nunca leído de lo
  * guardado) y sin navegación entre días (`hideNav`, `screen-calendar.tsx`):
  * en una vista que es hoy por definición, ir a otro día es una
@@ -131,11 +134,6 @@ export function HoyView({
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const tasks = data ?? [];
   const updateTask = useUpdateTask();
-  const moveTask = useMoveTask();
-  // Todas las secciones de todos los proyectos (mismo criterio que
-  // `ProximosView`): Hoy también cruza proyectos, no hay un único del cual
-  // pedirlas. Ya viene sembrada desde el layout (`AllSectionsSeed`).
-  const { data: allSectionsData } = useAllSections();
 
   // Contexto de alta (D-A/D-B de `alta-de-tareas-en-contexto`): el modal
   // global hereda la Bandeja de entrada y el día de hoy, igual que ya hace
@@ -200,15 +198,12 @@ export function HoyView({
   // "Nada" y "prioridad" son la misma cosa en Hoy (caso especial de D-A, ver
   // el comentario de arriba). Sin columna propia de atrasadas, mismo
   // criterio que el panel de Próximos: se suman al resto.
-  const panelGroupBy = effectivePanelGroupBy(options.groupBy);
+  const panelGroupBy = effectivePanelGroupBy(options.groupBy, VIEW_KEY);
   const panelTaskPool = [...overdue, ...today];
-  const allSections = allSectionsData ?? [];
   const panelColumns: BoardColumn[] =
     panelGroupBy === "fecha"
       ? dateColumns(panelTaskPool, timezone).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
-      : panelGroupBy === "seccion"
-        ? sectionColumns(panelTaskPool, allSections).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
-        : priorityColumns(panelTaskPool).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }));
+      : priorityColumns(panelTaskPool).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }));
 
   // El orden dentro de una columna nunca persiste en `position` (D25: no es
   // comparable entre proyectos, y Hoy cruza proyectos) — mismo motivo por el
@@ -223,18 +218,6 @@ export function HoyView({
     if (!task) return;
     if (panelGroupBy === "fecha") {
       updateTask.mutate({ id: taskId, projectId: task.project_id, patch: dateMovePatch(task, toColumnId, timezone) });
-      return;
-    }
-    if (panelGroupBy === "seccion") {
-      const patch = sectionMovePatch(panelTaskPool, task.project_id, toColumnId);
-      moveTask.mutate({
-        id: taskId,
-        fromProjectId: task.project_id,
-        toProjectId: task.project_id,
-        sectionId: patch.section_id,
-        parentId: null,
-        position: patch.position,
-      });
       return;
     }
     const patch = priorityMovePatch(toColumnId);
@@ -254,18 +237,6 @@ export function HoyView({
           sectionId={null}
           parentId={null}
           defaultDueDate={column.id === UNDATED_COLUMN_ID ? undefined : column.id}
-        />
-      );
-    }
-    if (panelGroupBy === "seccion") {
-      const section = allSections.find((s) => s.id === column.id);
-      const targetProjectId = section?.project_id ?? inboxProjectId;
-      return (
-        <TaskQuickAddRow
-          projectId={targetProjectId}
-          sectionId={section?.id ?? null}
-          parentId={null}
-          defaultDueDate={todayDate}
         />
       );
     }

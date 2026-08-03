@@ -225,8 +225,9 @@ Tres formas de verlo:
   botón para agregar una tarea en ese día.
 - **Panel:** columnas por "agrupar por". Sin agrupar, una columna por día de la
   ventana más "Sin fecha" (las atrasadas se suman a la de "Hoy"); agrupando por
-  fecha, sección o prioridad, esas columnas en su lugar. Arrastrar una tarea a
-  otra columna le escribe el campo que las define.
+  fecha o prioridad, esas columnas en su lugar. No ofrece agrupar por sección
+  (Próximos cruza proyectos, y una sección solo tiene sentido dentro de uno).
+  Arrastrar una tarea a otra columna le escribe el campo que las define.
 - **Calendario:** semana, cuatro días o mes en escritorio; día o mes en teléfono.
 
 ### Proyecto
@@ -295,7 +296,9 @@ por separado.**
 - Orden: manual, por nombre, por fecha o por prioridad.
 - Agrupar por: nada, sección, fecha, prioridad o etiqueta. En el panel, el
   agrupador define las columnas y no ofrece etiqueta (una tarea puede tener
-  varias, y aparecería repetida en varias columnas).
+  varias, y aparecería repetida en varias columnas). En el panel de Hoy y de
+  Próximos tampoco ofrece sección: las dos cruzan proyectos, y una sección
+  solo tiene sentido dentro de uno.
 - Filtrar por fecha límite, por prioridad y por etiqueta.
 - Botón para restablecer todas las opciones.
 

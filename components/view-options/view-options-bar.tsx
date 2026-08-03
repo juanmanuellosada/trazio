@@ -20,6 +20,7 @@ import {
   defaultOptionsForViewKey,
   effectiveListGroupBy,
   effectivePanelGroupBy,
+  viewKeyCrossesProjects,
   type DeadlineFilterOption,
   type GroupByOption,
   type OrderOption,
@@ -47,6 +48,9 @@ const GROUP_BY_LABELS: Record<GroupByOption, string> = {
 
 /** El panel no ofrece agrupar por etiqueta (D-B, capacidad `modo-panel`): ver `effectivePanelGroupBy` en `lib/view-options/schema.ts`. */
 const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "etiqueta");
+
+/** Hoy y Próximos cruzan proyectos, así que tampoco ofrecen sección (D-C, `viewKeyCrossesProjects` en `lib/view-options/schema.ts`). */
+const CROSS_PROJECT_PANEL_GROUP_BY_OPTIONS = PANEL_GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion");
 
 /** La lista no ofrece agrupar por sección ni por fecha, valores pensados para las columnas del panel: ver `effectiveListGroupBy` en `lib/view-options/schema.ts`. */
 const LIST_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion" && groupBy !== "fecha");
@@ -200,17 +204,24 @@ export function ViewOptionsBar({
   const priorityId = useId();
   const labelFilterId = useId();
 
-  // Panel no ofrece etiqueta (D-B) y lista no ofrece sección ni fecha
-  // (espejo de D-B): cada forma de ver ofrece solo lo que sabe agrupar. El
-  // valor mostrado usa `effectivePanelGroupBy`/`effectiveListGroupBy` para
-  // que una preferencia guardada desde la otra forma de ver se muestre como
-  // "Nada" sin escribir nada — `setOption` solo se llama cuando la persona
-  // elige algo.
+  // Panel no ofrece etiqueta (D-B), lista no ofrece sección ni fecha
+  // (espejo de D-B), y el panel de Hoy/Próximos tampoco ofrece sección
+  // (D-C: cruzan proyectos): cada forma de ver ofrece solo lo que sabe
+  // agrupar. El valor mostrado usa `effectivePanelGroupBy`/`effectiveListGroupBy`
+  // para que una preferencia guardada desde otra forma de ver o pantalla se
+  // muestre como "Nada" sin escribir nada — `setOption` solo se llama
+  // cuando la persona elige algo.
   const groupByOptions =
-    options.viewShape === "panel" ? PANEL_GROUP_BY_OPTIONS : options.viewShape === "lista" ? LIST_GROUP_BY_OPTIONS : GROUP_BY_OPTIONS;
+    options.viewShape === "panel"
+      ? viewKeyCrossesProjects(viewKey)
+        ? CROSS_PROJECT_PANEL_GROUP_BY_OPTIONS
+        : PANEL_GROUP_BY_OPTIONS
+      : options.viewShape === "lista"
+        ? LIST_GROUP_BY_OPTIONS
+        : GROUP_BY_OPTIONS;
   const groupByDisplayValue =
     options.viewShape === "panel"
-      ? effectivePanelGroupBy(options.groupBy)
+      ? effectivePanelGroupBy(options.groupBy, viewKey)
       : options.viewShape === "lista"
         ? effectiveListGroupBy(options.groupBy)
         : options.groupBy;

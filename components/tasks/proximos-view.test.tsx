@@ -174,7 +174,7 @@ describe("ProximosView — cambiar el agrupador cambia las columnas", () => {
     expect(lastBoardProps!.columns.map((c) => c.title)).toEqual(["Urgente", "Alta", "Media", "Baja"]);
   });
 
-  it("'sección' produce todas las secciones de todos los proyectos, más 'Sin sección'", () => {
+  it("'sección' se trata como 'nada' en Próximos (D-C: Próximos cruza proyectos, sección no tiene salida ahí), sin pisar la preferencia guardada", () => {
     renderProximos(
       [task({ id: "t1", title: "Tarea de p1", project_id: "p1", section_id: "s1", due_date: "2026-08-05" })],
       [],
@@ -182,7 +182,10 @@ describe("ProximosView — cambiar el agrupador cambia las columnas", () => {
       { viewShape: "panel", groupBy: "seccion" },
     );
 
-    expect(lastBoardProps!.columns.map((c) => c.title)).toEqual(["Sin sección", "Trabajo", "Casa"]);
+    // En Próximos, "nada" es la ventana de días — "sección" cae ahí, igual que "etiqueta".
+    const titles = lastBoardProps!.columns.map((c) => c.title);
+    expect(titles[0]).toBe("Hoy");
+    expect(titles[titles.length - 1]).toBe("Sin fecha");
   });
 });
 
@@ -211,7 +214,7 @@ describe("ProximosView — mover entre columnas escribe el campo correcto (D-C)"
     );
   });
 
-  it("agrupado por sección, mover dentro del mismo proyecto escribe section_id", () => {
+  it("agrupado por sección (tratada como 'nada' en Próximos, D-C), mover entre columnas escribe due_date, nunca section_id", () => {
     renderProximos(
       [task({ id: "t1", title: "Tarea de p1", project_id: "p1", section_id: null, due_date: "2026-08-05" })],
       [],
@@ -219,11 +222,12 @@ describe("ProximosView — mover entre columnas escribe el campo correcto (D-C)"
       { viewShape: "panel", groupBy: "seccion" },
     );
 
-    lastBoardProps!.onMoveAcrossColumns("t1", "sin-seccion", "s1");
+    lastBoardProps!.onMoveAcrossColumns("t1", "2026-08-05", "2026-08-06");
 
-    expect(moveTaskMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "t1", fromProjectId: "p1", toProjectId: "p1", sectionId: "s1" }),
+    expect(updateTaskMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "t1", projectId: "p1", patch: { due_date: "2026-08-06", due_at: null } }),
     );
+    expect(moveTaskMutate).not.toHaveBeenCalled();
   });
 });
 
