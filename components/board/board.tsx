@@ -76,6 +76,7 @@ export function Board({
   onMoveAcrossColumns,
   renderColumnEmptyAction,
   renderColumnFooter,
+  trailingColumn,
 }: {
   columns: BoardColumn[];
   allTasks: TaskRowData[];
@@ -94,6 +95,16 @@ export function Board({
    * vacía muestra la acción dentro del estado vacío, no las dos a la vez).
    */
   renderColumnFooter?: (column: BoardColumn) => ReactNode;
+  /**
+   * Control de "crear sección" (pedido del dueño, 2026-08-03: iba debajo del
+   * tablero, ahí no se lo encuentra). Se pinta después de la última columna
+   * pero **dentro** del mismo contenedor de scroll horizontal, para que
+   * quede al final de verdad en tableros con desplazamiento. No es una
+   * columna: sin `ColumnDropZone`, así que nunca es zona de destino de
+   * arrastre; ancho angosto y fijo (`w-56`, más angosto que el mínimo de una
+   * columna) para que no se lea como una columna vacía.
+   */
+  trailingColumn?: ReactNode;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -191,6 +202,7 @@ export function Board({
             </ColumnDropZone>
           </div>
         ))}
+        {trailingColumn ? <div className="w-56 shrink-0">{trailingColumn}</div> : null}
       </div>
       <DragOverlay wrapperElement="ul" className="pointer-events-none">
         {activeTask ? (

@@ -232,23 +232,26 @@ export function SectionedTasks({
           {isEmpty ? (
             emptyState
           ) : options.viewShape === "panel" ? (
-            <>
-              <Board
-                columns={boardColumns}
-                allTasks={allTasks}
-                draggable
-                onReorderWithinColumn={handleReorderWithinColumn}
-                onMoveAcrossColumns={handleMoveAcrossColumns}
-                renderColumnEmptyAction={renderColumnAdd}
-                renderColumnFooter={renderColumnAdd}
-              />
-              {/* Crear sección solo cuando las columnas son secciones (D-F): en un tablero por fecha o prioridad, crear una sección no crea ninguna columna. */}
-              {(panelGroupBy === "nada" || panelGroupBy === "seccion") && (
-                <div ref={sectionListRef} className="mt-2">
-                  <AddSectionRow projectId={projectId} />
-                </div>
-              )}
-            </>
+            <Board
+              columns={boardColumns}
+              allTasks={allTasks}
+              draggable
+              onReorderWithinColumn={handleReorderWithinColumn}
+              onMoveAcrossColumns={handleMoveAcrossColumns}
+              renderColumnEmptyAction={renderColumnAdd}
+              renderColumnFooter={renderColumnAdd}
+              // Crear sección solo cuando las columnas son secciones (D-F):
+              // en un tablero por fecha o prioridad, crear una sección no
+              // crea ninguna columna. Pedido del dueño (2026-08-03): va
+              // después de la última columna, no debajo del tablero.
+              trailingColumn={
+                panelGroupBy === "seccion" ? (
+                  <div ref={sectionListRef}>
+                    <AddSectionRow projectId={projectId} />
+                  </div>
+                ) : undefined
+              }
+            />
           ) : options.viewShape === "calendario" ? (
             <ScreenCalendar
               timezone={timezone}
