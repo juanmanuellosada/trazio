@@ -204,7 +204,18 @@ export function Board({
         ))}
         {trailingColumn ? <div className="w-56 shrink-0">{trailingColumn}</div> : null}
       </div>
-      <DragOverlay wrapperElement="ul" className="pointer-events-none">
+      {/*
+       * `dropAnimation={null}`: la animación de soltar del `DragOverlay` por
+       * defecto anima la copia hasta la posición del nodo original — que
+       * sigue en la columna vieja porque la lista todavía no se redibujó con
+       * el resultado de `onMoveAcrossColumns`/`onReorderWithinColumn`. Se ve
+       * como si el arrastre fallara y se corrigiera solo (reporte del dueño,
+       * 2026-08-03). Las tres mutaciones que puede disparar un movimiento
+       * (`useUpdateTask`, `useMoveTask`) ya son optimistas — el caché queda
+       * al día en el mismo tick en que se suelta, así que apagar la
+       * animación alcanza: la tarjeta queda directamente donde se soltó.
+       */}
+      <DragOverlay wrapperElement="ul" className="pointer-events-none" dropAnimation={null}>
         {activeTask ? (
           <TaskRow task={activeTask} allTasks={allTasks} siblings={[]} depth={0} variant="board" dragOverlay />
         ) : null}
