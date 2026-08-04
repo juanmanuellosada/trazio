@@ -46,8 +46,14 @@ const GROUP_BY_LABELS: Record<GroupByOption, string> = {
   etiqueta: "Etiqueta",
 };
 
-/** El panel no ofrece agrupar por etiqueta (D-B, capacidad `modo-panel`): ver `effectivePanelGroupBy` en `lib/view-options/schema.ts`. */
-const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "etiqueta");
+/**
+ * El panel no ofrece "nada" (D48: era redundante con "sección" en Bandeja y
+ * Proyecto, y significaba algo distinto en cada pantalla) ni "etiqueta"
+ * (D-B, capacidad `modo-panel`): ver `effectivePanelGroupBy` en
+ * `lib/view-options/schema.ts`, que resuelve los dos a la agrupación natural
+ * de la pantalla sin pisar la preferencia guardada.
+ */
+const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "etiqueta" && groupBy !== "nada");
 
 /** Hoy y Próximos cruzan proyectos, así que tampoco ofrecen sección (D-C, `viewKeyCrossesProjects` en `lib/view-options/schema.ts`). */
 const CROSS_PROJECT_PANEL_GROUP_BY_OPTIONS = PANEL_GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion");
@@ -204,12 +210,13 @@ export function ViewOptionsBar({
   const priorityId = useId();
   const labelFilterId = useId();
 
-  // Panel no ofrece etiqueta (D-B), lista no ofrece sección ni fecha
-  // (espejo de D-B), y el panel de Hoy/Próximos tampoco ofrece sección
+  // Panel no ofrece "nada" ni etiqueta (D48/D-B), lista no ofrece sección ni
+  // fecha (espejo de D-B), y el panel de Hoy/Próximos tampoco ofrece sección
   // (D-C: cruzan proyectos): cada forma de ver ofrece solo lo que sabe
   // agrupar. El valor mostrado usa `effectivePanelGroupBy`/`effectiveListGroupBy`
-  // para que una preferencia guardada desde otra forma de ver o pantalla se
-  // muestre como "Nada" sin escribir nada — `setOption` solo se llama
+  // para que una preferencia guardada desde otra forma de ver o pantalla (o
+  // el default "nada") se muestre como la agrupación natural de esta
+  // pantalla y forma de ver, sin escribir nada — `setOption` solo se llama
   // cuando la persona elige algo.
   const groupByOptions =
     options.viewShape === "panel"

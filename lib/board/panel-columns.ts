@@ -12,19 +12,21 @@ import { TASK_PRIORITIES, priorityLabel } from "@/lib/validation/tasks";
  *
  * Cubre únicamente los tres valores **explícitos** del agrupador (sección,
  * fecha, prioridad): "valen igual en cualquier pantalla" (proposal.md, "What
- * Changes"). El valor "nada" es la agrupación **natural** de cada pantalla
- * (secciones en Bandeja/Proyecto, días en Próximos, D-A) y ya la resuelve el
- * código propio de cada una — `sectionColumns` sirve también para ese caso
- * en Bandeja y Proyecto, porque ahí "nada" y "sección" producen exactamente
- * las mismas columnas (ver el requirement "Sin agrupar, un proyecto muestra
- * sus secciones" en `specs/modo-panel`). Próximos resuelve su propio "nada"
- * con la ventana de días configurada, que es distinta de `dateColumns` (esta
- * solo genera un día por cada uno que ya tenga una tarea, no toda la
- * ventana) — ese camino sigue sin tocarse.
+ * Changes"). El panel ya no ofrece "nada" (D48): cada pantalla tiene un
+ * default propio —sección en Bandeja/Proyecto, fecha en Próximos, prioridad
+ * en Hoy (`effectivePanelGroupBy`, `lib/view-options/schema.ts`)— y lo
+ * resuelve el código propio de cada una. `sectionColumns` sirve también para
+ * el default de Bandeja y Proyecto, porque ahí produce exactamente las
+ * mismas columnas que "sección" explícito (ver el requirement "Sin agrupar,
+ * un proyecto muestra sus secciones" en `specs/modo-panel`). Próximos
+ * resuelve su propio default con la ventana de días configurada, que es
+ * distinta de `dateColumns` (esta solo genera un día por cada uno que ya
+ * tenga una tarea, no toda la ventana) — ese camino sigue sin tocarse.
  *
  * "Etiqueta" no está acá: el panel no la ofrece (D-B) y una preferencia
- * guardada en "etiqueta" se resuelve a "nada" con `effectivePanelGroupBy`
- * (`lib/view-options/schema.ts`) antes de llegar a este módulo.
+ * guardada en "etiqueta" se resuelve al default de la pantalla con
+ * `effectivePanelGroupBy` (`lib/view-options/schema.ts`) antes de llegar a
+ * este módulo.
  */
 
 export type PanelColumn<T> = { id: string; label: string; tasks: T[] };

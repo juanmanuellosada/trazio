@@ -99,15 +99,15 @@ La barra SHALL ofrecer un control de orden con los valores manual, por nombre, p
 
 ### Requirement: Agrupar por, configurable
 
-La barra SHALL ofrecer un control de agrupación con los valores nada, sección, fecha, prioridad y etiqueta.
+La barra SHALL ofrecer un control de agrupación con los valores nada, sección, fecha, prioridad y etiqueta — no todos disponibles en todas las formas de ver ni pantallas.
 
 En la forma de ver "panel", el valor elegido SHALL determinar cuáles son las columnas, según define la capacidad `modo-panel`. En la forma de ver "lista", SHALL seguir determinando los grupos dentro de la lista, sin cambios.
 
-El valor "nada" NUNCA SHALL producir una sola columna en el panel: ahí significa la agrupación natural de la pantalla, no la ausencia de agrupación.
+El panel NUNCA SHALL ofrecer "nada" (D48): en Bandeja de entrada y Proyecto era exactamente redundante con "sección" —producía las mismas columnas—, y además era el único valor que significaba algo distinto en cada pantalla (secciones ahí, días en Próximos, prioridad en Hoy), lo que lo hacía imposible de explicar con un solo nombre. Cada pantalla ofrece en cambio un valor por defecto propio y explícito: sección en Bandeja de entrada y Proyecto, fecha en Próximos, prioridad en Hoy. Una preferencia guardada en "nada" —el default de toda pantalla, en cualquier forma de ver— SHALL resolverse en el panel a ese valor por defecto, sin pisar lo guardado: volver a la lista SHALL encontrarla en "nada" intacta.
 
-El valor "etiqueta" NUNCA SHALL ofrecerse en la forma de ver "panel", donde una tarea con varias etiquetas aparecería repetida en varias columnas. Cuando la preferencia guardada es "etiqueta" y el usuario pasa a panel, el valor guardado NUNCA SHALL pisarse —volver a la lista SHALL encontrarlo intacto— y el panel SHALL comportarse como si fuera "nada".
+El valor "etiqueta" NUNCA SHALL ofrecerse en la forma de ver "panel", donde una tarea con varias etiquetas aparecería repetida en varias columnas. Cuando la preferencia guardada es "etiqueta" y el usuario pasa a panel, el valor guardado NUNCA SHALL pisarse —volver a la lista SHALL encontrarlo intacto— y el panel SHALL comportarse como con el valor por defecto de esa pantalla.
 
-El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una sección solo tiene sentido dentro de un proyecto (capacidad `modo-panel`, "Mover entre columnas de sección"). Cuando la preferencia guardada es "sección" y el usuario está en el panel de Hoy o de Próximos, el valor guardado NUNCA SHALL pisarse —volver a Bandeja o Proyecto SHALL encontrarlo intacto— y esas dos pantallas SHALL comportarse como si fuera "nada".
+El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una sección solo tiene sentido dentro de un proyecto (capacidad `modo-panel`, "Mover entre columnas de sección"). Cuando la preferencia guardada es "sección" y el usuario está en el panel de Hoy o de Próximos, el valor guardado NUNCA SHALL pisarse —volver a Bandeja o Proyecto SHALL encontrarlo intacto— y esas dos pantallas SHALL comportarse como con su propio valor por defecto (prioridad en Hoy, fecha en Próximos).
 
 #### Scenario: Agrupar por etiqueta
 
@@ -127,15 +127,21 @@ El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próxim
 - **WHEN** el usuario está en modo panel y elige "fecha" en el control de agrupar por
 - **THEN** las columnas SHALL pasar a ser los días con tareas, más una columna para las tareas sin fecha
 
-#### Scenario: En modo panel no se ofrece agrupar por etiqueta
+#### Scenario: En modo panel no se ofrece agrupar por nada ni por etiqueta
 
 - **WHEN** el usuario está en modo panel y abre el control de agrupar por
-- **THEN** NUNCA SHALL ver el valor "etiqueta"
+- **THEN** NUNCA SHALL ver los valores "nada" ni "etiqueta"
+
+#### Scenario: Con la preferencia guardada en "nada", el panel de un proyecto muestra "Sección" como valor elegido
+
+- **WHEN** el usuario tiene el agrupador en "nada" (el default) y abre el panel de un proyecto
+- **THEN** el control SHALL mostrar "Sección" como valor elegido
+- **AND** las columnas SHALL ser las secciones del proyecto, igual que antes de que "nada" dejara de ofrecerse ahí
 
 #### Scenario: La preferencia de etiqueta sobrevive al paso por el panel
 
 - **WHEN** el usuario tiene el agrupador en "etiqueta" desde la lista, pasa a modo panel y vuelve a la lista
-- **THEN** el panel SHALL haberse comportado como si el agrupador fuera "nada"
+- **THEN** el panel SHALL haberse comportado como con el valor por defecto de esa pantalla
 - **AND** al volver a la lista el agrupador SHALL seguir en "etiqueta"
 
 #### Scenario: En el panel de Hoy y de Próximos no se ofrece agrupar por sección
@@ -146,7 +152,7 @@ El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próxim
 #### Scenario: La preferencia de sección sobrevive al paso por Hoy o Próximos
 
 - **WHEN** el usuario tiene el agrupador en "sección" desde el panel de Bandeja o de Proyecto, y pasa al panel de Próximos
-- **THEN** Próximos SHALL haberse comportado como si el agrupador fuera "nada"
+- **THEN** Próximos SHALL haberse comportado como con su propio valor por defecto ("Fecha")
 - **AND** al volver a Bandeja o Proyecto el agrupador SHALL seguir en "sección"
 
 ### Requirement: Filtrar por fecha límite, prioridad y etiqueta

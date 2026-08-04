@@ -23,19 +23,19 @@ En Hoy el panel SHALL mostrar únicamente tareas, según ya define la capacidad 
 
 Las columnas del modo panel SHALL salir del valor del control de agrupar por, y NUNCA SHALL estar cableadas a la pantalla.
 
-Con el agrupador en "nada", las columnas SHALL ser la agrupación natural de la pantalla: las secciones en Bandeja de entrada y Proyecto, y los días de la ventana configurada en Próximos. NUNCA SHALL producirse una sola columna: un tablero de una columna no es un tablero.
+El panel NUNCA SHALL ofrecer "nada" como valor del agrupador (D48): cada pantalla tiene un valor por defecto propio y explícito — sección en Bandeja de entrada y Proyecto, fecha en Próximos, prioridad en Hoy. Con ese valor por defecto, las columnas SHALL ser la agrupación natural de la pantalla: las secciones en Bandeja de entrada y Proyecto, los días de la ventana configurada en Próximos, y las cuatro prioridades en Hoy. NUNCA SHALL producirse una sola columna: un tablero de una columna no es un tablero.
 
-Con los demás valores, las columnas SHALL ser: una por sección más "Sin sección"; una por día con tareas más "Sin fecha"; o las cuatro prioridades.
+Con los demás valores explícitos, las columnas SHALL ser: una por sección más "Sin sección"; una por día con tareas más "Sin fecha"; o las cuatro prioridades.
 
-Agrupar por etiqueta NUNCA SHALL producir columnas: una tarea puede tener varias y aparecería repetida. La capacidad `opciones-de-vista` define que ese valor no se ofrece en panel y que una preferencia ya guardada se trata como "nada" sin pisarse.
+Una preferencia guardada en "nada" (el default de toda pantalla) o en "etiqueta" NUNCA SHALL producir columnas propias en el panel: las dos se resuelven al valor por defecto de la pantalla, sin pisar lo guardado. Agrupar por etiqueta explícitamente tampoco se ofrece: una tarea puede tener varias y aparecería repetida. La capacidad `opciones-de-vista` define estas resoluciones en detalle.
 
-Agrupar por sección NUNCA SHALL producir columnas en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una columna de sección podía pertenecer a un proyecto distinto del de la tarea que se arrastra, algo que la base siempre rechaza. La capacidad `opciones-de-vista` define que ese valor no se ofrece en esas dos pantallas y que una preferencia ya guardada se trata como "nada" sin pisarse.
+Agrupar por sección NUNCA SHALL producir columnas en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una columna de sección podía pertenecer a un proyecto distinto del de la tarea que se arrastra, algo que la base siempre rechaza. La capacidad `opciones-de-vista` define que ese valor no se ofrece en esas dos pantallas y que una preferencia ya guardada se resuelve al valor por defecto de cada una, sin pisarse.
 
 Cuando no hay ninguna columna que mostrar, SHALL mostrarse un estado vacío, y NUNCA SHALL quedar la pantalla en blanco.
 
-#### Scenario: Sin agrupar, un proyecto muestra sus secciones
+#### Scenario: Con el valor por defecto, un proyecto muestra sus secciones
 
-- **WHEN** un proyecto tiene las secciones "En curso" y "Bloqueado", además de tareas sin sección, y el agrupador está en "nada"
+- **WHEN** un proyecto tiene las secciones "En curso" y "Bloqueado", además de tareas sin sección, y el agrupador está en su valor por defecto ("Sección")
 - **THEN** el modo panel SHALL mostrar tres columnas: la de tareas sin sección, "En curso" y "Bloqueado"
 
 #### Scenario: Agrupar por prioridad cambia las columnas
@@ -44,9 +44,9 @@ Cuando no hay ninguna columna que mostrar, SHALL mostrarse un estado vacío, y N
 - **THEN** las columnas SHALL pasar a ser las cuatro prioridades
 - **AND** NUNCA SHALL seguir mostrándose una columna por sección
 
-#### Scenario: Sin agrupar, Próximos muestra sus días
+#### Scenario: Con el valor por defecto, Próximos muestra sus días
 
-- **WHEN** Próximos está en modo panel con la ventana por defecto de 7 días y el agrupador en "nada"
+- **WHEN** Próximos está en modo panel con la ventana por defecto de 7 días y el agrupador en su valor por defecto ("Fecha")
 - **THEN** SHALL mostrar 7 columnas de día más la columna "Sin fecha"
 
 #### Scenario: Sin columnas no queda la pantalla en blanco
@@ -152,7 +152,7 @@ El atajo de teclado que crea una sección SHALL funcionar en modo panel cuando e
 
 #### Scenario: Crear una sección desde el panel
 
-- **WHEN** el usuario está en el modo panel de un proyecto con el agrupador en "nada"
+- **WHEN** el usuario está en el modo panel de un proyecto con el agrupador en su valor por defecto ("Sección")
 - **THEN** SHALL ver una acción para crear una sección
 - **AND** al crearla SHALL aparecer como una columna nueva
 

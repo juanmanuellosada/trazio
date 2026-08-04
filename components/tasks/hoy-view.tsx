@@ -85,22 +85,24 @@ const VIEW_KEY = "hoy";
  * propia de atrasadas en el panel, mismo criterio que ya usa Próximos: se
  * suman a la misma columna que Hoy.
  *
- * **"Nada" es prioridad, no lo natural de otra pantalla (`panel-con-columnas-por-campo`,
- * D-A, caso especial de Hoy — no está en el design, decisión del dueño
- * 2026-08-03).** Hoy cruza proyectos, así que no tiene secciones propias; y
- * es un solo día, así que no hay días con los que armar columnas — de los
- * cuatro campos del agrupador, prioridad es el único que le queda con el que
- * agrupar signifique algo. Es la única de las cuatro pantallas donde "nada"
- * no reproduce lo que ya mostraba la lista antes de esta capacidad (D-A del
- * design dice "nada nunca es una sola columna": acá tampoco lo es, mueve la
- * excepción de "qué es lo natural" en vez de la regla de no colapsar a una).
- * Por el mismo motivo (Hoy cruza proyectos), tampoco ofrece agrupar por
- * sección (D-C: la sección "solo tiene sentido dentro de un proyecto",
- * corrección del dueño 2026-08-03 sobre la versión anterior de este mismo
- * cambio, que sí la ofrecía y siempre rechazaba el movimiento) —
- * `effectivePanelGroupBy` trata una preferencia guardada en "sección" como
- * si fuera "nada" acá, sin pisarla. Con el agrupador en "fecha" explícito,
- * Hoy usa el mismo modelo compartido que las demás pantallas (`dateColumns`).
+ * **"Prioridad" es la agrupación natural de Hoy, no lo natural de otra
+ * pantalla (`panel-con-columnas-por-campo`, D-A, caso especial de Hoy — no
+ * está en el design, decisión del dueño 2026-08-03; relabeleado por D48, que
+ * saca "nada" del panel).** Hoy cruza proyectos, así que no tiene secciones
+ * propias; y es un solo día, así que no hay días con los que armar columnas
+ * — de los cuatro campos del agrupador, prioridad es el único que le queda
+ * con el que agrupar signifique algo. Es la única de las cuatro pantallas
+ * donde el default del panel no reproduce lo que ya mostraba la lista antes
+ * de esta capacidad (D-A del design dice "nada nunca es una sola columna":
+ * acá tampoco lo es, mueve la excepción de "qué es lo natural" en vez de la
+ * regla de no colapsar a una). Por el mismo motivo (Hoy cruza proyectos),
+ * tampoco ofrece agrupar por sección (D-C: la sección "solo tiene sentido
+ * dentro de un proyecto", corrección del dueño 2026-08-03 sobre la versión
+ * anterior de este mismo cambio, que sí la ofrecía y siempre rechazaba el
+ * movimiento) — `effectivePanelGroupBy` trata una preferencia guardada en
+ * "sección" como el default de la pantalla acá, sin pisarla. Con el
+ * agrupador en "fecha" explícito, Hoy usa el mismo modelo compartido que las
+ * demás pantallas (`dateColumns`).
  * El calendario **siempre** se dibuja en modo día, forzado al montar
  * (`formato_calendario: "dia"` sobrescrito acá, nunca leído de lo
  * guardado) y sin navegación entre días (`hideNav`, `screen-calendar.tsx`):
@@ -194,10 +196,11 @@ export function HoyView({
   const resolveTaskColor = (task: TaskRowData) =>
     resolveProjectColorHex(projects?.find((p) => p.id === task.project_id)?.color ?? null, theme);
 
-  // Panel (D-B/D-C): columnas por el modelo compartido, nunca por eventos.
-  // "Nada" y "prioridad" son la misma cosa en Hoy (caso especial de D-A, ver
-  // el comentario de arriba). Sin columna propia de atrasadas, mismo
-  // criterio que el panel de Próximos: se suman al resto.
+  // Panel (D-B/D-C, D48): columnas por el modelo compartido, nunca por
+  // eventos. "Prioridad" es el default de Hoy (caso especial de D-A, ver el
+  // comentario de arriba) — `effectivePanelGroupBy` ya lo resuelve, así que
+  // `panelGroupBy` nunca vale "nada" acá. Sin columna propia de atrasadas,
+  // mismo criterio que el panel de Próximos: se suman al resto.
   const panelGroupBy = effectivePanelGroupBy(options.groupBy, VIEW_KEY);
   const panelTaskPool = [...overdue, ...today];
   const panelColumns: BoardColumn[] =

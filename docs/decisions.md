@@ -1257,3 +1257,59 @@ pierde `isDragEnabled` (la condición que invertía) y suma `effectivePanelGroup
 `effectiveListGroupBy`. `docs/product-spec.md` y `docs/design-system.md`
 (§5.1) quedan actualizados con el modelo nuevo, el caso especial de Hoy y la
 excepción de ancho.
+
+---
+
+## D48 — El panel deja de ofrecer "nada"; cada pantalla tiene su propio valor por defecto
+
+**Fecha.** 2026-08-03
+
+**Contexto.** D47 hizo que el agrupador definiera las columnas del panel, con
+"nada" como la agrupación natural de cada pantalla. Pedido del dueño: *"no
+tiene sentido que en el modo panel haya estos 2 agrupadores, nada y sección,
+porque los dos agrupan por sección. Deja solo sección por default y ya."* Tenía
+razón en dos frentes: en Bandeja y Proyecto, "nada" y "sección" producían
+exactamente las mismas columnas —una redundancia visible en el propio
+desplegable—, y además "nada" era el único valor del agrupador que significaba
+algo distinto en cada pantalla —secciones acá, días en Próximos, prioridad en
+Hoy (D47)—, lo que lo hacía imposible de explicar con un solo nombre.
+
+**Decisión.** El panel deja de ofrecer "nada" como valor del agrupador. Cada
+pantalla ofrece en su lugar un valor por defecto propio y explícito: sección en
+Bandeja de entrada y Proyecto, fecha en Próximos, prioridad en Hoy — los mismos
+que ya venía mostrando "nada" en cada una. La lista no cambia: "nada" ahí sigue
+significando "no agrupar", sin ambigüedad con ninguna otra pantalla.
+
+**No se pisa la preferencia guardada.** El default de toda pantalla sigue
+siendo "nada" en la fila de `view_preferences` —eso no cambia—, así que la
+inmensa mayoría de las personas tiene "nada" guardado. `effectivePanelGroupBy`
+(`lib/view-options/schema.ts`) resuelve esa preferencia (y "etiqueta", y
+"sección" en Hoy/Próximos, que tampoco tienen salida en el panel) al valor por
+defecto de la pantalla actual, sin escribir nada: volver a la lista sigue
+encontrando "nada" intacto.
+
+**El resultado visible no cambia para nadie.** Quien hoy ve columnas por
+sección en un proyecto sigue viéndolas igual, solo que el control ahora dice
+"Sección" en vez de "Nada". La única pantalla donde esto exigió tocar código de
+verdad —no solo el mapeo de `effectivePanelGroupBy`— fue **Próximos**: ahí
+"nada" y "fecha" explícito nunca produjeron las mismas columnas ("nada" arma la
+ventana de días configurada, con huecos; "fecha" arma solo los días que ya
+tienen tareas, sin ventana — distinción que ya existía desde D47). Como ahora
+las dos comparten la misma etiqueta visible ("Fecha"), `components/tasks/proximos-view.tsx`
+tuvo que dejar de mirar el valor resuelto por `effectivePanelGroupBy` para
+decidir qué columnas armar, y mirar en cambio el valor crudo guardado
+(`options.groupBy === "fecha"`): así seguir distinguiendo el default histórico
+de la elección explícita, aunque el control ya no pueda mostrar esa diferencia.
+Bandeja, Proyecto y Hoy no necesitaron ese cambio: ahí "nada" y su equivalente
+explícito siempre armaron exactamente las mismas columnas.
+
+**Consecuencia.** `lib/view-options/schema.ts` (`effectivePanelGroupBy` deja de
+pasar "nada" sin tocar y resuelve al valor por defecto de la pantalla, vía la
+nueva `panelNaturalGroupBy`), `components/view-options/view-options-bar.tsx`
+(el panel deja de ofrecer "nada" en su desplegable), `components/tasks/proximos-view.tsx`
+(distingue default de "fecha" explícito por el valor crudo) y
+`components/projects/sectioned-tasks.tsx` (la rama muerta que trataba "nada"
+como "sección" en el panel se simplifica, ya que `effectivePanelGroupBy` nunca
+vuelve a devolver "nada") quedan actualizados, con sus tests.
+`openspec/specs/modo-panel/spec.md` y `openspec/specs/opciones-de-vista/spec.md`
+quedan corregidos para reflejar que el panel no ofrece "nada".

@@ -58,19 +58,25 @@ function dayGroupLabel(day: string, offset: number): string {
  * (D1): mismo instante entre el primer render del cliente y el del
  * servidor.
  *
- * **Panel (`openspec/changes/panel-con-columnas-por-campo/`, D-A/D-C):** con
- * el agrupador en "nada" las columnas son la ventana de días configurada más
- * "Sin fecha" (igual que antes de esta capacidad, sin tocar); con "fecha"
- * son los días que ya tienen tareas, sin ventana (`dateColumns`, distinto de
- * "nada"); con "prioridad" son las cuatro fijas. Próximos **no** ofrece
- * agrupar por sección (D-C, corrección del dueño 2026-08-03 sobre la
- * versión anterior de este mismo cambio): Próximos cruza proyectos, así que
- * una columna de sección podía pertenecer a un proyecto distinto del de la
- * tarea arrastrada — la base siempre rechazaba ese movimiento con un
+ * **Panel (`openspec/changes/panel-con-columnas-por-campo/`, D-A/D-C, D48):**
+ * el default de esta pantalla en panel es "Fecha" (D48: el panel ya no
+ * ofrece "nada"), pero atrás de esa misma etiqueta hay dos comportamientos
+ * distintos, según la preferencia guardada sea el default o "fecha" elegida
+ * a mano: con el default (o "sección"/"etiqueta" heredados de otra
+ * pantalla/forma de ver), las columnas son la ventana de días configurada
+ * más "Sin fecha" (sin tocar desde antes de esta capacidad); con "fecha"
+ * explícito son los días que ya tienen tareas, sin ventana (`dateColumns`).
+ * Por eso la rama de columnas de más abajo mira `options.groupBy` crudo, no
+ * `effectivePanelGroupBy`: la etiqueta del control ya no alcanza para
+ * distinguirlas. Con "prioridad" las columnas son las cuatro fijas. Próximos
+ * **no** ofrece agrupar por sección (D-C, corrección del dueño 2026-08-03
+ * sobre la versión anterior de este mismo cambio): Próximos cruza proyectos,
+ * así que una columna de sección podía pertenecer a un proyecto distinto del
+ * de la tarea arrastrada — la base siempre rechazaba ese movimiento con un
  * disparador, un gesto sin salida. `effectivePanelGroupBy` trata una
- * preferencia guardada en "sección" como si fuera "nada" acá, sin pisarla.
- * Próximos no ofrece "crear sección" en ningún caso: no hay un único
- * proyecto al que atribuirle la nueva sección.
+ * preferencia guardada en "sección" como el default de la pantalla acá, sin
+ * pisarla. Próximos no ofrece "crear sección" en ningún caso: no hay un
+ * único proyecto al que atribuirle la nueva sección.
  */
 export function ProximosView({
   userId,
@@ -146,21 +152,26 @@ export function ProximosView({
     // agrupador ni el orden configurado.
   }
 
-  // Panel (grupo 1/2, D-A/D-C): con "nada", las columnas son la ventana de
-  // días configurada (sin tocar, distinto de `dateColumns`: acá se generan
-  // los días vacíos de la ventana, no solo los que ya tienen tareas). Con
-  // los demás valores, salen del modelo compartido.
+  // Panel (grupo 1/2, D-A/D-C, D48): con la agrupación natural de esta
+  // pantalla (el default "nada", o "sección"/"etiqueta" heredados de otra
+  // pantalla/forma de ver), las columnas son la ventana de días configurada
+  // (sin tocar, distinto de `dateColumns`: acá se generan los días vacíos de
+  // la ventana, no solo los que ya tienen tareas). La rama de acá abajo se
+  // fija en `options.groupBy` crudo, no en `panelGroupBy`: desde D48 los dos
+  // casos muestran la misma etiqueta ("Fecha") en el control, así que
+  // `panelGroupBy` ya no alcanza para distinguirlos.
   const panelGroupBy = effectivePanelGroupBy(options.groupBy, VIEW_KEY);
   const panelTaskPool = [...tasks, ...undatedTasks];
   const orderedPanelPool = orderTasks(panelTaskPool, options.order, timezone);
 
   const boardColumns: BoardColumn[] =
-    panelGroupBy === "fecha"
+    options.groupBy === "fecha"
       ? dateColumns(orderedPanelPool, timezone).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
       : panelGroupBy === "prioridad"
         ? priorityColumns(orderedPanelPool).map((c) => ({ id: c.id, title: c.label, tasks: c.tasks }))
-        : // "nada": sin columna propia de "atrasadas" (a diferencia de la
-          // lista) — se suman a la columna del primer día ("Hoy").
+        : // Agrupación natural: sin columna propia de "atrasadas" (a
+          // diferencia de la lista) — se suman a la columna del primer día
+          // ("Hoy").
           [
             ...days.map(({ day, offset, tasks: dayTasks }) => ({
               id: day,

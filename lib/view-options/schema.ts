@@ -123,26 +123,46 @@ export function viewKeyCrossesProjects(viewKey: string): boolean {
 }
 
 /**
- * El panel no ofrece agrupar por etiqueta (D-B, `openspec/changes/panel-con-columnas-por-campo`):
- * una tarea puede tener varias y aparecería repetida en varias columnas. El
- * agrupador es el mismo control y la misma preferencia guardada que la
- * lista, donde "etiqueta" sí vale — así que una preferencia guardada en
- * "etiqueta" NUNCA se pisa acá (quien llama sigue leyendo y escribiendo el
- * valor crudo tal cual): esta función solo resuelve qué grupo usar *dentro*
- * del panel, tratándolo como si fuera "nada".
+ * Agrupación natural de cada pantalla en el panel (D48, corrección del
+ * dueño 2026-08-03): la que ya reproducía "nada" antes de que ese valor
+ * dejara de ofrecerse ahí. Sección en Bandeja y Proyecto, fecha en
+ * Próximos, prioridad en Hoy (D-A, caso especial: Hoy cruza proyectos y es
+ * un solo día, así que ni sección ni fecha agrupan nada).
+ */
+function panelNaturalGroupBy(viewKey: string): GroupByOption {
+  if (viewKey === "hoy") return "prioridad";
+  if (viewKey === "proximos") return "fecha";
+  return "seccion";
+}
+
+/**
+ * El panel ya no ofrece "nada" (D48, corrección del dueño 2026-08-03: era
+ * redundante con "sección" en Bandeja y Proyecto, y significaba algo
+ * distinto en cada pantalla). Una preferencia guardada en "nada" —el
+ * default de toda pantalla, ver `defaultOptionsForViewKey`— se resuelve acá
+ * a la agrupación natural de esa pantalla (`panelNaturalGroupBy`), sin
+ * pisar lo guardado: quien llama sigue leyendo y escribiendo el valor
+ * crudo tal cual.
+ *
+ * El panel tampoco ofrece agrupar por etiqueta
+ * (`openspec/changes/panel-con-columnas-por-campo`): una tarea puede tener
+ * varias y aparecería repetida en varias columnas. El agrupador es el
+ * mismo control y la misma preferencia guardada que la lista, donde
+ * "etiqueta" sí vale — una preferencia guardada ahí se resuelve igual que
+ * "nada", a la agrupación natural.
  *
  * Tampoco ofrece agrupar por sección en Hoy ni en Próximos (D-C del design:
  * la sección "solo tiene sentido dentro de un proyecto"). Esas dos pantallas
  * cruzan proyectos, así que una columna de sección podía pertenecer a un
  * proyecto distinto del de la tarea arrastrada — la base lo rechaza siempre
- * con un disparador, un gesto sin salida. Mismo criterio que "etiqueta": la
- * preferencia guardada no se pisa, se trata como "nada" solo dentro de esas
- * dos pantallas.
+ * con un disparador, un gesto sin salida. Mismo criterio: la preferencia
+ * guardada no se pisa, se resuelve a la agrupación natural solo dentro de
+ * esas dos pantallas.
  */
 export function effectivePanelGroupBy(groupBy: GroupByOption, viewKey: string): GroupByOption {
-  if (groupBy === "etiqueta") return "nada";
-  if (groupBy === "seccion" && viewKeyCrossesProjects(viewKey)) return "nada";
-  return groupBy;
+  if (groupBy === "fecha" || groupBy === "prioridad") return groupBy;
+  if (groupBy === "seccion" && !viewKeyCrossesProjects(viewKey)) return "seccion";
+  return panelNaturalGroupBy(viewKey);
 }
 
 /**
