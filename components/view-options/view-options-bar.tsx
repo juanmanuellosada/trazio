@@ -58,8 +58,20 @@ const PANEL_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== 
 /** Hoy y Próximos cruzan proyectos, así que tampoco ofrecen sección (D-C, `viewKeyCrossesProjects` en `lib/view-options/schema.ts`). */
 const CROSS_PROJECT_PANEL_GROUP_BY_OPTIONS = PANEL_GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion");
 
-/** La lista no ofrece agrupar por sección ni por fecha, valores pensados para las columnas del panel: ver `effectiveListGroupBy` en `lib/view-options/schema.ts`. */
-const LIST_GROUP_BY_OPTIONS = GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion" && groupBy !== "fecha");
+/**
+ * La lista ofrece los cinco valores (`openspec/changes/lista-con-mas-agrupadores`,
+ * D-D), pero "sección" solo tiene sentido dentro de un único proyecto —
+ * Bandeja y Proyecto—: en cualquier otra pantalla una sección no pertenece a
+ * ningún proyecto en particular. "Fecha" sí vale en todas las que ofrecen el
+ * control (Hoy no lo ofrece en absoluto, ver `showGroupBy` más abajo).
+ */
+function listOffersSection(viewKey: string): boolean {
+  return viewKey === "bandeja" || viewKey.startsWith("proyecto:");
+}
+
+function listGroupByOptions(viewKey: string): GroupByOption[] {
+  return listOffersSection(viewKey) ? [...GROUP_BY_OPTIONS] : GROUP_BY_OPTIONS.filter((groupBy) => groupBy !== "seccion");
+}
 
 const DEADLINE_FILTER_LABELS: Record<DeadlineFilterOption, string> = {
   cualquiera: "Cualquiera",
@@ -183,6 +195,10 @@ function countActiveQuickFilters(quickFilters: QuickFilters): number {
  * ofrecer el control ahí invitaría a cambiar un valor que la pantalla
  * ignora. Por default `true`: las demás pantallas (Bandeja, Proyecto,
  * Próximos) no necesitan pasarlo.
+ *
+ * `showGroupBy` (`lista-con-mas-agrupadores`, D-E): Hoy tampoco ofrece
+ * agrupar por en la lista, calculado acá mismo (no un prop) porque depende
+ * de `viewKey` **y** de `options.viewShape` a la vez — su panel sí agrupa.
  */
 export function ViewOptionsBar({
   viewKey,
@@ -210,28 +226,39 @@ export function ViewOptionsBar({
   const priorityId = useId();
   const labelFilterId = useId();
 
-  // Panel no ofrece "nada" ni etiqueta (D48/D-B), lista no ofrece sección ni
-  // fecha (espejo de D-B), y el panel de Hoy/Próximos tampoco ofrece sección
-  // (D-C: cruzan proyectos): cada forma de ver ofrece solo lo que sabe
-  // agrupar. El valor mostrado usa `effectivePanelGroupBy`/`effectiveListGroupBy`
-  // para que una preferencia guardada desde otra forma de ver o pantalla (o
-  // el default "nada") se muestre como la agrupación natural de esta
-  // pantalla y forma de ver, sin escribir nada — `setOption` solo se llama
-  // cuando la persona elige algo.
+  // Panel no ofrece "nada" ni etiqueta (D48/D-B), y el panel de Hoy/Próximos
+  // tampoco ofrece sección (D-C: cruzan proyectos): cada forma de ver ofrece
+  // solo lo que sabe agrupar. La lista ofrece los cinco valores, con
+  // "sección" acotada a Bandeja y Proyecto (`listGroupByOptions`, D-D de
+  // `lista-con-mas-agrupadores`). El valor mostrado en panel usa
+  // `effectivePanelGroupBy` para que una preferencia guardada desde otra
+  // forma de ver o pantalla (o el default "nada") se muestre como la
+  // agrupación natural de esa pantalla, sin escribir nada — `setOption`
+  // solo se llama cuando la persona elige algo. En la lista, "sección" es un
+  // valor real ahí donde se ofrece, así que se muestra tal cual; en las
+  // pantallas donde no se ofrece, `effectiveListGroupBy` la resuelve a
+  // "nada" (mismo mecanismo, sin pisar lo guardado).
   const groupByOptions =
     options.viewShape === "panel"
       ? viewKeyCrossesProjects(viewKey)
         ? CROSS_PROJECT_PANEL_GROUP_BY_OPTIONS
         : PANEL_GROUP_BY_OPTIONS
       : options.viewShape === "lista"
-        ? LIST_GROUP_BY_OPTIONS
+        ? listGroupByOptions(viewKey)
         : GROUP_BY_OPTIONS;
   const groupByDisplayValue =
     options.viewShape === "panel"
       ? effectivePanelGroupBy(options.groupBy, viewKey)
       : options.viewShape === "lista"
-        ? effectiveListGroupBy(options.groupBy)
+        ? listOffersSection(viewKey)
+          ? options.groupBy
+          : effectiveListGroupBy(options.groupBy)
         : options.groupBy;
+
+  // Hoy dejó de ofrecer el agrupador en lista (D-E, `lista-con-mas-agrupadores`):
+  // su lista es la secuencia con eventos intercalados, y agrupar la rompe.
+  // El panel de Hoy no cambia, ahí no hay eventos ni secuencia que romper.
+  const showGroupBy = !(viewKey === "hoy" && options.viewShape === "lista");
 
   const defaults = defaultOptionsForViewKey(viewKey);
   const hasActiveOptions =
@@ -364,24 +391,26 @@ export function ViewOptionsBar({
             <div className="space-y-1">
               <SectionTitle>Orden</SectionTitle>
 
-              <FieldRow label="Agrupar por" htmlFor={groupById}>
-                <Select
-                  items={GROUP_BY_LABELS}
-                  value={groupByDisplayValue}
-                  onValueChange={(value) => setOption("groupBy", value as GroupByOption)}
-                >
-                  <SelectTrigger id={groupById} className="max-w-36">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groupByOptions.map((groupBy) => (
-                      <SelectItem key={groupBy} value={groupBy}>
-                        {GROUP_BY_LABELS[groupBy]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldRow>
+              {showGroupBy && (
+                <FieldRow label="Agrupar por" htmlFor={groupById}>
+                  <Select
+                    items={GROUP_BY_LABELS}
+                    value={groupByDisplayValue}
+                    onValueChange={(value) => setOption("groupBy", value as GroupByOption)}
+                  >
+                    <SelectTrigger id={groupById} className="max-w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groupByOptions.map((groupBy) => (
+                        <SelectItem key={groupBy} value={groupBy}>
+                          {GROUP_BY_LABELS[groupBy]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
+              )}
 
               <FieldRow label="Ordenar por" htmlFor={orderId}>
                 <Select

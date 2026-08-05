@@ -17,6 +17,18 @@ describe("defaultOptionsForViewKey (bloque 6.1, D25 y specs/opciones-de-vista)",
     expect(defaultOptionsForViewKey("proyecto:abc").order).toBe("manual");
   });
 
+  it("Bandeja y Proyecto agrupan por sección por defecto (D-A/D-B, lista-con-mas-agrupadores): al abrir se ve igual que antes de esa capacidad", () => {
+    expect(defaultOptionsForViewKey("bandeja").groupBy).toBe("seccion");
+    expect(defaultOptionsForViewKey("proyecto:abc").groupBy).toBe("seccion");
+  });
+
+  it("el resto de las pantallas sigue sin agrupar por defecto: ahí 'nada' ya significaba lista corrida", () => {
+    expect(defaultOptionsForViewKey("hoy").groupBy).toBe("nada");
+    expect(defaultOptionsForViewKey("proximos").groupBy).toBe("nada");
+    expect(defaultOptionsForViewKey("etiqueta:abc").groupBy).toBe("nada");
+    expect(defaultOptionsForViewKey("filtro:abc").groupBy).toBe("nada");
+  });
+
   it("Hoy, Próximos, Etiqueta y Filtro ordenan por fecha por defecto", () => {
     expect(defaultOptionsForViewKey("hoy").order).toBe("fecha");
     expect(defaultOptionsForViewKey("proximos").order).toBe("fecha");
@@ -67,10 +79,14 @@ describe("parseViewOptions: clave desconocida se ignora (requirement de specs/op
     expect(result.groupBy).toBe("etiqueta");
   });
 
-  it("un valor viejo desconocido en groupBy cae al default 'nada', sin romper el resto (tarea 1.1, panel-con-columnas-por-campo)", () => {
+  it("un valor viejo desconocido en groupBy cae al default de esa pantalla, sin romper el resto (tarea 1.1, panel-con-columnas-por-campo)", () => {
+    // El default de Bandeja es "sección" desde `lista-con-mas-agrupadores" (D-A/D-B).
     const result = parseViewOptions("bandeja", { groupBy: "columna-que-ya-no-existe", order: "nombre" });
-    expect(result.groupBy).toBe("nada");
+    expect(result.groupBy).toBe("seccion");
     expect(result.order).toBe("nombre");
+
+    const inProximos = parseViewOptions("proximos", { groupBy: "columna-que-ya-no-existe" });
+    expect(inProximos.groupBy).toBe("nada");
   });
 
   it("los valores nuevos de groupBy (sección y fecha) se guardan sin caer al default", () => {
@@ -158,22 +174,22 @@ describe("effectivePanelGroupBy (D-C: Hoy y Próximos cruzan proyectos, sección
   });
 });
 
-describe("effectiveListGroupBy (espejo de D-B: la lista no ofrece sección ni fecha, sin pisar la preferencia guardada)", () => {
-  it("sección y fecha se resuelven a nada dentro de la lista", () => {
+describe("effectiveListGroupBy (D-C de lista-con-mas-agrupadores: resuelve qué agrupa el renderizador genérico de grupos, no la lista completa)", () => {
+  it("sección se resuelve a nada: arma bloques colapsables que solo SectionedTasks sabe montar, nunca este camino genérico", () => {
     expect(effectiveListGroupBy("seccion")).toBe("nada");
-    expect(effectiveListGroupBy("fecha")).toBe("nada");
   });
 
-  it("los demás valores pasan sin cambios", () => {
+  it("fecha ya no es un caso especial: la lista sabe agruparla, igual que prioridad y etiqueta (D-D)", () => {
     expect(effectiveListGroupBy("nada")).toBe("nada");
+    expect(effectiveListGroupBy("fecha")).toBe("fecha");
     expect(effectiveListGroupBy("prioridad")).toBe("prioridad");
     expect(effectiveListGroupBy("etiqueta")).toBe("etiqueta");
   });
 
-  it("una preferencia guardada en 'sección' desde el panel sigue siendo 'sección' al ir y volver entre lista y panel", () => {
+  it("una preferencia guardada en 'sección' sigue siendo 'sección' al releerla, aunque el renderizador genérico la trate como 'nada'", () => {
     const stored = parseViewOptions(SINGLE_PROJECT_VIEW_KEY, { groupBy: "seccion" });
     expect(stored.groupBy).toBe("seccion");
-    // La lista la trata como "nada"...
+    // El renderizador genérico (`groupTasks`) la trata como "nada"...
     expect(effectiveListGroupBy(stored.groupBy)).toBe("nada");
     // ...pero no la pisa: volver a leerla (ej. al volver al panel) la encuentra intacta.
     const rereadInList = parseViewOptions(SINGLE_PROJECT_VIEW_KEY, { groupBy: stored.groupBy });

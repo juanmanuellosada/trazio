@@ -98,7 +98,7 @@ export function LabelView({
     options.order,
     timezone,
   );
-  const groups = groupTasks(visibleTasks, options.groupBy);
+  const groups = groupTasks(visibleTasks, options.groupBy, timezone);
   const orderedIds = groups.flatMap((group) => group.tasks.map((t) => t.id));
   const candidateTasks = visibleTasks.map((t) => ({ id: t.id, projectId: t.project_id }));
 

@@ -1313,3 +1313,92 @@ como "sección" en el panel se simplifica, ya que `effectivePanelGroupBy` nunca
 vuelve a devolver "nada") quedan actualizados, con sus tests.
 `openspec/specs/modo-panel/spec.md` y `openspec/specs/opciones-de-vista/spec.md`
 quedan corregidos para reflejar que el panel no ofrece "nada".
+
+---
+
+## D49 — "Nada" es una lista corrida en todas partes; Hoy deja de agrupar en lista
+
+**Fecha.** 2026-08-05
+
+**Contexto.** En la lista, "nada" significaba dos cosas distintas según la
+pantalla: en Bandeja y Proyecto armaba bloques por sección (el único camino
+para verlos, porque la lista no ofrecía agrupar por sección); en el resto era
+lo que dice su nombre, una lista corrida. Pedido del dueño: *"en modo lista
+también tiene que haber más agrupadores, por default es el sección pero
+tendría que haber más"*. Es el mismo problema que D48 sacó del panel, ahora en
+la lista: un valor con dos significados según dónde se lo mire, y además un
+hueco real — no había forma de ver un proyecto sin sus bloques de sección.
+
+**Decisión.** El agrupador de la lista suma sección y fecha a lo que ya tenía
+(nada, prioridad, etiqueta), con los cinco significando lo mismo que en el
+panel. "Nada" pasa a ser una sola lista corrida, sin bloques ni encabezados,
+**en todas las pantallas** — nunca la agrupación natural de la que se está
+mirando. Bandeja de entrada y Proyecto pasan a tener "sección" como valor por
+defecto, explícito en vez de heredado de "nada": al abrir se ve exactamente
+igual que antes, solo que el control ahora lo dice. "Sección" nunca se ofrece
+donde la vista cruza proyectos (Hoy, Próximos, una etiqueta, un filtro): una
+sección pertenece a un proyecto, y fuera de uno no significa nada. La lista de
+Hoy, en cambio, deja de ofrecer el agrupador por completo: dejó de ser una
+lista de tareas — es la secuencia de tres tramos con eventos intercalados,
+ordenada por hora (`hoy-con-eventos`) — y agrupar la rompe, además de dejar a
+un evento sin prioridad, etiqueta ni sección con qué agruparse. Es una pérdida
+frente a lo que Hoy ofrecía hasta ahora (prioridad y etiqueta), asumida: esas
+opciones ya convivían mal con la secuencia desde que los eventos se
+intercalaron. Su panel no cambia, sigue ofreciendo el agrupador — ahí no hay
+eventos ni secuencia que romper.
+
+**Una migración, no una traducción al leer.** Quien tenía "nada" guardado en
+un proyecto o en la Bandeja lo tenía porque, hasta ahora, significaba
+"sección" ahí — la inmensa mayoría, porque era el valor por defecto. Si el
+código nuevo lo interpretara literalmente sin tocar la base, esas personas
+abrirían su proyecto y lo verían aplanado de golpe, sin haberlo pedido. Se
+podría haber resuelto traduciendo el valor al leer ("en un proyecto, 'nada'
+sigue significando sección"), pero eso es exactamente el problema que se
+está sacando, y además dejaría la lista corrida inalcanzable para siempre en
+un proyecto — la mitad del pedido. La migración
+(`supabase/migrations/20260805010000_view_preferences_seccion_migration.sql`)
+reescribe, una sola vez, las filas de `view_preferences` con `view_key` de
+Bandeja o de un proyecto que tengan `groupBy: "nada"` guardado, pasándolas a
+`"seccion"`. Es idempotente y solo toca esa clave del jsonb, sin pisar el
+resto del documento ni las filas de etiqueta, filtro, Hoy o Próximos, donde
+"nada" ya significaba lista corrida.
+
+**Lo que se pierde al aplanar un proyecto, y dónde queda.** Los bloques de
+sección traen tres cosas que solo viven en su encabezado: colapsar, agregar
+una tarea dentro de esa sección, y su menú (renombrar, eliminar). Agrupando
+por cualquier otro valor, las tres desaparecen de la lista. Colapsar se pierde
+sin reemplazo — es una comodidad de lectura, no una acción sobre los datos.
+Agregar una tarea en una sección puntual sigue alcanzable sin los bloques: el
+selector de destino del alta rápida (`TaskDestinationSelect`) y la sintaxis
+`#Proyecto/Sección` del parser de lenguaje natural no dependen de que el
+bloque esté en pantalla. Renombrar y eliminar una sección, en cambio, solo
+viven en el menú de `SectionItem` (`components/sections/section-list.tsx`) —
+ni el modo panel las ofrece nunca, agrupe por lo que agrupe—, así que la única
+puerta para esas dos es volver a agrupar por sección. Es el mismo trato que ya
+tenían prioridad y etiqueta desde antes de esta ronda (el panel ya resolvía su
+mitad ofreciendo "crear sección" solo cuando sus columnas son secciones): no
+es un hueco nuevo, es extender un criterio ya aceptado a dos valores más.
+
+**El arrastre no se sostiene fuera de "sección".** Agrupando por fecha,
+prioridad o etiqueta —incluida "nada", una lista corrida que puede mezclar
+tareas de secciones distintas cuya posición no es comparable entre sí (D25)—
+no hay drag and drop: el mismo renderizador genérico que ya se usaba para
+prioridad y etiqueta se extiende a los dos valores nuevos, sin agregar
+arrastre a ninguno.
+
+**Consecuencia.** `lib/view-options/schema.ts` (`defaultOptionsForViewKey`
+suma "sección" como default explícito de Bandeja y Proyecto;
+`effectiveListGroupBy` deja de tratar "fecha" como "nada", solo sigue
+resolviendo así a "sección" —para el renderizador genérico de grupos, no para
+la lista completa—), `lib/view-options/group-tasks.ts` (agrupa por fecha
+reusando `dateColumns` de `lib/board/panel-columns.ts`, sin duplicar el
+bucketing), `components/projects/sectioned-tasks.tsx` (la rama de bloques pasa
+a depender de `groupBy === "seccion"`, no de `"nada"`),
+`components/view-options/view-options-bar.tsx` (la lista ofrece los cinco
+valores, "sección" acotada a Bandeja y Proyecto, y Hoy no ofrece el control en
+absoluto en lista) y `components/tasks/hoy-view.tsx` (la lista fuerza "nada"
+sin importar lo guardado) quedan actualizados, con sus tests.
+`openspec/specs/opciones-de-vista/spec.md` y `openspec/specs/vistas-lista/spec.md`
+quedan corregidos: el primero ya decía que la lista ofrece los cinco valores
+—una inconsistencia con el código, que solo ofrecía tres, que esta ronda
+también corrige.

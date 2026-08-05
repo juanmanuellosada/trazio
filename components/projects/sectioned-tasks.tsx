@@ -51,9 +51,21 @@ import { cn } from "@/lib/utils";
  * Bloque 6 (`opciones-de-vista`/`modo-panel`): el disparador de opciones de
  * vista vive en la cabecera de cada pantalla (bandeja/page.tsx, project-header.tsx),
  * no acá — este componente solo lee `options` vía `useViewOptions` con el
- * mismo `viewKey`. Con agrupación activa (por prioridad o etiqueta), la
- * agrupación por sección se reemplaza por la elegida — las secciones vuelven
- * en cuanto se restablece "nada".
+ * mismo `viewKey`.
+ *
+ * **En la lista, "sección" —el default de Bandeja y Proyecto— es lo único
+ * que muestra los bloques colapsables** (`openspec/changes/lista-con-mas-agrupadores`,
+ * D-A/D-C): con cualquier otro valor, incluido "nada", la vista se aplana a
+ * una lista corrida (o agrupada por fecha/prioridad/etiqueta, sin bloques de
+ * sección) y las tres acciones que viven en el encabezado de una sección
+ * —colapsar, agregar una tarea ahí, renombrar/eliminar— dejan de estar en la
+ * lista. Colapsar es cosmético (se pierde sin reemplazo); agregar una tarea
+ * en una sección específica sigue alcanzable por el selector de destino del
+ * alta rápida y por `#Proyecto/Sección` en el parser; renombrar y eliminar
+ * solo viven acá y en el panel cuando sus columnas son secciones (ver el
+ * párrafo de abajo) — volver a "Sección" siempre las recupera, sin perder
+ * nada guardado (D24: nunca sin ninguna puerta, aunque a veces la puerta sea
+ * cambiar el agrupador).
  *
  * **Panel (`openspec/changes/panel-con-columnas-por-campo/`, D-A/D-C/D-F):**
  * las columnas salen del agrupador, no están cableadas a esta pantalla.
@@ -126,7 +138,7 @@ export function SectionedTasks({
     },
   ]);
 
-  // Solo para la lista agrupada por sección (rama `options.groupBy === "nada"` más abajo): sigue igual que antes.
+  // Solo para la lista agrupada por sección (rama `options.groupBy === "seccion"` más abajo, `lista-con-mas-agrupadores`): sigue igual que antes.
   function columnTasks(sectionId: string | null): TaskRow[] {
     return orderTasks(
       visibleTasks.filter((t) => t.section_id === sectionId),
@@ -207,11 +219,11 @@ export function SectionedTasks({
   // Selección múltiple (bloque 7.10-7.13): orden visual para `⇧clic`, en
   // cada una de las tres formas de ver esta pantalla.
   const listOrderIds = [...columnTasks(null), ...sections.flatMap((s) => columnTasks(s.id))].map((t) => t.id);
-  const groupedTasks = groupTasks(orderTasks(visibleTasks, options.order, timezone), options.groupBy);
+  const groupedTasks = groupTasks(orderTasks(visibleTasks, options.order, timezone), options.groupBy, timezone);
   const groupedOrderIds = groupedTasks.flatMap((group) => group.tasks.map((t) => t.id));
   const panelOrderIds = boardColumns.flatMap((column) => column.tasks.map((t) => t.id));
   const selectionOrderIds =
-    options.viewShape === "panel" ? panelOrderIds : options.groupBy === "nada" ? listOrderIds : groupedOrderIds;
+    options.viewShape === "panel" ? panelOrderIds : options.groupBy === "seccion" ? listOrderIds : groupedOrderIds;
   const candidateTasks = topLevelTasks
     .filter((t) => selectionOrderIds.includes(t.id))
     .map((t) => ({ id: t.id, projectId: t.project_id }));
@@ -262,7 +274,7 @@ export function SectionedTasks({
               resolveTaskColor={resolveTaskColor}
               createTaskProjectId={projectId}
             />
-          ) : options.groupBy === "nada" ? (
+          ) : options.groupBy === "seccion" ? (
             <div className="space-y-4">
               <TaskList
                 projectId={projectId}
@@ -298,7 +310,7 @@ export function SectionedTasks({
                       {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
                     </h2>
                   )}
-                  {/* Sin arrastre acá: en la lista, agrupar por prioridad o etiqueta reemplaza a las secciones y no hay ningún campo de columna que escribir al mover — eso es solo el modo panel (D-C). */}
+                  {/* Sin arrastre acá: agrupando por cualquier valor que no sea sección —incluido "nada", la lista corrida (`lista-con-mas-agrupadores`, D-A)— no hay un campo de columna único que escribir al mover, ni una posición comparable entre secciones distintas. Eso es solo el modo panel, y solo agrupado por sección (D-C). */}
                   <ul className="flex flex-col divide-y divide-border/60">
                     {group.tasks.map((task) => (
                       <TaskRowView

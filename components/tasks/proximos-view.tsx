@@ -276,7 +276,7 @@ export function ProximosView({
                     <AlertTriangle aria-hidden className="size-4" />
                     Atrasadas
                   </h2>
-                  <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject />
+                  <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject timezone={timezone} />
                 </section>
               )}
 
@@ -298,7 +298,7 @@ export function ProximosView({
                       </span>
                     </h2>
                     {dayTasks.length > 0 && (
-                      <TaskGroupList tasks={dayTasks} allTasks={tasks} groupBy={options.groupBy} showProject />
+                      <TaskGroupList tasks={dayTasks} allTasks={tasks} groupBy={options.groupBy} showProject timezone={timezone} />
                     )}
                     {inboxProjectId && (
                       <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={day} />

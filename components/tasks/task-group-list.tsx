@@ -22,14 +22,17 @@ export function TaskGroupList({
   allTasks,
   groupBy,
   showProject,
+  timezone,
 }: {
   tasks: TaskRowData[];
   allTasks: TaskRowData[];
   groupBy: GroupByOption;
   /** Decisión explícita de la pantalla que llama (`fila-de-tarea-en-niveles`, D-B): Hoy y Próximos, los dos únicos llamadores, la pasan en `true`. */
   showProject: boolean;
+  /** Solo importa agrupando por fecha (`openspec/changes/lista-con-mas-agrupadores`): sin ella, `groupTasks` bucketea en UTC. */
+  timezone?: string;
 }) {
-  const groups = groupTasks(tasks, groupBy);
+  const groups = groupTasks(tasks, groupBy, timezone);
   const orderedIds = groups.flatMap((group) => group.tasks.map((t) => t.id));
 
   return (

@@ -29,3 +29,17 @@ export async function createConfirmedUser(options: { email: string; password: st
   if (error) throw error;
   return data.user;
 }
+
+/**
+ * Escribe `options` directo en `view_preferences` (bypass de RLS con
+ * `service_role`), para sembrar un estado que la aplicación ya no escribe
+ * por su cuenta —como `groupBy: "nada"` en la clave de un proyecto, el
+ * valor guardado antes de la migración de `lista-con-mas-agrupadores`
+ * (D49)— y comprobar en el navegador que el código lo maneja bien. No pasa
+ * por `parseViewOptions`: `options` viaja tal cual al `jsonb`.
+ */
+export async function setViewPreferences(userId: string, viewKey: string, options: Record<string, unknown>) {
+  const admin = createAdminClient();
+  const { error } = await admin.from("view_preferences").upsert({ user_id: userId, view_key: viewKey, options });
+  if (error) throw error;
+}

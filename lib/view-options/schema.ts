@@ -65,7 +65,19 @@ const daysAheadFieldSchema = z.number().int().min(UPCOMING_WINDOW_MIN_DAYS).max(
 const booleanFieldSchema = z.boolean();
 const calendarFormatFieldSchema = z.enum(CALENDAR_FORMATS);
 
-/** Bandeja y Proyecto: orden manual (D25). El resto: por fecha de vencimiento, que ya reproduce "por hora" en Hoy y el orden propio de Próximos, Etiqueta y Filtro (ver `docs/decisions.md` D25 y los requirements de defaults de `specs/opciones-de-vista`). */
+/**
+ * Bandeja y Proyecto: orden manual (D25). El resto: por fecha de
+ * vencimiento, que ya reproduce "por hora" en Hoy y el orden propio de
+ * Próximos, Etiqueta y Filtro (ver `docs/decisions.md` D25 y los
+ * requirements de defaults de `specs/opciones-de-vista`).
+ *
+ * `groupBy` (`openspec/changes/lista-con-mas-agrupadores`, D-A/D-B): el
+ * default deja de ser implícito. En Bandeja y Proyecto pasa a ser "sección"
+ * —explícito, pero produce exactamente lo mismo que ya se veía— porque ahí
+ * "nada" pasa a significar lista corrida, y nadie debería ver un proyecto
+ * aplanado sin haberlo pedido. El resto de las pantallas mantiene "nada": ya
+ * significaba lista corrida ahí, no cambia nada.
+ */
 export function defaultOptionsForViewKey(viewKey: string): ViewOptions {
   const isManualScreen = viewKey === "bandeja" || viewKey.startsWith("proyecto:");
   const showCompletedByDefault = viewKey !== "hoy" && viewKey !== "proximos";
@@ -75,7 +87,7 @@ export function defaultOptionsForViewKey(viewKey: string): ViewOptions {
     showCompleted: showCompletedByDefault,
     daysAhead: UPCOMING_WINDOW_DEFAULT_DAYS,
     order: isManualScreen ? "manual" : "fecha",
-    groupBy: "nada",
+    groupBy: isManualScreen ? "seccion" : "nada",
     quickFilters: { ...DEFAULT_QUICK_FILTERS },
     showHabits: true,
     showFutureRecurrences: false,
@@ -166,14 +178,18 @@ export function effectivePanelGroupBy(groupBy: GroupByOption, viewKey: string): 
 }
 
 /**
- * Espejo de `effectivePanelGroupBy` para la lista (bloque "hueco" de
- * `openspec/changes/panel-con-columnas-por-campo`): "sección" y "fecha" son
- * valores nuevos, pensados para las columnas del panel, y la lista no sabe
- * agruparlos — cada forma de ver ofrece lo que sabe manejar y trata lo que
- * no entiende como "nada", sin pisar la preferencia guardada. Quien llama
- * sigue leyendo y escribiendo el valor crudo tal cual; esta función solo
- * resuelve qué grupo usar *dentro* de la lista.
+ * Espejo de `effectivePanelGroupBy`, pero para el renderizador genérico de
+ * grupos (`groupTasks`/`TaskGroupList`), no para la lista completa
+ * (`openspec/changes/lista-con-mas-agrupadores`, D-A/D-C). "Fecha" ya no es
+ * un caso especial: la lista sabe agruparla igual que prioridad o etiqueta
+ * (D-D). "Sección" sigue resolviéndose a "nada" acá, pero no porque la lista
+ * no sepa agruparla — es al revés: "sección" arma los bloques colapsables
+ * con sus propias acciones (colapsar, agregar tarea, menú de la sección),
+ * que solo `SectionedTasks` sabe montar, nunca este camino genérico
+ * (D-C del design). Quien llama sigue leyendo y escribiendo el valor crudo
+ * tal cual; esta función solo resuelve qué grupo usar dentro del
+ * renderizador genérico.
  */
 export function effectiveListGroupBy(groupBy: GroupByOption): GroupByOption {
-  return groupBy === "seccion" || groupBy === "fecha" ? "nada" : groupBy;
+  return groupBy === "seccion" ? "nada" : groupBy;
 }

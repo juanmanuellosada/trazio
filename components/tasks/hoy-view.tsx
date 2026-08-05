@@ -64,17 +64,24 @@ const VIEW_KEY = "hoy";
  *
  * **El orden (D-A, tarea 2.6).** El cruce por hora entre tareas y eventos
  * (`buildHoySequence`, tres tramos: todo el día/arrastrado de ayer, con
- * hora mezclado, sin hora) solo tiene sentido con el orden y la agrupación
- * por default de esta pantalla — orden "fecha", sin agrupar. Elegir
- * "nombre" o "prioridad" en la barra de opciones, o agrupar por prioridad o
- * etiqueta, deja a un evento sin nada con qué participar: no tiene nombre
- * que alfabetizar contra el de una tarea con sentido, ni prioridad, ni
- * etiqueta. Para esos casos, los eventos se muestran aparte, arriba de las
- * tareas, en su propio orden cronológico (todo el día primero, después por
- * hora — el mismo criterio de los tramos 1 y 2 de `buildHoySequence`, acá
- * con la lista de tareas vacía) y las tareas siguen debajo con el criterio
+ * hora mezclado, sin hora) solo tiene sentido con el orden por default de
+ * esta pantalla — "fecha". Elegir "nombre" o "prioridad" en la barra de
+ * opciones deja a un evento sin nada con qué participar: no tiene nombre
+ * que alfabetizar contra el de una tarea con sentido, ni prioridad. Para
+ * esos casos, los eventos se muestran aparte, arriba de las tareas, en su
+ * propio orden cronológico (todo el día primero, después por hora — el
+ * mismo criterio de los tramos 1 y 2 de `buildHoySequence`, acá con la
+ * lista de tareas vacía) y las tareas siguen debajo con el criterio
  * elegido. Sigue siendo una sola lista, sin encabezado propio de "Eventos":
  * la fila del evento ya se distingue sola por su forma (D-C).
+ *
+ * **La lista de Hoy no agrupa** (D-E, `openspec/changes/lista-con-mas-agrupadores`):
+ * la barra de opciones ya no ofrece el control acá (`ViewOptionsBar`,
+ * `showGroupBy`), y las tres llamadas a `TaskGroupList` de más abajo pasan
+ * "nada" fijo, sin importar lo que haya guardado `options.groupBy` de antes
+ * de esta capacidad — agrupar rompería la secuencia de arriba, y un evento
+ * no tiene prioridad, etiqueta ni sección con qué agruparse. El panel de
+ * Hoy no cambia: ahí no hay eventos ni secuencia que romper.
  *
  * Las atrasadas (tarea 2.5) nunca se mezclan con esta secuencia: siguen en
  * su bloque propio arriba, como antes de esta capacidad.
@@ -158,8 +165,10 @@ export function HoyView({
     ? orderTasks(applyQuickFilters(completedTodayRaw, options.quickFilters, true), options.order, timezone)
     : [];
 
-  // Ver "El orden (D-A, tarea 2.6)" en el comentario de arriba.
-  const useDefaultSequence = options.order === "fecha" && options.groupBy === "nada";
+  // Ver "El orden (D-A, tarea 2.6)" en el comentario de arriba. El agrupador
+  // ya no entra en esta cuenta (D-E): la lista de Hoy nunca agrupa, así que
+  // solo el orden puede romper la secuencia por default.
+  const useDefaultSequence = options.order === "fecha";
   const eventSequence = buildHoySequence<TaskRowData, (typeof events)[number]>([], events, now, timezone);
   const mixedSequence = useDefaultSequence ? buildHoySequence(today, events, now, timezone) : [];
   // Orden visual real de las tareas de la secuencia (sin los eventos, que no
@@ -329,7 +338,7 @@ export function HoyView({
                       <AlertTriangle aria-hidden className="size-4" />
                       Atrasadas
                     </h2>
-                    <TaskGroupList tasks={overdue} allTasks={tasks} groupBy={options.groupBy} showProject />
+                    <TaskGroupList tasks={overdue} allTasks={tasks} groupBy="nada" showProject />
                   </section>
                 )}
 
@@ -363,7 +372,7 @@ export function HoyView({
                           </ul>
                         )}
                         {today.length > 0 && (
-                          <TaskGroupList tasks={today} allTasks={tasks} groupBy={options.groupBy} showProject />
+                          <TaskGroupList tasks={today} allTasks={tasks} groupBy="nada" showProject />
                         )}
                       </>
                     )}
@@ -389,7 +398,7 @@ export function HoyView({
                 <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
                   Completadas de hoy ({completedToday.length})
                 </h2>
-                <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy={options.groupBy} showProject />
+                <TaskGroupList tasks={completedToday} allTasks={tasks} groupBy="nada" showProject />
               </section>
             )}
           </div>

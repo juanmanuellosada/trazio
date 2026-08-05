@@ -234,16 +234,28 @@ describe("ViewOptionsBar — agrupar por: cada forma de ver ofrece lo que sabe m
     setOption.mockClear();
   });
 
-  it("en lista, agrupar por ofrece nada, prioridad y etiqueta, pero nunca sección ni fecha", async () => {
+  it("en lista, en un proyecto, agrupar por ofrece los cinco valores (D-D, lista-con-mas-agrupadores)", async () => {
     const user = userEvent.setup();
     renderBar({ viewShape: "lista" });
     await openPanel(user);
     await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
     expect(await screen.findByRole("option", { name: "Nada" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Sección" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Fecha" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Etiqueta" })).toBeInTheDocument();
+  });
+
+  it("en lista, en una vista que cruza proyectos, agrupar por ofrece los cuatro valores menos sección (D-D)", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista" }, { viewKey: "etiqueta:1" });
+    await openPanel(user);
+    await user.click(screen.getByRole("combobox", { name: "Agrupar por" }));
+    expect(await screen.findByRole("option", { name: "Nada" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Fecha" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Prioridad" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Etiqueta" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Sección" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Fecha" })).not.toBeInTheDocument();
   });
 
   it("en panel, agrupar por ofrece sección, fecha y prioridad, pero nunca nada ni etiqueta (D48)", async () => {
@@ -272,11 +284,30 @@ describe("ViewOptionsBar — agrupar por: cada forma de ver ofrece lo que sabe m
     expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Sección");
   });
 
-  it("con la preferencia guardada en sección o fecha (traída del panel), la lista la muestra como 'Nada' sin pisarla", async () => {
+  it("en un proyecto, la lista muestra 'sección' tal cual: ahí es un valor real, no uno que se resuelve a otro (D-A/D-D)", async () => {
     const user = userEvent.setup();
     renderBar({ viewShape: "lista", groupBy: "seccion" });
     await openPanel(user);
+    expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Sección");
+  });
+
+  it("con 'sección' guardada desde un proyecto, una vista que cruza proyectos la muestra como 'Nada' sin pisarla", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista", groupBy: "seccion" }, { viewKey: "etiqueta:1" });
+    await openPanel(user);
     expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Nada");
+  });
+
+  it("en lista, elegir cualquiera de los cinco valores llama a setOption con el valor real", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista" });
+    await openPanel(user);
+
+    await chooseOption(user, "Agrupar por", "Sección");
+    expect(setOption).toHaveBeenCalledWith("groupBy", "seccion");
+
+    await chooseOption(user, "Agrupar por", "Fecha");
+    expect(setOption).toHaveBeenCalledWith("groupBy", "fecha");
   });
 
   it("elegir sección o fecha en el panel llama a setOption con el valor real", async () => {
@@ -333,6 +364,22 @@ describe("ViewOptionsBar — Hoy y Próximos no ofrecen agrupar por sección en 
     renderBar({ viewShape: "panel", groupBy: "seccion" }, { viewKey: "proximos" });
     await openPanel(user);
     expect(screen.getByRole("combobox", { name: "Agrupar por" })).toHaveTextContent("Fecha");
+  });
+});
+
+describe("ViewOptionsBar — Hoy no ofrece agrupar por en la lista (D-E, lista-con-mas-agrupadores)", () => {
+  it("en la lista de Hoy, el control 'Agrupar por' no está", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "lista" }, { viewKey: "hoy" });
+    await openPanel(user);
+    expect(screen.queryByRole("combobox", { name: "Agrupar por" })).not.toBeInTheDocument();
+  });
+
+  it("en el panel de Hoy, el control sigue ofreciéndose: ahí no hay eventos ni secuencia que romper", async () => {
+    const user = userEvent.setup();
+    renderBar({ viewShape: "panel" }, { viewKey: "hoy" });
+    await openPanel(user);
+    expect(screen.getByRole("combobox", { name: "Agrupar por" })).toBeInTheDocument();
   });
 });
 

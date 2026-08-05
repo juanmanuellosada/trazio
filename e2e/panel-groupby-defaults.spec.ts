@@ -10,8 +10,13 @@ import { PASSWORD, uniqueEmail, uniqueName } from "./helpers/users";
  * Bandeja/Proyecto, fecha en Próximos, prioridad en Hoy). Confirma que
  * quien ya tenía "nada" guardado (el default histórico) ve exactamente lo
  * mismo que antes en el panel, solo que el control ahora lo llama por su
- * nombre, y que ir y volver entre lista y panel no pisa ninguna de las dos
- * preferencias guardadas.
+ * nombre.
+ *
+ * D49 (`lista-con-mas-agrupadores`) hizo lo mismo del lado de la lista: el
+ * default de Bandeja y Proyecto pasa a ser "sección", explícito, en vez de
+ * "nada". Un usuario nuevo (sin preferencia guardada) ve "Sección" en las
+ * dos formas de ver, y una preferencia vieja en "nada" —guardada de antes de
+ * esta ronda— se migra una sola vez, ver `e2e/list-groupby.spec.ts`.
  */
 
 async function loginFreshUser(page: import("@playwright/test").Page, prefix: string) {
@@ -64,12 +69,14 @@ test("el panel de un proyecto se ve igual (columnas por sección), con el contro
   await expect(page.getByText("En curso")).toBeVisible();
   await expect(page.getByText("Sin sección")).toBeVisible();
 
-  // Ida y vuelta: la lista tiene que seguir encontrando "nada" intacto (se
-  // sigue mostrando "Nada" ahí, donde no es redundante).
+  // Ida y vuelta: en la lista, el default de un proyecto también es
+  // "Sección" desde `lista-con-mas-agrupadores` (D49) — antes decía "Nada"
+  // acá (aunque ya mostrara los mismos bloques), porque la lista todavía no
+  // ofrecía "sección" como valor propio.
   await openFormatPanel(page);
   await setViewShape(page, "Lista");
   await openFormatPanel(page);
-  await expect(page.getByRole("combobox", { name: "Agrupar por" })).toContainText("Nada");
+  await expect(page.getByRole("combobox", { name: "Agrupar por" })).toContainText("Sección");
   await page.keyboard.press("Escape");
 
   // Volver a panel: sigue en "Sección", nada se pisó en el camino.

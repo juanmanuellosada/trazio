@@ -358,6 +358,24 @@ describe("HoyView — el orden de los tres tramos (D-A, grupo 2)", () => {
     expect(meeting).toBeLessThan(aTask);
     expect(aTask).toBeLessThan(bTask);
   });
+
+  it("un agrupador guardado de antes de esta capacidad no agrupa la lista de Hoy (D-E, lista-con-mas-agrupadores): ninguna cabecera de grupo aparece", () => {
+    renderHoy(
+      [
+        task({ id: "urgente", title: "Tarea urgente", priority: 1, due_date: "2026-08-05" }),
+        task({ id: "baja", title: "Tarea de baja prioridad", priority: 4, due_date: "2026-08-05" }),
+      ],
+      eventsOk([]),
+      // "nombre" saca la secuencia por default (D-A) y deja ver `TaskGroupList`,
+      // al que Hoy le pasa "nada" fijo sin importar `groupBy` guardado.
+      { order: "nombre", groupBy: "prioridad" },
+    );
+
+    expect(screen.getByText("Tarea urgente")).toBeInTheDocument();
+    expect(screen.getByText("Tarea de baja prioridad")).toBeInTheDocument();
+    expect(screen.queryByText("Urgente")).not.toBeInTheDocument();
+    expect(screen.queryByText("Baja")).not.toBeInTheDocument();
+  });
 });
 
 describe("HoyView — formatos (D-F)", () => {

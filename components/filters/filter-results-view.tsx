@@ -70,7 +70,7 @@ export function FilterResultsView({
 
   const allTasks = results.status === "listo" ? results.tasks : [];
   const visibleTasks = orderTasks(applyQuickFilters(allTasks, options.quickFilters, options.showCompleted), options.order, timezone);
-  const groups = groupTasks(visibleTasks, options.groupBy);
+  const groups = groupTasks(visibleTasks, options.groupBy, timezone);
   const orderedIds = groups.flatMap((group) => group.tasks.map((t) => t.id));
   const candidateTasks = visibleTasks.map((t) => ({ id: t.id, projectId: t.project_id }));
 

@@ -237,10 +237,19 @@ Tres formas de verlo:
 
 ### Proyecto
 
-Primero las tareas sin sección, después cada sección colapsable con su propio botón
-de agregar. Tareas y secciones se reordenan arrastrando (solo con orden manual y sin
-agrupación activa). Desde el menú del proyecto: editar, favorito, agregar sección,
-archivar, eliminar.
+Agrupada por sección —su valor por defecto, como Bandeja de entrada—: primero las
+tareas sin sección, después cada sección colapsable con su propio botón de agregar.
+Tareas y secciones se reordenan arrastrando (solo con orden manual y sin agrupación
+activa). Desde el menú del proyecto: editar, favorito, agregar sección, archivar,
+eliminar.
+
+Agrupada por cualquier otro valor —incluido "nada"— se ve sin los bloques de
+sección: "nada" es una sola lista corrida, y el resto arma bloques por fecha,
+prioridad o etiqueta. Ahí, colapsar una sección se pierde (es una comodidad de
+lectura), pero crear, renombrar y eliminar una sección siguen alcanzables:
+agregar una tarea en una sección puntual, desde el selector de destino del alta
+rápida o escribiendo `#Proyecto/Sección`; renombrar y eliminar, volviendo a
+agrupar por sección.
 
 También ofrece panel, igual que Bandeja de entrada: columnas por "agrupar por",
 con "Sección" como valor por defecto — con alta al pie de cada columna y, cuando
@@ -299,13 +308,21 @@ por separado.**
 - Mostrar u ocultar: completadas, hábitos, repeticiones futuras.
 - Cuántos días adelante mostrar.
 - Orden: manual, por nombre, por fecha o por prioridad.
-- Agrupar por: nada, sección, fecha, prioridad o etiqueta en la lista. En el
-  panel, el agrupador define las columnas y no ofrece "nada" ni etiqueta (una
-  tarea puede tener varias, y aparecería repetida en varias columnas): cada
-  pantalla muestra en su lugar un valor por defecto propio — Sección en
+- Agrupar por: nada, sección, fecha, prioridad o etiqueta en la lista. "Nada"
+  siempre es una sola lista corrida, sin bloques ni encabezados, en cualquier
+  pantalla — nunca la agrupación natural de la pantalla. Bandeja de entrada y
+  Proyecto arrancan agrupadas por "Sección" (su valor por defecto, para verse
+  igual que siempre); "sección" nunca se ofrece donde la vista cruza
+  proyectos (Hoy, Próximos, una etiqueta, un filtro), y "fecha" nunca se
+  ofrece en Hoy, que es un solo día. **La lista de Hoy no ofrece el control**:
+  su lista es una secuencia con eventos intercalados, y agrupar la rompe. En
+  el panel, el agrupador define las columnas y no ofrece "nada" ni etiqueta
+  (una tarea puede tener varias, y aparecería repetida en varias columnas):
+  cada pantalla muestra en su lugar un valor por defecto propio — Sección en
   Bandeja y Proyecto, Fecha en Próximos, Prioridad en Hoy. En el panel de Hoy
   y de Próximos tampoco ofrece sección: las dos cruzan proyectos, y una
-  sección solo tiene sentido dentro de uno.
+  sección solo tiene sentido dentro de uno. El panel de Hoy sí sigue
+  ofreciendo el agrupador: ahí no hay eventos ni secuencia que romper.
 - Filtrar por fecha límite, por prioridad y por etiqueta.
 - Botón para restablecer todas las opciones.
 

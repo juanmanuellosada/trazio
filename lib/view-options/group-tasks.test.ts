@@ -29,10 +29,31 @@ describe("groupTasks (bloque 6.6, requirement Agrupar por)", () => {
     expect(groups[0].tasks.map((t) => t.id)).toEqual(["a", "b"]);
   });
 
-  it('"sección" y "fecha" son valores del panel que la lista no sabe agrupar: se tratan como "nada" (espejo de D-B, hueco de panel-con-columnas-por-campo)', () => {
+  it('"sección" arma bloques colapsables que solo SectionedTasks sabe montar, nunca este camino genérico: se trata como "nada" (D-C, lista-con-mas-agrupadores)', () => {
     const tasks = [task({ id: "a" }), task({ id: "b" })];
     expect(groupTasks(tasks, "seccion")).toEqual(groupTasks(tasks, "nada"));
-    expect(groupTasks(tasks, "fecha")).toEqual(groupTasks(tasks, "nada"));
+  });
+
+  it('"fecha" arma un grupo por día de vencimiento, en orden cronológico, más "Sin fecha" al final (D-D, lista-con-mas-agrupadores)', () => {
+    const tasks = [
+      task({ id: "later", due_date: "2026-08-20" }),
+      task({ id: "sooner", due_date: "2026-08-10" }),
+      task({ id: "undated" }),
+    ];
+    const groups = groupTasks(tasks, "fecha", "America/Argentina/Buenos_Aires");
+    expect(groups.map((g) => g.tasks.map((t) => t.id))).toEqual([["sooner"], ["later"], ["undated"]]);
+    expect(groups[groups.length - 1].label).toBe("Sin fecha");
+  });
+
+  it('"fecha" no muestra un grupo vacío de "Sin fecha" cuando todas las tareas tienen fecha (sin grupos vacíos, mismo criterio que prioridad/etiqueta)', () => {
+    const tasks = [task({ id: "a", due_date: "2026-08-10" })];
+    const groups = groupTasks(tasks, "fecha", "America/Argentina/Buenos_Aires");
+    expect(groups.every((g) => g.label !== "Sin fecha")).toBe(true);
+  });
+
+  it('sin "timezone", "fecha" bucketea en UTC por default', () => {
+    const tasks = [task({ id: "a", due_date: "2026-08-10" })];
+    expect(groupTasks(tasks, "fecha")).toEqual(groupTasks(tasks, "fecha", "UTC"));
   });
 
   it('"prioridad" arma un grupo por cada prioridad presente, sin grupos vacíos', () => {
