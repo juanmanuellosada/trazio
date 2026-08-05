@@ -618,6 +618,14 @@ export function TaskRow({
         // dos líneas. Sin segundo nivel — el caso más común en la Bandeja —
         // sigue siendo `items-center`, igual que hoy: nada cambia ahí.
         hasSecondLevel ? "items-start" : "items-center",
+        // El tablero nunca tiene chevron de subtareas (ver más abajo) ni la
+        // sangría de la lista en niveles, así que el espacio a la izquierda
+        // del círculo de completar puede ser más ajustado (reporte del
+        // dueño, captura): un gap más chico entre casillero de selección,
+        // manija de arrastre y círculo, sin dejar de reservarles su lugar
+        // — la reserva es lo que evita que aparezcan empujando el título al
+        // pasar el cursor.
+        variant === "board" && "gap-1",
       )}
       onContextMenu={handleRowContextMenu}
       onClickCapture={handleRowClickCapture}
@@ -641,7 +649,12 @@ export function TaskRow({
         </button>
       )}
 
-      {hasChildren ? (
+      {/* El tablero nunca expande subtareas (`isFlat` arriba fuerza
+          `children = []`), así que este control nunca dibuja el chevron acá
+          — no tiene sentido reservarle un espacio que jamás se usa (a
+          diferencia de la lista y de `variant="flat"`, donde el espacio
+          sigue reservado para mantener la fila alineada). */}
+      {variant === "board" ? null : hasChildren ? (
         <button
           type="button"
           aria-label={collapsed ? `Mostrar subtareas de ${task.title}` : `Ocultar subtareas de ${task.title}`}
