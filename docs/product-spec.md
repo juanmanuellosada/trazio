@@ -154,6 +154,12 @@ Cada hábito lleva su **racha actual** y su **mejor racha histórica**. Reglas:
 Un hábito solo aparece a partir del día en que se creó, nunca antes. Se puede
 reprogramar su horario para un día puntual sin cambiar el horario habitual.
 
+Se puede **saltear un día puntual**: queda constancia de que ese día se decidió no
+hacerlo, sin contarlo como cumplido ni tocar la racha (no suma ni resta, solo deja
+de estar pendiente). El hábito se sigue viendo ese día, marcado como salteado —no
+desaparece— y saltear es reversible: completarlo después actualiza la racha como
+cualquier otro día. No se ofrece saltear un día que ya se cumplió.
+
 ### Evento de calendario
 
 No se crea ni se guarda en Trazio: son los eventos del Google Calendar conectado,
@@ -284,14 +290,47 @@ proyecto y etiquetas, agregar subtareas, y leer o escribir comentarios.
 ### Vista de calendario
 
 Disponible en Bandeja, Hoy, Próximos y Proyecto. Muestra las 24 horas del día, con
-fila aparte arriba para eventos de todo el día y una línea marcando la hora actual.
+fila aparte arriba para eventos de todo el día y una línea roja marcando la hora
+actual, que avanza sola mientras la pantalla está abierta. En la forma de ver
+"calendario" el contenido ocupa el ancho disponible en vez de detenerse en el tope
+de la columna de contenido — la misma excepción acotada a D39 que ya rige para la
+forma de ver "panel".
 
-- Arrastrar una tarea, evento o hábito lo mueve de horario.
-- Estirar el borde cambia la duración.
-- Los cambios se ajustan a intervalos de 15 minutos.
+**Qué muestra cada bloque**, en este orden y hasta donde entre según su alto —nunca
+el mismo contenido en un bloque de quince minutos que en uno de varias horas—:
+
+- Evento: título, horario y el nombre de su calendario. Con el color de ese
+  calendario, y una forma propia (barra lateral) para distinguirse de una tarea o
+  un hábito aunque compartan color.
+- Tarea: título, horario, proyecto y etiquetas, más un control para completarla que
+  nunca se cae por falta de espacio.
+- Hábito: lo mismo que una tarea, más una marca que lo identifica como hábito. Un
+  hábito salteado ese día se ve marcado, sin desaparecer del calendario.
+
+**Arrastrar y redimensionar**, en las tres pantallas y para los tres tipos de
+bloque:
+
+- Arrastrar una tarea, evento o hábito lo mueve de horario; estirar el borde cambia
+  la duración (salvo en un hábito, que no se puede redimensionar: su tabla de
+  reprogramación no guarda duración).
+- Mientras se arrastra, se ve a qué hora quedaría —ajustada a la grilla de 15
+  minutos— y el lugar de origen queda marcado. El bloque nunca se recorta al salir
+  del área visible de la grilla.
+- Al soltar, el bloque queda en su nueva posición al instante, sin esperar al
+  servidor; si el servidor lo rechaza, vuelve y avisa. Si es una ocurrencia de una
+  serie, se pregunta el alcance sin que el bloque salte de vuelta mientras pregunta.
 - Arrastrar sobre espacio vacío pregunta si se quiere crear un evento o una tarea.
 - Los hábitos sin horario fijo aparecen como chips sueltos que se programan
   arrastrándolos a una hora.
+
+**Acciones sobre un bloque**, con clic derecho:
+
+- Evento: editar, abrir en Google Calendar y eliminar (con confirmación, también
+  disponible desde su diálogo de edición).
+- Tarea: abrir su detalle, completarla y eliminarla.
+- Hábito: editarlo, completarlo y saltearlo ese día. No se ofrece saltear un día ya
+  cumplido.
+
 - Opción para mostrar las repeticiones futuras de una tarea recurrente como bloques
   de vista previa.
 - En Hoy, siempre en modo día, forzado y sin navegación entre días ni selector de

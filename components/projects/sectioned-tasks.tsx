@@ -23,6 +23,7 @@ import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
 import { useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
@@ -234,10 +235,7 @@ export function SectionedTasks({
         <div
           className={cn(
             "flex-1 p-4 sm:p-6",
-            // El panel no tiene tope propio (D-E, excepción acotada a D39):
-            // un tablero no es una línea de texto, ocupa el ancho
-            // disponible. Lista y calendario no cambian.
-            options.viewShape === "panel" ? "w-full" : "w-full max-w-content mx-auto",
+            contentWidthClass(options.viewShape),
             options.viewShape === "calendario" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
           )}
         >

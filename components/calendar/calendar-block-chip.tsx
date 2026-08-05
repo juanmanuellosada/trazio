@@ -207,6 +207,10 @@ export function CalendarBlockChip({
     TYPE_SHAPE_CLASS[block.type],
     isTight ? TIGHT_TIMED_CLASS : VARIANT_CLASS[variant],
     block.isPreview && "border-dashed opacity-60",
+    // Hábito salteado (grupo 7, D-F): "se queda en el calendario, marcado" —
+    // atenuado como una vista previa, pero sigue interactivo (el casillero
+    // de completar sigue funcionando: saltear es reversible).
+    !block.isPreview && block.type === "habit" && block.skipped && "opacity-60",
     className,
   );
 
@@ -340,7 +344,12 @@ export function CalendarBlockChip({
   const ladderContent = (
     <>
       {titleRow}
-      {showTime && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{formatBlockTimeRange(block, timezone, timeFormat)}</span>}
+      {showTime && (
+        <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">
+          {block.type === "habit" && block.skipped && "Salteado · "}
+          {formatBlockTimeRange(block, timezone, timeFormat)}
+        </span>
+      )}
       {showCalendarName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.calendarName}</span>}
       {showProjectName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.projectName}</span>}
       {showLabels && (

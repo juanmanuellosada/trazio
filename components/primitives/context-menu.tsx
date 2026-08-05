@@ -11,6 +11,13 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type AppContextMenuEntry =
   | { type: "separator" }
@@ -64,6 +71,39 @@ function renderEntries(items: AppContextMenuEntry[]) {
         {item.label}
         {item.trailing}
       </ContextMenuItem>
+    );
+  });
+}
+
+/**
+ * Mismas `items` que `AppContextMenu`, para el botón "…" que algunas filas
+ * ofrecen además del clic derecho (D-A de `menu-contextual-de-tarea`):
+ * antes `task-row.tsx` y `event-row.tsx` tenían cada una su propia copia
+ * casi idéntica de esta función — unificada acá (grupo 7 de
+ * `calendario-legible-y-manipulable`) para no sumar una tercera al cablear
+ * el menú de un bloque de calendario, que solo necesita la versión de clic
+ * derecho (`renderEntries` de abajo), sin botón "…" propio.
+ */
+export function renderDropdownEntries(items: AppContextMenuEntry[]): ReactNode[] {
+  return items.map((item, index) => {
+    if (item.type === "separator") return <DropdownMenuSeparator key={index} />;
+    if (item.type === "submenu") {
+      return (
+        <DropdownMenuSub key={index} open={item.open} onOpenChange={item.onOpenChange}>
+          <DropdownMenuSubTrigger>
+            {item.icon}
+            {item.label}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>{renderDropdownEntries(item.items)}</DropdownMenuSubContent>
+        </DropdownMenuSub>
+      );
+    }
+    return (
+      <DropdownMenuItem key={index} variant={item.destructive ? "destructive" : "default"} disabled={item.disabled} onClick={item.onSelect}>
+        {item.icon}
+        {item.label}
+        {item.trailing}
+      </DropdownMenuItem>
     );
   });
 }

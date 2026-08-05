@@ -96,10 +96,13 @@ describe("HoyEventRow (hoy-con-eventos, D-D)", () => {
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Eliminar" }));
-    expect(deleteMutate).toHaveBeenCalledWith({
-      target: { calendarId: "cal-1", eventId: "event-1", recurringEventId: null, originalStartTime: null },
-      scope: undefined,
-    });
+    expect(deleteMutate).toHaveBeenCalledWith(
+      {
+        target: { calendarId: "cal-1", eventId: "event-1", recurringEventId: null, originalStartTime: null },
+        scope: undefined,
+      },
+      { onSuccess: expect.any(Function) },
+    );
   });
 
   it("eliminar una ocurrencia de una serie pregunta el alcance en vez de confirmar directo", async () => {
@@ -113,10 +116,13 @@ describe("HoyEventRow (hoy-con-eventos, D-D)", () => {
 
     await user.click(screen.getByRole("radio", { name: /todas/i }));
     await user.click(screen.getByRole("button", { name: "Eliminar" }));
-    expect(deleteMutate).toHaveBeenCalledWith({
-      target: { calendarId: "cal-1", eventId: "event-1", recurringEventId: "series-1", originalStartTime: "2026-08-05T11:00:00.000Z" },
-      scope: "all",
-    });
+    expect(deleteMutate).toHaveBeenCalledWith(
+      {
+        target: { calendarId: "cal-1", eventId: "event-1", recurringEventId: "series-1", originalStartTime: "2026-08-05T11:00:00.000Z" },
+        scope: "all",
+      },
+      { onSuccess: expect.any(Function) },
+    );
   });
 
   it("abrir en Google Calendar usa el htmlLink del evento", async () => {

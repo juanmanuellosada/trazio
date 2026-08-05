@@ -51,6 +51,8 @@ export type CalendarBlock = {
   labels?: CalendarBlockLabel[];
   /** Nombre del calendario de origen de un evento, si quien arma el bloque ya lo resolvió. */
   calendarName?: string;
+  /** Hábito salteado ese día (grupo 6/7 de `calendario-legible-y-manipulable`, D-F): se queda en el calendario, marcado — no desaparece. `undefined` en una tarea o un evento, que no tienen este concepto. */
+  skipped?: boolean;
 };
 
 /**

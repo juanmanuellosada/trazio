@@ -2,16 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import { parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { Check, ExternalLink, Pencil, SkipForward, Trash2 } from "lucide-react";
 import { useMounted } from "@/hooks/use-mounted";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
-import { useUpdateTask } from "@/lib/tasks/mutations";
+import { useDeleteTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useTaskDetail } from "@/components/tasks/task-detail-context";
 import { isHabitDueOn } from "@/lib/habits/today";
 import { useHabits } from "@/lib/habits/use-habits";
+import { useMarkHabitDone, useUnmarkHabitDone } from "@/lib/habits/mutations";
 import { useSetHabitScheduleOverride } from "@/lib/habits/schedule-overrides";
 import { useHabitScheduleOverridesForRange } from "@/lib/habits/use-habit-schedule-overrides-range";
+import { useSkipHabit, useHabitSkipsForRange } from "@/lib/habits/skips";
+import { HabitFormDialog } from "@/components/habits/habit-form-dialog";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
 import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
 import type { DragResult } from "@/lib/calendar/drag";
@@ -27,14 +33,18 @@ import {
 import { useCalendarRangeEvents } from "@/lib/calendar/use-calendar-range-events";
 import { useRecurringTaskFields } from "@/lib/calendar/use-recurring-task-fields";
 import { useUpdateEvent } from "@/lib/calendar/use-update-event";
+import { canWriteCalendar, useGoogleCalendars } from "@/lib/calendar/use-google-calendars";
+import { useProjects } from "@/lib/projects/use-projects";
 import { expandRecurringTaskRange } from "@/lib/recurrence/expand-range";
 import type { CalendarDate } from "@/lib/parser/dates";
 import type { ViewOptions } from "@/lib/view-options/schema";
+import type { AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { CalendarNav } from "./calendar-nav";
 import { CalendarView } from "./calendar-view";
 import { CreateTaskFromRangeDialog } from "./create-task-from-range-dialog";
 import { EditEventDialog } from "./edit-event-dialog";
 import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
+import { useEventDeleteFlow } from "./use-event-delete-flow";
 
 function calendarDateFromKey(dateKey: string): CalendarDate {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -124,11 +134,17 @@ export function ScreenCalendar({
   const { data: habits } = useHabits(timezone);
   const { open: openTaskDetail } = useTaskDetail();
   const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
   const setHabitOverride = useSetHabitScheduleOverride();
+  const markHabitDone = useMarkHabitDone();
+  const unmarkHabitDone = useUnmarkHabitDone();
+  const skipHabit = useSkipHabit();
   const updateEvent = useUpdateEvent();
+  const eventDelete = useEventDeleteFlow();
 
   const [createRange, setCreateRange] = useState<DragResult | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEventInstance | null>(null);
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   const [pendingEventUpdate, setPendingEventUpdate] = useState<{ event: CalendarEventInstance; changes: EventInput } | null>(null);
 
   const visibleDays = useMemo(
@@ -138,6 +154,22 @@ export function ScreenCalendar({
 
   const rangeEvents = useCalendarRangeEvents(visibleDays, timezone);
   const rangeOverrides = useHabitScheduleOverridesForRange(visibleDays);
+  const rangeSkips = useHabitSkipsForRange(visibleDays);
+
+  // Grupo 7 ("montar `CalendarView`", D-F): la lista de calendarios de
+  // Google, para el nombre a mostrar (tarea 4/D-A) y para cruzar el permiso
+  // de escritura antes de ofrecer "Eliminar" — mismo patrón que
+  // `use-hoy-events.ts`. La lista de proyectos, para el nombre que le falta
+  // al bloque de tarea (tarea 4).
+  const calendars = useGoogleCalendars().data?.calendars;
+  const calendarById = useMemo(() => new Map((calendars ?? []).map((calendar) => [calendar.id, calendar] as const)), [calendars]);
+  const { data: projects } = useProjects();
+  const projectNameById = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.name] as const)), [projects]);
+
+  function canEditEvent(event: CalendarEventInstance): boolean {
+    const calendar = calendarById.get(event.calendarId);
+    return calendar ? canWriteCalendar(calendar) : false;
+  }
 
   const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t] as const)), [tasks]);
   const habitsById = useMemo(() => new Map((habits ?? []).map((h) => [h.id, h] as const)), [habits]);
@@ -180,9 +212,9 @@ export function ScreenCalendar({
   const taskBlocks = useMemo(
     () =>
       tasks
-        .map((task) => taskToCalendarBlock(task, resolveTaskColor(task)))
+        .map((task) => taskToCalendarBlock(task, resolveTaskColor(task), projectNameById.get(task.project_id)))
         .filter((block): block is CalendarBlock => block !== null),
-    [tasks, resolveTaskColor],
+    [tasks, resolveTaskColor, projectNameById],
   );
 
   const { habitBlocks, unscheduledHabits } = useMemo(() => {
@@ -190,6 +222,7 @@ export function ScreenCalendar({
       return { habitBlocks: [] as CalendarBlock[], unscheduledHabits: [] as UnscheduledHabitChip[] };
     }
     const overridesByDate = rangeOverrides.data ?? {};
+    const skipsByDate = rangeSkips.data ?? {};
     const timed: CalendarBlock[] = [];
     const chipHabitIds = new Set<string>();
 
@@ -199,7 +232,8 @@ export function ScreenCalendar({
         const overrideTime = overridesByDate[day]?.[habit.id];
         const effectiveTime = overrideTime ?? habit.scheduled_time;
         if (effectiveTime) {
-          timed.push(habitToCalendarBlock(habit, day, effectiveTime, resolveProjectColorHex(habit.color, theme), timezone));
+          const skipped = skipsByDate[day]?.[habit.id] ?? false;
+          timed.push(habitToCalendarBlock(habit, day, effectiveTime, resolveProjectColorHex(habit.color, theme), timezone, skipped));
         } else {
           chipHabitIds.add(habit.id);
         }
@@ -211,7 +245,7 @@ export function ScreenCalendar({
       return { id: habit.id, title: habit.name, color: resolveProjectColorHex(habit.color, theme) };
     });
     return { habitBlocks: timed, unscheduledHabits: chips };
-  }, [options.showHabits, habits, rangeOverrides.data, visibleDays, timezone, theme, habitsById]);
+  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, visibleDays, timezone, theme, habitsById]);
 
   // `pendingEventUpdate` (tarea 5.4, D-D): mientras se pregunta el alcance
   // de una serie, el evento real en caché todavía no cambió (`applyEventUpdate`
@@ -224,12 +258,13 @@ export function ScreenCalendar({
   const eventBlocks = useMemo(() => {
     if (rangeEvents.data?.status !== "ok") return [];
     return rangeEvents.data.events.map((event) => {
+      const calendarName = calendarById.get(event.calendarId)?.summary;
       if (pendingEventUpdate?.event.id === event.id) {
-        return eventToCalendarBlock({ ...event, ...pendingEventUpdate.changes });
+        return eventToCalendarBlock({ ...event, ...pendingEventUpdate.changes }, calendarName);
       }
-      return eventToCalendarBlock(event);
+      return eventToCalendarBlock(event, calendarName);
     });
-  }, [rangeEvents.data, pendingEventUpdate]);
+  }, [rangeEvents.data, pendingEventUpdate, calendarById]);
 
   const blocks = useMemo(() => [...taskBlocks, ...habitBlocks, ...eventBlocks], [taskBlocks, habitBlocks, eventBlocks]);
 
@@ -244,6 +279,108 @@ export function ScreenCalendar({
       return;
     }
     // Hábito: sin un detalle propio que abrir todavía desde acá.
+  }
+
+  /** Fecha calendario (`yyyy-MM-dd`) del día al que pertenece este bloque, en `timezone` — la misma que se usó para construirlo (`habitToCalendarBlock`/`taskToCalendarBlock`), sin depender del formato interno de `block.id`. */
+  function blockDate(block: CalendarBlock): string {
+    return formatInTimeZone(parseISO(block.start), timezone, "yyyy-MM-dd");
+  }
+
+  /**
+   * Control de completar (grupo 2/7, D-A): el mismo manejador atiende el
+   * casillero del bloque y el ítem "Completar" del menú contextual, para no
+   * duplicar la traducción de tipo → mutación. Una tarea se completa
+   * cualquier día; un hábito **solo el día de hoy**
+   * (`lib/habits/mutations.ts`, `assertIsToday`) — intentarlo en otro día
+   * rechaza con el aviso de tres partes ya escrito ahí, no hace falta
+   * repetir la validación acá.
+   */
+  function handleToggleComplete(block: CalendarBlock) {
+    if (block.type === "task") {
+      const task = tasksById.get(block.id);
+      if (!task) return;
+      updateTask.mutate({ id: task.id, projectId: task.project_id, patch: { completed_at: block.completed ? null : new Date().toISOString() } });
+      return;
+    }
+    if (block.type !== "habit") return;
+    const habitId = parseHabitBlockId(block.id);
+    const date = blockDate(block);
+    if (block.completed) {
+      unmarkHabitDone.mutate({ habitId, date, timezone });
+    } else {
+      markHabitDone.mutate({ habitId, date, timezone });
+    }
+  }
+
+  /**
+   * Menú contextual de un bloque (grupo 7, D-E): clic derecho en todo
+   * bloque, con la primitiva compartida (`AppContextMenu`). `CalendarView`
+   * sigue sin saber de dominios (D-F): esta función es la única que decide
+   * qué ofrece cada tipo, a partir de los datos que esta pantalla ya tiene
+   * a mano.
+   */
+  function buildContextMenuEntries(block: CalendarBlock): AppContextMenuEntry[] {
+    if (block.isPreview) return [];
+
+    if (block.type === "event") {
+      const event = eventsById.get(block.id);
+      if (!event) return [];
+      const canEdit = canEditEvent(event);
+      return [
+        { label: "Editar", icon: <Pencil className="size-3.5" />, onSelect: () => setEditingEvent(event) },
+        {
+          label: "Abrir en Google Calendar",
+          icon: <ExternalLink className="size-3.5" />,
+          onSelect: () => {
+            if (event.htmlLink) window.open(event.htmlLink, "_blank", "noopener,noreferrer");
+          },
+        },
+        ...(canEdit
+          ? ([
+              { type: "separator" as const },
+              { label: "Eliminar", icon: <Trash2 className="size-3.5" />, onSelect: () => eventDelete.requestDelete(event), destructive: true },
+            ] satisfies AppContextMenuEntry[])
+          : []),
+      ];
+    }
+
+    if (block.type === "task") {
+      const task = tasksById.get(block.id);
+      if (!task) return [];
+      return [
+        { label: "Abrir detalle", onSelect: () => openTaskDetail(task.id) },
+        { label: block.completed ? "Descompletar" : "Completar", icon: <Check className="size-3.5" />, onSelect: () => handleToggleComplete(block) },
+        { type: "separator" },
+        {
+          label: "Eliminar",
+          icon: <Trash2 className="size-3.5" />,
+          onSelect: () => deleteTask.mutate({ id: task.id, projectId: task.project_id }),
+          destructive: true,
+        },
+      ];
+    }
+
+    // Hábito.
+    const habitId = parseHabitBlockId(block.id);
+    const habit = habitsById.get(habitId);
+    if (!habit) return [];
+    // No se ofrece saltear sobre un bloque ya cumplido (tarea 7.5, D-F: la
+    // mutación no lo impide a propósito, es política de interfaz) ni sobre
+    // uno ya salteado (insertaría un salteo duplicado sin sentido).
+    const canSkip = !block.completed && !block.skipped;
+    return [
+      { label: "Editar", icon: <Pencil className="size-3.5" />, onSelect: () => setEditingHabitId(habitId) },
+      { label: block.completed ? "Descompletar" : "Completar", icon: <Check className="size-3.5" />, onSelect: () => handleToggleComplete(block) },
+      ...(canSkip
+        ? ([
+            {
+              label: "Saltear este día",
+              icon: <SkipForward className="size-3.5" />,
+              onSelect: () => skipHabit.mutate({ habitId, habit, date: blockDate(block), timezone }),
+            },
+          ] satisfies AppContextMenuEntry[])
+        : []),
+    ];
   }
 
   function applyEventUpdate(event: CalendarEventInstance, changes: EventInput, scope?: RecurrenceEditScope) {
@@ -328,8 +465,10 @@ export function ScreenCalendar({
           now={now}
           timeFormat={timeFormat}
           onSelectBlock={handleSelectBlock}
+          onToggleComplete={handleToggleComplete}
           onMoveBlock={handleMoveOrResize}
           onResizeBlock={handleMoveOrResize}
+          getContextMenuEntries={buildContextMenuEntries}
           onScheduleHabitChip={handleScheduleHabitChip}
           onCreateTask={setCreateRange}
         />
@@ -350,7 +489,16 @@ export function ScreenCalendar({
           onOpenChange={(open) => !open && setEditingEvent(null)}
           event={editingEvent}
           timezone={timezone}
+          readOnly={!canEditEvent(editingEvent)}
+          onRequestDelete={() => {
+            setEditingEvent(null);
+            eventDelete.requestDelete(editingEvent);
+          }}
         />
+      )}
+
+      {editingHabitId && (
+        <HabitFormDialog open onOpenChange={(open) => !open && setEditingHabitId(null)} habit={habitsById.get(editingHabitId)} />
       )}
 
       {pendingEventUpdate && (
@@ -364,6 +512,8 @@ export function ScreenCalendar({
           }}
         />
       )}
+
+      {eventDelete.dialogs}
     </div>
   );
 }

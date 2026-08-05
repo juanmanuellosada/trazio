@@ -13,6 +13,7 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import type { AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
 import {
   clampMinutes,
@@ -86,8 +87,10 @@ export function CalendarView({
   now,
   timeFormat = 24,
   onSelectBlock,
+  onToggleComplete,
   onMoveBlock,
   onResizeBlock,
+  getContextMenuEntries,
   onScheduleHabitChip,
   onCreateTask,
 }: {
@@ -104,10 +107,14 @@ export function CalendarView({
   now: Date;
   timeFormat?: 12 | 24;
   onSelectBlock?: (block: CalendarBlock) => void;
+  /** Se tildó el control de completar de una tarea o un hábito (grupo 7, D-F): traducirlo a la mutación del dominio es responsabilidad de quien la reciba, igual que `onMoveBlock`. */
+  onToggleComplete?: (block: CalendarBlock) => void;
   /** Un bloque se movió (arrastrado o redimensionado con el mismo evento) a un nuevo rango (tarea 6.1/6.3, D-F): traducirlo a la mutación del dominio es responsabilidad de quien la reciba. */
   onMoveBlock?: (block: CalendarBlock, range: DragResult) => void;
   /** Se estiró el borde de un bloque (tarea 6.2/6.3, D-F). */
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
+  /** Clic derecho en un bloque (grupo 7, D-E): esta vista sigue sin saber qué ofrece cada tipo (D-F), quien monta la pantalla resuelve las entradas según `block.type`. */
+  getContextMenuEntries?: (block: CalendarBlock) => AppContextMenuEntry[];
   /** Se arrastró un chip de hábito sin horario a un día y una hora puntuales (tarea 6.3/6.6): `time` viene en `HH:mm:ss`, el formato de `habit_schedule_overrides.scheduled_time`. */
   onScheduleHabitChip?: (chip: UnscheduledHabitChip, target: { date: string; time: string }) => void;
   /** Se pidió crear una tarea en un rango (tarea 6.7): sin este callback, elegir "Tarea" en el diálogo no hace nada — la creación de tareas necesita un proyecto destino que esta vista no conoce. */
@@ -229,7 +236,14 @@ export function CalendarView({
     ) : (
       <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border">
         <UnscheduledHabitsRow chips={unscheduledHabits} />
-        <AllDayRow visibleDays={visibleDays} blocks={blocks} previewBlocks={previewBlocks} onSelectBlock={onSelectBlock} />
+        <AllDayRow
+          visibleDays={visibleDays}
+          blocks={blocks}
+          previewBlocks={previewBlocks}
+          onSelectBlock={onSelectBlock}
+          onToggleComplete={onToggleComplete}
+          getContextMenuEntries={getContextMenuEntries}
+        />
         <TimeGrid
           visibleDays={visibleDays}
           blocks={blocks}
@@ -239,7 +253,9 @@ export function CalendarView({
           timeFormat={timeFormat}
           dragOrigin={dragOrigin}
           onSelectBlock={onSelectBlock}
+          onToggleComplete={onToggleComplete}
           onResizeBlock={onResizeBlock}
+          getContextMenuEntries={getContextMenuEntries}
           onCreateRange={handleCreateRange}
         />
       </div>

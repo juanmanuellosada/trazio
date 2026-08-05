@@ -1402,3 +1402,65 @@ sin importar lo guardado) quedan actualizados, con sus tests.
 quedan corregidos: el primero ya decía que la lista ofrece los cinco valores
 —una inconsistencia con el código, que solo ofrecía tres, que esta ronda
 también corrige.
+
+## D50 — El bloque del calendario muestra según su alto, y saltear un hábito no toca la racha
+
+**Fecha.** 2026-08-05
+
+**Contexto.** Dos huecos de `calendario-legible-y-manipulable`. Primero: un
+bloque del calendario mostraba lo mismo —un ícono y el título— midiera doce
+píxeles (un cuarto de hora) o mil (un día entero), sin horario, sin proyecto
+ni calendario de origen, sin etiquetas, y sin forma de completar una tarea o
+un hábito desde ahí. Segundo: "saltear un hábito un día puntual" no existía
+en toda la aplicación, y lo más parecido —reprogramar el horario del día—
+devuelve el hábito a su hora habitual en vez de marcarlo como no hecho a
+propósito.
+
+**Decisión — la escalera de contenido por alto.** El contenido de un bloque
+con horario es una escalera: cada dato aparece solo si el alto real del
+bloque alcanza para una línea más (`ladderSteps` en
+`components/calendar/calendar-block-chip.tsx`). Orden fijo, de lo que
+distingue bloques vecinos a lo que no: título (con el control de completar
+si corresponde), horario, calendario de origen o proyecto, etiquetas. El
+control de completar **nunca se cae** por falta de espacio —es una acción,
+no información— ni siquiera en el bloque de quince minutos (doce píxeles),
+que activa un modo apretado aparte (`TIGHT_HEIGHT_THRESHOLD_PX`): sin
+relleno vertical, una sola línea sin envolver, mismo recurso que usa Google
+Calendar. La alternativa descartada es un alto mínimo por bloque: mentiría
+sobre la duración, que es justamente lo que un calendario comunica con la
+altura.
+
+**Decisión — saltear un hábito no toca la racha.** Palabras del dueño: *"si
+en un hábito me salteé un día, ese día queda ahí fijo en el calendario. Si
+yo después lo completo se actualiza la racha."* De ahí salen tres reglas.
+Saltear **no saca el bloque del calendario**: se queda, marcado como
+salteado (`CalendarBlock.skipped`, atenuado con la misma opacidad que una
+vista previa, pero — a diferencia de una — sigue interactivo). Es
+**reversible**: completar después actualiza la racha como cualquier otro
+día, y no se ofrece "Saltear" sobre un bloque ya cumplido ni ya salteado.
+Y **no toca el cálculo de racha en absoluto**: el salteo vive en su propia
+tabla, `habit_skips` (migración `20260805000000_habit_skips.sql`), separada
+a propósito de `habit_completions` —la única que lee
+`calcular_racha_habito`— y de `habit_schedule_overrides` —que reprograma un
+horario, un concepto distinto de "decidí no hacerlo este día". Una tabla que
+la función de racha ni siquiera conoce deja fuera de discusión que saltear
+pueda inflarla o desinflarla. `lib/habits/day-status.ts` resuelve los tres
+estados de un día —pendiente, cumplido, salteado— en un único lugar
+(`resolveHabitDayStatus`), con cumplido ganando si alguna vez coinciden.
+
+**Los salteos quedan fuera de la publicación de tiempo real.** Mismo motivo
+que ya tiene `habit_schedule_overrides` (D-A de `design.md` de
+`fase-3-habitos`): ninguna otra interfaz se suscribe a esta tabla todavía, y
+sumarla ahora sería anticipar un consumidor que no existe. Si otra ronda
+necesita que un salteo hecho en una pestaña aparezca sin refrescar en otra,
+se agrega entonces, junto con ese consumidor.
+
+**Consecuencia.** `components/calendar/calendar-block-chip.tsx` (la
+escalera, el modo apretado, la marca de salteado),
+`lib/calendar/screen-blocks.ts` (`habitToCalendarBlock` recibe `skipped`,
+`eventToCalendarBlock` recibe `calendarName`, `taskToCalendarBlock` ya
+recibía `projectName`), `lib/habits/skips.ts` (`useSkipHabit`,
+`useUnskipHabit`, `useHabitSkipsForRange`) y
+`components/calendar/screen-calendar.tsx` (arma el menú contextual de cada
+tipo de bloque y cablea completar/saltear a sus mutaciones) quedan
+actualizados, con sus tests.

@@ -21,6 +21,7 @@ import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { useUpdateTask } from "@/lib/tasks/mutations";
+import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
@@ -232,9 +233,7 @@ export function ProximosView({
         </header>
 
         {options.viewShape === "panel" ? (
-        // El panel no tiene tope propio (D-E, excepción acotada a D39): un
-        // tablero no es una línea de texto, ocupa el ancho disponible.
-        <div className="w-full flex-1 overflow-hidden p-4 sm:p-6">
+        <div className={`${contentWidthClass(options.viewShape)} flex-1 overflow-hidden p-4 sm:p-6`}>
           <Board
             columns={boardColumns}
             allTasks={tasks}
@@ -246,7 +245,7 @@ export function ProximosView({
           />
         </div>
       ) : options.viewShape === "calendario" ? (
-        <div className="flex w-full max-w-content mx-auto flex-1 flex-col overflow-hidden p-4 sm:p-6">
+        <div className={`flex ${contentWidthClass(options.viewShape)} flex-1 flex-col overflow-hidden p-4 sm:p-6`}>
           <ScreenCalendar
             timezone={timezone}
             weekStartsOn={weekStartsOn}
@@ -258,7 +257,7 @@ export function ProximosView({
           />
         </div>
       ) : (
-        <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+        <div className={`${contentWidthClass(options.viewShape)} flex-1 space-y-6 overflow-y-auto p-4 sm:p-6`}>
           {isEmpty ? (
             <TaskListEmptyState
               icon={CalendarDays}

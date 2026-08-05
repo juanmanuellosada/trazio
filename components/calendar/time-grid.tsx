@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { es } from "date-fns/locale";
 import { differenceInMinutes, format, parseISO } from "date-fns";
 import { useDroppable } from "@dnd-kit/core";
+import type { AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { currentTimeMinutes, layoutTimedBlocksForDay } from "@/lib/calendar/layout";
 import { clampMinutes, pixelsToMinutes, snapToQuarterHour, SNAP_MINUTES, DAY_MINUTES } from "@/lib/calendar/drag";
 import { todayInTimeZone } from "@/lib/dates/today";
@@ -55,7 +56,9 @@ function DayColumn({
   nowMinutes,
   origin,
   onSelectBlock,
+  onToggleComplete,
   onResizeBlock,
+  getContextMenuEntries,
   onCreateRange,
 }: {
   dateKey: string;
@@ -66,7 +69,10 @@ function DayColumn({
   /** Hueco de origen del bloque que se está arrastrando, si es en este día (tarea 4.3, D-C): ver el comentario largo de `TimeGrid` sobre `dragOrigin`. */
   origin?: { startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
+  onToggleComplete?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
+  /** Clic derecho (grupo 7, D-E): resuelto por quien monta la pantalla, según el tipo de bloque (D-F, esta grilla no sabe de dominios). */
+  getContextMenuEntries?: (block: CalendarBlock) => AppContextMenuEntry[];
   onCreateRange?: (dateKey: string, startMinutes: number, endMinutes: number) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: `${DAY_DROPPABLE_PREFIX}${dateKey}`, data: { dateKey } });
@@ -144,7 +150,9 @@ function DayColumn({
             segment={segment}
             timezone={timezone}
             onSelectBlock={onSelectBlock}
+            onToggleComplete={onToggleComplete}
             onResizeBlock={onResizeBlock}
+            contextMenuEntries={getContextMenuEntries?.(segment.block)}
             disabled={!isFullBlock}
           />
         );
@@ -223,7 +231,9 @@ export function TimeGrid({
   timeFormat = 24,
   dragOrigin = null,
   onSelectBlock,
+  onToggleComplete,
   onResizeBlock,
+  getContextMenuEntries,
   onCreateRange,
 }: {
   visibleDays: string[];
@@ -234,7 +244,10 @@ export function TimeGrid({
   timeFormat?: 12 | 24;
   dragOrigin?: { dateKey: string; startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
+  onToggleComplete?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
+  /** Clic derecho (grupo 7, D-E): resuelto por quien monta la pantalla, según el tipo de bloque (D-F, esta grilla no sabe de dominios). */
+  getContextMenuEntries?: (block: CalendarBlock) => AppContextMenuEntry[];
   onCreateRange?: (dateKey: string, startMinutes: number, endMinutes: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -315,7 +328,9 @@ export function TimeGrid({
             nowMinutes={currentTimeMinutes(liveNow, dateKey, timezone)}
             origin={dragOrigin && dragOrigin.dateKey === dateKey ? dragOrigin : null}
             onSelectBlock={onSelectBlock}
+            onToggleComplete={onToggleComplete}
             onResizeBlock={onResizeBlock}
+            getContextMenuEntries={getContextMenuEntries}
             onCreateRange={onCreateRange}
           />
         ))}

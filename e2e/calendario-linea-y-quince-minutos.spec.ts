@@ -65,6 +65,9 @@ test("la línea de la hora actual avanza sola y es roja; quince/treinta/sesenta/
   await page.getByRole("button", { name: /^Formato/ }).click();
   await page.getByRole("combobox", { name: "Formato de calendario" }).click();
   await page.getByRole("option", { name: "Día", exact: true }).click();
+  // Próximos no muestra completadas por default: sin esto, completar
+  // "Quince minutos" más abajo la haría desaparecer de la vista.
+  await page.getByRole("switch", { name: "Completadas" }).click();
   await page.keyboard.press("Escape");
 
   for (const b of BLOCKS) await expect(page.getByRole("button", { name: b.title })).toBeVisible();
@@ -74,11 +77,12 @@ test("la línea de la hora actual avanza sola y es roja; quince/treinta/sesenta/
 
   // El control de completar del bloque de quince minutos: usable, no
   // decorativo — visible, con un objetivo de clic real (no unos pocos
-  // píxeles) y sin disparar el resto del bloque (`onSelect`) al tocarlo. El
-  // cableado a la mutación real de completar es de otra tanda del cambio
-  // (ver el comentario de `calendar-block-chip.tsx`), así que acá no hay
-  // `aria-checked` que verificar todavía — solo que el gancho es clickeable
-  // sin abrir el detalle de la tarea.
+  // píxeles), sin disparar el resto del bloque (`onSelect`) al tocarlo, y
+  // ahora sí cableado a la mutación real (grupo 7 de
+  // `calendario-legible-y-manipulable`): completa de verdad, así que se
+  // descompleta enseguida para que el bloque no desaparezca de Próximos
+  // (`showCompleted` es `false` acá por default) y el resto del test lo
+  // siga viendo.
   const fifteenBlock = page.getByRole("button", { name: "Quince minutos" });
   const checkbox = fifteenBlock.getByRole("checkbox");
   await expect(checkbox).toBeVisible();
@@ -88,6 +92,9 @@ test("la línea de la hora actual avanza sola y es roja; quince/treinta/sesenta/
   expect(box.height).toBeGreaterThanOrEqual(10);
   await checkbox.click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(checkbox).toHaveAttribute("aria-checked", "true");
+  await checkbox.click();
+  await expect(checkbox).toHaveAttribute("aria-checked", "false");
 
   // La línea de la hora actual: roja (no el color de marca) y en movimiento —
   // dos mediciones separadas por tiempo real, sin recargar la pantalla.

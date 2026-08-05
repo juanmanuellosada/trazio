@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { useTheme } from "next-themes";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -26,17 +26,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitives/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AppContextMenu, renderDropdownEntries, type AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { Button } from "@/components/ui/button";
 import { toastSuccess } from "@/lib/toast";
 import { formatTaskDueLabel } from "@/lib/dates/format";
@@ -63,43 +54,6 @@ import { PriorityDot } from "@/components/selectors/priority-select";
 import { useTaskDetail } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import { TaskQuickAddRow } from "./task-quick-add-row";
-
-/**
- * Segundo armado de las mismas `menuEntries` (D-A de `menu-contextual-de-tarea`):
- * `AppContextMenu` (clic derecho) ya sabe recorrerlas con las piezas de
- * `ContextMenu*`; el botón "…" usa `DropdownMenu*` en su lugar —misma forma
- * de props en las dos familias—, así que esta función espeja `renderEntries`
- * de `components/primitives/context-menu.tsx` en vez de escribir el árbol de
- * ítems una segunda vez a mano.
- */
-function renderDropdownEntries(items: AppContextMenuEntry[]): ReactNode[] {
-  return items.map((item, index) => {
-    if (item.type === "separator") return <DropdownMenuSeparator key={index} />;
-    if (item.type === "submenu") {
-      return (
-        <DropdownMenuSub key={index} open={item.open} onOpenChange={item.onOpenChange}>
-          <DropdownMenuSubTrigger>
-            {item.icon}
-            {item.label}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>{renderDropdownEntries(item.items)}</DropdownMenuSubContent>
-        </DropdownMenuSub>
-      );
-    }
-    return (
-      <DropdownMenuItem
-        key={index}
-        variant={item.destructive ? "destructive" : "default"}
-        disabled={item.disabled}
-        onClick={item.onSelect}
-      >
-        {item.icon}
-        {item.label}
-        {item.trailing}
-      </DropdownMenuItem>
-    );
-  });
-}
 
 function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
   const { resolvedTheme } = useTheme();

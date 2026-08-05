@@ -10,11 +10,13 @@
 
 ## 1. La línea de la hora actual
 
-- [ ] 1.1 **Pasa a moverse.** Hoy se calcula una sola vez al montar y nunca más: la línea queda en la hora en que se cargó la página
-- [ ] 1.2 El spec ya exigía esto. **No es una función nueva, es un requisito incumplido**
-- [ ] 1.3 Pasa a ser **roja**, distinta de cualquier color que pueda tener un bloque
-- [ ] 1.4 Sigue apareciendo **solo en el día de hoy**
-- [ ] 1.5 Ojo con la hidratación: la hora viaja explícita desde el servidor a propósito, y hay un comentario que explica por qué. **Leelo antes de tocar**
+- [x] 1.1 **Pasa a moverse.** Hoy se calcula una sola vez al montar y nunca más: la línea queda en la hora en que se cargó la página
+- [x] 1.2 El spec ya exigía esto. **No es una función nueva, es un requisito incumplido**
+- [x] 1.3 Pasa a ser **roja**, distinta de cualquier color que pueda tener un bloque
+- [x] 1.4 Sigue apareciendo **solo en el día de hoy**
+- [x] 1.5 Ojo con la hidratación: la hora viaja explícita desde el servidor a propósito, y hay un comentario que explica por qué. **Leelo antes de tocar**
+
+Re-verificado en esta tanda de cierre corriendo `e2e/calendario-linea-y-quince-minutos.spec.ts` de punta a punta contra Supabase local (dos capturas separadas por 65 segundos reales, sin recargar): la línea avanza y sigue roja.
 
 ## 2. Qué muestra cada bloque
 
@@ -25,6 +27,8 @@
 - [ ] 2.5 El hábito lleva además una marca que lo identifica
 - [ ] 2.6 **Un defecto que se arregla de paso**: en la grilla el ícono queda apilado **encima** del título, porque la clase de la variante pisa la de fila
 - [ ] 2.7 El orden importa: primero lo que distingue bloques vecinos. Dos reuniones seguidas se diferencian por título y hora, no por calendario
+
+**Cabo suelto de otra tanda, resuelto acá: `projectName` y `calendarName` no estaban cableados en `screen-calendar.tsx`.** El bloque ya sabía dibujarlos (2.2/2.3 de acá) pero nunca los recibía. `taskToCalendarBlock`/`habitToCalendarBlock`/`eventToCalendarBlock` ya aceptaban (o pasan a aceptar, el caso de `eventToCalendarBlock`) el nombre resuelto; lo que faltaba era que `screen-calendar.tsx` trajera `useProjects()`/`useGoogleCalendars()` y se los pasara. **Verificado en el navegador para `projectName`**: una tarea de dos horas con proyecto propio muestra "Proyecto Verificación" en su peldaño. **`calendarName` no se pudo verificar en el navegador** por el mismo bloqueo de entorno que 7.2/7.3 (conectar Google real exige el puerto 3000, ocupado) — queda code-reviewed, mismo patrón que `use-hoy-events.ts` ya prueba.
 
 ## 3. Los colores
 
@@ -46,59 +50,71 @@
 - [x] 5.2 Mover tiene que igualarlo
 - [x] 5.3 **Arrastrar una tarea en Próximos no es optimista**: su caché no se parchea ni se invalida, así que depende de que llegue el aviso en tiempo real. Es un agujero anterior a esto
 - [x] 5.4 Al preguntar el alcance de una serie, **hoy el bloque salta de vuelta al origen** mientras pregunta. Tiene que quedarse, y volver solo si se cancela
-- [ ] 5.5 **Redimensionar un hábito hoy no hace nada**: mover y redimensionar comparten manejador y la rama de hábito solo lee la hora de inicio — **bloqueado**: `habit_schedule_overrides` no tiene columna de duración, ampliarlo pide una migración fuera de alcance de esta tanda (ver reporte)
+- [x] 5.5 **Resuelto por decisión del dueño, no por código nuevo**: redimensionar un hábito no se puede persistir (`habit_schedule_overrides` no tiene columna de duración) y ofrecer el gesto sería mentir. En vez de ampliar el esquema, la manija de redimensionar **no se ofrece en absoluto sobre un bloque de hábito** (`draggable-timed-block.tsx`) — mover un hábito sigue andando igual que siempre. Ya no queda bloqueado: la mutación real (`handleMoveOrResize`, `screen-calendar.tsx`) simplemente nunca recibe el gesto para ese tipo.
 - [x] 5.6 Si el servidor rechaza, el bloque vuelve **y se avisa**. Los mensajes de error recién empezaron a llegar bien hoy: comprobalo
 
 **Cabo suelto de otra tanda, resuelto acá**: la manija de redimensionar (`draggable-timed-block.tsx`) medía 6px y solo aparecía con `group-hover`, inalcanzable en táctil. Ahora tiene opacidad base no nula y una zona de toque de 18px, creciendo solo hacia abajo (nunca hacia el contenido del bloque, para no taparle el gesto de mover a los bloques cortos).
 
-**Defecto encontrado después, entre esa manija y el casillero de completar (agrandado en otra tanda, los dos con `z-index` automático): en un bloque de 15 min las dos zonas invisibles se solapaban y ganaba la manija — un casillero que se ve pero no responde.** Resuelto dándole al casillero (`calendar-block-chip.tsx`, el `<span>` que envuelve el botón, `position: relative` + `z-10`) prioridad explícita sobre la manija en cualquier solapamiento, en vez de depender del orden de dibujo. Comprobado **midiendo con `document.elementFromPoint` en el navegador** (no mirando) en bloques de 15/30/60 min y en dos bloques de 15 min pegados: en los cinco casos el punto conflictivo lo recibe el casillero, nunca la manija. `e2e/calendario-linea-y-quince-minutos.spec.ts` corrido de punta a punta contra Supabase local: pasa, incluido el clic al casillero que antes fallaba ahí.
+**Defecto encontrado después, entre esa manija y el casillero de completar (agrandado en otra tanda, los dos con `z-index` automático): en un bloque de 15 min las dos zonas invisibles se solapaban y ganaba la manija — un casillero que se ve pero no responde.** Resuelto dándole al casillero (`calendar-block-chip.tsx`, el `<span>` que envuelve el botón, `position: relative` + `z-10`) prioridad explícita sobre la manija en cualquier solapamiento, en vez de depender del orden de dibujo. Comprobado **midiendo con `document.elementFromPoint` en el navegador** (no mirando) en bloques de 15/30/60 min y en dos bloques de 15 min pegados: en los cinco casos el punto conflictivo lo recibe el casillero, nunca la manija. `e2e/calendario-linea-y-quince-minutos.spec.ts` corrido de punta a punta contra Supabase local: pasa (con retry — un paso del test ajeno a este arreglo, cambiar a tema oscuro por menú, es flaky por un defecto ya documentado de Base UI en Chrome, no por esto), incluido el clic al casillero que antes fallaba ahí — y ahora, con el control de completar cableado de verdad en esta misma tanda (grupo 7), también se confirmó que completa la tarea real (`aria-checked` pasa a `"true"`), así que el test quedó actualizado para descompletarla y no perderla de la vista de Próximos (`showCompleted` es `false` ahí por default).
+
+**Re-verificado el cierre de la tanda (punto 1 del pedido del dueño): en un bloque de hábito la manija ya no existe.** `draggable-timed-block.tsx` corta la condición con `block.type !== "habit"`, así que nunca se monta ese `<div>` para un hábito — sin manija, no hay con qué chocar. Confirmado en el navegador (build de producción contra Supabase local, hábito real "Meditar" de 60 minutos): el bloque se ve completo, sin ninguna franja extra debajo, y su menú contextual y su casillero de completar responden sin competir con nada.
 
 ## 6. Saltear un hábito (puede tocar la base)
 
-- [ ] 6.1 **No existe nada parecido** (**D-F**). Lo más cercano quita una reprogramación y devuelve el hábito a su hora habitual
-- [ ] 6.2 Son **tres estados**: pendiente, cumplido y salteado. Confundirlos vuelve inútil el registro
-- [ ] 6.3 **El bloque se queda en el calendario**, marcado como salteado. No desaparece: es una decisión a la vista, no una baja
-- [ ] 6.4 **Es reversible**: se puede completar después, y ahí la racha se actualiza como cualquier otro día
-- [ ] 6.5 **No toques el cálculo de rachas.** La racha cuenta cumplimientos; saltear no suma ni resta. Si te encontrás modificándolo, **pará y avisá**: algo entendiste distinto
-- [ ] 6.6 Si hay migración: aplicada antes del código, con su política de acceso en el mismo archivo, y los tipos regenerados
+- [x] 6.1 **No existe nada parecido** (**D-F**). Lo más cercano quita una reprogramación y devuelve el hábito a su hora habitual
+- [x] 6.2 Son **tres estados**: pendiente, cumplido y salteado. Confundirlos vuelve inútil el registro
+- [x] 6.3 **El bloque se queda en el calendario**, marcado como salteado. No desaparece: es una decisión a la vista, no una baja
+- [x] 6.4 **Es reversible**: se puede completar después, y ahí la racha se actualiza como cualquier otro día
+- [x] 6.5 **No toques el cálculo de rachas.** La racha cuenta cumplimientos; saltear no suma ni resta. Si te encontrás modificándolo, **pará y avisá**: algo entendiste distinto
+- [x] 6.6 Si hay migración: aplicada antes del código, con su política de acceso en el mismo archivo, y los tipos regenerados
+
+La mutación, la tabla (`habit_skips`, migración `20260805000000_habit_skips.sql`, ya aplicada) y `resolveHabitDayStatus` (`lib/habits/day-status.ts`) ya existían de otra tanda, sin ningún consumidor en la interfaz. Esta ronda los cablea: el menú contextual de un bloque de hábito (grupo 7) llama a `useSkipHabit`, y el bloque pasa a llevar `CalendarBlock.skipped`. Verificado en el navegador (build de producción contra Supabase local, hábito real): saltear marca el bloque ("Salteado", atenuado, sigue ahí), no se ofrece saltear de nuevo sobre uno ya salteado, y el salteo persiste después de recargar la página. No se verificó a mano el paso "completarlo después actualiza la racha" (6.4) en esta pasada — lo garantiza `useMarkHabitDone`, que ya borra el salteo del día al completar (código de otra tanda, sin tocar acá) — ni se tocó `calcular_racha_habito` en ningún momento (6.5).
+
+**Los salteos quedan fuera de la publicación de tiempo real, a propósito**: mismo motivo que ya tiene `habit_schedule_overrides` (D-A de `fase-3-habitos`) — ningún otro cliente se suscribe a esta tabla todavía, y sumarla ahora sería anticipar un consumidor que no existe. Si hace falta que un salteo en una pestaña se vea sin recargar en otra, se agrega en la ronda que lo necesite.
 
 ## 7. Acciones y menú contextual
 
-- [ ] 7.1 Clic derecho en todo bloque, con la primitiva compartida que ya existe
-- [ ] 7.2 Evento: editar, abrir en Google Calendar, **eliminar**
-- [ ] 7.3 **Eliminar también desde el diálogo de edición.** Hoy no está en ninguno de los dos lados, y el gancho existe con un solo consumidor en toda la aplicación
-- [ ] 7.4 Tarea: abrir detalle, completar, eliminar
-- [ ] 7.5 Hábito: editar, completar, saltear ese día
-- [ ] 7.6 **Ojo con el patrón**: la lista de menú está escrita dos veces casi idéntica, en la fila de tarea y en la de evento. Este sería el tercer copiado — mirá si conviene extraerla
-- [ ] 7.7 **Completar dentro de algo arrastrable**: hay que poder tildar sin que empiece a moverse, y arrastrar sin tildar sin querer
+- [ ] 7.1 Clic derecho en todo bloque, con la primitiva compartida que ya existe (`AppContextMenu`) — cableado uniforme en `draggable-timed-block.tsx` y `all-day-row.tsx` vía `getContextMenuEntries` (`CalendarView` sigue sin saber de dominios; `screen-calendar.tsx` arma las entradas según `block.type`). **Verificado en el navegador solo para hábito**; tarea y evento comparten exactamente el mismo cableado pero no se clickearon a mano esta ronda — sin marcar hasta probarlos
+- [ ] 7.2 Evento: editar, abrir en Google Calendar, **eliminar** — escrito y tipado, **no verificado en el navegador** (bloqueo del entorno, ver nota abajo)
+- [ ] 7.3 **Eliminar también desde el diálogo de edición.** `EventFormDialog` suma un botón "Eliminar" en el pie (`onRequestDelete`), reusando la misma confirmación que ya tenía la fila de Hoy — **no verificado en el navegador** (mismo bloqueo)
+- [ ] 7.4 Tarea: abrir detalle, completar, eliminar — escrito y tipado; el control de completar del bloque sí se verificó de punta a punta (ver 9.9), pero el menú contextual de una tarea no se abrió a mano esta ronda
+- [x] 7.5 Hábito: editar, completar, saltear ese día — **verificado en el navegador**: clic derecho sobre un hábito real muestra exactamente "Editar", "Completar", "Saltear este día"
+- [x] 7.6 **Ojo con el patrón**: la lista de menú estaba escrita dos veces casi idéntica (`task-row.tsx`, `event-row.tsx`). Se extrajo `renderDropdownEntries` a `components/primitives/context-menu.tsx` y las dos filas pasan a importarla — el bloque del calendario no necesita esa función (solo usa `AppContextMenu`, sin botón "…"), así que no hay un tercer copiado que evitar
+- [x] 7.7 **Completar dentro de algo arrastrable**: mismo `stopPropagation` que ya usaba la manija (`onPointerDown`/`onClick` del casillero, `calendar-block-chip.tsx`). Verificado de punta a punta para una tarea (9.9): tildar no dispara el arrastre ni abre el detalle
+
+**Bloqueo del entorno, no del código, para 7.1 (tarea/evento)/7.2/7.3 y para `calendarName` de un evento**: verificar esto en el navegador exige conectar Google (simulado). El simulador (`e2e/helpers/google-calendar-mock-server.ts`) redirige siempre a `127.0.0.1:3000` a propósito —está pensado para correr junto al gate, que usa ese puerto—, y ese puerto lo ocupaba un `next dev` ajeno que la consigna pedía no matar. Se armó un servidor de verificación aparte (build de producción, puerto 3001, variables por línea de comando) para las partes sin Google —confirmadas todas, ver 8.1/2.3/6.3-6.4/7.5/7.6/7.7 más arriba—, pero el flujo de conectar Google específicamente no se pudo ejercitar sin tocar el puerto 3000 o el mock. Queda code-reviewed con cuidado, siguiendo el mismo patrón ya probado de `use-hoy-events.ts`/`hoy-event-row.tsx` (que sí tiene tests, `hoy-event-row.test.tsx`, y siguen pasando con este cambio), más `pnpm build` compilando limpio con TypeScript estricto sobre el árbol completo de rutas — pero no es lo mismo que verlo en el navegador. Recomendado como primer paso de la próxima sesión, con el puerto 3000 libre.
 
 ## 8. El ancho
 
-- [ ] 8.1 El calendario deja de heredar el tope de la columna de contenido (**D-G**), misma excepción acotada a **D39** que el panel
-- [ ] 8.2 Esa excepción está escrita **tres veces**, una por pantalla, con el mismo comentario. **Sumar la cuarta pide unificarla primero**
-- [ ] 8.3 La grilla ya tiene piso y reparto por columna: no hace falta tocar la geometría
-- [ ] 8.4 Lista no cambia
+- [x] 8.1 El calendario deja de heredar el tope de la columna de contenido (**D-G**), misma excepción acotada a **D39** que el panel
+- [x] 8.2 Esa excepción está escrita **tres veces**, una por pantalla, con el mismo comentario. **Sumar la cuarta pide unificarla primero**: se unificó en `contentWidthClass()` (`lib/view-options/content-width.ts`), y `sectioned-tasks.tsx`/`hoy-view.tsx`/`proximos-view.tsx` pasan a llamarla en vez de repetir el condicional
+- [x] 8.3 La grilla ya tiene piso y reparto por columna: no hace falta tocar la geometría — no se tocó
+- [x] 8.4 Lista no cambia
+
+Verificado en el navegador (build de producción contra Supabase local, Próximos en forma de ver "calendario", viewport de 1600px): la grilla mide 1296px de ancho, por encima de los 1152px (72rem) del tope `max-w-content` — confirma que la excepción aplica.
 
 ## 9. Verificación
 
-- [ ] 9.1 `pnpm lint && pnpm typecheck && pnpm test`
-- [ ] 9.2 Si tocaste el esquema: migración aplicada y tipos regenerados
-- [ ] 9.3 **Una semana real**: bloques de quince minutos y de tres horas mezclados, eventos de dos calendarios, tareas con y sin etiquetas, hábitos cumplidos y pendientes
-- [ ] 9.4 **La línea de la hora se mueve**: no alcanza con verla, hay que verla avanzar
-- [ ] 9.5 Arrastrar de verdad: que no se recorte, que muestre la hora, que deje la sombra, que se quede al soltar
-- [ ] 9.6 Arrastrar **en las tres pantallas**, y en Próximos especialmente, que es donde faltaba el optimismo
-- [ ] 9.7 Arrastrar una ocurrencia de una serie: el bloque se queda mientras pregunta
-- [ ] 9.8 Con el servidor rechazando: vuelve y avisa
-- [ ] 9.9 Completar una tarea y un hábito desde su bloque, sin que se dispare el arrastre
-- [ ] 9.10 Eliminar un evento desde el menú y desde el diálogo
-- [ ] 9.11 Saltear un hábito: que **siga viéndose** marcado como salteado, que la racha **no cambie**, y que completarlo después la actualice
-- [ ] 9.12 Tema claro y oscuro, con eventos coloreados
-- [ ] 9.13 Escritorio ancho y 390px
-- [ ] 9.14 Simulador de Google, **nunca la cuenta real del dueño**
-- [ ] 9.15 Si escribís pruebas de punta a punta, **reusá el ayudante del calendario** — el que se arregló hoy. Escritas de memoria nacen rotas
+- [x] 9.1 `pnpm lint && pnpm typecheck && pnpm test` — los tres en verde, 1390 pruebas (`pnpm build` de producción también compila limpio, TypeScript estricto sobre el árbol completo)
+- [ ] 9.2 Si tocaste el esquema: no aplica esta ronda — el esquema de `habit_skips` ya estaba migrado de otra tanda, no se tocó
+- [ ] 9.3 **Una semana real**: no verificado — lo verificado fue formato "día" con bloques sembrados a mano, no una semana mixta real
+- [x] 9.4 **La línea de la hora se mueve**: verificado con `e2e/calendario-linea-y-quince-minutos.spec.ts` de punta a punta (dos mediciones separadas por 65 segundos reales)
+- [ ] 9.5 Arrastrar de verdad — no verificado esta ronda (ya eran grupos 4/5, committeados antes; no se tocó nada de arrastre salvo sacarle la manija al hábito, ver 5.5)
+- [ ] 9.6 Arrastrar en las tres pantallas — no verificado esta ronda
+- [ ] 9.7 Arrastrar una ocurrencia de una serie — no verificado esta ronda
+- [ ] 9.8 Con el servidor rechazando — no verificado esta ronda
+- [x] 9.9 Completar una tarea y un hábito desde su bloque, sin que se dispare el arrastre — verificado para tarea (`e2e/calendario-linea-y-quince-minutos.spec.ts`: el casillero de un bloque de 15 minutos completa de verdad, `aria-checked` pasa a `"true"`, sin abrir el detalle ni moverse) y para hábito por el mismo mecanismo (`calendar-block-chip.tsx`, mismo `stopPropagation`), aunque el casillero del hábito en sí no se clickeó a mano — sí se saltó desde el menú, que usa la misma técnica
+- [ ] 9.10 Eliminar un evento desde el menú y desde el diálogo — **no verificado**, bloqueo de entorno (ver nota del grupo 7)
+- [x] 9.11 Saltear un hábito: verificado que **sigue viéndose** marcado como salteado (sin desaparecer), que no se vuelve a ofrecer saltear sobre un bloque ya salteado, y que el salteo persiste después de recargar. **No verificado** que completarlo después actualice la racha (lo garantiza código de otra tanda, `useMarkHabitDone`, sin tocar acá)
+- [ ] 9.12 Tema claro y oscuro, con eventos coloreados — tema claro sí (todas las capturas de esta ronda), **oscuro no**: el intento chocó con el mismo defecto ya documentado de Base UI en Chrome al elegir "Oscuro" desde el menú (`recurrence-scope-dialog`-adyacente, ver el comentario de `calendario-linea-y-quince-minutos.spec.ts`), y no se insistió — eventos coloreados tampoco, por el bloqueo de Google
+- [x] 9.13 Escritorio ancho — verificado (1600px, ver grupo 8). **390px no verificado esta ronda**
+- [x] 9.14 Simulador de Google, **nunca la cuenta real del dueño** — todo lo que se probó usó Supabase local y, donde hizo falta Google, el simulador (`google-calendar-mock-server.ts`); nunca se tocó una cuenta real
+- [x] 9.15 Se reusaron los ayudantes existentes (`e2e/helpers/calendar.ts`, `e2e/helpers/admin.ts`) tanto en el ajuste a `calendario-linea-y-quince-minutos.spec.ts` como en el script de verificación manual (descartado al cerrar, no quedó en el repo)
+
+**Por qué quedan tantos casilleros sin marcar en este grupo**: la mitad de las verificaciones de punta a punta de esta ronda necesitaban una cuenta de Google conectada, y el simulador redirige siempre a `127.0.0.1:3000` (pensado para correr junto al gate) — puerto que ocupaba un `next dev` ajeno que la consigna pedía no matar. Se armó un servidor de verificación en el puerto 3001 (build de producción, variables por línea de comando) para todo lo que no depende de Google, y quedó confirmado ahí; lo que sí depende de Google (evento coloreado, su menú, eliminarlo, tema oscuro cruzado con eso) queda code-reviewed pero sin ver el navegador. Recomendado retomarlo con el puerto 3000 libre.
 
 ## 10. Lo escrito
 
-- [ ] 10.1 `docs/product-spec.md` describe la vista de calendario
-- [ ] 10.2 Una decisión numerada al final de `docs/decisions.md` — **verificá el número, no lo asumas**. Merecen quedar: la escalera de contenido por alto, y qué le pasa a la racha al saltear
-- [ ] 10.3 `docs/design-system.md` documenta el tope de ancho: la excepción del calendario va ahí, junto a la del panel
+- [x] 10.1 `docs/product-spec.md` describe la vista de calendario — sección "Vista de calendario" ampliada (qué muestra cada bloque, arrastrar/redimensionar, acciones de menú) y el hábito suma el párrafo de "saltear un día puntual"
+- [x] 10.2 Una decisión numerada al final de `docs/decisions.md` — el número vigente al escribir era **D49**, así que esta queda como **D50** (verificado leyendo el archivo, no asumido). Cubre la escalera de contenido por alto y qué le pasa a la racha al saltear
+- [x] 10.3 `docs/design-system.md` documenta el tope de ancho: la excepción de D47 pasa a cubrir "panel" y "calendario" juntas, con la mención de `contentWidthClass()` que las tres pantallas ahora comparten

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseISO } from "date-fns";
 import { useDraggable } from "@dnd-kit/core";
+import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitives/context-menu";
 import type { CalendarBlock } from "@/lib/calendar/block";
 import { localMinutesOfDay, pixelsToMinutes, resizeBlockToPosition, type DragResult } from "@/lib/calendar/drag";
 import { cn } from "@/lib/utils";
@@ -41,14 +42,19 @@ export function DraggableTimedBlock({
   segment,
   timezone,
   onSelectBlock,
+  onToggleComplete,
   onResizeBlock,
+  contextMenuEntries,
   disabled,
 }: {
   block: CalendarBlock;
   segment: { startMinutes: number; endMinutes: number; columnIndex: number; columnCount: number };
   timezone: string;
   onSelectBlock?: (block: CalendarBlock) => void;
+  onToggleComplete?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
+  /** Clic derecho (grupo 7, D-E): sin entradas, no se envuelve en `AppContextMenu` — un menú vacío no aporta nada. */
+  contextMenuEntries?: AppContextMenuEntry[];
   disabled: boolean;
 }) {
   // Grupo 4, D-C: ya no se aplica el `transform` de `useDraggable` acá — el
@@ -111,7 +117,7 @@ export function DraggableTimedBlock({
     width: `${100 / segment.columnCount}%`,
   };
 
-  return (
+  const content = (
     <div
       ref={setNodeRef}
       style={style}
@@ -126,26 +132,32 @@ export function DraggableTimedBlock({
         block={block}
         variant="timed"
         onSelect={onSelectBlock}
+        onToggleComplete={onToggleComplete}
         className={cn(!disabled && !block.isPreview && "touch-none")}
       />
-      {!disabled && !block.isPreview && onResizeBlock && (
-        // Manija de redimensionar: el ancla visual (`h-0.5 w-6`) mide lo
-        // mismo de siempre, pero el área que reacciona al puntero es más
-        // grande que la línea que se ve, y visible con opacidad base (no
-        // solo `group-hover`) — en táctil no hay hover, así que la manija
-        // de 6px de alto era inalcanzable. Mismo criterio que el casillero
-        // de completar de `calendar-block-chip.tsx` (ancla chica, zona de
-        // toque más grande fuera del flujo), con una diferencia a
-        // propósito: acá el crecimiento es **solo hacia abajo**
-        // (`-bottom-3`, nunca hacia arriba). Un bloque de quince minutos
-        // mide 12px — crecer también hacia arriba, como el casillero, le
-        // dejaría casi sin superficie propia para moverlo o abrirlo (la
-        // manija le ganaría el gesto a todo lo demás). Creciendo solo hacia
-        // abajo, la franja que ya intercepta el redimensionado no cambia
-        // (los mismos 6px de siempre), solo se ensancha el área de toque
-        // hacia el espacio libre debajo. Mismo desborde ya documentado
-        // sobre el bloque vecino si están pegados sin separación, sin
-        // resolverlo tampoco.
+      {/*
+       * Manija de redimensionar: nunca en un hábito (decisión del dueño,
+       * grupo 1 de `calendario-legible-y-manipulable`) — redimensionar un
+       * hábito no se puede persistir (`habit_schedule_overrides` no tiene
+       * columna de duración) y ofrecer el gesto sería mentir. El ancla
+       * visual (`h-0.5 w-6`) mide lo mismo de siempre, pero el área que
+       * reacciona al puntero es más grande que la línea que se ve, y
+       * visible con opacidad base (no solo `group-hover`) — en táctil no
+       * hay hover, así que la manija de 6px de alto era inalcanzable.
+       * Mismo criterio que el casillero de completar de
+       * `calendar-block-chip.tsx` (ancla chica, zona de toque más grande
+       * fuera del flujo), con una diferencia a propósito: acá el
+       * crecimiento es **solo hacia abajo** (`-bottom-3`, nunca hacia
+       * arriba). Un bloque de quince minutos mide 12px — crecer también
+       * hacia arriba, como el casillero, le dejaría casi sin superficie
+       * propia para moverlo o abrirlo (la manija le ganaría el gesto a todo
+       * lo demás). Creciendo solo hacia abajo, la franja que ya intercepta
+       * el redimensionado no cambia (los mismos 6px de siempre), solo se
+       * ensancha el área de toque hacia el espacio libre debajo. Mismo
+       * desborde ya documentado sobre el bloque vecino si están pegados sin
+       * separación, sin resolverlo tampoco.
+       */}
+      {!disabled && !block.isPreview && onResizeBlock && block.type !== "habit" && (
         <div
           role="presentation"
           onPointerDown={handleResizePointerDown}
@@ -162,4 +174,10 @@ export function DraggableTimedBlock({
       )}
     </div>
   );
+
+  // Clic derecho (grupo 7, D-E): un bloque de vista previa nunca recibe
+  // gesto ninguno (comentario de la función más arriba), y sin entradas no
+  // hay nada que envolver.
+  if (block.isPreview || !contextMenuEntries || contextMenuEntries.length === 0) return content;
+  return <AppContextMenu items={contextMenuEntries} trigger={content} />;
 }

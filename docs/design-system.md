@@ -415,16 +415,23 @@ colapso o expansión del panel lateral (`w-16`/`w-64`,
 columna sin ningún ajuste adicional, porque sigue siendo el mismo layout
 flex de siempre.
 
-**Excepción acotada al modo panel (D47).** Un tablero no es una línea de
-texto: cada columna tiene su propio ancho corto, y el tope de 1152px solo
-limita cuántas se ven a la vez. Por eso, en la forma de ver "panel" —Bandeja
-de entrada, Proyecto, Próximos y Hoy—, el contenedor deja de aplicar
-`max-w-content`/`mx-auto` y ocupa el ancho disponible en su lugar; "lista" y
-"calendario" siguen exactamente como se describe arriba, sin ningún cambio.
-Es la única excepción que D39 admite, y está acotada a una forma de ver, no a
-una revisión del tope en sí. `components/projects/sectioned-tasks.tsx`,
+**Excepción acotada a "panel" y "calendario" (D47, ampliada por D50).** Un
+tablero no es una línea de texto —cada columna tiene su propio ancho corto,
+y el tope de 1152px solo limita cuántas se ven a la vez— y una grilla de
+calendario de siete columnas tampoco: el mismo tope solo la achica. Por eso,
+en las formas de ver "panel" y "calendario" —Bandeja de entrada, Proyecto,
+Próximos y Hoy—, el contenedor deja de aplicar `max-w-content`/`mx-auto` y
+ocupa el ancho disponible en su lugar; "lista" sigue exactamente como se
+describe arriba, sin ningún cambio. Es la única excepción que D39 admite, y
+está acotada a dos formas de ver, no a una revisión del tope en sí.
+
+La excepción vivía escrita tres veces, una por pantalla, con el mismo
+comentario — `contentWidthClass()` en `lib/view-options/content-width.ts` la
+unifica: recibe el `viewShape` vigente y devuelve el par de clases que
+corresponde, sin que cada pantalla decida por su cuenta cuáles formas de ver
+quedan afuera del tope. `components/projects/sectioned-tasks.tsx`,
 `components/tasks/proximos-view.tsx` y `components/tasks/hoy-view.tsx` son
-las tres vistas afectadas.
+las tres vistas que la usan.
 
 Radios, sobre la variable `--radius` que consume shadcn/ui:
 

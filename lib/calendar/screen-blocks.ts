@@ -115,13 +115,24 @@ export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName
   return null;
 }
 
-/** Bloque con horario de un hábito para un día puntual, ya sea con su `scheduled_time` habitual o el de un override de ese día (quien arma esto ya resolvió cuál corresponde). `completed_today` viaja igual que el resto de los campos del hábito (tarea 2.4/2.5): un hábito no tiene proyecto ni etiquetas. */
+/**
+ * Bloque con horario de un hábito para un día puntual, ya sea con su
+ * `scheduled_time` habitual o el de un override de ese día (quien arma esto
+ * ya resolvió cuál corresponde). `completed_today` viaja igual que el resto
+ * de los campos del hábito (tarea 2.4/2.5): un hábito no tiene proyecto ni
+ * etiquetas.
+ *
+ * `skipped` (grupo 7, D-F): un hábito salteado ese día se queda en el
+ * calendario, marcado — no desaparece. `false` por defecto para quien
+ * todavía no trae el salteo del rango visible.
+ */
 export function habitToCalendarBlock(
   habit: Pick<Habit, "id" | "name" | "duration_minutes" | "completed_today">,
   dateIso: string,
   scheduledTime: string,
   colorHex: string,
   timezone: string,
+  skipped = false,
 ): CalendarBlock {
   const startMinutes = minutesFromTimeString(scheduledTime);
   return {
@@ -133,6 +144,7 @@ export function habitToCalendarBlock(
     start: instantFromDayMinutes(dateIso, startMinutes, timezone).toISOString(),
     end: instantFromDayMinutes(dateIso, startMinutes + habit.duration_minutes, timezone).toISOString(),
     completed: habit.completed_today,
+    skipped,
   };
 }
 
@@ -183,17 +195,13 @@ export function taskRecurrencePreviewBlocks(
 }
 
 /**
- * Sin segundo parámetro para el nombre del calendario a propósito: el único
- * llamador de hoy (`screen-calendar.tsx`) la pasa desnuda a `.map()`
- * (`rangeEvents.data.events.map(eventToCalendarBlock)`), que invoca el
- * callback con `(evento, índice, arreglo)` — un segundo parámetro acá
- * recibiría ese índice numérico, no un nombre. `CalendarBlock.calendarName`
- * (tarea 2.2) queda `undefined` hasta que ese llamador pase a un wrapper
- * (`.map((e) => eventToCalendarBlock(e, nombre))`) con la lista de
- * calendarios a mano, mismo patrón que ya resuelve `calendarName` en
- * `use-hoy-events.ts`.
+ * `calendarName` es opcional (tarea 2.2/4, `screen-calendar.tsx` ya la pasa
+ * desde su propio wrapper con la lista de calendarios a mano, mismo patrón
+ * que ya resuelve `calendarName` en `use-hoy-events.ts`): sin ese dato, el
+ * peldaño de "calendario" de la escalera de `CalendarBlockChip` simplemente
+ * no tiene qué mostrar.
  */
-export function eventToCalendarBlock(event: CalendarEventInstance): CalendarBlock {
+export function eventToCalendarBlock(event: CalendarEventInstance, calendarName?: string): CalendarBlock {
   return {
     id: event.id,
     type: "event",
@@ -202,5 +210,6 @@ export function eventToCalendarBlock(event: CalendarEventInstance): CalendarBloc
     allDay: event.allDay,
     start: event.start,
     end: event.end,
+    calendarName,
   };
 }

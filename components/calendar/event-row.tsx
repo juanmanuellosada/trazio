@@ -1,19 +1,13 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { useTheme } from "next-themes";
 import { ExternalLink, MapPin, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitives/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AppContextMenu, renderDropdownEntries, type AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -22,27 +16,6 @@ import type { CalendarEventInstance } from "@/lib/calendar/events";
 import { EVENT_FALLBACK_COLOR, eventColorForTheme } from "@/lib/calendar/screen-blocks";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { cn } from "@/lib/utils";
-
-/**
- * Segundo armado de las mismas `menuEntries` (misma técnica que
- * `components/tasks/task-row.tsx`, `menu-contextual-de-tarea` D-A): la
- * primitiva `AppContextMenu` ya sabe recorrerlas para el clic derecho; el
- * botón "…" usa `DropdownMenu*` en su lugar, así que esta función espeja
- * `renderEntries` de `components/primitives/context-menu.tsx` en vez de
- * escribir el árbol de ítems una segunda vez a mano.
- */
-function renderDropdownEntries(items: AppContextMenuEntry[]): ReactNode[] {
-  return items.map((item, index) => {
-    if (item.type === "separator") return <DropdownMenuSeparator key={index} />;
-    if (item.type === "submenu") return null; // el menú de evento no tiene submenús.
-    return (
-      <DropdownMenuItem key={index} variant={item.destructive ? "destructive" : "default"} onClick={item.onSelect}>
-        {item.icon}
-        {item.label}
-      </DropdownMenuItem>
-    );
-  });
-}
 
 /**
  * Un evento arrastrado de ayer mostraba su hora de inicio cruda ("20:00 –

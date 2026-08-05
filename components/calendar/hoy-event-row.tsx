@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/primitives/confirm-dialog";
-import type { CalendarEventInstance, RecurrenceEditScope } from "@/lib/calendar/events";
-import { useDeleteEvent } from "@/lib/calendar/use-delete-event";
+import type { CalendarEventInstance } from "@/lib/calendar/events";
 import { EditEventDialog } from "./edit-event-dialog";
 import { EventRow } from "./event-row";
-import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
+import { useEventDeleteFlow } from "./use-event-delete-flow";
 
 /**
  * Fila de evento de Hoy, con sus tres acciones ya resueltas (`hoy-con-eventos`,
@@ -17,12 +15,11 @@ import { RecurrenceScopeDialog } from "./recurrence-scope-dialog";
  * (`use-hoy-events.ts` resuelve `calendarName`/`canEdit`, esta fila resuelve
  * las acciones).
  *
- * Eliminar: sin optimistic update ni undo, igual que borrar un calendario
- * entero (`delete-calendar-dialog.tsx`) — es irreversible desde Trazio y no
- * hay forma de deshacerlo como con una tarea, así que se confirma antes. Si
- * el evento pertenece a una serie, la pregunta es a cuáles ocurrencias
- * aplica (`RecurrenceScopeDialog`, misma obligación que editar); si no,
- * alcanza con una confirmación simple.
+ * Eliminar: `useEventDeleteFlow` (grupo 7 de `calendario-legible-y-manipulable`,
+ * compartido también con `EditEventDialog` y el menú contextual de la
+ * grilla) — sin optimistic update ni undo, igual que borrar un calendario
+ * entero (`delete-calendar-dialog.tsx`): es irreversible desde Trazio, así
+ * que se confirma antes.
  *
  * Abrir en Google Calendar: usa `event.htmlLink`, el enlace que ya trae la
  * respuesta de Google. Sin enlace (evento sin `htmlLink`, caso raro) no
@@ -44,29 +41,7 @@ export function HoyEventRow({
   now: Date;
 }) {
   const [editing, setEditing] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [choosingDeleteScope, setChoosingDeleteScope] = useState(false);
-  const deleteEvent = useDeleteEvent();
-
-  function runDelete(scope?: RecurrenceEditScope) {
-    deleteEvent.mutate({
-      target: {
-        calendarId: event.calendarId,
-        eventId: event.id,
-        recurringEventId: event.recurringEventId,
-        originalStartTime: event.originalStartTime,
-      },
-      scope,
-    });
-  }
-
-  function handleDelete() {
-    if (event.recurringEventId !== null) {
-      setChoosingDeleteScope(true);
-      return;
-    }
-    setConfirmingDelete(true);
-  }
+  const eventDelete = useEventDeleteFlow();
 
   function handleOpenInGoogleCalendar() {
     if (event.htmlLink) window.open(event.htmlLink, "_blank", "noopener,noreferrer");
@@ -81,35 +56,28 @@ export function HoyEventRow({
         now={now}
         onEdit={() => setEditing(true)}
         onOpenInGoogleCalendar={handleOpenInGoogleCalendar}
-        onDelete={handleDelete}
+        onDelete={() => eventDelete.requestDelete(event)}
       />
 
-      {editing && <EditEventDialog open onOpenChange={setEditing} event={event} timezone={timezone} readOnly={!canEdit} />}
-
-      <ConfirmDialog
-        open={confirmingDelete}
-        onOpenChange={setConfirmingDelete}
-        title={`Eliminar “${event.title}”`}
-        description="Esto borra el evento de tu cuenta de Google entera, no solo de Trazio, y no se puede deshacer desde acá."
-        confirmLabel="Eliminar"
-        destructive
-        onConfirm={() => {
-          runDelete();
-          setConfirmingDelete(false);
-        }}
-      />
-
-      {choosingDeleteScope && (
-        <RecurrenceScopeDialog
+      {editing && (
+        <EditEventDialog
           open
-          onOpenChange={setChoosingDeleteScope}
-          action="eliminar"
-          onConfirm={(scope) => {
-            runDelete(scope);
-            setChoosingDeleteScope(false);
-          }}
+          onOpenChange={setEditing}
+          event={event}
+          timezone={timezone}
+          readOnly={!canEdit}
+          onRequestDelete={
+            canEdit
+              ? () => {
+                  setEditing(false);
+                  eventDelete.requestDelete(event);
+                }
+              : undefined
+          }
         />
       )}
+
+      {eventDelete.dialogs}
     </>
   );
 }

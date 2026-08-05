@@ -11,6 +11,7 @@ import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import { useProjects } from "@/lib/projects/use-projects";
 import { useUpdateTask } from "@/lib/tasks/mutations";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
@@ -283,9 +284,7 @@ export function HoyView({
         </header>
 
         {options.viewShape === "panel" ? (
-          // El panel no tiene tope propio (D-E, excepción acotada a D39): un
-          // tablero no es una línea de texto, ocupa el ancho disponible.
-          <div className="w-full flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className={`${contentWidthClass(options.viewShape)} flex-1 overflow-y-auto p-4 sm:p-6`}>
             {hasEventsToday && (
               <p className="mb-3 text-sm text-text-secondary">
                 Este formato no muestra los eventos de hoy: cambiá a lista o calendario para verlos.
@@ -302,7 +301,7 @@ export function HoyView({
             />
           </div>
         ) : options.viewShape === "calendario" ? (
-          <div className="flex w-full max-w-content mx-auto flex-1 flex-col overflow-hidden p-4 sm:p-6">
+          <div className={`flex ${contentWidthClass(options.viewShape)} flex-1 flex-col overflow-hidden p-4 sm:p-6`}>
             <ScreenCalendar
               timezone={timezone}
               weekStartsOn={weekStartsOn}
@@ -315,7 +314,7 @@ export function HoyView({
             />
           </div>
         ) : (
-          <div className="w-full max-w-content mx-auto flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+          <div className={`${contentWidthClass(options.viewShape)} flex-1 space-y-6 overflow-y-auto p-4 sm:p-6`}>
             {inboxProjectId && (
               <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={todayDate} />
             )}

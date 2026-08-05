@@ -40,6 +40,7 @@ export function EditEventDialog({
   event,
   timezone,
   readOnly = false,
+  onRequestDelete,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,6 +48,8 @@ export function EditEventDialog({
   timezone: string;
   /** El calendario de este evento es de solo lectura para esta cuenta (D-D): abre sin permitir editar. */
   readOnly?: boolean;
+  /** Botón "Eliminar" en el pie del formulario (grupo 7): `undefined` no lo muestra — quien monta este diálogo ya decidió si el evento se puede borrar (mismo permiso que `readOnly`). */
+  onRequestDelete?: () => void;
 }) {
   const updateEvent = useUpdateEvent();
   const [pendingChanges, setPendingChanges] = useState<{ changes: EventInput; recurrenceChanged: boolean } | null>(null);
@@ -128,6 +131,7 @@ export function EditEventDialog({
         blockWhenNoCalendars={false}
         isSubmitting={updateEvent.isPending}
         readOnly={readOnly}
+        onRequestDelete={readOnly ? undefined : onRequestDelete}
         initial={{
           title: event.title,
           calendarId: event.calendarId,

@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Trash2 } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 import { AppDialog } from "@/components/primitives/dialog";
 import { Button } from "@/components/ui/button";
@@ -175,6 +175,7 @@ export function EventFormDialog({
   isSubmitting,
   onSubmit,
   readOnly = false,
+  onRequestDelete,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -194,6 +195,14 @@ export function EventFormDialog({
   onSubmit: (values: EventFormValues) => void;
   /** El calendario del evento es de solo lectura para esta cuenta (`hoy-con-eventos`, D-D): muestra un resumen, nunca el formulario editable. */
   readOnly?: boolean;
+  /**
+   * Botón "Eliminar" en el pie del formulario (grupo 7 de
+   * `calendario-legible-y-manipulable`): solo edición, nunca alta —
+   * `create-event-dialog.tsx` no pasa esto. `undefined` no muestra nada,
+   * mismo criterio que el resto de los callbacks opcionales de este
+   * formulario.
+   */
+  onRequestDelete?: () => void;
 }) {
   const titleId = useId();
   const { timezone, timeFormat, weekStartsOn, dateFormat } = useUserPreferences();
@@ -474,6 +483,12 @@ export function EventFormDialog({
           </div>
 
           <DialogFooter>
+            {onRequestDelete && (
+              <Button type="button" variant="ghost" className="text-error hover:text-error sm:mr-auto" onClick={onRequestDelete}>
+                <Trash2 className="size-3.5" aria-hidden />
+                Eliminar
+              </Button>
+            )}
             <Button type="submit" disabled={submitDisabled}>
               {submitLabel}
             </Button>

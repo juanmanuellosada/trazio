@@ -177,3 +177,29 @@ export function useHabitSkipsForDate(date: string) {
     },
   });
 }
+
+/**
+ * Salteos de varios días a la vez, agrupados por fecha (grupo 7 de
+ * `calendario-legible-y-manipulable`, "montar `CalendarView`"): mismo
+ * patrón que `useHabitScheduleOverridesForRange` — una sola consulta para
+ * todo el rango visible de la grilla en vez de una por día.
+ */
+export function useHabitSkipsForRange(dates: string[]) {
+  const supabase = createClient();
+  const datesKey = [...dates].sort().join(",");
+
+  return useQuery({
+    queryKey: [...SKIPS_QUERY_BASE, "range", datesKey] as const,
+    queryFn: async () => {
+      if (dates.length === 0) return {} as Record<string, Record<string, boolean>>;
+      const { data, error } = await supabase.from("habit_skips").select("habit_id, date").in("date", dates);
+      if (error) throw error;
+      const byDate: Record<string, Record<string, boolean>> = {};
+      for (const row of data ?? []) {
+        (byDate[row.date] ??= {})[row.habit_id] = true;
+      }
+      return byDate;
+    },
+    enabled: dates.length > 0,
+  });
+}

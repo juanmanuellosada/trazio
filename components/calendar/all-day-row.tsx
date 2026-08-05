@@ -2,6 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { layoutAllDayRow } from "@/lib/calendar/layout";
 import type { CalendarBlock } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
@@ -18,23 +19,43 @@ const ROW_HEIGHT_PX = 26;
  * `CalendarView.handleDragEnd` no necesita distinguir de dónde salió el
  * arrastre — un bloque es un bloque, caiga donde caiga (D-F).
  */
-function DraggableAllDayChip({ block, onSelectBlock }: { block: CalendarBlock; onSelectBlock?: (block: CalendarBlock) => void }) {
+function DraggableAllDayChip({
+  block,
+  onSelectBlock,
+  onToggleComplete,
+  contextMenuEntries,
+}: {
+  block: CalendarBlock;
+  onSelectBlock?: (block: CalendarBlock) => void;
+  onToggleComplete?: (block: CalendarBlock) => void;
+  /** Clic derecho (grupo 7, D-E): sin entradas, no se envuelve en `AppContextMenu`. */
+  contextMenuEntries?: AppContextMenuEntry[];
+}) {
   const { listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `${MOVE_BLOCK_DRAG_PREFIX}${block.id}`,
     data: { kind: "move-block" as const, block },
     disabled: block.isPreview,
   });
 
-  return (
+  const content = (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(isDragging && "z-20 opacity-60")}
       {...(block.isPreview ? {} : listeners)}
     >
-      <CalendarBlockChip block={block} variant="bar" onSelect={onSelectBlock} className={cn(!block.isPreview && "touch-none")} />
+      <CalendarBlockChip
+        block={block}
+        variant="bar"
+        onSelect={onSelectBlock}
+        onToggleComplete={onToggleComplete}
+        className={cn(!block.isPreview && "touch-none")}
+      />
     </div>
   );
+
+  if (block.isPreview || !contextMenuEntries || contextMenuEntries.length === 0) return content;
+  return <AppContextMenu items={contextMenuEntries} trigger={content} />;
 }
 
 /**
@@ -48,11 +69,16 @@ export function AllDayRow({
   blocks,
   previewBlocks = [],
   onSelectBlock,
+  onToggleComplete,
+  getContextMenuEntries,
 }: {
   visibleDays: string[];
   blocks: CalendarBlock[];
   previewBlocks?: CalendarBlock[];
   onSelectBlock?: (block: CalendarBlock) => void;
+  onToggleComplete?: (block: CalendarBlock) => void;
+  /** Clic derecho (grupo 7, D-E): resuelto por quien monta la pantalla, según el tipo de bloque (D-F, esta fila no sabe de dominios). */
+  getContextMenuEntries?: (block: CalendarBlock) => AppContextMenuEntry[];
 }) {
   const merged = blocks.filter((block) => block.allDay).concat(previewBlocks.filter((block) => block.allDay).map((block) => ({ ...block, isPreview: true })));
   const positioned = layoutAllDayRow(merged, visibleDays);
@@ -77,7 +103,12 @@ export function AllDayRow({
             className="min-w-0 px-0.5 py-0.5"
             style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: rowIndex + 1 }}
           >
-            <DraggableAllDayChip block={block} onSelectBlock={onSelectBlock} />
+            <DraggableAllDayChip
+              block={block}
+              onSelectBlock={onSelectBlock}
+              onToggleComplete={onToggleComplete}
+              contextMenuEntries={getContextMenuEntries?.(block)}
+            />
           </div>
         ))}
       </div>
