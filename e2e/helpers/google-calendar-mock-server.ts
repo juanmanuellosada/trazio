@@ -215,10 +215,11 @@ const server = createServer(async (req, res) => {
         return "/api/auth/google/callback";
       }
     })();
-    // Origen fijo a `127.0.0.1:3000` (ver comentario en
-    // `google-calendar-mock-config.ts`): ignora el host real de
-    // `redirect_uri`, que en `.env.local` es `localhost` por motivos de
-    // `pnpm dev`, no del e2e.
+    // Configurable por `E2E_APP_ORIGIN` (default `127.0.0.1:3000`, ver
+    // comentario en `google-calendar-mock-config.ts`): ignora el host real
+    // de `redirect_uri`, que en `.env.local` es `localhost` por motivos de
+    // `pnpm dev`, no del e2e. Sirve además para verificar a mano contra un
+    // puerto distinto de 3000 cuando ese puerto ya está ocupado.
     const location = `${E2E_APP_ORIGIN}${path}?code=${encodeURIComponent(state)}&state=${encodeURIComponent(state)}`;
     res.writeHead(302, { Location: location });
     return res.end();
