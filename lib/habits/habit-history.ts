@@ -5,7 +5,7 @@ import { todayInTimeZone } from "@/lib/dates/today";
 /** Ventana del mini-mapa de la tarjeta (tarea 3.5, spec "El mini-mapa de 14 días es de solo lectura"). */
 export const MINI_MAP_DAYS = 14;
 
-export type MiniMapCellStatus = "marked" | "unmarked" | "before-creation";
+export type MiniMapCellStatus = "marked" | "unmarked" | "before-creation" | "skipped";
 
 export type MiniMapCell = { date: string; status: MiniMapCellStatus };
 
@@ -26,22 +26,39 @@ function dateNDaysBefore(dateIso: string, n: number): string {
  * "before-creation" en vez de "unmarked": el requirement "Un hábito no
  * aparece en fechas anteriores a su creación" no debería leerse en el
  * mini-mapa como una racha rota que nunca pudo cumplirse.
+ *
+ * `skippedDates` es opcional (default vacío, tarea 6.2/spec "Un día
+ * salteado se distingue de uno sin hacer" de
+ * `calendario-legible-y-manipulable`): un llamador que todavía no trae el
+ * historial de salteos sigue funcionando idéntico a antes. Cumplido gana
+ * si por algún motivo un día tiene las dos marcas — mismo orden que
+ * `resolveHabitDayStatus` en `day-status.ts`, y por la misma razón: no
+ * debería pasar en el camino normal, pero si pasa, cumplido es la lectura
+ * correcta, no una ambigüedad del mini-mapa.
  */
 export function buildMiniMapCells(
   createdAt: string,
   completedDates: readonly string[],
   timezone: string,
   now: Date,
+  skippedDates: readonly string[] = [],
 ): MiniMapCell[] {
   const today = todayInTimeZone(now, timezone);
   const createdDate = formatInTimeZone(createdAt, timezone, "yyyy-MM-dd");
   const marked = new Set(completedDates);
+  const skipped = new Set(skippedDates);
 
   const cells: MiniMapCell[] = [];
   for (let i = MINI_MAP_DAYS - 1; i >= 0; i--) {
     const date = dateNDaysBefore(today, i);
     const status: MiniMapCellStatus =
-      date < createdDate ? "before-creation" : marked.has(date) ? "marked" : "unmarked";
+      date < createdDate
+        ? "before-creation"
+        : marked.has(date)
+          ? "marked"
+          : skipped.has(date)
+            ? "skipped"
+            : "unmarked";
     cells.push({ date, status });
   }
   return cells;

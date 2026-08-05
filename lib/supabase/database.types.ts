@@ -156,6 +156,32 @@ export type Database = {
           },
         ]
       }
+      habit_skips: {
+        Row: {
+          date: string
+          habit_id: string
+          user_id: string
+        }
+        Insert: {
+          date: string
+          habit_id: string
+          user_id: string
+        }
+        Update: {
+          date?: string
+          habit_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_skips_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habits: {
         Row: {
           color: string

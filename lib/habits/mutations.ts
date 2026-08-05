@@ -8,6 +8,7 @@ import { todayInTimeZone } from "@/lib/dates/today";
 import type { HabitFormOutput } from "@/lib/validation/habits";
 import { reportHabitError } from "./errors";
 import { HABIT_COLUMNS, toHabit, type Habit, type HabitRawRow } from "./habit-columns";
+import { HABIT_SKIPS_MUTATION_KEY, habitSkipQueryKey, habitSkipsByDateQueryKey } from "./skips";
 import { habitsQueryKey } from "./use-habits";
 
 /**
@@ -174,7 +175,15 @@ function assertIsToday(date: string, timezone: string): void {
 
 type MarkHabitVariables = { habitId: string; date: string; timezone: string };
 
-/** Marca el hábito de hoy como hecho (tarea 2.4). */
+/**
+ * Marca el hábito de hoy como hecho (tarea 2.4). También borra cualquier
+ * salteo de ese mismo día (`habit_skips`, tarea 6.2/6.4 de
+ * `calendario-legible-y-manipulable`, D-F): los tres estados —pendiente,
+ * cumplido, salteado— no pueden coexistir, y completar después de saltear
+ * es justamente el camino "reversible" que describe el dueño. No toca
+ * `calcular_racha_habito` ni su tabla: sigue siendo el mismo `insert` en
+ * `habit_completions` de siempre.
+ */
 export function useMarkHabitDone() {
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -192,24 +201,47 @@ export function useMarkHabitDone() {
         .from("habit_completions")
         .insert({ user_id: session.user.id, habit_id: habitId, completed_on: date });
       if (error) throw error;
+
+      const { error: skipError } = await supabase
+        .from("habit_skips")
+        .delete()
+        .eq("habit_id", habitId)
+        .eq("date", date);
+      if (skipError) throw skipError;
     },
-    onMutate: async ({ habitId }: MarkHabitVariables) => {
+    onMutate: async ({ habitId, date }: MarkHabitVariables) => {
       await queryClient.cancelQueries({ queryKey: habitsQueryKey() });
+      await queryClient.cancelQueries({ queryKey: habitSkipQueryKey(habitId, date) });
+      await queryClient.cancelQueries({ queryKey: habitSkipsByDateQueryKey(date) });
       const previous = habitsSnapshot(queryClient);
+      const previousSkipByHabit = queryClient.getQueryData<boolean>(habitSkipQueryKey(habitId, date));
+      const previousSkipByDate = queryClient.getQueryData<Record<string, boolean>>(habitSkipsByDateQueryKey(date));
       queryClient.setQueryData<Habit[]>(habitsQueryKey(), (old) =>
         (old ?? []).map((h) => (h.id === habitId ? { ...h, completed_today: true } : h)),
       );
-      return { previous };
+      queryClient.setQueryData(habitSkipQueryKey(habitId, date), false);
+      queryClient.setQueryData<Record<string, boolean> | undefined>(habitSkipsByDateQueryKey(date), (old) => {
+        if (!old) return old;
+        return Object.fromEntries(Object.entries(old).filter(([id]) => id !== habitId));
+      });
+      return { previous, previousSkipByHabit, previousSkipByDate, habitId, date };
     },
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(habitsQueryKey(), context.previous);
+      if (context) {
+        queryClient.setQueryData(habitSkipQueryKey(context.habitId, context.date), context.previousSkipByHabit);
+        queryClient.setQueryData(habitSkipsByDateQueryKey(context.date), context.previousSkipByDate);
+      }
       reportHabitError(error);
     },
     // `sonido-al-completar` (D-E): marcar un hábito no tiene deshacer, así
     // que acá el sonido es la única confirmación de que el clic llegó — a
     // diferencia de una tarea, no hay tostada de deshacer para dudar.
     onSuccess: () => playCompletionSound(),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: habitsQueryKey() }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: habitsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: HABIT_SKIPS_MUTATION_KEY });
+    },
   });
 }
 

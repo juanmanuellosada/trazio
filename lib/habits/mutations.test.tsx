@@ -10,12 +10,30 @@ import { useMarkHabitDone, useUnmarkHabitDone } from "./mutations";
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 vi.mock("@/lib/completion-sound", () => ({ playCompletionSound: vi.fn() }));
 
+/**
+ * Un `.from(table)` por tabla en vez de uno genérico (tarea 6.4, ampliado
+ * para verificar que `useMarkHabitDone` también borra el salteo del día en
+ * `habit_skips`, no solo inserta en `habit_completions`): las pruebas de
+ * sonido de abajo no distinguen tabla y siguen viendo el mismo
+ * insert/delete de siempre, mientras que `tables` deja inspeccionar qué se
+ * llamó en cada una.
+ */
 function createSupabaseMock() {
-  const from = vi.fn(() => ({
-    insert: vi.fn(() => Promise.resolve({ error: null })),
-    delete: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })) })),
-  }));
-  return { from };
+  const tables: Record<string, { insert: ReturnType<typeof vi.fn>; deleteEq2: ReturnType<typeof vi.fn> }> = {};
+  const from = vi.fn((table: string) => {
+    if (!tables[table]) {
+      tables[table] = {
+        insert: vi.fn(() => Promise.resolve({ error: null })),
+        deleteEq2: vi.fn(() => Promise.resolve({ error: null })),
+      };
+    }
+    const t = tables[table];
+    return {
+      insert: t.insert,
+      delete: vi.fn(() => ({ eq: vi.fn(() => ({ eq: t.deleteEq2 })) })),
+    };
+  });
+  return { from, tables };
 }
 
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
@@ -70,5 +88,49 @@ describe("useMarkHabitDone / useUnmarkHabitDone — sonido al completar", () => 
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(playCompletionSound).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Tarea 6.2/6.4 (`calendario-legible-y-manipulable`, D-F): completar un
+ * hábito borra el salteo de ese mismo día, para que "pendiente / cumplido
+ * / salteado" nunca coexistan en la base. `useUnmarkHabitDone` no toca
+ * `habit_skips`: desmarcar vuelve a pendiente, no a salteado.
+ */
+describe("useMarkHabitDone — limpia el salteo del día", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.setSystemTime(new Date("2026-08-02T12:00:00-03:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("marcar un hábito hecho inserta en habit_completions y borra el salteo del día en habit_skips", async () => {
+    const { result } = renderHook(() => useMarkHabitDone(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ habitId: "h1", date: "2026-08-02", timezone: "America/Argentina/Buenos_Aires" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mock.tables.habit_completions.insert).toHaveBeenCalledWith({
+      user_id: "user-1",
+      habit_id: "h1",
+      completed_on: "2026-08-02",
+    });
+    expect(mock.tables.habit_skips.deleteEq2).toHaveBeenCalledTimes(1);
+  });
+
+  it("desmarcar un hábito no toca habit_skips", async () => {
+    const { result } = renderHook(() => useUnmarkHabitDone(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ habitId: "h1", date: "2026-08-02", timezone: "America/Argentina/Buenos_Aires" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mock.from).not.toHaveBeenCalledWith("habit_skips");
   });
 });

@@ -126,13 +126,23 @@ tarea y en la de evento. Este sería el tercer copiado.
 No existe nada parecido. Lo más cercano quita una reprogramación y devuelve el hábito a su hora
 habitual.
 
-Saltear es distinto: **ese día ese hábito no va**, sin romper la racha por un lado ni contarlo como
-cumplido por el otro. Eso es una decisión de producto sobre el modelo de hábitos, no un detalle de
-calendario: **hay que resolver qué le pasa a la racha**, y probablemente pida una migración.
+**La decisión del dueño resuelve lo que más pesaba**: *"si en un hábito me salteé un día, ese día
+queda ahí fijo en el calendario. Si yo después lo completo se actualiza la racha."*
 
-**Si al implementarlo resulta que toca el cálculo de rachas de forma no trivial, paren y avisen.**
-Sacar el resto del calendario sin esto es una degradación aceptable; meter mano a las rachas de
-apuro no lo es.
+O sea que saltear:
+
+- **No saca el bloque del calendario.** Se queda, marcado como salteado. Es una decisión a la vista,
+  no una baja.
+- **Es reversible**: se puede completar después, y ahí la racha se actualiza como cualquier otro día.
+- **No toca el cálculo de rachas.** La racha cuenta cumplimientos; saltear no suma ni resta, solo
+  deja de estar pendiente.
+
+Eso desactiva el riesgo grande de esta propuesta: **no hay que meter mano a las rachas**. Lo que sí
+hace falta es dónde guardar ese estado por día, y probablemente sea una migración.
+
+*La alternativa descartada* era que saltear preservara la racha como si el día no contara. Suena
+generoso y es peor: vuelve la racha un número que el usuario puede inflar salteando, y deja de
+significar lo que dice.
 
 ### D-G. El ancho, cuarta copia de la misma excepción
 

@@ -53,9 +53,10 @@
 
 - [ ] 6.1 **No existe nada parecido** (**D-F**). Lo más cercano quita una reprogramación y devuelve el hábito a su hora habitual
 - [ ] 6.2 Son **tres estados**: pendiente, cumplido y salteado. Confundirlos vuelve inútil el registro
-- [ ] 6.3 **Decidí y dejá escrito qué le pasa a la racha.** No lo dejes librado a lo que salga del cálculo actual
-- [ ] 6.4 **Si toca el cálculo de rachas de forma no trivial, pará y avisá.** Sacar el resto sin esto es una degradación aceptable; meter mano a las rachas de apuro no
-- [ ] 6.5 Si hay migración: aplicada antes del código, con su política de acceso en el mismo archivo, y los tipos regenerados
+- [ ] 6.3 **El bloque se queda en el calendario**, marcado como salteado. No desaparece: es una decisión a la vista, no una baja
+- [ ] 6.4 **Es reversible**: se puede completar después, y ahí la racha se actualiza como cualquier otro día
+- [ ] 6.5 **No toques el cálculo de rachas.** La racha cuenta cumplimientos; saltear no suma ni resta. Si te encontrás modificándolo, **pará y avisá**: algo entendiste distinto
+- [ ] 6.6 Si hay migración: aplicada antes del código, con su política de acceso en el mismo archivo, y los tipos regenerados
 
 ## 7. Acciones y menú contextual
 
@@ -86,7 +87,7 @@
 - [ ] 9.8 Con el servidor rechazando: vuelve y avisa
 - [ ] 9.9 Completar una tarea y un hábito desde su bloque, sin que se dispare el arrastre
 - [ ] 9.10 Eliminar un evento desde el menú y desde el diálogo
-- [ ] 9.11 Saltear un hábito, y mirar qué pasó con su racha
+- [ ] 9.11 Saltear un hábito: que **siga viéndose** marcado como salteado, que la racha **no cambie**, y que completarlo después la actualice
 - [ ] 9.12 Tema claro y oscuro, con eventos coloreados
 - [ ] 9.13 Escritorio ancho y 390px
 - [ ] 9.14 Simulador de Google, **nunca la cuenta real del dueño**

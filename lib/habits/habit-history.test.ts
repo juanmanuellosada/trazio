@@ -27,6 +27,24 @@ describe("buildMiniMapCells (tarea 3.5)", () => {
     expect(byDate["2026-07-27"]).toBe("before-creation");
     expect(byDate["2026-07-28"]).toBe("unmarked");
   });
+
+  // Tarea 6.2/spec "Un día salteado se distingue de uno sin hacer"
+  // (calendario-legible-y-manipulable): sin `skippedDates` el comportamiento
+  // es idéntico al de siempre (los tres tests de arriba no lo pasan y
+  // siguen pasando), y con él un día salteado es su propio estado, no
+  // "unmarked".
+  it("distingue un día salteado de uno sin marcar", () => {
+    const cells = buildMiniMapCells("2026-01-01T00:00:00.000Z", [], TZ, NOW, ["2026-07-30"]);
+    const byDate = Object.fromEntries(cells.map((c) => [c.date, c.status]));
+    expect(byDate["2026-07-30"]).toBe("skipped");
+    expect(byDate["2026-07-29"]).toBe("unmarked");
+  });
+
+  it("si un día está marcado y salteado a la vez, marcado gana (mismo criterio que resolveHabitDayStatus)", () => {
+    const cells = buildMiniMapCells("2026-01-01T00:00:00.000Z", ["2026-07-30"], TZ, NOW, ["2026-07-30"]);
+    const byDate = Object.fromEntries(cells.map((c) => [c.date, c.status]));
+    expect(byDate["2026-07-30"]).toBe("marked");
+  });
 });
 
 describe("currentWeekProgress (tarea 3.6, D-D: semana lunes a domingo fija)", () => {
