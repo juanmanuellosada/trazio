@@ -99,15 +99,19 @@ La barra SHALL ofrecer un control de orden con los valores manual, por nombre, p
 
 ### Requirement: Agrupar por, configurable
 
-La barra SHALL ofrecer un control de agrupación con los valores nada, sección, fecha, prioridad y etiqueta — no todos disponibles en todas las formas de ver ni pantallas.
+La barra SHALL ofrecer un control de agrupación con los valores nada, sección, fecha, prioridad y etiqueta, y cada valor SHALL significar lo mismo en la lista y en el panel.
 
-En la forma de ver "panel", el valor elegido SHALL determinar cuáles son las columnas, según define la capacidad `modo-panel`. En la forma de ver "lista", SHALL seguir determinando los grupos dentro de la lista, sin cambios.
+El valor "nada" SHALL producir una sola lista corrida, sin bloques ni encabezados, en **todas** las pantallas. NUNCA SHALL significar la agrupación natural de la pantalla: un valor con dos comportamientos según dónde se lo mire es lo que este requisito viene a eliminar.
 
-El panel NUNCA SHALL ofrecer "nada" (D48): en Bandeja de entrada y Proyecto era exactamente redundante con "sección" —producía las mismas columnas—, y además era el único valor que significaba algo distinto en cada pantalla (secciones ahí, días en Próximos, prioridad en Hoy), lo que lo hacía imposible de explicar con un solo nombre. Cada pantalla ofrece en cambio un valor por defecto propio y explícito: sección en Bandeja de entrada y Proyecto, fecha en Próximos, prioridad en Hoy. Una preferencia guardada en "nada" —el default de toda pantalla, en cualquier forma de ver— SHALL resolverse en el panel a ese valor por defecto, sin pisar lo guardado: volver a la lista SHALL encontrarla en "nada" intacta.
+Cada pantalla SHALL tener un valor por defecto explícito. En Bandeja de entrada y Proyecto SHALL ser "sección", de modo que abrirlas se vea igual que antes de esta capacidad.
 
-El valor "etiqueta" NUNCA SHALL ofrecerse en la forma de ver "panel", donde una tarea con varias etiquetas aparecería repetida en varias columnas. Cuando la preferencia guardada es "etiqueta" y el usuario pasa a panel, el valor guardado NUNCA SHALL pisarse —volver a la lista SHALL encontrarlo intacto— y el panel SHALL comportarse como con el valor por defecto de esa pantalla.
+El valor "sección" NUNCA SHALL ofrecerse donde la vista cruza proyectos —Hoy, Próximos, la página de una etiqueta, la de un filtro, el buscador y Completado—: una sección pertenece a un proyecto y fuera de él no significa nada.
 
-El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próximos: las dos pantallas cruzan proyectos, y una sección solo tiene sentido dentro de un proyecto (capacidad `modo-panel`, "Mover entre columnas de sección"). Cuando la preferencia guardada es "sección" y el usuario está en el panel de Hoy o de Próximos, el valor guardado NUNCA SHALL pisarse —volver a Bandeja o Proyecto SHALL encontrarlo intacto— y esas dos pantallas SHALL comportarse como con su propio valor por defecto (prioridad en Hoy, fecha en Próximos).
+El valor "fecha" NUNCA SHALL ofrecerse en Hoy, que es un solo día.
+
+El valor "etiqueta" NUNCA SHALL ofrecerse en la forma de ver "panel", donde una tarea con varias etiquetas aparecería repetida en varias columnas.
+
+Cuando la preferencia guardada no está disponible en la pantalla o la forma de ver activa, el valor guardado NUNCA SHALL pisarse —volver a donde sí está disponible SHALL encontrarlo intacto— y la vista SHALL comportarse como si fuera el valor por defecto de esa pantalla.
 
 #### Scenario: Agrupar por etiqueta
 
@@ -117,43 +121,27 @@ El valor "sección" NUNCA SHALL ofrecerse en el panel de Hoy ni en el de Próxim
 - **THEN** las tareas se agrupan por etiqueta
 - **AND** las que no tienen ninguna quedan juntas en un grupo aparte
 
-#### Scenario: El control ofrece sección y fecha
+#### Scenario: El control de un proyecto ofrece los cinco valores
 
-- **WHEN** el usuario abre el control de agrupar por en la forma de ver "lista"
+- **WHEN** el usuario abre el control de agrupar por en la lista de un proyecto
 - **THEN** SHALL ver los valores nada, sección, fecha, prioridad y etiqueta
 
-#### Scenario: Agrupar por fecha en modo panel
+#### Scenario: Una vista que cruza proyectos no ofrece sección
 
-- **WHEN** el usuario está en modo panel y elige "fecha" en el control de agrupar por
-- **THEN** las columnas SHALL pasar a ser los días con tareas, más una columna para las tareas sin fecha
-
-#### Scenario: En modo panel no se ofrece agrupar por nada ni por etiqueta
-
-- **WHEN** el usuario está en modo panel y abre el control de agrupar por
-- **THEN** NUNCA SHALL ver los valores "nada" ni "etiqueta"
-
-#### Scenario: Con la preferencia guardada en "nada", el panel de un proyecto muestra "Sección" como valor elegido
-
-- **WHEN** el usuario tiene el agrupador en "nada" (el default) y abre el panel de un proyecto
-- **THEN** el control SHALL mostrar "Sección" como valor elegido
-- **AND** las columnas SHALL ser las secciones del proyecto, igual que antes de que "nada" dejara de ofrecerse ahí
-
-#### Scenario: La preferencia de etiqueta sobrevive al paso por el panel
-
-- **WHEN** el usuario tiene el agrupador en "etiqueta" desde la lista, pasa a modo panel y vuelve a la lista
-- **THEN** el panel SHALL haberse comportado como con el valor por defecto de esa pantalla
-- **AND** al volver a la lista el agrupador SHALL seguir en "etiqueta"
-
-#### Scenario: En el panel de Hoy y de Próximos no se ofrece agrupar por sección
-
-- **WHEN** el usuario está en el panel de Hoy o en el de Próximos y abre el control de agrupar por
+- **WHEN** el usuario abre el control de agrupar por en la página de una etiqueta
 - **THEN** NUNCA SHALL ver el valor "sección"
 
-#### Scenario: La preferencia de sección sobrevive al paso por Hoy o Próximos
+#### Scenario: Un proyecto abre agrupado por sección
 
-- **WHEN** el usuario tiene el agrupador en "sección" desde el panel de Bandeja o de Proyecto, y pasa al panel de Próximos
-- **THEN** Próximos SHALL haberse comportado como con su propio valor por defecto ("Fecha")
-- **AND** al volver a Bandeja o Proyecto el agrupador SHALL seguir en "sección"
+- **WHEN** el usuario abre un proyecto sin haber tocado nunca su agrupador
+- **THEN** el control SHALL indicar "sección"
+- **AND** las tareas SHALL verse en bloques por sección, como antes de esta capacidad
+
+#### Scenario: Un valor no disponible no se pisa
+
+- **WHEN** el usuario tiene el agrupador en "sección" desde un proyecto, abre la página de una etiqueta y vuelve al proyecto
+- **THEN** la página de la etiqueta SHALL haberse comportado como si fuera su valor por defecto
+- **AND** al volver al proyecto el agrupador SHALL seguir en "sección"
 
 ### Requirement: Filtrar por fecha límite, prioridad y etiqueta
 
@@ -186,14 +174,23 @@ La barra SHALL ofrecer un botón que restablece todas sus opciones a los valores
 
 ### Requirement: Persistencia por pantalla en `view_preferences`
 
-Cada pantalla SHALL recordar sus propias opciones, persistidas en la tabla `view_preferences` bajo su propia clave `view_key` (`bandeja`, `hoy`, `proximos`, `proyecto:<id>`, `etiqueta:<id>` o `filtro:<id>`), sin mezclarse con las de ninguna otra pantalla.
+Las opciones de vista SHALL guardarse por pantalla en `view_preferences`, con una fila por usuario y clave de pantalla, y SHALL sincronizarse entre dispositivos.
 
-#### Scenario: Cada pantalla tiene sus propias opciones
+Las preferencias ya guardadas con el valor "nada" en una clave de proyecto o de la Bandeja de entrada SHALL migrarse **una sola vez** al valor "sección", porque fueron guardadas cuando "nada" significaba la agrupación por sección en esas pantallas.
 
-- **WHEN** el usuario agrupa por prioridad en el proyecto "Casa" y agrupa
-  por etiqueta en el proyecto "Trabajo"
-- **THEN** al volver a abrir "Casa", sigue agrupado por prioridad
-- **AND** al abrir "Trabajo", sigue agrupado por etiqueta
+Esa migración NUNCA SHALL resolverse traduciendo el valor en cada lectura: eso dejaría la lista corrida inalcanzable para siempre en un proyecto, que es justamente la capacidad que se agrega.
+
+#### Scenario: Una preferencia vieja conserva lo que el usuario veía
+
+- **WHEN** un usuario tenía guardado "nada" en un proyecto antes de esta capacidad
+- **THEN** después de la migración SHALL tener "sección"
+- **AND** al abrir ese proyecto SHALL ver sus tareas en bloques por sección, igual que antes
+
+#### Scenario: Elegir sin agrupar después de la migración se respeta
+
+- **WHEN** el usuario elige "nada" en un proyecto después de la migración
+- **THEN** SHALL ver una sola lista corrida
+- **AND** al volver a abrir ese proyecto SHALL seguir viéndola corrida
 
 ### Requirement: Las opciones se sincronizan entre dispositivos
 
