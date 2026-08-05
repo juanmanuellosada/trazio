@@ -24,6 +24,7 @@ import type { DragResult } from "@/lib/calendar/drag";
 import type { CalendarBlock, UnscheduledHabitChip } from "@/lib/calendar/block";
 import type { CalendarEventInstance, EventInput, RecurrenceEditScope } from "@/lib/calendar/events";
 import {
+  eventBlockId,
   eventToCalendarBlock,
   habitToCalendarBlock,
   parseHabitBlockId,
@@ -173,9 +174,13 @@ export function ScreenCalendar({
 
   const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t] as const)), [tasks]);
   const habitsById = useMemo(() => new Map((habits ?? []).map((h) => [h.id, h] as const)), [habits]);
+  // Indexado por `calendario + evento` (defecto encontrado al verificar el
+  // grupo 7), no por `event.id` solo: Google no garantiza ese id único entre
+  // calendarios distintos de la misma cuenta, y una colisión hacía que el
+  // menú contextual/diálogo de un evento operara sobre otro.
   const eventsById = useMemo(() => {
     const events = rangeEvents.data?.status === "ok" ? rangeEvents.data.events : [];
-    return new Map(events.map((event) => [event.id, event] as const));
+    return new Map(events.map((event) => [eventBlockId(event.calendarId, event.id), event] as const));
   }, [rangeEvents.data]);
 
   // Tarea 5.7: campos de recurrencia que `TaskRow` no trae (fuera de
@@ -259,7 +264,7 @@ export function ScreenCalendar({
     if (rangeEvents.data?.status !== "ok") return [];
     return rangeEvents.data.events.map((event) => {
       const calendarName = calendarById.get(event.calendarId)?.summary;
-      if (pendingEventUpdate?.event.id === event.id) {
+      if (pendingEventUpdate && pendingEventUpdate.event.calendarId === event.calendarId && pendingEventUpdate.event.id === event.id) {
         return eventToCalendarBlock({ ...event, ...pendingEventUpdate.changes }, calendarName);
       }
       return eventToCalendarBlock(event, calendarName);

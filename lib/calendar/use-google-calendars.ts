@@ -88,11 +88,14 @@ async function parseErrorCode(response: Response): Promise<CalendarAdminErrorCod
  * ensuciaba la consola en toda la app porque `GoogleReconnectBanner` llama a
  * este mismo hook desde `app/(app)/layout.tsx`.
  */
-async function fetchGoogleCalendars(): Promise<{
+/** Exportado para que `calendar-admin-mutations.ts` tipe el parche optimista de `useUpdateEnabledCalendars` sobre este mismo caché. */
+export type GoogleCalendarsData = {
   calendars: GoogleCalendarListItem[];
   enabledCalendarIds: string[];
   connected: boolean;
-}> {
+};
+
+async function fetchGoogleCalendars(): Promise<GoogleCalendarsData> {
   const response = await fetch("/api/calendar/calendars");
   if (!response.ok) throw new CalendarAdminError(await parseErrorCode(response));
   return response.json();

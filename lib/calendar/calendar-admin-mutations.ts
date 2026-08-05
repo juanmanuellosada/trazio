@@ -2,7 +2,12 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toastError, toastSuccess } from "@/lib/toast";
-import { CalendarAdminError, googleCalendarsQueryKey, type CalendarAdminErrorCode } from "./use-google-calendars";
+import {
+  CalendarAdminError,
+  googleCalendarsQueryKey,
+  type CalendarAdminErrorCode,
+  type GoogleCalendarsData,
+} from "./use-google-calendars";
 
 /**
  * Mutaciones de la administración de calendarios (tarea 4.1): crear,
@@ -145,13 +150,39 @@ export function useDisconnectGoogleConnection() {
   });
 }
 
-/** Guarda cuáles calendarios de Google se muestran en Trazio (tarea 2.7/7.4, requirement "Elegir qué calendarios se muestran"). Manda la lista completa: la API reemplaza `enabled_calendar_ids`, no la parchea de a un id. */
+/**
+ * Guarda cuáles calendarios de Google se muestran en Trazio (tarea 2.7/7.4,
+ * requirement "Elegir qué calendarios se muestran"). Manda la lista
+ * completa: la API reemplaza `enabled_calendar_ids`, no la parchea de a un
+ * id.
+ *
+ * Optimista (defecto encontrado al verificar el grupo 7 de
+ * `calendario-legible-y-manipulable`, `.claude/rules/frontend.md`): sin
+ * esto, tildar dos calendarios seguidos sin esperar a que el primero
+ * asiente hacía que `toggleCalendarEnabled` (`calendars-section.tsx`)
+ * calculara el próximo array de la segunda tilde a partir del
+ * `enabledCalendarIds` de ANTES de la primera (el caché todavía no se había
+ * puesto al día) — la segunda pisaba a la primera al resolver. Parchear el
+ * caché al instante (`onMutate`) hace que la segunda tilde ya parta de lo
+ * que dejó la primera.
+ */
 export function useUpdateEnabledCalendars() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: CALENDAR_ADMIN_MUTATION_KEY,
     mutationFn: (enabledCalendarIds: string[]) => requestJson("/api/calendar/calendars", "PATCH", { enabledCalendarIds }),
-    onError: reportCalendarAdminError,
+    onMutate: async (enabledCalendarIds) => {
+      await queryClient.cancelQueries({ queryKey: googleCalendarsQueryKey });
+      const previous = queryClient.getQueryData<GoogleCalendarsData>(googleCalendarsQueryKey);
+      queryClient.setQueryData<GoogleCalendarsData>(googleCalendarsQueryKey, (old) =>
+        old ? { ...old, enabledCalendarIds } : old,
+      );
+      return { previous };
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(googleCalendarsQueryKey, context.previous);
+      reportCalendarAdminError(error);
+    },
     onSettled: () => invalidateGoogleCalendars(queryClient),
   });
 }

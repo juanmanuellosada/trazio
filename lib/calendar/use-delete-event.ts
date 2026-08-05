@@ -28,10 +28,18 @@ function isCalendarEventsQuery(query: { queryKey: readonly unknown[] }): boolean
   return query.queryKey[0] === "calendar-events" && (query.queryKey[1] === "range" || query.queryKey[1] === "today");
 }
 
-function removeEventFromCache(queryClient: QueryClient, eventId: string) {
+/**
+ * `eventId` solo (sin `calendarId`) no identifica un evento sin ambigüedad:
+ * Google no garantiza que sea único entre calendarios distintos de la misma
+ * cuenta (defecto encontrado al verificar el grupo 7 de
+ * `calendario-legible-y-manipulable`, mismo motivo que `eventBlockId` en
+ * `screen-blocks.ts`). Sin el `calendarId` acá, borrar un evento cuyo id
+ * colisiona con el de otro calendario también lo sacaba del caché.
+ */
+function removeEventFromCache(queryClient: QueryClient, calendarId: string, eventId: string) {
   queryClient.setQueriesData<EventsResult>({ predicate: isCalendarEventsQuery }, (old) => {
     if (!old || old.status !== "ok") return old;
-    return { ...old, events: old.events.filter((event) => event.id !== eventId) };
+    return { ...old, events: old.events.filter((event) => !(event.id === eventId && event.calendarId === calendarId)) };
   });
 }
 
@@ -56,7 +64,7 @@ export function useDeleteEvent() {
     mutationKey: ["calendar-events", "delete"] as const,
     mutationFn: (variables: DeleteEventVariables) => requestJson<{ ok: true }>(eventDeleteUrl(variables), "DELETE"),
     onSuccess: (_data, { target }) => {
-      removeEventFromCache(queryClient, target.eventId);
+      removeEventFromCache(queryClient, target.calendarId, target.eventId);
       toastSuccess("Evento eliminado.");
     },
     onError: reportCalendarAdminError,

@@ -3,6 +3,7 @@ import type { TaskRow } from "@/lib/tasks/use-tasks";
 import { contrastRatio, MIN_PROJECT_COLOR_CONTRAST, PROJECT_SURFACE_HEX } from "@/lib/validation/colors";
 import type { CalendarEventInstance } from "./events";
 import {
+  eventBlockId,
   eventColorForTheme,
   eventToCalendarBlock,
   habitBlockId,
@@ -159,7 +160,7 @@ describe("eventToCalendarBlock", () => {
       htmlLink: null,
     };
     expect(eventToCalendarBlock(event)).toEqual({
-      id: "event-1",
+      id: "cal-1::event-1",
       type: "event",
       title: "Reunión",
       color: "#039BE5",
@@ -167,6 +168,33 @@ describe("eventToCalendarBlock", () => {
       start: "2026-08-05T13:00:00-03:00",
       end: "2026-08-05T14:00:00-03:00",
     });
+  });
+
+  it("dos eventos de calendarios distintos con el mismo id crudo de Google arman bloques con id distinto (defecto real: Google solo garantiza unicidad DENTRO de un calendario)", () => {
+    const base = {
+      id: "evt-1",
+      calendarColor: null,
+      title: "Reunión",
+      description: null,
+      location: null,
+      allDay: false,
+      start: "2026-08-05T13:00:00-03:00",
+      end: "2026-08-05T14:00:00-03:00",
+      timeZone: TZ,
+      isRecurring: false,
+      recurringEventId: null,
+      originalStartTime: null,
+      htmlLink: null,
+    };
+    const fromCalendarA: CalendarEventInstance = { ...base, calendarId: "calendar-a", title: "Reunión Personal" };
+    const fromCalendarB: CalendarEventInstance = { ...base, calendarId: "calendar-b", title: "Standup Trabajo" };
+
+    const blockA = eventToCalendarBlock(fromCalendarA);
+    const blockB = eventToCalendarBlock(fromCalendarB);
+
+    expect(blockA.id).not.toBe(blockB.id);
+    expect(blockA.id).toBe(eventBlockId("calendar-a", "evt-1"));
+    expect(blockB.id).toBe(eventBlockId("calendar-b", "evt-1"));
   });
 
   it("cae al color de respaldo cuando el evento no trae color de calendario", () => {

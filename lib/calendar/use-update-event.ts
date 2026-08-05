@@ -27,10 +27,24 @@ function isCalendarEventsQuery(query: { queryKey: readonly unknown[] }): boolean
   return query.queryKey[0] === "calendar-events" && (query.queryKey[1] === "range" || query.queryKey[1] === "today");
 }
 
-function patchEventInCache(queryClient: QueryClient, eventId: string, changes: EventInput) {
+/**
+ * `eventId` solo (sin `calendarId`) no identifica un evento sin ambigüedad:
+ * Google no garantiza que sea único entre calendarios distintos de la misma
+ * cuenta (defecto encontrado al verificar el grupo 7 de
+ * `calendario-legible-y-manipulable`, mismo motivo que `eventBlockId` en
+ * `screen-blocks.ts`). Sin el `calendarId` acá, editar un evento cuyo id
+ * colisiona con el de otro calendario parcheaba también ese otro en el
+ * caché optimista.
+ */
+function patchEventInCache(queryClient: QueryClient, calendarId: string, eventId: string, changes: EventInput) {
   queryClient.setQueriesData<EventsResult>({ predicate: isCalendarEventsQuery }, (old) => {
     if (!old || old.status !== "ok") return old;
-    return { ...old, events: old.events.map((event) => (event.id === eventId ? { ...event, ...changes } : event)) };
+    return {
+      ...old,
+      events: old.events.map((event) =>
+        event.id === eventId && event.calendarId === calendarId ? { ...event, ...changes } : event,
+      ),
+    };
   });
 }
 
@@ -57,7 +71,7 @@ export function useUpdateEvent() {
     onMutate: async ({ target, changes }) => {
       await queryClient.cancelQueries({ predicate: isCalendarEventsQuery });
       const previous = queryClient.getQueriesData<EventsResult>({ predicate: isCalendarEventsQuery });
-      patchEventInCache(queryClient, target.eventId, changes);
+      patchEventInCache(queryClient, target.calendarId, target.eventId, changes);
       return { previous };
     },
     onError: (error, _vars, context) => {

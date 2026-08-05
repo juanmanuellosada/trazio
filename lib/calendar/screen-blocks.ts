@@ -195,6 +195,24 @@ export function taskRecurrencePreviewBlocks(
 }
 
 /**
+ * Identidad de un bloque de evento (defecto encontrado al verificar el grupo
+ * 7 de `calendario-legible-y-manipulable`): Google solo garantiza que
+ * `event.id` sea único DENTRO de un calendario, no entre los calendarios
+ * habilitados de una misma cuenta — dos calendarios distintos pueden traer
+ * eventos con el mismo id crudo. `eventsById` en `screen-calendar.tsx`
+ * indexaba solo por `event.id`, así que con una colisión el menú
+ * contextual/diálogo de edición de un evento terminaba operando sobre el
+ * otro, incluida su eliminación. La identidad de la interfaz pasa a ser
+ * `calendario + evento`, mismo patrón que ya usa `habitBlockId` para
+ * distinguir apariciones del mismo hábito en días distintos. El id crudo que
+ * se le manda a Google (`event.id`, `event.calendarId`) no se toca: sigue
+ * viajando aparte, sin pasar por acá.
+ */
+export function eventBlockId(calendarId: string, eventId: string): string {
+  return `${calendarId}::${eventId}`;
+}
+
+/**
  * `calendarName` es opcional (tarea 2.2/4, `screen-calendar.tsx` ya la pasa
  * desde su propio wrapper con la lista de calendarios a mano, mismo patrón
  * que ya resuelve `calendarName` en `use-hoy-events.ts`): sin ese dato, el
@@ -203,7 +221,7 @@ export function taskRecurrencePreviewBlocks(
  */
 export function eventToCalendarBlock(event: CalendarEventInstance, calendarName?: string): CalendarBlock {
   return {
-    id: event.id,
+    id: eventBlockId(event.calendarId, event.id),
     type: "event",
     title: event.title,
     color: event.calendarColor ?? EVENT_FALLBACK_COLOR,
