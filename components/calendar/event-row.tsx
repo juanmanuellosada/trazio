@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
+import { useTheme } from "next-themes";
 import { ExternalLink, MapPin, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -16,7 +17,9 @@ import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitive
 import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMounted } from "@/hooks/use-mounted";
 import type { CalendarEventInstance } from "@/lib/calendar/events";
+import { EVENT_FALLBACK_COLOR, eventColorForTheme } from "@/lib/calendar/screen-blocks";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +144,15 @@ export function EventRow({
   const isMobile = useMediaQuery("(max-width: 767px)");
   const timeLabel = formatEventTimeLabel(event, preferences.timezone, preferences.timeFormat, now);
 
+  // Mismo color y mismo ajuste por tema que la grilla (tarea 3.2/3.3, D-B,
+  // `calendar-block-chip.tsx`): un solo fallback (`EVENT_FALLBACK_COLOR`, ya
+  // no `var(--text-secondary)` aparte) y el mismo ajuste de contraste del
+  // color crudo de Google, que antes solo tenía la grilla.
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
+  const barColor = eventColorForTheme(event.calendarColor ?? EVENT_FALLBACK_COLOR, theme);
+
   // Mismo problema de ancho que el proyecto anclado de `TaskRow` (D-F de
   // `fila-de-tarea-en-niveles`): en 390px el nombre del calendario a la
   // derecha del título le come el espacio que menos sobra, así que baja al
@@ -179,11 +191,7 @@ export function EventRow({
 
   const rowContent = (
     <div className="flex items-start gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface">
-      <span
-        aria-hidden
-        className="w-1 shrink-0 self-stretch rounded-sm"
-        style={{ backgroundColor: event.calendarColor ?? "var(--text-secondary)" }}
-      />
+      <span aria-hidden className="w-1 shrink-0 self-stretch rounded-sm" style={{ backgroundColor: barColor }} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-center gap-1.5">

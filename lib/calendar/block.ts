@@ -12,12 +12,21 @@
  */
 export type CalendarBlockType = "task" | "habit" | "event";
 
+/** Forma mínima de una etiqueta para el bloque (D-A, grupo 2): mismos campos que `LabelChip` de `lib/tasks/`, sin importarlo — el compatibilizador estructural de TypeScript alcanza. */
+export type CalendarBlockLabel = { id: string; name: string; color: string };
+
 export type CalendarBlock = {
   id: string;
   type: CalendarBlockType;
   /** Texto plano (D2): la grilla nunca interpreta markdown ni HTML en el título. */
   title: string;
-  /** Color ya resuelto a hex (`#RRGGBB`) por el dominio de origen: el color del proyecto, la etiqueta, el hábito, o el calendario de Google. */
+  /**
+   * Color ya resuelto a hex (`#RRGGBB`) por el dominio de origen: el color
+   * del proyecto, la etiqueta, el hábito, o el calendario de Google. Para un
+   * evento, este es el hex crudo de Google, sin ajustar por tema — ese
+   * ajuste (D-B, grupo 3) es cosa del que lo dibuja (`eventColorForTheme` en
+   * `screen-blocks.ts`), no de este valor.
+   */
   color: string;
   allDay: boolean;
   /**
@@ -34,6 +43,14 @@ export type CalendarBlock = {
    * arrastre en el grupo 6 — porque representa algo que todavía no existe.
    */
   isPreview?: boolean;
+  /** Cumplido, para una tarea o un hábito (grupo 2, D-A): `undefined` en un evento, que no tiene este concepto. */
+  completed?: boolean;
+  /** Nombre del proyecto de una tarea, si quien arma el bloque ya lo resolvió: un hábito no tiene proyecto. */
+  projectName?: string;
+  /** Etiquetas de una tarea: un hábito no tiene etiquetas. */
+  labels?: CalendarBlockLabel[];
+  /** Nombre del calendario de origen de un evento, si quien arma el bloque ya lo resolvió. */
+  calendarName?: string;
 };
 
 /**

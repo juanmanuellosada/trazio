@@ -1,9 +1,17 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import { differenceInMinutes, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { es } from "date-fns/locale";
+import { useTheme } from "next-themes";
 import { CalendarDays, Repeat, SquareCheck } from "lucide-react";
+import { useMounted } from "@/hooks/use-mounted";
+import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import type { CalendarBlock, CalendarBlockType } from "@/lib/calendar/block";
+import { eventColorForTheme } from "@/lib/calendar/screen-blocks";
+import { HOUR_ROW_HEIGHT_PX } from "./grid-metrics";
 
 const TYPE_ICON: Record<CalendarBlockType, typeof CalendarDays> = {
   task: SquareCheck,
@@ -17,7 +25,8 @@ const TYPE_ICON: Record<CalendarBlockType, typeof CalendarDays> = {
  * la etiqueta o el calendario de origen, así que la distinción de tipo
  * viene del borde y del ícono, no del color. Tarea: caja con borde
  * completo. Hábito: píldora. Evento: barra lateral gruesa, como en Google
- * Calendar.
+ * Calendar. **No se toca** (tarea 3.4, D-B): hay una prueba que exige que
+ * dos bloques del mismo color se sigan distinguiendo por esta forma.
  */
 const TYPE_SHAPE_CLASS: Record<CalendarBlockType, string> = {
   task: "rounded-md border-2",
@@ -27,11 +36,62 @@ const TYPE_SHAPE_CLASS: Record<CalendarBlockType, string> = {
 
 type CalendarBlockChipVariant = "timed" | "bar" | "compact";
 
+/**
+ * Dirección y relleno por variante (tarea 2.6: acá vivía el defecto). Un
+ * bloque de la grilla horaria (`timed`) apila su contenido en columna
+ * (título, horario, calendario/proyecto, etiquetas); `bar` y `compact` son
+ * de una sola línea. Antes, la base compartida imponía `items-center` para
+ * las tres variantes y `timed` agregaba `flex-col`: el resultado combinado
+ * ponía el ícono **encima** del título en vez de al lado, porque no había
+ * ninguna fila propia para ese primer renglón. Ahora la dirección vive acá
+ * (por variante) y el primer renglón arma su propia fila (`items-center`)
+ * más abajo, sin pisarse.
+ */
 const VARIANT_CLASS: Record<CalendarBlockChipVariant, string> = {
-  timed: "h-full w-full flex-col items-start justify-start gap-0 px-1.5 py-1 text-left",
-  bar: "h-6 w-full px-1.5",
-  compact: "h-5 w-full px-1",
+  timed: "h-full w-full flex-col items-stretch justify-start gap-0.5 px-1.5 py-1 text-left",
+  bar: "h-6 w-full flex-row items-center gap-1 px-1.5",
+  compact: "h-5 w-full flex-row items-center gap-1 px-1",
 };
+
+/** `py-1` de la variante `timed`: 4px arriba + 4px abajo. */
+const VERTICAL_PADDING_PX = 8;
+/** `text-xs` (0.75rem de fuente) trae 1rem de interlineado por defecto. */
+const LINE_HEIGHT_PX = 16;
+
+/**
+ * Cuántos peldaños de la escalera entran, dado el alto real del bloque
+ * (D-A, tarea 2.1): el primero (título, con su control de completar si
+ * corresponde) nunca depende de esto — siempre se intenta. Los siguientes
+ * peldaños (horario, calendario/proyecto, etiquetas) piden una línea de
+ * `LINE_HEIGHT_PX` más cada uno. Solo la variante `timed` crece: `bar` y
+ * `compact` miden siempre lo mismo, así que se quedan en el peldaño mínimo
+ * (`compact`, además, está fuera de alcance de esta ronda — ver más abajo).
+ */
+function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): number {
+  const maxSteps = block.type === "event" ? 3 : 4;
+  if (variant !== "timed") return 1;
+  const minutes = differenceInMinutes(parseISO(block.end), parseISO(block.start));
+  const heightPx = (minutes / 60) * HOUR_ROW_HEIGHT_PX;
+  let steps = 1;
+  while (steps < maxSteps && heightPx >= VERTICAL_PADDING_PX + (steps + 1) * LINE_HEIGHT_PX) steps++;
+  return steps;
+}
+
+/**
+ * Horario del bloque en la zona y el formato que corresponda (tarea 2.2/2.3).
+ * Sin preferencia real todavía: `timezone`/`timeFormat` son opcionales
+ * porque nadie en la cadena de la grilla horaria (`time-grid.tsx` →
+ * `draggable-timed-block.tsx`, de otra tanda) las pasa hoy — hasta que lo
+ * hagan, se muestra en la zona horaria del navegador y en formato 24 horas.
+ */
+function formatBlockTimeRange(block: CalendarBlock, timezone: string, timeFormat: 12 | 24): string {
+  const pattern = timeFormat === 24 ? "HH:mm" : "h:mm aaaa";
+  const start = formatInTimeZone(parseISO(block.start), timezone, pattern, { locale: es });
+  const end = formatInTimeZone(parseISO(block.end), timezone, pattern, { locale: es });
+  return `${start} – ${end}`;
+}
+
+const BROWSER_TIMEZONE = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
 /**
  * Un bloque dibujado en la grilla (tarea 5.1-5.7): el mismo componente
@@ -43,24 +103,58 @@ const VARIANT_CLASS: Record<CalendarBlockChipVariant, string> = {
  * plano sin ningún elemento interactivo: nunca un `button`, nunca
  * `onSelect`, para que ni el clic ni el arrastre del grupo 6 tengan nada
  * de qué agarrarse.
+ *
+ * **Contenido por alto** (D-A, grupo 2): en la variante `timed`, el
+ * contenido crece con el alto real del bloque en vez de ser siempre el
+ * mismo. El formato mes (`compact`) queda **fuera de alcance** de esta
+ * ronda (`design.md`, Non-Goals: "El formato mes") y sigue mostrando
+ * exactamente lo mismo que antes — ícono y título, una sola línea, sin
+ * control de completar. El color (D-B, grupo 3) sí se corrige en las tres
+ * variantes por igual: es una corrección de exactitud, no de contenido.
+ *
+ * **Control de completar** (tarea 2.4/7.7): `onToggleComplete` recibe el
+ * bloque completo, mismo patrón que `onSelect`. El botón intercepta su
+ * propio `pointerdown`/`click` con `stopPropagation` — igual técnica que ya
+ * usa la manija de redimensionar de `draggable-timed-block.tsx` — así ni
+ * dispara el arrastre (que escucha en el resto del bloque) ni abre el
+ * detalle (`onSelect`). El cableado a la mutación real (completar una
+ * tarea, marcar/desmarcar un hábito) es de otra tanda: acá solo se deja el
+ * gancho funcionando.
  */
 export function CalendarBlockChip({
   block,
   variant,
   onSelect,
+  onToggleComplete,
+  timezone = BROWSER_TIMEZONE,
+  timeFormat = 24,
   className,
   style,
 }: {
   block: CalendarBlock;
   variant: CalendarBlockChipVariant;
   onSelect?: (block: CalendarBlock) => void;
+  /** Ver el comentario de la función sobre el gancho de completar. */
+  onToggleComplete?: (block: CalendarBlock) => void;
+  timezone?: string;
+  timeFormat?: 12 | 24;
   className?: string;
   style?: CSSProperties;
 }) {
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const theme: "light" | "dark" = mounted && resolvedTheme === "dark" ? "dark" : "light";
+
+  // Corrección de exactitud (tarea 3.3, D-B): el color de un evento viene
+  // crudo de Google, sin el ajuste por tema que ya tiene el de proyecto o
+  // etiqueta. El de tarea/hábito ya llega resuelto por tema desde quien
+  // arma el bloque (`resolveProjectColorHex`), así que no se toca de nuevo acá.
+  const displayColor = block.type === "event" ? eventColorForTheme(block.color, theme) : block.color;
+
   const Icon = TYPE_ICON[block.type];
 
   const sharedClassName = cn(
-    "flex min-w-0 items-center gap-1 overflow-hidden text-xs text-foreground",
+    "flex min-w-0 overflow-hidden text-xs text-foreground",
     TYPE_SHAPE_CLASS[block.type],
     VARIANT_CLASS[variant],
     block.isPreview && "border-dashed opacity-60",
@@ -68,35 +162,142 @@ export function CalendarBlockChip({
   );
 
   const sharedStyle: CSSProperties = {
-    borderColor: block.color,
-    backgroundColor: `${block.color}1a`,
+    borderColor: displayColor,
+    backgroundColor: `${displayColor}1a`,
     ...style,
   };
 
-  const content = (
-    <>
-      <Icon aria-hidden className="size-3 shrink-0" style={{ color: block.color }} />
+  // Formato mes: fuera de alcance (ver el comentario de la función). Mismo
+  // contenido de siempre, sin escalera ni control de completar.
+  if (variant === "compact") {
+    const legacyContent = (
+      <>
+        <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />
+        <span className="min-w-0 truncate">{block.title}</span>
+      </>
+    );
+    if (block.isPreview) {
+      return (
+        <div className={cn(sharedClassName, "pointer-events-none")} style={sharedStyle} title={block.title}>
+          {legacyContent}
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect?.(block)}
+        className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
+        style={sharedStyle}
+        title={block.title}
+      >
+        {legacyContent}
+      </button>
+    );
+  }
+
+  const steps = ladderSteps(block, variant);
+  const canComplete = !block.isPreview && (block.type === "task" || block.type === "habit");
+  const completed = block.completed ?? false;
+
+  function handleTogglePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    // Igual técnica que la manija de redimensionar de `draggable-timed-block.tsx`:
+    // cortar acá evita que `@dnd-kit` vea este `pointerdown` y arranque un arrastre.
+    event.stopPropagation();
+  }
+
+  function handleToggleClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    onToggleComplete?.(block);
+  }
+
+  const completeLabel =
+    block.type === "habit"
+      ? completed
+        ? `Desmarcar ${block.title} de hoy`
+        : `Marcar ${block.title} como hecho hoy`
+      : completed
+        ? `Descompletar ${block.title}`
+        : `Completar ${block.title}`;
+
+  const titleRow = (
+    <div className="flex min-w-0 w-full items-center gap-1">
+      {canComplete && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={completed}
+          aria-label={completeLabel}
+          onPointerDown={handleTogglePointerDown}
+          onClick={handleToggleClick}
+          className={cn(
+            "flex size-3 shrink-0 items-center justify-center rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+            completed ? "border-primary bg-primary" : "border-input",
+          )}
+        >
+          {completed && <span aria-hidden className="size-1 rounded-full bg-primary-foreground" />}
+        </button>
+      )}
+      {(block.type === "event" || block.type === "habit") && <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />}
       <span className="min-w-0 truncate">{block.title}</span>
+    </div>
+  );
+
+  const showTime = steps >= 2;
+  const showCalendarName = steps >= 3 && block.type === "event" && block.calendarName;
+  const showProjectName = steps >= 3 && block.type !== "event" && block.projectName;
+  const showLabels = steps >= 4 && block.type !== "event" && block.labels && block.labels.length > 0;
+
+  const ladderContent = (
+    <>
+      {titleRow}
+      {showTime && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{formatBlockTimeRange(block, timezone, timeFormat)}</span>}
+      {showCalendarName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.calendarName}</span>}
+      {showProjectName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.projectName}</span>}
+      {showLabels && (
+        <div className="flex min-w-0 items-center gap-1">
+          <span
+            aria-hidden
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: resolveProjectColorHex(block.labels![0]!.color, theme) }}
+          />
+          <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.labels!.map((label) => label.name).join(", ")}</span>
+        </div>
+      )}
     </>
   );
 
   if (block.isPreview) {
     return (
       <div className={cn(sharedClassName, "pointer-events-none")} style={sharedStyle} title={block.title}>
-        {content}
+        {ladderContent}
       </div>
     );
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // Solo si el foco está en la raíz: un Enter/Espacio con foco en el
+    // casillero de completar ya lo maneja el `<button>` nativo, y no debe
+    // además abrir el detalle.
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelect?.(block);
+    }
+  }
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={block.title}
       onClick={() => onSelect?.(block)}
+      onKeyDown={handleKeyDown}
       className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
       style={sharedStyle}
       title={block.title}
     >
-      {content}
-    </button>
+      {ladderContent}
+    </div>
   );
 }

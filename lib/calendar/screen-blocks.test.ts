@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { TaskRow } from "@/lib/tasks/use-tasks";
+import { contrastRatio, MIN_PROJECT_COLOR_CONTRAST, PROJECT_SURFACE_HEX } from "@/lib/validation/colors";
 import type { CalendarEventInstance } from "./events";
 import {
+  eventColorForTheme,
   eventToCalendarBlock,
   habitBlockId,
   habitToCalendarBlock,
@@ -42,6 +44,8 @@ describe("taskToCalendarBlock", () => {
       allDay: false,
       start: "2026-08-05T10:00:00-03:00",
       end: new Date("2026-08-05T10:45:00-03:00").toISOString(),
+      completed: false,
+      labels: [],
     });
   });
 
@@ -60,17 +64,37 @@ describe("taskToCalendarBlock", () => {
       allDay: true,
       start: "2026-08-05",
       end: "2026-08-06",
+      completed: false,
+      labels: [],
     });
   });
 
   it("una tarea sin ninguna fecha no se traduce a bloque", () => {
     expect(taskToCalendarBlock(task({}), "#0284C7")).toBeNull();
   });
+
+  it("una tarea completada arma el bloque con completed: true", () => {
+    const block = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00", completed_at: "2026-08-05T09:00:00-03:00" }), "#0284C7");
+    expect(block?.completed).toBe(true);
+  });
+
+  it("las etiquetas de la tarea viajan al bloque tal cual", () => {
+    const labels = [{ id: "label-1", name: "Urgente", color: "amarillo" }];
+    const block = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00", labels }), "#0284C7");
+    expect(block?.labels).toEqual(labels);
+  });
+
+  it("el nombre del proyecto es opcional: sin pasarlo, el bloque no lo tiene", () => {
+    const withName = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00" }), "#0284C7", "Trabajo");
+    expect(withName?.projectName).toBe("Trabajo");
+    const withoutName = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00" }), "#0284C7");
+    expect(withoutName?.projectName).toBeUndefined();
+  });
 });
 
 describe("habitToCalendarBlock / habitBlockId", () => {
   it("arma un bloque con horario a partir de scheduled_time y duration_minutes", () => {
-    const habit = { id: "habit-1", name: "Meditar", duration_minutes: 15 };
+    const habit = { id: "habit-1", name: "Meditar", duration_minutes: 15, completed_today: false };
     const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ);
     expect(block.id).toBe("habit-1::2026-08-05");
     expect(block.type).toBe("habit");
@@ -78,10 +102,41 @@ describe("habitToCalendarBlock / habitBlockId", () => {
     expect(block.allDay).toBe(false);
     expect(block.start).toBe(new Date("2026-08-05T11:00:00-03:00").toISOString());
     expect(block.end).toBe(new Date("2026-08-05T11:15:00-03:00").toISOString());
+    expect(block.completed).toBe(false);
+  });
+
+  it("un hábito cumplido hoy arma el bloque con completed: true", () => {
+    const habit = { id: "habit-1", name: "Meditar", duration_minutes: 15, completed_today: true };
+    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ);
+    expect(block.completed).toBe(true);
   });
 
   it("parseHabitBlockId recupera el id del hábito de un id de bloque", () => {
     expect(parseHabitBlockId(habitBlockId("habit-1", "2026-08-05"))).toBe("habit-1");
+  });
+});
+
+describe("eventColorForTheme (tarea 3.3, D-B)", () => {
+  it("un color que ya tiene contraste suficiente en el tema se devuelve sin tocar", () => {
+    // Azul saturado: buen contraste contra las dos superficies.
+    expect(eventColorForTheme("#0B5FFF", "light")).toBe("#0B5FFF");
+    expect(eventColorForTheme("#0B5FFF", "dark")).toBe("#0B5FFF");
+  });
+
+  it("un color demasiado claro para el tema claro se oscurece hasta alcanzar el piso de contraste", () => {
+    const adjusted = eventColorForTheme("#FBD75B", "light"); // amarillo banana de Google
+    expect(adjusted).not.toBe("#FBD75B");
+    expect(contrastRatio(adjusted, PROJECT_SURFACE_HEX.light)).toBeGreaterThanOrEqual(MIN_PROJECT_COLOR_CONTRAST);
+  });
+
+  it("un color demasiado oscuro para el tema oscuro se aclara hasta alcanzar el piso de contraste", () => {
+    const adjusted = eventColorForTheme("#1B4332", "dark"); // verde muy oscuro
+    expect(adjusted).not.toBe("#1B4332");
+    expect(contrastRatio(adjusted, PROJECT_SURFACE_HEX.dark)).toBeGreaterThanOrEqual(MIN_PROJECT_COLOR_CONTRAST);
+  });
+
+  it("un hex inválido se devuelve sin tocar", () => {
+    expect(eventColorForTheme("not-a-color", "dark")).toBe("not-a-color");
   });
 });
 
