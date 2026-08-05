@@ -34,7 +34,13 @@ const TYPE_SHAPE_CLASS: Record<CalendarBlockType, string> = {
   event: "rounded-md border-y border-r border-l-4",
 };
 
-type CalendarBlockChipVariant = "timed" | "bar" | "compact";
+/**
+ * `overlay` (grupo 4, D-C): la copia que se dibuja dentro del `DragOverlay`
+ * de `calendar-view.tsx` mientras se arrastra un bloque — un portal fuera de
+ * la grilla, sin el alto/ancho real del bloque (esos son porcentajes
+ * relativos a su columna, que acá no existe), y con tamaño fijo propio.
+ */
+type CalendarBlockChipVariant = "timed" | "bar" | "compact" | "overlay";
 
 /**
  * Dirección y relleno por variante (tarea 2.6: acá vivía el defecto). Un
@@ -51,6 +57,7 @@ const VARIANT_CLASS: Record<CalendarBlockChipVariant, string> = {
   timed: "h-full w-full flex-col items-stretch justify-start gap-0.5 px-1.5 py-1 text-left",
   bar: "h-6 w-full flex-row items-center gap-1 px-1.5",
   compact: "h-5 w-full flex-row items-center gap-1 px-1",
+  overlay: "w-56 flex-col items-stretch justify-start gap-0.5 px-2 py-1.5 text-left shadow-lg",
 };
 
 /** `py-1` de la variante `timed`: 4px arriba + 4px abajo. */
@@ -72,9 +79,16 @@ function timedBlockHeightPx(block: CalendarBlock): number {
  * `LINE_HEIGHT_PX` más cada uno. Solo la variante `timed` crece: `bar` y
  * `compact` miden siempre lo mismo, así que se quedan en el peldaño mínimo
  * (`compact`, además, está fuera de alcance de esta ronda — ver más abajo).
+ *
+ * `overlay` (tarea 4.2, D-C) fuerza dos peldaños siempre: título y horario.
+ * No depende del alto real del bloque (que en el `DragOverlay` no significa
+ * nada, es una copia flotante de tamaño fijo) — "se ve a qué hora quedaría"
+ * es un requisito incondicional, no algo que dependa de si el bloque
+ * arrastrado mide 15 minutos o 3 horas.
  */
 function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): number {
   const maxSteps = block.type === "event" ? 3 : 4;
+  if (variant === "overlay") return Math.min(2, maxSteps);
   if (variant !== "timed") return 1;
   const heightPx = timedBlockHeightPx(block);
   let steps = 1;
@@ -232,7 +246,10 @@ export function CalendarBlockChip({
   }
 
   const steps = ladderSteps(block, variant);
-  const canComplete = !block.isPreview && (block.type === "task" || block.type === "habit");
+  // `overlay` (tarea 4.1/4.2, D-C): la copia del `DragOverlay` es una vista,
+  // no una acción — completar desde ahí no tiene sentido (el bloque real
+  // sigue en la grilla, invisible mientras dura el gesto).
+  const canComplete = !block.isPreview && variant !== "overlay" && (block.type === "task" || block.type === "habit");
   const completed = block.completed ?? false;
 
   function handleTogglePointerDown(event: PointerEvent<HTMLButtonElement>) {
@@ -276,7 +293,19 @@ export function CalendarBlockChip({
         // arriba gana el clic (por orden de DOM), hacia abajo puede quedar
         // tapado por el bloque siguiente si están pegados sin separación —
         // no se resuelve acá, ver el reporte de la tanda.
-        <span className="relative size-3 shrink-0">
+        //
+        // `z-10` (grupo 4/5, defecto reportado por otra tanda): en un
+        // bloque de 15 y, un poco, de 30 minutos, este desborde se solapa
+        // con la manija de redimensionar (`draggable-timed-block.tsx`,
+        // zona de toque de 18px creciendo hacia abajo desde el borde
+        // inferior). Las dos son absolutas con z-index automático, así que
+        // sin esto ganaba la manija por venir después en el árbol — un
+        // control que se ve y no responde, peor que uno ausente (D-A: el
+        // control de completar nunca se cae). El mismo `z-10` también
+        // resuelve el caso de dos bloques de 15 min pegados: el casillero
+        // del bloque de abajo le gana a la manija del bloque de arriba
+        // aunque se solapen, sin depender de en qué orden se dibujaron.
+        <span className="relative z-10 size-3 shrink-0">
           <button
             type="button"
             role="checkbox"
@@ -328,6 +357,16 @@ export function CalendarBlockChip({
   );
 
   if (block.isPreview) {
+    return (
+      <div className={cn(sharedClassName, "pointer-events-none")} style={sharedStyle} title={block.title}>
+        {ladderContent}
+      </div>
+    );
+  }
+
+  // `overlay` (tarea 4.1, D-C): copia flotante dentro de `DragOverlay`, no
+  // interactiva — igual criterio que `dragOverlay` en `TaskRow`/`board.tsx`.
+  if (variant === "overlay") {
     return (
       <div className={cn(sharedClassName, "pointer-events-none")} style={sharedStyle} title={block.title}>
         {ladderContent}

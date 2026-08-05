@@ -213,10 +213,23 @@ export function ScreenCalendar({
     return { habitBlocks: timed, unscheduledHabits: chips };
   }, [options.showHabits, habits, rangeOverrides.data, visibleDays, timezone, theme, habitsById]);
 
+  // `pendingEventUpdate` (tarea 5.4, D-D): mientras se pregunta el alcance
+  // de una serie, el evento real en caché todavía no cambió (`applyEventUpdate`
+  // recién se llama si se confirma), así que sin este parche el bloque
+  // saltaba de vuelta al origen apenas se abría el diálogo — la grilla
+  // seguía dibujando la posición vieja. Se pisa acá, en el único evento que
+  // está pendiente, con el mismo rango que ya se va a guardar si confirma;
+  // al cancelar (`setPendingEventUpdate(null)`), este `useMemo` vuelve a
+  // devolver la posición real sin que nadie tenga que "revertir" nada.
   const eventBlocks = useMemo(() => {
     if (rangeEvents.data?.status !== "ok") return [];
-    return rangeEvents.data.events.map(eventToCalendarBlock);
-  }, [rangeEvents.data]);
+    return rangeEvents.data.events.map((event) => {
+      if (pendingEventUpdate?.event.id === event.id) {
+        return eventToCalendarBlock({ ...event, ...pendingEventUpdate.changes });
+      }
+      return eventToCalendarBlock(event);
+    });
+  }, [rangeEvents.data, pendingEventUpdate]);
 
   const blocks = useMemo(() => [...taskBlocks, ...habitBlocks, ...eventBlocks], [taskBlocks, habitBlocks, eventBlocks]);
 

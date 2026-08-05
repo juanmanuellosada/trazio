@@ -2,11 +2,32 @@
 
 import { useMemo, useState } from "react";
 import { differenceInMinutes, parseISO } from "date-fns";
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
-import { clampMinutes, DAY_MINUTES, instantFromDayMinutes, minutesToTimeString, moveBlockToPosition, pixelsToMinutes, snapToQuarterHour, type DragResult } from "@/lib/calendar/drag";
+import {
+  clampMinutes,
+  DAY_MINUTES,
+  instantFromDayMinutes,
+  localMinutesOfDay,
+  minutesToTimeString,
+  moveBlockToPosition,
+  pixelsToMinutes,
+  snapToQuarterHour,
+  type DragResult,
+} from "@/lib/calendar/drag";
 import type { CalendarBlock, CalendarFormat, UnscheduledHabitChip } from "@/lib/calendar/block";
 import { AllDayRow } from "./all-day-row";
+import { CalendarBlockChip } from "./calendar-block-chip";
 import { CreateBlockChoiceDialog } from "./create-block-choice-dialog";
 import { CreateEventDialog } from "./create-event-dialog";
 import { HOUR_ROW_HEIGHT_PX } from "./grid-metrics";
@@ -100,11 +121,68 @@ export function CalendarView({
   const [choiceRange, setChoiceRange] = useState<DragResult | null>(null);
   const [eventRange, setEventRange] = useState<DragResult | null>(null);
 
+  // Arrastre de un bloque ya programado (grupo 4, D-C): `activeBlock`
+  // alimenta la copia del `DragOverlay` (más abajo), `dragOrigin` la sombra
+  // del hueco de donde salió (`time-grid.tsx`) y `dragPreviewRange` la hora
+  // de destino ya ajustada a la grilla — las tres se resetean juntas al
+  // terminar o cancelar el gesto (`resetDragState`).
+  const [activeBlock, setActiveBlock] = useState<CalendarBlock | null>(null);
+  const [dragOrigin, setDragOrigin] = useState<{ dateKey: string; startMinutes: number; endMinutes: number } | null>(null);
+  const [dragPreviewRange, setDragPreviewRange] = useState<DragResult | null>(null);
+
+  function resetDragState() {
+    setActiveBlock(null);
+    setDragOrigin(null);
+    setDragPreviewRange(null);
+  }
+
   function handleCreateRange(dateKey: string, startMinutes: number, endMinutes: number) {
     setChoiceRange({ start: instantFromDayMinutes(dateKey, startMinutes, timezone), end: instantFromDayMinutes(dateKey, endMinutes, timezone) });
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    const activeData = event.active.data.current as DragActiveData | undefined;
+    if (activeData?.kind !== "move-block") return;
+    const { block } = activeData;
+    // Un bloque de todo el día (`all-day-row.tsx`) sigue con su propio
+    // seguimiento de puntero, sin overlay ni sombra: vive fuera de esta
+    // grilla horaria (su `start`/`end` son fechas calendario, no un
+    // horario) y ese componente todavía no oculta su nodo original — sumar
+    // acá una copia flotante duplicaría el bloque que se ve mientras se
+    // arrastra. Fuera de alcance de esta tanda (`draggable-timed-block.tsx`
+    // y `time-grid.tsx` son los que pedía D-C).
+    if (block.allDay) return;
+    setActiveBlock(block);
+    const startDate = parseISO(block.start);
+    const endDate = parseISO(block.end);
+    setDragOrigin({
+      dateKey: formatInTimeZone(startDate, timezone, "yyyy-MM-dd"),
+      startMinutes: localMinutesOfDay(startDate, timezone),
+      endMinutes: localMinutesOfDay(endDate, timezone),
+    });
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    const { active, over } = event;
+    const activeData = active.data.current as DragActiveData | undefined;
+    if (activeData?.kind !== "move-block" || !over) {
+      setDragPreviewRange(null);
+      return;
+    }
+    const overData = over.data.current as { dateKey: string } | undefined;
+    const translatedTop = active.rect.current.translated?.top ?? active.rect.current.initial?.top;
+    if (!overData || translatedTop == null) {
+      setDragPreviewRange(null);
+      return;
+    }
+    const rawStartMinutes = pixelsToMinutes(translatedTop - over.rect.top, HOUR_ROW_HEIGHT_PX);
+    const { block } = activeData;
+    const durationMinutes = block.allDay ? DEFAULT_UNTIMED_DURATION_MINUTES : differenceInMinutes(parseISO(block.end), parseISO(block.start));
+    setDragPreviewRange(moveBlockToPosition(rawStartMinutes, durationMinutes, overData.dateKey, timezone));
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    resetDragState();
     const { active, over } = event;
     if (!over) return;
     const overData = over.data.current as { dateKey: string } | undefined;
@@ -159,12 +237,23 @@ export function CalendarView({
           timezone={timezone}
           now={now}
           timeFormat={timeFormat}
+          dragOrigin={dragOrigin}
           onSelectBlock={onSelectBlock}
           onResizeBlock={onResizeBlock}
           onCreateRange={handleCreateRange}
         />
       </div>
     );
+
+  // Copia flotante del bloque en movimiento (tarea 4.1/4.2, D-C): mientras
+  // se conoce `dragPreviewRange` (la hora de destino ya ajustada a la
+  // grilla, calculada en `handleDragMove`), se le pisan `start`/`end` a
+  // `activeBlock` para que `CalendarBlockChip` muestre esa hora, no la
+  // original — es literalmente la que se va a guardar al soltar.
+  const dragOverlayBlock =
+    activeBlock && dragPreviewRange
+      ? { ...activeBlock, start: dragPreviewRange.start.toISOString(), end: dragPreviewRange.end.toISOString() }
+      : activeBlock;
 
   return (
     // `id` fijo (no el default autoincremental de `@dnd-kit`): sin esto, los
@@ -174,7 +263,14 @@ export function CalendarView({
     // diverge del conteo del cliente (uno por carga de página) — hydration
     // mismatch detectado a mano al probar esta tanda, mismo riesgo latente
     // que ya tiene `components/board/board.tsx` sin `id` propio.
-    <DndContext id="calendar-drag" sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      id="calendar-drag"
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
+      onDragCancel={resetDragState}
+    >
       {content}
 
       {choiceRange && (
@@ -202,6 +298,22 @@ export function CalendarView({
           timezone={timezone}
         />
       )}
+
+      {/*
+       * Portal fuera de los tres contenedores con desplazamiento anidados
+       * (tarea 4.1, D-C): mismo patrón que `components/board/board.tsx`
+       * (`dropAnimation={null}` porque `onMoveBlock` ya deja el bloque
+       * optimista en su nueva posición antes de que termine cualquier
+       * animación de vuelta). Solo se llena para un bloque con horario —
+       * `draggable-timed-block.tsx` oculta su nodo original mientras
+       * `isDragging`, así que esta copia es lo único que sigue al puntero.
+       * Un bloque de todo el día (`all-day-row.tsx`) no pasa por acá (ver
+       * el comentario de `handleDragStart`) y sigue con su propio
+       * seguimiento, sin tocar en esta tanda.
+       */}
+      <DragOverlay dropAnimation={null} className="pointer-events-none">
+        {dragOverlayBlock && <CalendarBlockChip block={dragOverlayBlock} variant="overlay" />}
+      </DragOverlay>
     </DndContext>
   );
 }

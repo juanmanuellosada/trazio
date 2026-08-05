@@ -43,10 +43,19 @@ import { tasksQueryKey, type LabelChip, type TaskRow } from "./use-tasks";
  * son prefijos: `invalidateQueries`/`setQueriesData` con ellos alcanzan
  * cualquier variante (la página de Completado que esté montada, sea cual
  * sea su `limit`).
+ *
+ * `calendario-legible-y-manipulable` (grupo 5, D-D): Próximos
+ * (`upcomingTasksQueryKey`/`undatedTasksQueryKey`) tenía el mismo problema
+ * transversal que Hoy/Completado, pero sin ninguno de los dos remedios —
+ * arrastrar una tarea en su calendario no se veía hasta que llegaba un
+ * aviso de Realtime. `PROXIMOS_QUERY_KEY`/`SIN_FECHA_QUERY_KEY` son el
+ * mismo patrón de prefijo.
  */
 
 const HOY_QUERY_KEY = ["tasks", "hoy"] as const;
 const COMPLETADO_QUERY_KEY = ["tasks", "completado"] as const;
+const PROXIMOS_QUERY_KEY = ["tasks", "proximos"] as const;
+const SIN_FECHA_QUERY_KEY = ["tasks", "sin-fecha"] as const;
 
 /**
  * `mutationKey` común a todas las mutaciones de este módulo (bloque 10.3,
@@ -64,10 +73,12 @@ function detailSnapshot(queryClient: QueryClient, id: string) {
   return queryClient.getQueryData<TaskDetail>(taskDetailQueryKey(id));
 }
 
-/** Después de cualquier mutación que no parchea Hoy/Completado a mano, los invalida para que se pongan al día (eventual, no instantáneo — la instantaneidad exigida por D2 vive en `useUpdateTask`, que sí los parchea). */
+/** Después de cualquier mutación que no parchea Hoy/Completado/Próximos/Sin fecha a mano, los invalida para que se pongan al día (eventual, no instantáneo — la instantaneidad exigida por D2 en Hoy/Completado, y por D-D de `calendario-legible-y-manipulable` en Próximos, vive en `useUpdateTask`, que sí los parchea). */
 function invalidateCrossViewCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: HOY_QUERY_KEY });
   queryClient.invalidateQueries({ queryKey: COMPLETADO_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: PROXIMOS_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: SIN_FECHA_QUERY_KEY });
 }
 
 /**
@@ -217,38 +228,50 @@ export function useUpdateTask() {
       await queryClient.cancelQueries({ queryKey: taskDetailQueryKey(id) });
       await queryClient.cancelQueries({ queryKey: HOY_QUERY_KEY });
       await queryClient.cancelQueries({ queryKey: COMPLETADO_QUERY_KEY });
+      await queryClient.cancelQueries({ queryKey: PROXIMOS_QUERY_KEY });
+      await queryClient.cancelQueries({ queryKey: SIN_FECHA_QUERY_KEY });
 
       const previousList = listSnapshot(queryClient, projectId);
       const previousDetail = detailSnapshot(queryClient, id);
       const previousHoy = queryClient.getQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY });
       const previousCompleted = queryClient.getQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY });
+      const previousProximos = queryClient.getQueriesData<TaskRow[]>({ queryKey: PROXIMOS_QUERY_KEY });
+      const previousSinFecha = queryClient.getQueriesData<TaskRow[]>({ queryKey: SIN_FECHA_QUERY_KEY });
 
       const listPatch = listPatchOf(patch);
       queryClient.setQueryData<TaskRow[]>(tasksQueryKey(projectId), (old) =>
         (old ?? []).map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
       );
       queryClient.setQueryData<TaskDetail>(taskDetailQueryKey(id), (old) => (old ? { ...old, ...patch } : old));
-      // Hoy y Completado también parchean acá (no solo invalidan en
-      // onSettled): completar/descompletar desde cualquiera de las cuatro
-      // vistas tiene que verse instantáneo en todas (D2 del design), y
-      // ninguna de las dos tiene un `onMutate` propio que lo haga por su
-      // cuenta.
+      // Hoy, Completado, Próximos y Sin fecha también parchean acá (no solo
+      // invalidan en onSettled): completar/descompletar o mover una tarea
+      // (arrastre en el calendario de Próximos, `calendario-legible-y-manipulable`
+      // grupo 5, D-D) tiene que verse instantáneo en todas las vistas, y
+      // ninguna tiene un `onMutate` propio que lo haga por su cuenta.
       queryClient.setQueriesData<TaskRow[]>({ queryKey: HOY_QUERY_KEY }, (old) =>
         old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
       );
       queryClient.setQueriesData<TaskRow[]>({ queryKey: COMPLETADO_QUERY_KEY }, (old) =>
         old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
       );
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: PROXIMOS_QUERY_KEY }, (old) =>
+        old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
+      );
+      queryClient.setQueriesData<TaskRow[]>({ queryKey: SIN_FECHA_QUERY_KEY }, (old) =>
+        old?.map((t) => (t.id === id ? { ...t, ...listPatch } : t)),
+      );
 
       const inversePatch = inversePatchOf(patch, previousDetail, previousList?.find((t) => t.id === id));
 
-      return { previousList, previousDetail, previousHoy, previousCompleted, projectId, id, inversePatch };
+      return { previousList, previousDetail, previousHoy, previousCompleted, previousProximos, previousSinFecha, projectId, id, inversePatch };
     },
     onError: (error, _vars, context) => {
       if (context?.previousList) queryClient.setQueryData(tasksQueryKey(context.projectId), context.previousList);
       if (context?.previousDetail) queryClient.setQueryData(taskDetailQueryKey(context.id), context.previousDetail);
       context?.previousHoy?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       context?.previousCompleted?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      context?.previousProximos?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      context?.previousSinFecha?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       reportTaskError(error);
     },
     onSuccess: (data, { id, projectId, patch }, context) => {

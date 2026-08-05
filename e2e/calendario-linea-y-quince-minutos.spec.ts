@@ -112,8 +112,24 @@ test("la línea de la hora actual avanza sola y es roja; quince/treinta/sesenta/
   // preferencia guardada), así que se cambia desde el selector real — que sí
   // persiste en `user_preferences.theme` — y se recarga para confirmarlo.
   await page.getByRole("button", { name: "Menú de cuenta" }).click();
-  await page.getByRole("menuitem", { name: /^Tema/ }).click();
-  await page.getByRole("menuitem", { name: "Oscuro" }).click();
+  const temaTrigger = page.getByRole("menuitem", { name: /^Tema/ });
+  await temaTrigger.click();
+
+  // `.click()`/`.hover()` saltan directo a destino en vez de recorrer el
+  // camino, y ese salto dispara un defecto conocido de Base UI en Chrome
+  // (`guardStaleOpen`, ver `MenuSubmenuTrigger`): confunde el salto con el
+  // mouse saliendo del submenú y lo cierra solo, milisegundos después de
+  // abrirlo. No pasa con una persona real moviendo el mouse (confirmado a
+  // mano) — es un artefacto de cómo Playwright mueve el cursor, así que la
+  // solución es moverlo en varios pasos, como lo haría una mano de verdad,
+  // en vez de escondar el cierre con una espera.
+  const temaBox = await temaTrigger.boundingBox();
+  const oscuro = page.getByRole("menuitem", { name: "Oscuro" });
+  const oscuroBox = await oscuro.boundingBox();
+  if (!temaBox || !oscuroBox) throw new Error("no se pudieron medir el submenú de tema");
+  await page.mouse.move(temaBox.x + temaBox.width / 2, temaBox.y + temaBox.height / 2);
+  await page.mouse.move(oscuroBox.x + oscuroBox.width / 2, oscuroBox.y + oscuroBox.height / 2, { steps: 15 });
+  await oscuro.click();
   await page.keyboard.press("Escape");
   await page.reload();
 

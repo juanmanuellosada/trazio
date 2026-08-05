@@ -35,19 +35,21 @@
 
 ## 4. Arrastrar
 
-- [ ] 4.1 **Capa superpuesta en un portal** (**D-C**), como ya hizo el tablero. El contenedor con desplazamiento recorta el nodo original
-- [ ] 4.2 **Se ve el horario de destino**, ajustado a la grilla de quince minutos — que es lo que se va a guardar. Mostrar la posición libre del puntero sería mentir
-- [ ] 4.3 **Queda la sombra en el origen** mientras dura el gesto
-- [ ] 4.4 El formato mes no tiene arrastre y queda afuera
+- [x] 4.1 **Capa superpuesta en un portal** (**D-C**), como ya hizo el tablero. El contenedor con desplazamiento recorta el nodo original
+- [x] 4.2 **Se ve el horario de destino**, ajustado a la grilla de quince minutos — que es lo que se va a guardar. Mostrar la posición libre del puntero sería mentir
+- [x] 4.3 **Queda la sombra en el origen** mientras dura el gesto
+- [x] 4.4 El formato mes no tiene arrastre y queda afuera (sin tocar, ya era así)
 
 ## 5. Que todo sea instantáneo
 
-- [ ] 5.1 **Redimensionar ya lo es**: tiene vista previa en vivo con estado local. **Es el modelo, copialo**
-- [ ] 5.2 Mover tiene que igualarlo
-- [ ] 5.3 **Arrastrar una tarea en Próximos no es optimista**: su caché no se parchea ni se invalida, así que depende de que llegue el aviso en tiempo real. Es un agujero anterior a esto
-- [ ] 5.4 Al preguntar el alcance de una serie, **hoy el bloque salta de vuelta al origen** mientras pregunta. Tiene que quedarse, y volver solo si se cancela
-- [ ] 5.5 **Redimensionar un hábito hoy no hace nada**: mover y redimensionar comparten manejador y la rama de hábito solo lee la hora de inicio
-- [ ] 5.6 Si el servidor rechaza, el bloque vuelve **y se avisa**. Los mensajes de error recién empezaron a llegar bien hoy: comprobalo
+- [x] 5.1 **Redimensionar ya lo es**: tiene vista previa en vivo con estado local. **Es el modelo, copialo**
+- [x] 5.2 Mover tiene que igualarlo
+- [x] 5.3 **Arrastrar una tarea en Próximos no es optimista**: su caché no se parchea ni se invalida, así que depende de que llegue el aviso en tiempo real. Es un agujero anterior a esto
+- [x] 5.4 Al preguntar el alcance de una serie, **hoy el bloque salta de vuelta al origen** mientras pregunta. Tiene que quedarse, y volver solo si se cancela
+- [ ] 5.5 **Redimensionar un hábito hoy no hace nada**: mover y redimensionar comparten manejador y la rama de hábito solo lee la hora de inicio — **bloqueado**: `habit_schedule_overrides` no tiene columna de duración, ampliarlo pide una migración fuera de alcance de esta tanda (ver reporte)
+- [x] 5.6 Si el servidor rechaza, el bloque vuelve **y se avisa**. Los mensajes de error recién empezaron a llegar bien hoy: comprobalo
+
+**Cabo suelto de otra tanda, resuelto acá**: la manija de redimensionar (`draggable-timed-block.tsx`) medía 6px y solo aparecía con `group-hover`, inalcanzable en táctil. Ahora tiene opacidad base no nula y una zona de toque de 18px, creciendo solo hacia abajo (nunca hacia el contenido del bloque, para no taparle el gesto de mover a los bloques cortos).
 
 ## 6. Saltear un hábito (puede tocar la base)
 

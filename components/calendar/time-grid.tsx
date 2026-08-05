@@ -53,6 +53,7 @@ function DayColumn({
   blocks,
   timezone,
   nowMinutes,
+  origin,
   onSelectBlock,
   onResizeBlock,
   onCreateRange,
@@ -62,6 +63,8 @@ function DayColumn({
   blocks: CalendarBlock[];
   timezone: string;
   nowMinutes: number | null;
+  /** Hueco de origen del bloque que se está arrastrando, si es en este día (tarea 4.3, D-C): ver el comentario largo de `TimeGrid` sobre `dragOrigin`. */
+  origin?: { startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
   onCreateRange?: (dateKey: string, startMinutes: number, endMinutes: number) => void;
@@ -154,6 +157,19 @@ function DayColumn({
         />
       )}
 
+      {origin && (
+        // Sombra en el origen (tarea 4.3, D-C): el nodo original del bloque
+        // que se arrastra queda invisible (`draggable-timed-block.tsx`,
+        // `isDragging && "opacity-0"`) — sin esto, soltar en el lugar
+        // equivocado no tendría ninguna referencia de dónde estaba. Color
+        // neutro (`muted-foreground`), distinto del `primary` de `selection`
+        // de arriba: uno marca "de acá salió", el otro "esto se va a crear".
+        <div
+          className="pointer-events-none absolute right-0 left-0 z-10 rounded-md border-2 border-dashed border-muted-foreground/50 bg-muted-foreground/10"
+          style={{ top: `${minutesToPercent(origin.startMinutes)}%`, height: `${minutesToPercent(origin.endMinutes - origin.startMinutes)}%` }}
+        />
+      )}
+
       {nowMinutes !== null && (
         <div className="pointer-events-none absolute right-0 left-0 z-10" style={{ top: `${minutesToPercent(nowMinutes)}%` }}>
           {/* Roja, distinta de cualquier color que pueda tener un bloque
@@ -192,6 +208,11 @@ function DayColumn({
  * `onMoveBlock`/`onResizeBlock`/`onCreateRange` son opcionales y sin
  * comportamiento por defecto (D-F): esta grilla nunca decide qué mutación
  * corresponde, solo entrega el resultado geométrico a quien la usa.
+ *
+ * `dragOrigin` (tarea 4.3, D-C): mientras `calendar-view.tsx` arrastra un
+ * bloque ya programado, ahí guarda de qué día y qué rango salió — acá solo
+ * se compara `dateKey` para decidir en qué columna dibujar la sombra
+ * (`DayColumn`), esta grilla sigue sin saber nada de cómo se calculó.
  */
 export function TimeGrid({
   visibleDays,
@@ -200,6 +221,7 @@ export function TimeGrid({
   timezone,
   now,
   timeFormat = 24,
+  dragOrigin = null,
   onSelectBlock,
   onResizeBlock,
   onCreateRange,
@@ -210,6 +232,7 @@ export function TimeGrid({
   timezone: string;
   now: Date;
   timeFormat?: 12 | 24;
+  dragOrigin?: { dateKey: string; startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
   onCreateRange?: (dateKey: string, startMinutes: number, endMinutes: number) => void;
@@ -290,6 +313,7 @@ export function TimeGrid({
             blocks={merged}
             timezone={timezone}
             nowMinutes={currentTimeMinutes(liveNow, dateKey, timezone)}
+            origin={dragOrigin && dragOrigin.dateKey === dateKey ? dragOrigin : null}
             onSelectBlock={onSelectBlock}
             onResizeBlock={onResizeBlock}
             onCreateRange={onCreateRange}

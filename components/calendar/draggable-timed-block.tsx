@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { parseISO } from "date-fns";
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import type { CalendarBlock } from "@/lib/calendar/block";
 import { localMinutesOfDay, pixelsToMinutes, resizeBlockToPosition, type DragResult } from "@/lib/calendar/drag";
 import { cn } from "@/lib/utils";
@@ -52,7 +51,13 @@ export function DraggableTimedBlock({
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
   disabled: boolean;
 }) {
-  const { listeners, setNodeRef, transform, isDragging } = useDraggable({
+  // Grupo 4, D-C: ya no se aplica el `transform` de `useDraggable` acá — el
+  // nodo original quedaba clipeado por los tres contenedores con
+  // desplazamiento anidados de `time-grid.tsx` (mismo problema que ya
+  // resolvió `components/board/board.tsx`). Ahora el nodo original se oculta
+  // (`isDragging` más abajo) y quien sigue al puntero es la copia dentro del
+  // `DragOverlay` de `calendar-view.tsx`.
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `${MOVE_BLOCK_DRAG_PREFIX}${block.id}`,
     data: { kind: "move-block" as const, block },
     disabled: disabled || block.isPreview,
@@ -104,27 +109,53 @@ export function DraggableTimedBlock({
     height: `${((endMinutes - segment.startMinutes) / (24 * 60)) * 100}%`,
     left: `${(segment.columnIndex / segment.columnCount) * 100}%`,
     width: `${100 / segment.columnCount}%`,
-    transform: CSS.Translate.toString(transform),
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("group absolute px-px py-px", (isDragging || isResizing) && "z-20")}
+      // `isDragging` oculta el nodo original entero (grupo 4, D-C): la
+      // copia que sigue al puntero es la del `DragOverlay`, y el hueco de
+      // origen lo marca `time-grid.tsx` con su propia sombra — mostrar
+      // además este nodo (aunque sea atenuado) duplicaría la marca.
+      className={cn("group absolute px-px py-px", (isDragging || isResizing) && "z-20", isDragging && "opacity-0")}
       {...(disabled || block.isPreview ? {} : listeners)}
     >
       <CalendarBlockChip
         block={block}
         variant="timed"
         onSelect={onSelectBlock}
-        className={cn(!disabled && !block.isPreview && "touch-none", isDragging && "opacity-60")}
+        className={cn(!disabled && !block.isPreview && "touch-none")}
       />
       {!disabled && !block.isPreview && onResizeBlock && (
+        // Manija de redimensionar: el ancla visual (`h-0.5 w-6`) mide lo
+        // mismo de siempre, pero el área que reacciona al puntero es más
+        // grande que la línea que se ve, y visible con opacidad base (no
+        // solo `group-hover`) — en táctil no hay hover, así que la manija
+        // de 6px de alto era inalcanzable. Mismo criterio que el casillero
+        // de completar de `calendar-block-chip.tsx` (ancla chica, zona de
+        // toque más grande fuera del flujo), con una diferencia a
+        // propósito: acá el crecimiento es **solo hacia abajo**
+        // (`-bottom-3`, nunca hacia arriba). Un bloque de quince minutos
+        // mide 12px — crecer también hacia arriba, como el casillero, le
+        // dejaría casi sin superficie propia para moverlo o abrirlo (la
+        // manija le ganaría el gesto a todo lo demás). Creciendo solo hacia
+        // abajo, la franja que ya intercepta el redimensionado no cambia
+        // (los mismos 6px de siempre), solo se ensancha el área de toque
+        // hacia el espacio libre debajo. Mismo desborde ya documentado
+        // sobre el bloque vecino si están pegados sin separación, sin
+        // resolverlo tampoco.
         <div
           role="presentation"
           onPointerDown={handleResizePointerDown}
-          className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize touch-none opacity-0 group-hover:opacity-100"
+          // `-bottom-3` (-12px) + `h-[18px]`: el borde superior de esta zona
+          // queda exactamente donde estaba el ancla original de 6px
+          // (`bottom-0 h-1.5`) — no crece hacia arriba —, y el borde
+          // inferior se estira 12px más allá del bloque. La línea visual de
+          // adentro no se centra (sin `flex`): queda arriba de esta zona,
+          // en el mismo lugar de siempre.
+          className="absolute inset-x-0 -bottom-3 h-[18px] cursor-ns-resize touch-none opacity-40 group-hover:opacity-100"
         >
           <div className="mx-auto h-0.5 w-6 rounded-full bg-foreground/40" />
         </div>
