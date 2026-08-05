@@ -51,6 +51,8 @@
 
 **Cabo suelto de otra tanda, resuelto acá**: la manija de redimensionar (`draggable-timed-block.tsx`) medía 6px y solo aparecía con `group-hover`, inalcanzable en táctil. Ahora tiene opacidad base no nula y una zona de toque de 18px, creciendo solo hacia abajo (nunca hacia el contenido del bloque, para no taparle el gesto de mover a los bloques cortos).
 
+**Defecto encontrado después, entre esa manija y el casillero de completar (agrandado en otra tanda, los dos con `z-index` automático): en un bloque de 15 min las dos zonas invisibles se solapaban y ganaba la manija — un casillero que se ve pero no responde.** Resuelto dándole al casillero (`calendar-block-chip.tsx`, el `<span>` que envuelve el botón, `position: relative` + `z-10`) prioridad explícita sobre la manija en cualquier solapamiento, en vez de depender del orden de dibujo. Comprobado **midiendo con `document.elementFromPoint` en el navegador** (no mirando) en bloques de 15/30/60 min y en dos bloques de 15 min pegados: en los cinco casos el punto conflictivo lo recibe el casillero, nunca la manija. `e2e/calendario-linea-y-quince-minutos.spec.ts` corrido de punta a punta contra Supabase local: pasa, incluido el clic al casillero que antes fallaba ahí.
+
 ## 6. Saltear un hábito (puede tocar la base)
 
 - [ ] 6.1 **No existe nada parecido** (**D-F**). Lo más cercano quita una reprogramación y devuelve el hábito a su hora habitual
