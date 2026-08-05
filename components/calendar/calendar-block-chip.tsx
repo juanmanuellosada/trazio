@@ -181,7 +181,14 @@ export function CalendarBlockChip({
   const isTight = variant === "timed" && timedBlockHeightPx(block) < TIGHT_HEIGHT_THRESHOLD_PX;
 
   const sharedClassName = cn(
-    "flex min-w-0 overflow-hidden text-foreground",
+    // Sin `overflow-hidden` (defecto de accesibilidad, ver el comentario del
+    // casillero de completar en `titleRow`): el área tocable del casillero
+    // necesita desbordar por fuera de la caja del bloque en los bloques más
+    // chicos, y no hay forma de lograrlo si el contenedor la recorta. No
+    // hace falta para el texto: cada línea de la escalera ya trunca con su
+    // propio `truncate` (que trae su `overflow-hidden` propio), así que
+    // nada se desborda visualmente por sacarlo de acá.
+    "flex min-w-0 text-foreground",
     isTight ? "text-[0.625rem] leading-3" : "text-xs",
     TYPE_SHAPE_CLASS[block.type],
     isTight ? TIGHT_TIMED_CLASS : VARIANT_CLASS[variant],
@@ -251,20 +258,45 @@ export function CalendarBlockChip({
   const titleRow = (
     <div className="flex min-w-0 w-full items-center gap-1">
       {canComplete && (
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={completed}
-          aria-label={completeLabel}
-          onPointerDown={handleTogglePointerDown}
-          onClick={handleToggleClick}
-          className={cn(
-            "flex size-3 shrink-0 items-center justify-center rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-            completed ? "border-primary bg-primary" : "border-input",
-          )}
-        >
-          {completed && <span aria-hidden className="size-1 rounded-full bg-primary-foreground" />}
-        </button>
+        // Defecto de accesibilidad medido, no supuesto: el casillero se
+        // dibuja en 12×12 (`size-3`), la mitad del mínimo de la norma
+        // (24×24, WCAG 2.5.8 — 44/48 son guías de Apple/Google, no la
+        // norma). La decisión ya tomada es agrandar el área tocable sin
+        // agrandar el punto: el `<button>` real (el que tiene el rol, el
+        // estado y los manejadores) mide 24×24 vía `-inset-1.5` sobre un
+        // ancla de 12×12 que no participa del layout (está fuera de flujo,
+        // así que no empuja ni la fila ni la escalera de abajo); el círculo
+        // que se ve sigue siendo el `span` interno de 12×12, sin cambios.
+        // En un bloque de quince minutos (12px de alto total) esto excede
+        // la caja del bloque — a propósito: se prefirió desbordar sin
+        // dibujar nada ahí antes que sacar el control (el diseño dice que
+        // nunca se cae por falta de espacio). El único límite real es que
+        // los bloques vecinos son elementos separados y absolutamente
+        // posicionados (`draggable-timed-block.tsx`): el desborde hacia
+        // arriba gana el clic (por orden de DOM), hacia abajo puede quedar
+        // tapado por el bloque siguiente si están pegados sin separación —
+        // no se resuelve acá, ver el reporte de la tanda.
+        <span className="relative size-3 shrink-0">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={completed}
+            aria-label={completeLabel}
+            onPointerDown={handleTogglePointerDown}
+            onClick={handleToggleClick}
+            className="absolute -inset-1.5 flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-3 items-center justify-center rounded-full border",
+                completed ? "border-primary bg-primary" : "border-input",
+              )}
+            >
+              {completed && <span aria-hidden className="size-1 rounded-full bg-primary-foreground" />}
+            </span>
+          </button>
+        </span>
       )}
       {(block.type === "event" || block.type === "habit") && <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />}
       <span className="min-w-0 truncate">{block.title}</span>

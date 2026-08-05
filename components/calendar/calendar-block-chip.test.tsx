@@ -169,8 +169,44 @@ describe("CalendarBlockChip — modo apretado (defecto: el bloque de quince minu
     expect(root?.className).toContain("text-xs");
   });
 
-  it("el control de completar no se achica en modo apretado: sigue siendo el mismo objetivo de clic", () => {
+  it("el punto que se ve no se achica en modo apretado: sigue midiendo lo mismo", () => {
     render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
-    expect(screen.getByRole("checkbox").className).toContain("size-3");
+    const visibleDot = screen.getByRole("checkbox").firstElementChild;
+    expect(visibleDot?.className).toContain("size-3");
+  });
+});
+
+// Defecto de accesibilidad medido, no supuesto (no en la lista original de
+// tareas): el `<button role="checkbox">` medía 12×12 en su propia caja —
+// tanto el dibujo como el área tocable — por debajo del mínimo de la norma
+// (24×24, WCAG 2.5.8; 44/48 son guías de Apple/Google, no la norma). Existía
+// en cualquier duración, no solo en el modo apretado, porque el tamaño del
+// casillero era constante. La salida: agrandar el área tocable del propio
+// `<button>` con un `-inset-1.5` (6px) sobre un ancla de 12×12 fuera de
+// flujo — no empuja la fila ni la escalera — dejando el punto dibujado
+// (un `span` interno) intacto en 12×12. La medición real en píxeles
+// (`getBoundingClientRect`) se hace en el navegador, no acá: jsdom no
+// calcula layout, así que estas pruebas verifican la clase que produce esa
+// medida, no el número en sí.
+describe("CalendarBlockChip — casillero de completar, área tocable de 24×24 (defecto de accesibilidad)", () => {
+  it("el `<button>` con el rol es el área tocable agrandada, no el punto que se ve", () => {
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox.className).toContain("-inset-1.5");
+    expect(checkbox.className).not.toContain("size-3");
+  });
+
+  it("en un bloque de una hora (fuera del modo apretado) el defecto era el mismo, y la corrección también", () => {
+    const oneHourTask = block({ end: "2026-08-05T11:00:00-03:00" });
+    render(<CalendarBlockChip block={oneHourTask} variant="timed" timezone={TZ} />);
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox.className).toContain("-inset-1.5");
+    const visibleDot = checkbox.firstElementChild;
+    expect(visibleDot?.className).toContain("size-3");
+  });
+
+  it("la variante barra (todo el día) comparte el mismo casillero agrandado", () => {
+    render(<CalendarBlockChip block={block()} variant="bar" timezone={TZ} />);
+    expect(screen.getByRole("checkbox").className).toContain("-inset-1.5");
   });
 });
