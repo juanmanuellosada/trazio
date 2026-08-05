@@ -15,6 +15,17 @@ import type { DragResult } from "@/lib/calendar/drag";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
+/**
+ * Cada cuánto avanza la línea de la hora actual (tarea 1.1, defecto: hoy
+ * se congela para siempre). Cada segundo sería desperdicio: la grilla mide
+ * `HOUR_ROW_HEIGHT_PX` (48px) por hora, así que un minuto entero mueve la
+ * línea menos de un píxel (48/60 ≈ 0.8px) — no hay nada que renderizar de
+ * más seguido que eso. Un minuto es además la unidad natural del reloj que
+ * se muestra (`formatHourLabel` no tiene segundos), así que no se pierde
+ * precisión visible eligiendo este intervalo.
+ */
+const LIVE_CLOCK_INTERVAL_MS = 60_000;
+
 /** Prefijo del `id` de una columna de día, usada como `droppable` (tarea 6.1/6.6): el destino de "mover un bloque" y de "programar un chip de hábito". */
 export const DAY_DROPPABLE_PREFIX = "calendar-day:";
 
@@ -145,8 +156,17 @@ function DayColumn({
 
       {nowMinutes !== null && (
         <div className="pointer-events-none absolute right-0 left-0 z-10" style={{ top: `${minutesToPercent(nowMinutes)}%` }}>
-          <div className="absolute top-1/2 left-0 size-2 -translate-y-1/2 rounded-full bg-primary" />
-          <div className="border-t-2 border-primary" />
+          {/* Roja, distinta de cualquier color que pueda tener un bloque
+              (tarea 1.3): el rojo de marca (`#EC1E2A`) está reservado a la
+              marca y a prioridad Urgente (D5, `docs/decisions.md`) — "ningún
+              otro significado puede usar rojo". `destructive`/`error` es el
+              rojo que sí queda libre para cualquier otro significado (D5 lo
+              define para error de formulario y acción destructiva; acá es
+              "marca del reloj", ninguno de los dos, pero es el mismo motivo:
+              un rojo que no compite con Urgente). No es un chip, así que no
+              hay bloque con el que pueda confundirse por color. */}
+          <div className="absolute top-1/2 left-0 size-2 -translate-y-1/2 rounded-full bg-destructive" />
+          <div className="border-t-2 border-destructive" />
         </div>
       )}
     </div>
@@ -197,6 +217,25 @@ export function TimeGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = todayInTimeZone(now, timezone);
   const merged = blocks.concat(previewBlocks.map((block) => ({ ...block, isPreview: true })));
+
+  // La línea de la hora actual se movía nunca (tarea 1.1/1.2, requisito
+  // incumplido desde siempre): `now` llega congelado a propósito desde
+  // `screen-calendar.tsx` (ver su comentario largo) para que la hidratación
+  // no compare dos instantes distintos entre servidor y cliente. Ese
+  // congelamiento no se toca acá: el reloj que sí avanza vive adentro de
+  // este componente, que ya solo existe del lado del cliente y después de
+  // montado (la pantalla no renderiza `TimeGrid` hasta que `now` deja de
+  // ser `null`), así que no hay ningún primer render de servidor con el que
+  // desajustarse. `liveNow` arranca en `now` (por eso no hace falta
+  // resincronizarlo si `now` cambiara: en la arquitectura actual no lo
+  // hace mientras este componente sigue montado, `screen-calendar.tsx`
+  // lo resuelve una única vez) y después solo lo mueve el intervalo —
+  // nunca se lee `new Date()` durante el render.
+  const [liveNow, setLiveNow] = useState(now);
+  useEffect(() => {
+    const id = setInterval(() => setLiveNow(new Date()), LIVE_CLOCK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -250,7 +289,7 @@ export function TimeGrid({
             gridColumn={index + 2}
             blocks={merged}
             timezone={timezone}
-            nowMinutes={currentTimeMinutes(now, dateKey, timezone)}
+            nowMinutes={currentTimeMinutes(liveNow, dateKey, timezone)}
             onSelectBlock={onSelectBlock}
             onResizeBlock={onResizeBlock}
             onCreateRange={onCreateRange}

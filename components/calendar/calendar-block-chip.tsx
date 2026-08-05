@@ -58,6 +58,12 @@ const VERTICAL_PADDING_PX = 8;
 /** `text-xs` (0.75rem de fuente) trae 1rem de interlineado por defecto. */
 const LINE_HEIGHT_PX = 16;
 
+/** Alto real en píxeles de un bloque con horario, según su duración — lo usan tanto `ladderSteps` como el modo apretado de más abajo. */
+function timedBlockHeightPx(block: CalendarBlock): number {
+  const minutes = differenceInMinutes(parseISO(block.end), parseISO(block.start));
+  return (minutes / 60) * HOUR_ROW_HEIGHT_PX;
+}
+
 /**
  * Cuántos peldaños de la escalera entran, dado el alto real del bloque
  * (D-A, tarea 2.1): el primero (título, con su control de completar si
@@ -70,12 +76,29 @@ const LINE_HEIGHT_PX = 16;
 function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): number {
   const maxSteps = block.type === "event" ? 3 : 4;
   if (variant !== "timed") return 1;
-  const minutes = differenceInMinutes(parseISO(block.end), parseISO(block.start));
-  const heightPx = (minutes / 60) * HOUR_ROW_HEIGHT_PX;
+  const heightPx = timedBlockHeightPx(block);
   let steps = 1;
   while (steps < maxSteps && heightPx >= VERTICAL_PADDING_PX + (steps + 1) * LINE_HEIGHT_PX) steps++;
   return steps;
 }
+
+/**
+ * Modo apretado (defecto encontrado, no en la lista original de tareas):
+ * un bloque de quince minutos mide 12px (`HOUR_ROW_HEIGHT_PX` es 48), y el
+ * primer peldaño de la escalera —relleno vertical más una línea de
+ * texto— pide `VERTICAL_PADDING_PX + LINE_HEIGHT_PX` = 24px. Por debajo de
+ * eso el contenido se recortaba en fragmentos sueltos y el control de
+ * completar quedaba invisible. El diseño descartó un alto mínimo (mentiría
+ * sobre la duración), así que la salida es **apretar, no agrandar**: sin
+ * relleno vertical, tipografía y altura de línea más chicas, una sola
+ * línea sin envolver — el mismo recurso que usa Google Calendar. El
+ * umbral es exactamente el mismo cálculo que ya usa `ladderSteps` para el
+ * primer peldaño, así que con el paso de 15 minutos de la grilla (D-C)
+ * solo el bloque de 15 minutos cae en este modo; el de 30 ya entra normal.
+ */
+const TIGHT_HEIGHT_THRESHOLD_PX = VERTICAL_PADDING_PX + LINE_HEIGHT_PX;
+/** Fila única, sin relleno vertical: mismo contenido de `titleRow`, sin lugar para más peldaños. */
+const TIGHT_TIMED_CLASS = "h-full w-full flex-row items-center gap-1 px-1 py-0";
 
 /**
  * Horario del bloque en la zona y el formato que corresponda (tarea 2.2/2.3).
@@ -153,10 +176,15 @@ export function CalendarBlockChip({
 
   const Icon = TYPE_ICON[block.type];
 
+  // Modo apretado (ver el comentario de `TIGHT_HEIGHT_THRESHOLD_PX`): solo
+  // aplica a la variante `timed`, la única que crece con el alto real.
+  const isTight = variant === "timed" && timedBlockHeightPx(block) < TIGHT_HEIGHT_THRESHOLD_PX;
+
   const sharedClassName = cn(
-    "flex min-w-0 overflow-hidden text-xs text-foreground",
+    "flex min-w-0 overflow-hidden text-foreground",
+    isTight ? "text-[0.625rem] leading-3" : "text-xs",
     TYPE_SHAPE_CLASS[block.type],
-    VARIANT_CLASS[variant],
+    isTight ? TIGHT_TIMED_CLASS : VARIANT_CLASS[variant],
     block.isPreview && "border-dashed opacity-60",
     className,
   );

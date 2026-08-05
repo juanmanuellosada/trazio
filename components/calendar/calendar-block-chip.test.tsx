@@ -144,3 +144,33 @@ describe("CalendarBlockChip — formato mes, fuera de alcance (Non-Goal)", () =>
     expect(screen.queryByText(/–/)).not.toBeInTheDocument();
   });
 });
+
+// Defecto encontrado (no en la lista original de tareas): un bloque de
+// quince minutos mide 12px y el primer peldaño de la escalera pedía 24px
+// (relleno vertical + una línea de texto normal) — el contenido se recortaba
+// en fragmentos ilegibles y el control de completar quedaba invisible. La
+// salida es apretar, no agrandar (ningún alto mínimo): sin relleno vertical,
+// tipografía más chica, una sola fila.
+describe("CalendarBlockChip — modo apretado (defecto: el bloque de quince minutos era ilegible)", () => {
+  it("un bloque de quince minutos va sin relleno vertical, en una sola fila, con tipografía más chica", () => {
+    const { container } = render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    const root = container.querySelector('[role="button"]');
+    expect(root?.className).toContain("py-0");
+    expect(root?.className).toContain("flex-row");
+    expect(root?.className).toContain("text-[0.625rem]");
+  });
+
+  it("un bloque de treinta minutos ya entra en modo normal, con el relleno y la dirección de siempre", () => {
+    const thirtyMinuteTask = block({ end: "2026-08-05T10:30:00-03:00" });
+    const { container } = render(<CalendarBlockChip block={thirtyMinuteTask} variant="timed" timezone={TZ} />);
+    const root = container.querySelector('[role="button"]');
+    expect(root?.className).toContain("py-1");
+    expect(root?.className).toContain("flex-col");
+    expect(root?.className).toContain("text-xs");
+  });
+
+  it("el control de completar no se achica en modo apretado: sigue siendo el mismo objetivo de clic", () => {
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    expect(screen.getByRole("checkbox").className).toContain("size-3");
+  });
+});
