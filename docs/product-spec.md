@@ -311,8 +311,10 @@ el mismo contenido en un bloque de quince minutos que en uno de varias horas—:
 bloque:
 
 - Arrastrar una tarea, evento o hábito lo mueve de horario; estirar el borde cambia
-  la duración (salvo en un hábito, que no se puede redimensionar: su tabla de
-  reprogramación no guarda duración).
+  la duración. En un hábito, mover escribe una reprogramación de ESE día (su
+  horario habitual no cambia), pero redimensionar cambia
+  `habits.duration_minutes`: afecta a **todas** las ocurrencias del hábito, no
+  solo a la de ese día, y un aviso lo deja explícito al soltar.
 - Mientras se arrastra, se ve a qué hora quedaría —ajustada a la grilla de 15
   minutos— y el lugar de origen queda marcado. El bloque nunca se recorta al salir
   del área visible de la grilla.

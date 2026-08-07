@@ -1464,3 +1464,100 @@ recibía `projectName`), `lib/habits/skips.ts` (`useSkipHabit`,
 `components/calendar/screen-calendar.tsx` (arma el menú contextual de cada
 tipo de bloque y cablea completar/saltear a sus mutaciones) quedan
 actualizados, con sus tests.
+
+---
+
+## D51 — Un hábito sí se puede redimensionar en el calendario; la duración es del hábito entero
+
+**Fecha.** 2026-08-07
+
+**Contexto.** El grupo 1 de `calendario-legible-y-manipulable` (archivado)
+había decidido que un bloque de hábito no ofrece manija de redimensionar
+porque `habit_schedule_overrides` —la tabla de reprogramación puntual de un
+día— no tiene columna de duración, y ofrecer el gesto sin poder persistirlo
+sería mentir. Esa razón sigue siendo cierta, pero dejó de ser el único lugar
+donde una duración de hábito podría guardarse: `habits.duration_minutes` ya
+existe como columna desde la migración `20260729170000_habits.sql`, ya está
+tipada en `lib/habits/habit-columns.ts` y ya es parcheable vía `HabitPatch`
+en `lib/habits/mutations.ts` — y de hecho ya alimenta el alto visual del
+bloque en la grilla (`lib/calendar/screen-blocks.ts`). El dueño pidió
+revertir la decisión vieja: *"si les doy doble click debería poder
+editarlos"* (sobre abrir el diálogo de edición, cambio relacionado del mismo
+pedido) y, sobre redimensionar, que se habilite escribiendo la duración del
+hábito completo.
+
+Además, seleccionar un bloque de hábito (clic, Enter o Espacio —
+`calendar-block-chip.tsx` ya lo anuncia con `role="button" tabIndex={0}` y
+responde a los tres) no abría nada: `handleSelectBlock` en
+`screen-calendar.tsx` tenía un `return` vacío para hábito, con el comentario
+"sin un detalle propio que abrir todavía desde acá" — un control que se
+anuncia accionable pero no hace nada, aunque `HabitFormDialog` ya estaba
+montado y cableado (solo lo alcanzaba el menú contextual).
+
+**Decisión.** Dos cambios. Primero: seleccionar un bloque de hábito abre
+`HabitFormDialog`, igual que tarea abre su detalle y evento su diálogo de
+edición — mismo `handleSelectBlock`, extrayendo el id real del hábito con
+`parseHabitBlockId` antes de setear el estado (el id del bloque es
+compuesto, `habitId::fecha`). Segundo: la manija de redimensionar se ofrece
+también en un hábito; estirarla escribe `habits.duration_minutes` — **afecta
+a todas las ocurrencias del hábito, nunca solo al día que se está viendo**.
+Es el mismo criterio que ya rige mover un hábito sin horario a la grilla
+(fija `habits.scheduled_time` en el hábito entero, no un override): acá no
+hay "duración de ese día" que un override pueda dejar intacta, así que no
+hay nada que preservar aparte de la duración general.
+
+**Mover y redimensionar quedan separados por el gesto, no por el rango.**
+`onMoveBlock` y `onResizeBlock` (props de `CalendarView`) ya eran dos
+callbacks distintos — uno cableado al arrastre de `@dnd-kit`
+(`handleDragEnd`), el otro al seguimiento nativo de puntero de la manija
+propia (`draggable-timed-block.tsx`) — pero `screen-calendar.tsx` los hacía
+apuntar a la misma función (`handleMoveOrResize`), que trataba cualquier
+cambio de rango de un hábito como una reprogramación puntual del día. Se
+separan en `handleMoveBlock` (mover: sigue escribiendo el override del día,
+sin cambios) y `handleResizeBlock` (redimensionar: escribe la duración
+global), sin adivinar el gesto comparando fechas — la ambigüedad que eso
+introduciría es justo lo que la separación de callbacks evita. Para tarea y
+evento las dos funciones producen el mismo patch (`taskDragPatch`/
+`eventDragChanges` ya derivan todo del rango final, sin distinguir mover de
+redimensionar), así que comparten esa cola en una función interna.
+
+**El doble clic no necesitó un mecanismo nuevo.** Con el diálogo abriéndose
+al primer clic, existía el riesgo de que el segundo clic de un doble clic
+cayera sobre el overlay del diálogo recién abierto y lo cerrara. Se verificó
+que tarea y evento ya abren su propio diálogo/detalle al primer clic, con la
+misma clase de diálogo controlado por estado (sin `Dialog.Trigger`, así que
+Base UI no tiene un "disparador" que excluir de la detección de clic
+afuera) y sin ningún guard especial contra un segundo clic — el mismo riesgo,
+si existe, ya es preexistente e idéntico para los tres tipos de bloque. No
+se inventó nada nuevo para hábito: replicar la wiring existente no agrega
+riesgo por encima del que ya había.
+
+**Duración mínima y snap.** Los mismos que ya rigen tarea y evento —
+`resizeBlockToPosition` y las constantes de `lib/calendar/drag.ts`
+(`SNAP_MINUTES`, `MIN_BLOCK_MINUTES`) — sin lógica propia para hábito: el
+`disabled`/la geometría de `draggable-timed-block.tsx` no distinguían tipo,
+solo la exclusión explícita que se saca acá.
+
+**Consecuencia.** `components/calendar/screen-calendar.tsx`
+(`handleSelectBlock` abre el diálogo; `handleMoveOrResize` se separa en
+`handleMoveBlock`/`handleResizeBlock`, con un aviso de `toastSuccess` al
+redimensionar un hábito que dice explícitamente que el cambio es del hábito
+entero) y `components/calendar/draggable-timed-block.tsx` (la manija ya no
+excluye `block.type === "habit"`) quedan actualizados, con test de
+interacción (`screen-calendar-habit-interactions.test.tsx`) que cubre clic,
+doble clic y el redimensionado. `docs/product-spec.md` queda actualizado
+para describir el comportamiento nuevo.
+
+**Tensión que queda para una propuesta aparte.**
+`openspec/specs/vista-calendario/spec.md:193` ("Mover y redimensionar se ven
+al instante... Eso SHALL valer para las tres pantallas que muestran el
+calendario y para los tres tipos de bloque") y `:226-228` ("Un bloque de
+hábito SHALL ofrecer editarlo, completarlo y saltearlo ese día. Por **D24**,
+mover y redimensionar NUNCA SHALL ser las únicas formas de cambiar el
+horario de un bloque") no se tocan en esta tanda — el pedido explícito fue
+no editar nada bajo `openspec/specs/`. Con el código ya cambiado, la lectura
+de la línea 193 ("los tres tipos de bloque" sí redimensionan) pasa a
+describir la realidad, pero la 226-228 nunca listó "redimensionar" entre las
+acciones de un bloque de hábito ni mencionó que la duración resultante es
+global — queda a resolver con una propuesta de OpenSpec aparte si el spec de
+`vista-calendario` necesita una actualización explícita.

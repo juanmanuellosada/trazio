@@ -114,8 +114,8 @@ export function durationMinutesBetween(startIso: string, endIso: string): number
  * suelto arranque un arrastre, pero no evita que un arrastre real termine
  * exactamente donde empezó (por ejemplo, un movimiento solo horizontal
  * dentro de la misma columna, o uno vertical chico que vuelve a snapear a
- * la misma ranura de 15 minutos). `handleMoveOrResize`
- * (`screen-calendar.tsx`) llama a esto antes de mutar nada — si el rango de
+ * la misma ranura de 15 minutos). `handleMoveBlock`/`handleResizeBlock`
+ * (`screen-calendar.tsx`) llaman a esto antes de mutar nada — si el rango de
  * destino coincide con el rango actual del bloque, no hay nada que editar:
  * ni mutación, ni el diálogo de recurrencia. Comparación por instante
  * (`Date.getTime()`), no por string ISO, porque `range.start`/`range.end`

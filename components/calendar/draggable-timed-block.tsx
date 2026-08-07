@@ -136,12 +136,18 @@ export function DraggableTimedBlock({
         className={cn(!disabled && !block.isPreview && "touch-none")}
       />
       {/*
-       * Manija de redimensionar: nunca en un hábito (decisión del dueño,
-       * grupo 1 de `calendario-legible-y-manipulable`) — redimensionar un
-       * hábito no se puede persistir (`habit_schedule_overrides` no tiene
-       * columna de duración) y ofrecer el gesto sería mentir. El ancla
-       * visual (`h-0.5 w-6`) mide lo mismo de siempre, pero el área que
-       * reacciona al puntero es más grande que la línea que se ve, y
+       * Manija de redimensionar: hoy también se ofrece en un hábito
+       * (pedido del dueño, revierte la decisión archivada del grupo 1 de
+       * `calendario-legible-y-manipulable` — D51, `docs/decisions.md`).
+       * Aquella decisión asumía que redimensionar un hábito no se podía
+       * persistir porque `habit_schedule_overrides` no tiene columna de
+       * duración; eso sigue siendo cierto, pero dejó de ser el lugar donde
+       * se guarda: la nueva duración va a `habits.duration_minutes` —
+       * GLOBAL, afecta todas las ocurrencias — vía `handleResizeBlock` en
+       * `screen-calendar.tsx`, que es quien traduce el rango a esa
+       * mutación; este componente solo lo entrega por `onResizeBlock`. El
+       * ancla visual (`h-0.5 w-6`) mide lo mismo de siempre, pero el área
+       * que reacciona al puntero es más grande que la línea que se ve, y
        * visible con opacidad base (no solo `group-hover`) — en táctil no
        * hay hover, así que la manija de 6px de alto era inalcanzable.
        * Mismo criterio que el casillero de completar de
@@ -157,7 +163,7 @@ export function DraggableTimedBlock({
        * desborde ya documentado sobre el bloque vecino si están pegados sin
        * separación, sin resolverlo tampoco.
        */}
-      {!disabled && !block.isPreview && onResizeBlock && block.type !== "habit" && (
+      {!disabled && !block.isPreview && onResizeBlock && (
         <div
           role="presentation"
           onPointerDown={handleResizePointerDown}
