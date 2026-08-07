@@ -45,8 +45,12 @@ export type CalendarBlock = {
   isPreview?: boolean;
   /** Cumplido, para una tarea o un hábito (grupo 2, D-A): `undefined` en un evento, que no tiene este concepto. */
   completed?: boolean;
+  /** Emoji del hábito (`habits.icon`, obligatorio en el dominio): `undefined` en una tarea o un evento, que no tienen este concepto. */
+  icon?: string;
   /** Nombre del proyecto de una tarea, si quien arma el bloque ya lo resolvió: un hábito no tiene proyecto. */
   projectName?: string;
+  /** Emoji del proyecto de una tarea (`projects.icon`, opcional en el dominio), si tiene uno y quien arma el bloque ya lo resolvió: un hábito no tiene proyecto. */
+  projectIcon?: string;
   /** Etiquetas de una tarea: un hábito no tiene etiquetas. */
   labels?: CalendarBlockLabel[];
   /** Nombre del calendario de origen de un evento, si quien arma el bloque ya lo resolvió. */
@@ -67,6 +71,8 @@ export type UnscheduledHabitChip = {
   id: string;
   title: string;
   color: string;
+  /** Emoji del hábito (`habits.icon`, obligatorio en el dominio). */
+  icon: string;
 };
 
 export const CALENDAR_FORMATS = ["dia", "cuatro-dias", "semana", "mes"] as const;

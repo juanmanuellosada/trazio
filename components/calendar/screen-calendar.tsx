@@ -17,6 +17,7 @@ import { useMarkHabitDone, useUnmarkHabitDone, useUpdateHabit } from "@/lib/habi
 import { useSetHabitScheduleOverride } from "@/lib/habits/schedule-overrides";
 import { useHabitScheduleOverridesForRange } from "@/lib/habits/use-habit-schedule-overrides-range";
 import { useSkipHabit, useHabitSkipsForRange } from "@/lib/habits/skips";
+import { useHabitCompletionsForRange } from "@/lib/habits/completions";
 import { HabitFormDialog } from "@/components/habits/habit-form-dialog";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
 import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
@@ -158,6 +159,7 @@ export function ScreenCalendar({
   const rangeEvents = useCalendarRangeEvents(visibleDays, timezone);
   const rangeOverrides = useHabitScheduleOverridesForRange(visibleDays);
   const rangeSkips = useHabitSkipsForRange(visibleDays);
+  const rangeCompletions = useHabitCompletionsForRange(visibleDays);
 
   // Grupo 7 ("montar `CalendarView`", D-F): la lista de calendarios de
   // Google, para el nombre a mostrar (tarea 4/D-A) y para cruzar el permiso
@@ -168,6 +170,7 @@ export function ScreenCalendar({
   const calendarById = useMemo(() => new Map((calendars ?? []).map((calendar) => [calendar.id, calendar] as const)), [calendars]);
   const { data: projects } = useProjects();
   const projectNameById = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.name] as const)), [projects]);
+  const projectIconById = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.icon] as const)), [projects]);
 
   function canEditEvent(event: CalendarEventInstance): boolean {
     const calendar = calendarById.get(event.calendarId);
@@ -219,9 +222,16 @@ export function ScreenCalendar({
   const taskBlocks = useMemo(
     () =>
       tasks
-        .map((task) => taskToCalendarBlock(task, resolveTaskColor(task), projectNameById.get(task.project_id)))
+        .map((task) =>
+          taskToCalendarBlock(
+            task,
+            resolveTaskColor(task),
+            projectNameById.get(task.project_id),
+            projectIconById.get(task.project_id) ?? undefined,
+          ),
+        )
         .filter((block): block is CalendarBlock => block !== null),
-    [tasks, resolveTaskColor, projectNameById],
+    [tasks, resolveTaskColor, projectNameById, projectIconById],
   );
 
   const { habitBlocks, unscheduledHabits } = useMemo(() => {
@@ -230,6 +240,7 @@ export function ScreenCalendar({
     }
     const overridesByDate = rangeOverrides.data ?? {};
     const skipsByDate = rangeSkips.data ?? {};
+    const completionsByDate = rangeCompletions.data ?? {};
     const timed: CalendarBlock[] = [];
     const chipHabitIds = new Set<string>();
 
@@ -240,7 +251,8 @@ export function ScreenCalendar({
         const effectiveTime = overrideTime ?? habit.scheduled_time;
         if (effectiveTime) {
           const skipped = skipsByDate[day]?.[habit.id] ?? false;
-          timed.push(habitToCalendarBlock(habit, day, effectiveTime, resolveProjectColorHex(habit.color, theme), timezone, skipped));
+          const completed = completionsByDate[day]?.[habit.id] ?? false;
+          timed.push(habitToCalendarBlock(habit, day, effectiveTime, resolveProjectColorHex(habit.color, theme), timezone, completed, skipped));
         } else {
           chipHabitIds.add(habit.id);
         }
@@ -249,10 +261,10 @@ export function ScreenCalendar({
 
     const chips = [...chipHabitIds].map((id) => {
       const habit = habitsById.get(id)!;
-      return { id: habit.id, title: habit.name, color: resolveProjectColorHex(habit.color, theme) };
+      return { id: habit.id, title: habit.name, color: resolveProjectColorHex(habit.color, theme), icon: habit.icon };
     });
     return { habitBlocks: timed, unscheduledHabits: chips };
-  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, visibleDays, timezone, theme, habitsById]);
+  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, rangeCompletions.data, visibleDays, timezone, theme, habitsById]);
 
   // `pendingEventUpdate` (tarea 5.4, D-D): mientras se pregunta el alcance
   // de una serie, el evento real en caché todavía no cambió (`applyEventUpdate`
@@ -298,10 +310,11 @@ export function ScreenCalendar({
    * Control de completar (grupo 2/7, D-A): el mismo manejador atiende el
    * casillero del bloque y el ítem "Completar" del menú contextual, para no
    * duplicar la traducción de tipo → mutación. Una tarea se completa
-   * cualquier día; un hábito **solo el día de hoy**
-   * (`lib/habits/mutations.ts`, `assertIsToday`) — intentarlo en otro día
-   * rechaza con el aviso de tres partes ya escrito ahí, no hace falta
-   * repetir la validación acá.
+   * cualquier día; un hábito, hoy o cualquier día pasado en que le tocaba —
+   * el futuro sigue prohibido (decisión del dueño, `docs/decisions.md`;
+   * guarda real en `lib/habits/mutations.ts`, `assertNotFuture`).
+   * Intentarlo en un día futuro rechaza con el aviso de tres partes ya
+   * escrito ahí, no hace falta repetir la validación acá.
    */
   function handleToggleComplete(block: CalendarBlock) {
     if (block.type === "task") {

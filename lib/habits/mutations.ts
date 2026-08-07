@@ -9,6 +9,7 @@ import type { HabitFormOutput } from "@/lib/validation/habits";
 import { reportHabitError } from "./errors";
 import { HABIT_COLUMNS, toHabit, type Habit, type HabitRawRow } from "./habit-columns";
 import { HABIT_SKIPS_MUTATION_KEY, habitSkipQueryKey, habitSkipsByDateQueryKey } from "./skips";
+import { isHabitCompletionsRangeQuery, patchHabitCompletionInRangeCache, type HabitCompletionsByDate } from "./completions";
 import { habitsQueryKey } from "./use-habits";
 
 /**
@@ -161,28 +162,32 @@ export function useDeleteHabit() {
 }
 
 /**
- * Solo hoy se puede marcar o desmarcar (tarea 2.5, D-E): rechazado en esta
- * misma capa de datos, sin depender de que la interfaz no ofrezca el
- * casillero para otros días. `date` viaja como argumento (no se recalcula
- * acá con `new Date()`) para que el llamador use la misma fecha con la que
- * ya decidió mostrar el casillero.
+ * El futuro no se puede marcar ni desmarcar (decisión del dueño: un día
+ * pasado en que el hábito tocaba SÍ se puede corregir desde el calendario —
+ * versión anterior de esta guarda, `assertIsToday`, solo dejaba pasar el día
+ * de hoy). Rechazado en esta misma capa de datos, sin depender de que la
+ * interfaz no ofrezca el casillero para un día futuro. `date` viaja como
+ * argumento (no se recalcula acá con `new Date()`) para que el llamador use
+ * la misma fecha con la que ya decidió mostrar el casillero.
  */
-function assertIsToday(date: string, timezone: string): void {
-  if (date !== todayInTimeZone(new Date(), timezone)) {
-    throw new Error("Solo se puede marcar o desmarcar el día de hoy.");
+function assertNotFuture(date: string, timezone: string): void {
+  if (date > todayInTimeZone(new Date(), timezone)) {
+    throw new Error("No se puede marcar ni desmarcar un día futuro.");
   }
 }
 
 type MarkHabitVariables = { habitId: string; date: string; timezone: string };
 
 /**
- * Marca el hábito de hoy como hecho (tarea 2.4). También borra cualquier
- * salteo de ese mismo día (`habit_skips`, tarea 6.2/6.4 de
- * `calendario-legible-y-manipulable`, D-F): los tres estados —pendiente,
- * cumplido, salteado— no pueden coexistir, y completar después de saltear
- * es justamente el camino "reversible" que describe el dueño. No toca
- * `calcular_racha_habito` ni su tabla: sigue siendo el mismo `insert` en
- * `habit_completions` de siempre.
+ * Marca un hábito como hecho hoy o en un día pasado en que le tocaba
+ * (decisión del dueño: el futuro sigue prohibido, `assertNotFuture`).
+ * También borra cualquier salteo de ese mismo día (`habit_skips`, tarea
+ * 6.2/6.4 de `calendario-legible-y-manipulable`, D-F): los tres estados
+ * —pendiente, cumplido, salteado— no pueden coexistir, y completar después
+ * de saltear es justamente el camino "reversible" que describe el dueño. No
+ * toca `calcular_racha_habito` ni su tabla: sigue siendo el mismo `insert`
+ * en `habit_completions` de siempre, y D10 ya documenta que la racha
+ * tolera esta clase de corrección retroactiva porque se calcula al leer.
  */
 export function useMarkHabitDone() {
   const queryClient = useQueryClient();
@@ -191,7 +196,7 @@ export function useMarkHabitDone() {
   return useMutation({
     mutationKey: HABITS_MUTATION_KEY,
     mutationFn: async ({ habitId, date, timezone }: MarkHabitVariables) => {
-      assertIsToday(date, timezone);
+      assertNotFuture(date, timezone);
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -209,28 +214,37 @@ export function useMarkHabitDone() {
         .eq("date", date);
       if (skipError) throw skipError;
     },
-    onMutate: async ({ habitId, date }: MarkHabitVariables) => {
+    onMutate: async ({ habitId, date, timezone }: MarkHabitVariables) => {
       await queryClient.cancelQueries({ queryKey: habitsQueryKey() });
       await queryClient.cancelQueries({ queryKey: habitSkipQueryKey(habitId, date) });
       await queryClient.cancelQueries({ queryKey: habitSkipsByDateQueryKey(date) });
+      await queryClient.cancelQueries({ predicate: isHabitCompletionsRangeQuery });
       const previous = habitsSnapshot(queryClient);
       const previousSkipByHabit = queryClient.getQueryData<boolean>(habitSkipQueryKey(habitId, date));
       const previousSkipByDate = queryClient.getQueryData<Record<string, boolean>>(habitSkipsByDateQueryKey(date));
-      queryClient.setQueryData<Habit[]>(habitsQueryKey(), (old) =>
-        (old ?? []).map((h) => (h.id === habitId ? { ...h, completed_today: true } : h)),
-      );
+      const previousCompletionsRange = queryClient.getQueriesData<HabitCompletionsByDate>({ predicate: isHabitCompletionsRangeQuery });
+      // `completed_today` es la marca de HOY únicamente (`habit-columns.ts`):
+      // marcar un día pasado no lo toca, sino pintaría el hábito de hoy como
+      // hecho por marcar un día distinto (defecto que este cambio corrige).
+      if (date === todayInTimeZone(new Date(), timezone)) {
+        queryClient.setQueryData<Habit[]>(habitsQueryKey(), (old) =>
+          (old ?? []).map((h) => (h.id === habitId ? { ...h, completed_today: true } : h)),
+        );
+      }
+      patchHabitCompletionInRangeCache(queryClient, habitId, date, true);
       queryClient.setQueryData(habitSkipQueryKey(habitId, date), false);
       queryClient.setQueryData<Record<string, boolean> | undefined>(habitSkipsByDateQueryKey(date), (old) => {
         if (!old) return old;
         return Object.fromEntries(Object.entries(old).filter(([id]) => id !== habitId));
       });
-      return { previous, previousSkipByHabit, previousSkipByDate, habitId, date };
+      return { previous, previousSkipByHabit, previousSkipByDate, previousCompletionsRange, habitId, date };
     },
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(habitsQueryKey(), context.previous);
       if (context) {
         queryClient.setQueryData(habitSkipQueryKey(context.habitId, context.date), context.previousSkipByHabit);
         queryClient.setQueryData(habitSkipsByDateQueryKey(context.date), context.previousSkipByDate);
+        context.previousCompletionsRange.forEach(([key, data]) => queryClient.setQueryData(key, data));
       }
       reportHabitError(error);
     },
@@ -241,11 +255,12 @@ export function useMarkHabitDone() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: habitsQueryKey() });
       queryClient.invalidateQueries({ queryKey: HABIT_SKIPS_MUTATION_KEY });
+      queryClient.invalidateQueries({ predicate: isHabitCompletionsRangeQuery });
     },
   });
 }
 
-/** Desmarca el hábito de hoy: corrige un click de más (tarea 2.4, D-E). */
+/** Desmarca un hábito hecho hoy o en un día pasado: corrige un click de más (tarea 2.4, D-E) o una corrección retroactiva (decisión del dueño). */
 export function useUnmarkHabitDone() {
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -253,7 +268,7 @@ export function useUnmarkHabitDone() {
   return useMutation({
     mutationKey: HABITS_MUTATION_KEY,
     mutationFn: async ({ habitId, date, timezone }: MarkHabitVariables) => {
-      assertIsToday(date, timezone);
+      assertNotFuture(date, timezone);
       const { error } = await supabase
         .from("habit_completions")
         .delete()
@@ -261,18 +276,29 @@ export function useUnmarkHabitDone() {
         .eq("completed_on", date);
       if (error) throw error;
     },
-    onMutate: async ({ habitId }: MarkHabitVariables) => {
+    onMutate: async ({ habitId, date, timezone }: MarkHabitVariables) => {
       await queryClient.cancelQueries({ queryKey: habitsQueryKey() });
+      await queryClient.cancelQueries({ predicate: isHabitCompletionsRangeQuery });
       const previous = habitsSnapshot(queryClient);
-      queryClient.setQueryData<Habit[]>(habitsQueryKey(), (old) =>
-        (old ?? []).map((h) => (h.id === habitId ? { ...h, completed_today: false } : h)),
-      );
-      return { previous };
+      const previousCompletionsRange = queryClient.getQueriesData<HabitCompletionsByDate>({ predicate: isHabitCompletionsRangeQuery });
+      // Mismo motivo que en `useMarkHabitDone.onMutate`: `completed_today`
+      // es la marca de HOY, desmarcar un día pasado no la toca.
+      if (date === todayInTimeZone(new Date(), timezone)) {
+        queryClient.setQueryData<Habit[]>(habitsQueryKey(), (old) =>
+          (old ?? []).map((h) => (h.id === habitId ? { ...h, completed_today: false } : h)),
+        );
+      }
+      patchHabitCompletionInRangeCache(queryClient, habitId, date, false);
+      return { previous, previousCompletionsRange };
     },
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(habitsQueryKey(), context.previous);
+      context?.previousCompletionsRange.forEach(([key, data]) => queryClient.setQueryData(key, data));
       reportHabitError(error);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: habitsQueryKey() }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: habitsQueryKey() });
+      queryClient.invalidateQueries({ predicate: isHabitCompletionsRangeQuery });
+    },
   });
 }

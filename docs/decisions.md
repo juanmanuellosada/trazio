@@ -1561,3 +1561,51 @@ describir la realidad, pero la 226-228 nunca listó "redimensionar" entre las
 acciones de un bloque de hábito ni mencionó que la duración resultante es
 global — queda a resolver con una propuesta de OpenSpec aparte si el spec de
 `vista-calendario` necesita una actualización explícita.
+
+---
+
+## D52 — Un hábito pasado se corrige desde el calendario; el mini-mapa sigue de solo lectura
+
+**Fecha.** 2026-08-07
+
+**Contexto.** La guarda original (`assertIsToday`, `lib/habits/mutations.ts`)
+solo dejaba marcar o desmarcar el hábito de HOY, reflejando el requirement
+"Los días pasados no se pueden corregir" (`openspec/specs/habitos/spec.md`).
+Sirvió mientras el único lugar para marcar un hábito era su casillero (Hoy,
+`/habitos`), donde "otro día" no tenía sentido. El calendario cambió eso: ya
+dibuja una ocurrencia por cada día que el hábito toca, con su propio
+casillero (`calendar-block-chip.tsx`) — ver una fila del lunes pasado y no
+poder tildarla ahí mismo, con la app mostrando exactamente ese día, se leía
+como un límite arbitrario. El dueño pidió levantarlo: *"se puede marcar y
+desmarcar cualquier día pasado en que el hábito tocaba. El futuro sigue
+prohibido."*
+
+**Decisión.** La guarda pasa de "solo hoy" a "nunca el futuro"
+(`assertNotFuture`): cualquier día de hoy hacia atrás en que el hábito toque
+según su frecuencia (`isHabitDueOn`) se puede marcar y desmarcar, siempre
+desde el calendario. `habits.completed_today` — la marca de HOY que lee el
+resto de la app (Hoy, `/habitos`, el badge) — solo se actualiza cuando la
+fecha marcada es hoy; una fecha pasada actualiza únicamente la caché por
+rango que lee el calendario (`lib/habits/completions.ts`), para no pintar el
+hábito de hoy como hecho por corregir un día distinto. No se toca
+`calcular_racha_habito`: **D10** ya documenta que la racha se calcula al leer
+y tolera explícitamente una corrección retroactiva, así que marcar el lunes
+pasado recalcula la racha sola, sin ningún trigger ni columna nueva.
+
+**El mini-mapa de los últimos 14 días (`/habitos`, `habit-mini-map.tsx`)
+queda afuera.** Sigue siendo puramente decorativo — sin `<button>`, sin
+`onClick`, ni siquiera para el día de hoy —, tal como ya lo describía su
+propio comentario. El dueño solo pidió habilitar la corrección en el
+calendario; ampliarla al mini-mapa es una superficie distinta (una grilla de
+14 celdas en vez de bloques con menú contextual) que no se tocó.
+
+**Consecuencia.** `lib/habits/mutations.ts` (`assertNotFuture` reemplaza a
+`assertIsToday`; los `onMutate` de `useMarkHabitDone`/`useUnmarkHabitDone`
+dejan de pisar `completed_today` incondicionalmente), `lib/habits/errors.ts`
+(mensaje de tres partes renombrado), `lib/habits/completions.ts` (nuevo: la
+caché por fecha que le faltaba al calendario para no confundir un día
+completado con "todos los días completados") y
+`openspec/specs/habitos/spec.md` (el requirement "Los días pasados no se
+pueden corregir" pasa a "El futuro no se puede marcar ni corregir", con un
+requirement nuevo que deja explícito que la corrección vive en el calendario
+y el mini-mapa sigue de solo lectura) quedan actualizados.

@@ -4,14 +4,15 @@ import { toastError } from "@/lib/toast";
  * Traducción de errores de hábitos a mensajes de tres partes
  * (`.claude/rules/copy.md`), mismo patrón que `lib/tasks/errors.ts` y
  * `lib/labels/errors.ts`. Los dos primeros casos son los rechazos propios
- * de la capa de datos de este bloque (D-E: solo se marca/desmarca hoy;
- * spec de reprogramación puntual: el override no mueve el hábito de día).
+ * de la capa de datos de este bloque (el futuro no se puede marcar ni
+ * desmarcar, decisión del dueño; spec de reprogramación puntual: el
+ * override no mueve el hábito de día).
  */
 const MENSAJES = {
-  soloHoy: {
+  diaFuturo: {
     quePaso: "No pudimos actualizar el hábito",
-    porQue: "solo se puede marcar o desmarcar el día de hoy",
-    queHacer: "Si ves una fecha distinta a la de hoy, recargá la página.",
+    porQue: "no se puede marcar ni desmarcar un día futuro",
+    queHacer: "Elegí hoy o un día anterior.",
   },
   overrideInvalido: {
     quePaso: "No pudimos reprogramar el horario",
@@ -41,7 +42,7 @@ const MENSAJES = {
 } as const;
 
 function classify(message: string): keyof typeof MENSAJES {
-  if (/solo se puede marcar o desmarcar el día de hoy/i.test(message)) return "soloHoy";
+  if (/no se puede marcar ni desmarcar un día futuro/i.test(message)) return "diaFuturo";
   if (/anterior a la creación del hábito/i.test(message)) return "overrideAntesDeCreacion";
   if (/hábito está archivado/i.test(message)) return "overrideArchivado";
   if (/no le corresponde al hábito/i.test(message)) return "overrideInvalido";

@@ -88,15 +88,29 @@ function minutesFromTimeString(time: string): number {
  * arma el bloque es quien ya tiene la lista de proyectos a mano (mismo
  * patrón que `resolveTaskColor`, que llega ya resuelto). Sin ese dato, el
  * peldaño de "proyecto" de la escalera de `CalendarBlockChip` simplemente no
- * tiene qué mostrar.
+ * tiene qué mostrar. `projectIcon` sigue el mismo criterio: `projects.icon`
+ * es opcional en el dominio, así que puede faltar aun con `projectName`
+ * presente.
  */
-export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName?: string): CalendarBlock | null {
+export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName?: string, projectIcon?: string): CalendarBlock | null {
   const completed = task.completed_at != null;
   const labels = task.labels;
   if (task.due_at) {
     const durationMinutes = task.duration_minutes ?? DEFAULT_TASK_DURATION_MINUTES;
     const end = new Date(new Date(task.due_at).getTime() + durationMinutes * 60_000).toISOString();
-    return { id: task.id, type: "task", title: task.title, color: colorHex, allDay: false, start: task.due_at, end, completed, labels, projectName };
+    return {
+      id: task.id,
+      type: "task",
+      title: task.title,
+      color: colorHex,
+      allDay: false,
+      start: task.due_at,
+      end,
+      completed,
+      labels,
+      projectName,
+      projectIcon,
+    };
   }
   if (task.due_date) {
     return {
@@ -110,6 +124,7 @@ export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName
       completed,
       labels,
       projectName,
+      projectIcon,
     };
   }
   return null;
@@ -118,20 +133,26 @@ export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName
 /**
  * Bloque con horario de un hábito para un día puntual, ya sea con su
  * `scheduled_time` habitual o el de un override de ese día (quien arma esto
- * ya resolvió cuál corresponde). `completed_today` viaja igual que el resto
- * de los campos del hábito (tarea 2.4/2.5): un hábito no tiene proyecto ni
- * etiquetas.
+ * ya resolvió cuál corresponde). `completed` viaja como parámetro propio
+ * (defecto "un hábito marcado hoy se pinta marcado en todos los días"):
+ * `habit.completed_today` es un único booleano por hábito, el mismo para
+ * cualquier ocurrencia del rango visible, así que no sirve para distinguir
+ * qué día puntual está cumplido — quien arma esto ya resolvió el completado
+ * de ESTA fecha leyendo `habit_completions` por rango
+ * (`useHabitCompletionsForRange`, mismo criterio que ya usa `skipped` con
+ * los salteos).
  *
  * `skipped` (grupo 7, D-F): un hábito salteado ese día se queda en el
  * calendario, marcado — no desaparece. `false` por defecto para quien
  * todavía no trae el salteo del rango visible.
  */
 export function habitToCalendarBlock(
-  habit: Pick<Habit, "id" | "name" | "duration_minutes" | "completed_today">,
+  habit: Pick<Habit, "id" | "name" | "icon" | "duration_minutes">,
   dateIso: string,
   scheduledTime: string,
   colorHex: string,
   timezone: string,
+  completed: boolean,
   skipped = false,
 ): CalendarBlock {
   const startMinutes = minutesFromTimeString(scheduledTime);
@@ -143,7 +164,8 @@ export function habitToCalendarBlock(
     allDay: false,
     start: instantFromDayMinutes(dateIso, startMinutes, timezone).toISOString(),
     end: instantFromDayMinutes(dateIso, startMinutes + habit.duration_minutes, timezone).toISOString(),
-    completed: habit.completed_today,
+    completed,
+    icon: habit.icon,
     skipped,
   };
 }

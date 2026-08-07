@@ -2,7 +2,6 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Repeat } from "lucide-react";
 import type { UnscheduledHabitChip } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +27,9 @@ function DraggableChip({ chip }: { chip: UnscheduledHabitChip }) {
       )}
       title={`Arrastrá para programar "${chip.title}" en un horario puntual`}
     >
-      <Repeat aria-hidden className="size-3 shrink-0" style={{ color: chip.color }} />
+      <span aria-hidden className="shrink-0 leading-none">
+        {chip.icon}
+      </span>
       <span className="max-w-32 truncate">{chip.title}</span>
     </button>
   );

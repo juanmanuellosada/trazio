@@ -7,6 +7,7 @@ import { es } from "date-fns/locale";
 import { useTheme } from "next-themes";
 import { CalendarDays, Repeat, SquareCheck } from "lucide-react";
 import { useMounted } from "@/hooks/use-mounted";
+import { todayInTimeZone } from "@/lib/dates/today";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { cn } from "@/lib/utils";
 import type { CalendarBlock, CalendarBlockType } from "@/lib/calendar/block";
@@ -199,6 +200,16 @@ export function CalendarBlockChip({
   // `CalendarBlockChipVariant`).
   const isTight = (variant === "timed" || variant === "overlay") && timedBlockHeightPx(block) < TIGHT_HEIGHT_THRESHOLD_PX;
 
+  // Bloque completado (defecto "un bloque completado no se atenúa ni se
+  // tacha"): mismo tratamiento que ya usa el resto de la app para un ítem
+  // cumplido — `habit-today-row.tsx`/`task-row.tsx`, `text-text-secondary`
+  // más `line-through` en el título —, no uno inventado acá. Se distingue
+  // del hábito salteado (`opacity-60`, más abajo) porque no comparten
+  // ninguna clase: un bloque puede estar completado o salteado, nunca los
+  // dos a la vez (`useMarkHabitDone` borra el salteo del día al completar),
+  // pero si algún día coexistieran no se confundirían entre sí.
+  const completed = !block.isPreview && (block.completed ?? false);
+
   const sharedClassName = cn(
     // Sin `overflow-hidden` (defecto de accesibilidad, ver el comentario del
     // casillero de completar en `titleRow`): el área tocable del casillero
@@ -216,6 +227,7 @@ export function CalendarBlockChip({
     // atenuado como una vista previa, pero sigue interactivo (el casillero
     // de completar sigue funcionando: saltear es reversible).
     !block.isPreview && block.type === "habit" && block.skipped && "opacity-60",
+    completed && "text-text-secondary",
     className,
   );
 
@@ -259,7 +271,6 @@ export function CalendarBlockChip({
   // no una acción — completar desde ahí no tiene sentido (el bloque real
   // sigue en la grilla, invisible mientras dura el gesto).
   const canComplete = !block.isPreview && variant !== "overlay" && (block.type === "task" || block.type === "habit");
-  const completed = block.completed ?? false;
 
   function handleTogglePointerDown(event: PointerEvent<HTMLButtonElement>) {
     // Igual técnica que la manija de redimensionar de `draggable-timed-block.tsx`:
@@ -272,11 +283,20 @@ export function CalendarBlockChip({
     onToggleComplete?.(block);
   }
 
+  // El calendario ahora permite marcar hábitos de días pasados (no solo
+  // "hoy"): el rótulo tiene que decir la verdad para cualquier día del
+  // bloque, no solo el de hoy — si no, un lector de pantalla en un bloque
+  // del lunes pasado anuncia "hecho hoy" sobre algo que no lo es. Mismo
+  // patrón de nombrar el día que ya usa `calendarRangeLabel`
+  // (`lib/calendar/navigation.ts`) para el formato "dia".
+  const isBlockToday = todayInTimeZone(parseISO(block.start), timezone) === todayInTimeZone(new Date(), timezone);
+  const blockDayName = formatInTimeZone(parseISO(block.start), timezone, "EEEE d 'de' MMMM", { locale: es });
+
   const completeLabel =
     block.type === "habit"
       ? completed
-        ? `Desmarcar ${block.title} de hoy`
-        : `Marcar ${block.title} como hecho hoy`
+        ? `Desmarcar ${block.title} ${isBlockToday ? "de hoy" : `del ${blockDayName}`}`
+        : `Marcar ${block.title} como hecho ${isBlockToday ? "hoy" : `el ${blockDayName}`}`
       : completed
         ? `Descompletar ${block.title}`
         : `Completar ${block.title}`;
@@ -336,8 +356,19 @@ export function CalendarBlockChip({
           </button>
         </span>
       )}
-      {(block.type === "event" || block.type === "habit") && <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />}
-      <span className="min-w-0 truncate">{block.title}</span>
+      {block.type === "event" && <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />}
+      {block.type === "habit" && block.icon && (
+        // El emoji del hábito reemplaza el ícono de tipo (Repeat, tarea 2.5):
+        // la forma de píldora (`TYPE_SHAPE_CLASS`) ya distingue el tipo, así
+        // que mostrar los dos era redundante. Sin tamaño de fuente propio:
+        // hereda el de `sharedClassName` (`text-xs` o, en modo apretado,
+        // `text-[0.625rem]`), igual que el título — así no rompe el modo
+        // apretado de un bloque de 15 minutos.
+        <span aria-hidden className="shrink-0 leading-none">
+          {block.icon}
+        </span>
+      )}
+      <span className={cn("min-w-0 truncate", completed && "line-through")}>{block.title}</span>
     </div>
   );
 
@@ -356,7 +387,20 @@ export function CalendarBlockChip({
         </span>
       )}
       {showCalendarName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.calendarName}</span>}
-      {showProjectName && <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.projectName}</span>}
+      {showProjectName && (
+        // Mismo patrón que el peldaño de etiquetas de más abajo (`div` +
+        // `span` truncado): sin proyecto con emoji, se ve exactamente igual
+        // que antes — el emoji solo aparece si el proyecto tiene uno
+        // (`projects.icon` es opcional).
+        <div className="flex min-w-0 items-center gap-1">
+          {block.projectIcon && (
+            <span aria-hidden className="shrink-0 text-[0.65rem] leading-none">
+              {block.projectIcon}
+            </span>
+          )}
+          <span className="min-w-0 truncate text-[0.65rem] text-foreground/80">{block.projectName}</span>
+        </div>
+      )}
       {showLabels && (
         <div className="flex min-w-0 items-center gap-1">
           <span

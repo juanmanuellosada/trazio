@@ -26,6 +26,7 @@ vi.mock("@/lib/calendar/use-update-event", () => ({ useUpdateEvent: () => ({ mut
 
 vi.mock("@/lib/habits/use-habit-schedule-overrides-range", () => ({ useHabitScheduleOverridesForRange: () => ({ data: {} }) }));
 vi.mock("@/lib/habits/skips", () => ({ useSkipHabit: () => ({ mutate: vi.fn() }), useHabitSkipsForRange: () => ({ data: {} }) }));
+vi.mock("@/lib/habits/completions", () => ({ useHabitCompletionsForRange: () => ({ data: {} }) }));
 
 // `vi.mock` se eleva por encima de las declaraciones `const` del módulo, así
 // que los mocks compartidos entre las dos suites (para leer qué mutación se
@@ -117,6 +118,11 @@ describe("ScreenCalendar — seleccionar un bloque de hábito (cambio 1)", () =>
     const user = userEvent.setup();
     await user.dblClick(await screen.findByRole("button", { name: "Meditar" }));
     expect(await screen.findByTestId("habit-form-dialog")).toHaveTextContent("Meditar");
+  });
+
+  it("el emoji del hábito se ve en el bloque del calendario (se perdía solo al pintar)", async () => {
+    renderScreenCalendar();
+    expect(await screen.findByText("🧘")).toBeInTheDocument();
   });
 });
 

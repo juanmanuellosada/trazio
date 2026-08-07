@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CalendarBlock } from "@/lib/calendar/block";
 import { CalendarBlockChip } from "./calendar-block-chip";
 
@@ -70,6 +70,21 @@ describe("CalendarBlockChip — escalera por alto (D-A, tarea 2.1)", () => {
   });
 });
 
+describe("CalendarBlockChip — emoji de proyecto (calendario no mostraba el emoji del proyecto)", () => {
+  it("con emoji, se ve junto al nombre del proyecto", () => {
+    const twoHourTask = block({ end: "2026-08-05T12:00:00-03:00", projectName: "Trabajo", projectIcon: "💼" });
+    render(<CalendarBlockChip block={twoHourTask} variant="timed" timezone={TZ} />);
+    expect(screen.getByText("Trabajo")).toBeInTheDocument();
+    expect(screen.getByText("💼")).toBeInTheDocument();
+  });
+
+  it("sin emoji (proyecto sin ícono), se ve igual que antes: solo el nombre", () => {
+    const twoHourTask = block({ end: "2026-08-05T12:00:00-03:00", projectName: "Trabajo" });
+    render(<CalendarBlockChip block={twoHourTask} variant="timed" timezone={TZ} />);
+    expect(screen.getByText("Trabajo")).toBeInTheDocument();
+  });
+});
+
 describe("CalendarBlockChip — control de completar (tarea 2.4/7.7)", () => {
   it("nunca se cae: sigue presente en un bloque de quince minutos", () => {
     render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
@@ -115,14 +130,82 @@ describe("CalendarBlockChip — control de completar (tarea 2.4/7.7)", () => {
   });
 });
 
+describe("CalendarBlockChip — un bloque completado se ve atenuado y tachado (defecto: no se distinguía de uno pendiente)", () => {
+  it("una tarea completada tacha el título y atenúa el texto, igual que el resto de la app", () => {
+    render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
+    const title = screen.getByText("Escribir el informe");
+    expect(title).toHaveClass("line-through");
+    expect(title.closest('[role="button"]')).toHaveClass("text-text-secondary");
+  });
+
+  it("un hábito completado tacha el título y atenúa el texto", () => {
+    render(<CalendarBlockChip block={block({ type: "habit", completed: true })} variant="timed" timezone={TZ} />);
+    const title = screen.getByText("Escribir el informe");
+    expect(title).toHaveClass("line-through");
+    expect(title.closest('[role="button"]')).toHaveClass("text-text-secondary");
+  });
+
+  it("un bloque pendiente no tacha el título", () => {
+    render(<CalendarBlockChip block={block({ completed: false })} variant="timed" timezone={TZ} />);
+    expect(screen.getByText("Escribir el informe")).not.toHaveClass("line-through");
+  });
+
+  it("completado y salteado no se confunden: el salteado atenúa por opacidad del bloque entero, sin tachar el título", () => {
+    render(<CalendarBlockChip block={block({ type: "habit", skipped: true })} variant="timed" timezone={TZ} />);
+    const title = screen.getByText("Escribir el informe");
+    expect(title.closest('[role="button"]')).toHaveClass("opacity-60");
+    expect(title).not.toHaveClass("line-through");
+  });
+});
+
+// El calendario ahora permite marcar hábitos de días pasados (defecto: el
+// rótulo del casillero decía "hoy" sin importar de qué día era el bloque —
+// falso en un bloque del lunes pasado, y justo el texto que lee un lector de
+// pantalla).
+describe("CalendarBlockChip — rótulo del casillero de hábito dice la verdad para cualquier día", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("un hábito de hoy sigue diciendo 'hoy'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-05T15:00:00-03:00"));
+    render(<CalendarBlockChip block={block({ type: "habit" })} variant="timed" timezone={TZ} />);
+    expect(screen.getByRole("checkbox", { name: "Marcar Escribir el informe como hecho hoy" })).toBeInTheDocument();
+  });
+
+  it("un hábito de un día pasado nombra el día en vez de decir 'hoy'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-07T15:00:00-03:00"));
+    render(<CalendarBlockChip block={block({ type: "habit" })} variant="timed" timezone={TZ} />);
+    expect(
+      screen.getByRole("checkbox", { name: "Marcar Escribir el informe como hecho el miércoles 5 de agosto" }),
+    ).toBeInTheDocument();
+  });
+
+  it("desmarcar un hábito cumplido de un día pasado tampoco dice 'hoy'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-07T15:00:00-03:00"));
+    render(<CalendarBlockChip block={block({ type: "habit", completed: true })} variant="timed" timezone={TZ} />);
+    expect(
+      screen.getByRole("checkbox", { name: "Desmarcar Escribir el informe del miércoles 5 de agosto" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("CalendarBlockChip — marca de hábito (tarea 2.5)", () => {
   it("un hábito de quince minutos igual muestra su marca, junto al casillero", () => {
-    render(<CalendarBlockChip block={block({ type: "habit" })} variant="timed" timezone={TZ} />);
+    render(<CalendarBlockChip block={block({ type: "habit", icon: "🧘" })} variant="timed" timezone={TZ} />);
     expect(screen.getByRole("checkbox")).toBeInTheDocument();
-    // El ícono de hábito (Repeat) es `aria-hidden`; se confirma indirectamente:
-    // no hay ningún otro rol accesible además del casillero y la raíz.
+    expect(screen.getByText("🧘")).toBeInTheDocument();
+  });
+
+  it("el emoji del hábito reemplaza el ícono de tipo: no se dibujan los dos (calendario no mostraba el emoji)", () => {
+    render(<CalendarBlockChip block={block({ type: "habit", icon: "🧘" })} variant="timed" timezone={TZ} />);
     const root = screen.getByRole("button", { name: "Escribir el informe" });
-    expect(root.querySelectorAll("svg").length).toBeGreaterThan(0);
+    // El único ícono de Lucide en un bloque de tipo hábito era `Repeat`; sin
+    // él, no queda ningún `svg` — solo el emoji, en un `span`.
+    expect(root.querySelectorAll("svg").length).toBe(0);
   });
 });
 

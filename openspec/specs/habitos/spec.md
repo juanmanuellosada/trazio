@@ -115,32 +115,39 @@ Archivar un hábito SHALL sacarlo de las vistas activas, del contador de Hoy y d
 - **THEN** vuelve a aparecer en las vistas activas y sus 40 marcas
   históricas siguen visibles en su mini-mapa e historial
 
-### Requirement: Marcar y desmarcar el hábito de hoy
+### Requirement: Marcar y desmarcar hoy o un día pasado, desde el calendario
 
-Un hábito SHALL poder marcarse y desmarcarse como hecho para el día de hoy, únicamente cuando el día de hoy corresponde a su frecuencia configurada.
+Un hábito SHALL poder marcarse y desmarcarse como hecho para el día de hoy o para cualquier día anterior, únicamente cuando ese día corresponde a su frecuencia configurada. Esta corrección SHALL estar disponible desde el calendario (`openspec/specs/vista-calendario/spec.md`, requirement "Cada bloque ofrece sus acciones desde el calendario"); el mini-mapa de los últimos 14 días (`/hábitos`) sigue siendo de solo lectura, sin ofrecer marcar ni desmarcar ningún día, ni siquiera hoy.
 
 #### Scenario: Marcar el hábito de hoy
 
-- **WHEN** se marca como hecho un hábito que toca hoy según su frecuencia
+- **WHEN** se marca como hecho, desde el calendario, un hábito que toca hoy según su frecuencia
 - **THEN** queda registrada una fila en `habit_completions` con
   `completed_on` igual a la fecha de hoy
 
 #### Scenario: Desmarcar el hábito de hoy corrige un click de más
 
-- **WHEN** se desmarca un hábito que ya estaba marcado como hecho hoy
+- **WHEN** se desmarca, desde el calendario, un hábito que ya estaba marcado como hecho hoy
 - **THEN** la fila de `habit_completions` correspondiente al día de hoy se
   elimina
 
-### Requirement: Los días pasados no se pueden corregir
+#### Scenario: Corregir un día pasado desde el calendario
 
-Un día anterior a hoy MUST NOT poder marcarse ni desmarcarse retroactivamente.
+- **WHEN** se marca o desmarca, desde el calendario, un día anterior a hoy en el que el hábito tocaba según su frecuencia
+- **THEN** se crea o se elimina, según corresponda, la fila de
+  `habit_completions` de esa fecha puntual, y la racha se recalcula al leer
+  con esa corrección incluida (D10 — las rachas se calculan, no se guardan)
 
-#### Scenario: Intentar marcar un día pasado no tiene efecto
+### Requirement: El futuro no se puede marcar ni corregir
 
-- **WHEN** se intenta marcar o desmarcar, desde el mini-mapa de los últimos
-  14 días, un día anterior al de hoy
-- **THEN** la operación no está disponible: el mini-mapa es de solo lectura
-  para cualquier día que no sea hoy
+Un día posterior a hoy MUST NOT poder marcarse ni desmarcarse, en ninguna pantalla.
+
+#### Scenario: Intentar marcar un día futuro no tiene efecto
+
+- **WHEN** se intenta marcar o desmarcar un hábito en una fecha posterior a
+  la de hoy
+- **THEN** la operación se rechaza sin crear ni eliminar ninguna fila en
+  `habit_completions`
 
 ### Requirement: Un hábito no aparece en fechas anteriores a su creación
 

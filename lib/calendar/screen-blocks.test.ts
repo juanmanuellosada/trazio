@@ -91,12 +91,19 @@ describe("taskToCalendarBlock", () => {
     const withoutName = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00" }), "#0284C7");
     expect(withoutName?.projectName).toBeUndefined();
   });
+
+  it("el emoji del proyecto es opcional: sin pasarlo, el bloque no lo tiene (calendario no mostraba el emoji)", () => {
+    const withIcon = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00" }), "#0284C7", "Trabajo", "💼");
+    expect(withIcon?.projectIcon).toBe("💼");
+    const withoutIcon = taskToCalendarBlock(task({ due_at: "2026-08-05T10:00:00-03:00" }), "#0284C7", "Trabajo");
+    expect(withoutIcon?.projectIcon).toBeUndefined();
+  });
 });
 
 describe("habitToCalendarBlock / habitBlockId", () => {
   it("arma un bloque con horario a partir de scheduled_time y duration_minutes", () => {
-    const habit = { id: "habit-1", name: "Meditar", duration_minutes: 15, completed_today: false };
-    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ);
+    const habit = { id: "habit-1", name: "Meditar", icon: "🧘", duration_minutes: 15 };
+    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ, false);
     expect(block.id).toBe("habit-1::2026-08-05");
     expect(block.type).toBe("habit");
     expect(block.title).toBe("Meditar");
@@ -106,10 +113,24 @@ describe("habitToCalendarBlock / habitBlockId", () => {
     expect(block.completed).toBe(false);
   });
 
-  it("un hábito cumplido hoy arma el bloque con completed: true", () => {
-    const habit = { id: "habit-1", name: "Meditar", duration_minutes: 15, completed_today: true };
-    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ);
+  it("un hábito cumplido ese día arma el bloque con completed: true", () => {
+    const habit = { id: "habit-1", name: "Meditar", icon: "🧘", duration_minutes: 15 };
+    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ, true);
     expect(block.completed).toBe(true);
+  });
+
+  it("defecto de pintado: el mismo hábito en dos días distintos no comparte completado — cada ocurrencia recibe el suyo", () => {
+    const habit = { id: "habit-1", name: "Meditar", icon: "🧘", duration_minutes: 15 };
+    const completedDay = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ, true);
+    const pendingDay = habitToCalendarBlock(habit, "2026-08-06", "11:00:00", "#22C55E", TZ, false);
+    expect(completedDay.completed).toBe(true);
+    expect(pendingDay.completed).toBe(false);
+  });
+
+  it("el emoji del hábito viaja al bloque (calendario no lo mostraba)", () => {
+    const habit = { id: "habit-1", name: "Meditar", icon: "🧘", duration_minutes: 15 };
+    const block = habitToCalendarBlock(habit, "2026-08-05", "11:00:00", "#22C55E", TZ, false);
+    expect(block.icon).toBe("🧘");
   });
 
   it("parseHabitBlockId recupera el id del hábito de un id de bloque", () => {
