@@ -7,7 +7,7 @@
  */
 export const GUTTER_WIDTH_PX = 56;
 export const DAY_COLUMN_MIN_WIDTH_PX = 112;
-export const HOUR_ROW_HEIGHT_PX = 48;
+export const HOUR_ROW_HEIGHT_PX = 72;
 export const HEADER_ROW_HEIGHT_PX = 32;
 export const GRID_HEIGHT_PX = HOUR_ROW_HEIGHT_PX * 24;
 

@@ -144,7 +144,7 @@ describe("ScreenCalendar — redimensionar un bloque de hábito (cambio 2)", () 
     const handle = container.querySelector(".cursor-ns-resize");
     expect(handle).not.toBeNull();
 
-    // +24px con `HOUR_ROW_HEIGHT_PX` = 48px/hora equivale a +30 minutos
+    // +36px con `HOUR_ROW_HEIGHT_PX` = 72px/hora equivale a +30 minutos
     // (`pixelsToMinutes`): el hábito pasa de 30 a 60 minutos de duración.
     const startY = 100;
     fireEvent.pointerDown(handle!, { clientY: startY, button: 0 });

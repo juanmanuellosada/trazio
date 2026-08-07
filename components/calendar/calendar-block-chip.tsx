@@ -102,7 +102,7 @@ function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): n
 
 /**
  * Modo apretado (defecto encontrado, no en la lista original de tareas):
- * un bloque de quince minutos mide 12px (`HOUR_ROW_HEIGHT_PX` es 48), y el
+ * un bloque de quince minutos mide 18px (`HOUR_ROW_HEIGHT_PX` es 72), y el
  * primer peldaño de la escalera —relleno vertical más una línea de
  * texto— pide `VERTICAL_PADDING_PX + LINE_HEIGHT_PX` = 24px. Por debajo de
  * eso el contenido se recortaba en fragmentos sueltos y el control de
@@ -324,7 +324,7 @@ export function CalendarBlockChip({
         // ancla de 12×12 que no participa del layout (está fuera de flujo,
         // así que no empuja ni la fila ni la escalera de abajo); el círculo
         // que se ve sigue siendo el `span` interno de 12×12, sin cambios.
-        // En un bloque de quince minutos (12px de alto total) esto excede
+        // En un bloque de quince minutos (18px de alto total) esto excede
         // la caja del bloque — a propósito: se prefirió desbordar sin
         // dibujar nada ahí antes que sacar el control (el diseño dice que
         // nunca se cae por falta de espacio). El único límite real es que

@@ -154,7 +154,7 @@ export function DraggableTimedBlock({
        * `calendar-block-chip.tsx` (ancla chica, zona de toque más grande
        * fuera del flujo), con una diferencia a propósito: acá el
        * crecimiento es **solo hacia abajo** (`-bottom-3`, nunca hacia
-       * arriba). Un bloque de quince minutos mide 12px — crecer también
+       * arriba). Un bloque de quince minutos mide 18px — crecer también
        * hacia arriba, como el casillero, le dejaría casi sin superficie
        * propia para moverlo o abrirlo (la manija le ganaría el gesto a todo
        * lo demás). Creciendo solo hacia abajo, la franja que ya intercepta

@@ -31,7 +31,19 @@ describe("CalendarBlockChip — escalera por alto (D-A, tarea 2.1)", () => {
     expect(screen.queryByText(/–/)).not.toBeInTheDocument();
   });
 
-  it("un bloque de una hora agrega el horario, pero no el proyecto ni las etiquetas", () => {
+  it("un bloque de cuarenta minutos agrega el horario, pero no el proyecto ni las etiquetas", () => {
+    const fortyMinuteTask = block({
+      end: "2026-08-05T10:40:00-03:00",
+      projectName: "Trabajo",
+      labels: [{ id: "l1", name: "Urgente", color: "amarillo" }],
+    });
+    render(<CalendarBlockChip block={fortyMinuteTask} variant="timed" timezone={TZ} />);
+    expect(screen.getByText("10:00 – 10:40")).toBeInTheDocument();
+    expect(screen.queryByText("Trabajo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Urgente")).not.toBeInTheDocument();
+  });
+
+  it("un bloque de una hora ya entra con los cuatro peldaños, a 72px/hora (antes hacían falta dos horas)", () => {
     const oneHourTask = block({
       end: "2026-08-05T11:00:00-03:00",
       projectName: "Trabajo",
@@ -39,8 +51,8 @@ describe("CalendarBlockChip — escalera por alto (D-A, tarea 2.1)", () => {
     });
     render(<CalendarBlockChip block={oneHourTask} variant="timed" timezone={TZ} />);
     expect(screen.getByText("10:00 – 11:00")).toBeInTheDocument();
-    expect(screen.queryByText("Trabajo")).not.toBeInTheDocument();
-    expect(screen.queryByText("Urgente")).not.toBeInTheDocument();
+    expect(screen.getByText("Trabajo")).toBeInTheDocument();
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
   });
 
   it("un bloque de dos horas entra cómodo con los cuatro peldaños (tarea/hábito)", () => {
@@ -299,7 +311,7 @@ describe("CalendarBlockChip — formato mes, fuera de alcance (Non-Goal)", () =>
 });
 
 // Defecto encontrado (no en la lista original de tareas): un bloque de
-// quince minutos mide 12px y el primer peldaño de la escalera pedía 24px
+// quince minutos mide 18px y el primer peldaño de la escalera pedía 24px
 // (relleno vertical + una línea de texto normal) — el contenido se recortaba
 // en fragmentos ilegibles y el control de completar quedaba invisible. La
 // salida es apretar, no agrandar (ningún alto mínimo): sin relleno vertical,
