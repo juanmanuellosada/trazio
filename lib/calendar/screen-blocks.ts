@@ -92,7 +92,14 @@ function minutesFromTimeString(time: string): number {
  * es opcional en el dominio, así que puede faltar aun con `projectName`
  * presente.
  */
-export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName?: string, projectIcon?: string): CalendarBlock | null {
+export function taskToCalendarBlock(
+  task: TaskRow,
+  colorHex: string,
+  projectName?: string,
+  projectIcon?: string,
+  sectionName?: string,
+  recurrenceRule?: string,
+): CalendarBlock | null {
   const completed = task.completed_at != null;
   const labels = task.labels;
   if (task.due_at) {
@@ -110,6 +117,10 @@ export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName
       labels,
       projectName,
       projectIcon,
+      priority: task.priority,
+      deadline: task.deadline,
+      sectionName,
+      recurrenceRule,
     };
   }
   if (task.due_date) {
@@ -125,6 +136,10 @@ export function taskToCalendarBlock(task: TaskRow, colorHex: string, projectName
       labels,
       projectName,
       projectIcon,
+      priority: task.priority,
+      deadline: task.deadline,
+      sectionName,
+      recurrenceRule,
     };
   }
   return null;
@@ -154,6 +169,9 @@ export function habitToCalendarBlock(
   timezone: string,
   completed: boolean,
   skipped = false,
+  /** Frecuencia y racha ya en castellano (`formatHabitFrequency`/`formatStreak`, `lib/habits/format.ts`): resueltas por quien arma el bloque, para la ficha de más info (`calendario-mas-info`) — este módulo no importa `lib/habits/format.ts` (D-F). */
+  frequencyText?: string,
+  streakText?: string,
 ): CalendarBlock {
   const startMinutes = minutesFromTimeString(scheduledTime);
   return {
@@ -167,6 +185,8 @@ export function habitToCalendarBlock(
     completed,
     icon: habit.icon,
     skipped,
+    habitFrequencyText: frequencyText,
+    habitStreakText: streakText,
   };
 }
 
@@ -251,5 +271,9 @@ export function eventToCalendarBlock(event: CalendarEventInstance, calendarName?
     start: event.start,
     end: event.end,
     calendarName,
+    // Ya viaja con el evento (`CalendarEventInstance.description`), sin
+    // consulta extra: a diferencia de la de una tarea (jsonb pesado, afuera
+    // de `TaskRow` a propósito), esta no cuesta nada más traerla.
+    description: event.description,
   };
 }

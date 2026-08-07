@@ -425,3 +425,180 @@ describe("CalendarBlockChip — casillero de completar, área tocable de 24×24 
     expect(screen.getByRole("checkbox").className).toContain("-inset-1.5");
   });
 });
+
+// Pedido del dueño ("cuando señalemos una tarea o evento o hábito salga más
+// info. Ahora cuando la señalo se muestra el título solamente"): el globo
+// nativo (`title`) se reemplaza por una ficha propia (`Tooltip` de
+// `@base-ui/react`, ya en la app) con el título completo y el resto de los
+// datos del bloque — nunca en el bloque de vista previa ni en el `overlay`
+// de arrastre, que no son interactivos.
+describe("CalendarBlockChip — ficha de más info al señalar (reemplaza el globo nativo)", () => {
+  it("saca el `title` nativo del bloque interactivo (timed): ya no compite con la ficha propia", () => {
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    expect(screen.getByRole("button", { name: "Escribir el informe" })).not.toHaveAttribute("title");
+  });
+
+  it("saca el `title` nativo del bloque compacto (mes)", () => {
+    render(<CalendarBlockChip block={block()} variant="compact" timezone={TZ} />);
+    expect(screen.getByRole("button")).not.toHaveAttribute("title");
+  });
+
+  it("un bloque de vista previa conserva el `title` nativo: no es interactivo, no lleva ficha", () => {
+    render(<CalendarBlockChip block={block({ isPreview: true })} variant="timed" timezone={TZ} />);
+    expect(screen.getByTitle("Escribir el informe")).toBeInTheDocument();
+  });
+
+  it("al señalar, muestra el título completo (la razón del pedido: en el bloque se trunca)", async () => {
+    const user = userEvent.setup();
+    const longTitle = "Pagar el gas, registrar el gasto y el próximo pago con el banco";
+    render(<CalendarBlockChip block={block({ title: longTitle })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: longTitle }));
+    expect(await screen.findByText(longTitle)).toBeInTheDocument();
+  });
+
+  it("una tarea de todo el día muestra 'Todo el día' con la fecha", async () => {
+    const user = userEvent.setup();
+    render(
+      <CalendarBlockChip
+        block={block({ allDay: true, start: "2026-08-14", end: "2026-08-15" })}
+        variant="timed"
+        timezone={TZ}
+      />,
+    );
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Todo el día · vie 14 de ago")).toBeInTheDocument();
+  });
+
+  it("un bloque con horario muestra el rango, la duración y la fecha", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ end: "2026-08-05T10:30:00-03:00" })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("10:00 – 10:30 · 30 min · mié 5 de ago")).toBeInTheDocument();
+  });
+
+  it("muestra proyecto y sección de una tarea, separados por '›'", async () => {
+    const user = userEvent.setup();
+    render(
+      <CalendarBlockChip
+        block={block({ projectName: "Personal", projectIcon: "🧑", sectionName: "Pagos" })}
+        variant="timed"
+        timezone={TZ}
+      />,
+    );
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Personal › Pagos")).toBeInTheDocument();
+  });
+
+  it("muestra el calendario de origen de un evento", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ type: "event", calendarName: "Trabajo" })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Trabajo")).toBeInTheDocument();
+  });
+
+  it("muestra la prioridad de una tarea", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ priority: 2 })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Alta")).toBeInTheDocument();
+  });
+
+  it("muestra las etiquetas de una tarea", async () => {
+    const user = userEvent.setup();
+    render(
+      <CalendarBlockChip
+        block={block({ labels: [{ id: "l1", name: "Urgente", color: "amarillo" }] })}
+        variant="timed"
+        timezone={TZ}
+      />,
+    );
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Urgente")).toBeInTheDocument();
+  });
+
+  it("describe la recurrencia de una tarea en castellano, no la regla cruda", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ recurrenceRule: "FREQ=MONTHLY;BYMONTHDAY=14" })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Todos los meses el 14")).toBeInTheDocument();
+    expect(screen.queryByText(/FREQ=/)).not.toBeInTheDocument();
+  });
+
+  it("muestra la fecha límite de una tarea", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ deadline: "2026-08-16" })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Límite: 16 de agosto")).toBeInTheDocument();
+  });
+
+  it("muestra frecuencia y racha de un hábito", async () => {
+    const user = userEvent.setup();
+    render(
+      <CalendarBlockChip
+        block={block({ type: "habit", habitFrequencyText: "Todos los días", habitStreakText: "5 días" })}
+        variant="timed"
+        timezone={TZ}
+      />,
+    );
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Todos los días")).toBeInTheDocument();
+    expect(screen.getByText("Racha: 5 días")).toBeInTheDocument();
+  });
+
+  it("dice el estado: una tarea completada, un hábito salteado", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Completada")).toBeInTheDocument();
+  });
+
+  it("dice el estado de un hábito salteado", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block({ type: "habit", skipped: true })} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Salteado")).toBeInTheDocument();
+  });
+
+  it("muestra la descripción de un evento, primera línea, sin el resto", async () => {
+    const user = userEvent.setup();
+    render(
+      <CalendarBlockChip
+        block={block({ type: "event", description: "Primera línea de la descripción\nsegunda línea" })}
+        variant="timed"
+        timezone={TZ}
+      />,
+    );
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    expect(await screen.findByText("Primera línea de la descripción")).toBeInTheDocument();
+    expect(screen.queryByText(/segunda línea/)).not.toBeInTheDocument();
+  });
+
+  it("una tarea sin etiquetas, límite, recurrencia ni descripción da una ficha corta, no una llena de huecos", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    // Espera a que la ficha termine de abrirse (algo que sí debería estar).
+    await screen.findByText("10:00 – 10:15 · 15 min · mié 5 de ago");
+    expect(screen.queryByText(/Límite:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Racha:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Todos los/)).not.toBeInTheDocument();
+  });
+
+  it("mientras se arrastra o redimensiona (`tooltipDisabled`), la ficha no se abre", async () => {
+    const user = userEvent.setup();
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} tooltipDisabled />);
+    await user.hover(screen.getByRole("button", { name: "Escribir el informe" }));
+    // Da tiempo de sobra a la demora de apertura (400ms): si la ficha
+    // fuera a abrirse, ya habría aparecido.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(screen.queryByText("Todo el día", { exact: false })).not.toBeInTheDocument();
+  });
+
+  it("conecta la ficha con el bloque por `aria-describedby`, sin duplicar el nombre accesible", () => {
+    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    const root = screen.getByRole("button", { name: "Escribir el informe" });
+    expect(root).toHaveAttribute("aria-describedby");
+    // El nombre accesible sigue siendo solo el título, no el título repetido.
+    expect(root.getAttribute("aria-label")).toBe("Escribir el informe");
+  });
+});

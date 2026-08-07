@@ -47,6 +47,11 @@ vi.mock("@/lib/tasks/mutations", () => ({ useUpdateTask: () => ({ mutate: vi.fn(
 vi.mock("@/lib/projects/use-projects", () => ({ useProjects: () => ({ data: [] }) }));
 vi.mock("@/components/tasks/task-detail-context", () => ({ useTaskDetail: () => ({ open: vi.fn(), close: vi.fn() }) }));
 vi.mock("@/lib/calendar/use-update-event", () => ({ useUpdateEvent: () => ({ mutate: vi.fn() }) }));
+// `calendario-mas-info`: `ScreenCalendar` ahora también llama a
+// `useHabitStreaks`/`useAllSections` (racha y sección para la ficha de más
+// info) — las dos construyen un cliente de Supabase apenas se llaman,
+// incluso sin hábitos/tareas. Mismo mock que ya usa `screen-calendar.test.tsx`.
+vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
 
 vi.mock("@/lib/calendar/use-google-calendars", () => ({
   useGoogleCalendars: () => ({

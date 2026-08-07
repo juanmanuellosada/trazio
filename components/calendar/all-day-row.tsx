@@ -50,6 +50,7 @@ function DraggableAllDayChip({
         onSelect={onSelectBlock}
         onToggleComplete={onToggleComplete}
         className={cn(!block.isPreview && "touch-none")}
+        tooltipDisabled={isDragging}
       />
     </div>
   );

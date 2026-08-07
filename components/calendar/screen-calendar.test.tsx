@@ -94,12 +94,15 @@ describe("ScreenCalendar — bloques de vista previa de repeticiones futuras", (
     vi.useRealTimers();
   });
 
-  // La tarea real (no vista previa) de por sí ya se dibuja con
-  // `title={block.title}` (`CalendarBlockChip`, tarea 5.1) porque cae el
-  // 2026-08-03, dentro del rango visible: por eso el criterio no es
-  // "aparece o no" sino "aparece más de una vez" (la propia más N vistas
-  // previas) vs. "aparece exactamente una vez" (solo la propia, sin
-  // ninguna vista previa agregada).
+  // La tarea real (no vista previa) de por sí ya se dibuja en pantalla
+  // (cae el 2026-08-03, dentro del rango visible) con su título como texto
+  // visible (`CalendarBlockChip`): por eso el criterio no es "aparece o no"
+  // sino "aparece más de una vez" (la propia más N vistas previas) vs.
+  // "aparece exactamente una vez" (solo la propia, sin ninguna vista previa
+  // agregada). Se cuenta por texto visible (`getAllByText`), no por el
+  // atributo `title` nativo (`calendario-mas-info` lo sacó del bloque real,
+  // que ahora usa una ficha propia — la vista previa, no interactiva, sigue
+  // llevándolo, pero el texto visible es el criterio uniforme para las dos).
 
   it("con la opción activada, arma al menos una vista previa además del bloque real de la tarea", async () => {
     mockRecurringFieldsResponse([
@@ -107,9 +110,9 @@ describe("ScreenCalendar — bloques de vista previa de repeticiones futuras", (
     ]);
     renderScreenCalendar([task()], true);
 
-    await screen.findAllByTitle("Regar las plantas");
+    await screen.findAllByText("Regar las plantas");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getAllByTitle("Regar las plantas").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Regar las plantas").length).toBeGreaterThan(1);
   });
 
   it("con la opción desactivada, no agrega ninguna vista previa aunque la tarea tenga regla", async () => {
@@ -118,17 +121,17 @@ describe("ScreenCalendar — bloques de vista previa de repeticiones futuras", (
     ]);
     renderScreenCalendar([task()], false);
 
-    await screen.findAllByTitle("Regar las plantas");
+    await screen.findAllByText("Regar las plantas");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getAllByTitle("Regar las plantas")).toHaveLength(1);
+    expect(screen.getAllByText("Regar las plantas")).toHaveLength(1);
   });
 
   it("una tarea sin recurrence_rule no genera ninguna vista previa aunque la opción esté activada", async () => {
     mockRecurringFieldsResponse([]); // la tarea no tiene recurrence_rule: el filtro .not() la deja afuera
     renderScreenCalendar([task()], true);
 
-    await screen.findAllByTitle("Regar las plantas");
+    await screen.findAllByText("Regar las plantas");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getAllByTitle("Regar las plantas")).toHaveLength(1);
+    expect(screen.getAllByText("Regar las plantas")).toHaveLength(1);
   });
 });

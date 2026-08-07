@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { DndContext } from "@dnd-kit/core";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TimeGrid } from "./time-grid";
 
@@ -121,5 +121,109 @@ describe("TimeGrid — sombra de destino durante el arrastre", () => {
       </DndContext>,
     );
     expect(container.querySelectorAll(".border-info")).toHaveLength(1);
+  });
+});
+
+// Pedido del dueño ("en móvil, en modo calendario no puedo scrollear cómodo
+// porque apenas toco me detecta que quiero crear algo. El crear algo tiene
+// que ser con doble toque y arrastrar"): un solo toque sobre el fondo vacío
+// no debe arrancar la selección para crear un bloque (deja pasar el scroll
+// nativo); con mouse y lápiz no cambia nada. La selección visible
+// (`.border-primary.border-dashed`) es la señal de que el gesto arrancó.
+describe("TimeGrid — crear arrastrando sobre el fondo vacío: un toque no alcanza, dos sí", () => {
+  function renderGridForCreate() {
+    const onCreateRange = vi.fn();
+    const { container } = render(
+      <DndContext id="test-time-grid-create">
+        <TimeGrid
+          visibleDays={[TODAY]}
+          blocks={[]}
+          timezone={TZ}
+          now={new Date("2026-08-05T10:00:00-03:00")}
+          onCreateRange={onCreateRange}
+        />
+      </DndContext>,
+    );
+    const column = container.querySelector(".relative.border-r.border-border") as HTMLElement;
+    return { container, column, onCreateRange };
+  }
+
+  function selecting(container: HTMLElement) {
+    return container.querySelector(".border-primary.border-dashed");
+  }
+
+  it("con mouse, un solo botonazo arranca y soltar dispara onCreateRange (sin cambios)", () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "mouse" });
+    expect(selecting(container)).toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 150, pointerId: 1 });
+    expect(onCreateRange).toHaveBeenCalledTimes(1);
+  });
+
+  it("en táctil, un solo toque no arranca la selección — deja pasar el scroll", () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "touch" });
+    expect(selecting(container)).not.toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 100, pointerId: 1 });
+    expect(onCreateRange).not.toHaveBeenCalled();
+  });
+
+  it("en táctil, un segundo toque cerca y a tiempo del primero arranca la selección (doble toque)", () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    // Primer toque: se levanta cerca de donde bajó (es un toque, no un scroll).
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "touch" });
+    fireEvent.pointerUp(window, { clientX: 12, clientY: 102, pointerId: 1 });
+    expect(onCreateRange).not.toHaveBeenCalled();
+
+    // Segundo toque, cerca y enseguida: confirma el doble toque.
+    fireEvent.pointerDown(column, { clientX: 14, clientY: 105, pointerId: 2, pointerType: "touch" });
+    expect(selecting(container)).toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 14, clientY: 180, pointerId: 2 });
+    expect(onCreateRange).toHaveBeenCalledTimes(1);
+  });
+
+  it("en táctil, dos toques lejos entre sí no cuentan como doble toque", () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "touch" });
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 100, pointerId: 1 });
+
+    // A más de `DOUBLE_TAP_DISTANCE_PX` (40) del primero.
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 500, pointerId: 2, pointerType: "touch" });
+    expect(selecting(container)).not.toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 500, pointerId: 2 });
+    expect(onCreateRange).not.toHaveBeenCalled();
+  });
+
+  it("en táctil, dos toques separados por más tiempo del esperado no cuentan como doble toque", async () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "touch" });
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 100, pointerId: 1 });
+
+    // Más que `DOUBLE_TAP_WINDOW_MS` (400ms) después: tiempo real, no
+    // temporizadores simulados — el gesto se mide con `event.timeStamp`.
+    await new Promise((resolve) => setTimeout(resolve, 450));
+
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 2, pointerType: "touch" });
+    expect(selecting(container)).not.toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 100, pointerId: 2 });
+    expect(onCreateRange).not.toHaveBeenCalled();
+  });
+
+  it("en táctil, si el primer toque se mueve mucho antes de soltar (arranque de scroll), no cuenta para el próximo doble toque", () => {
+    const { container, column, onCreateRange } = renderGridForCreate();
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "touch" });
+    // Se levanta lejos de donde bajó: fue un scroll, no un toque.
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 400, pointerId: 1 });
+
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 105, pointerId: 2, pointerType: "touch" });
+    expect(selecting(container)).not.toBeInTheDocument();
+
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 105, pointerId: 2 });
+    expect(onCreateRange).not.toHaveBeenCalled();
   });
 });

@@ -26,7 +26,7 @@ const WEEKDAY_RRULE = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 // dar la misma regla, sin importar en qué orden se marcaron los días.
 const BYDAY_CANONICAL_ORDER = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 const WEEKDAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const MONTH_NAMES = [
+export const MONTH_NAMES = [
   "enero",
   "febrero",
   "marzo",
@@ -139,4 +139,56 @@ export function quickOptionsFor(dueDate: CalendarDate): QuickOption[] {
       rule: buildRule({ frequency: "YEARLY", interval: 1, byDay: [], byMonthDay: dueDate.d, byMonth: dueDate.m }),
     },
   ];
+}
+
+const WORKDAY_CODES = ["MO", "TU", "WE", "TH", "FR"];
+
+function weekdayName(code: string): string {
+  return WEEKDAY_OPTIONS.find((option) => option.code === code)?.full.toLowerCase() ?? code;
+}
+
+/** "martes" | "martes y jueves" | "lunes, martes y jueves": mismo patrón de unión que `formatHabitFrequency` (`lib/habits/format.ts`), repetido acá en vez de importado — este módulo no depende de `lib/habits/`. */
+function joinDayNames(codes: string[]): string {
+  const names = codes.map(weekdayName);
+  if (names.length === 1) return names[0]!;
+  return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
+}
+
+/**
+ * Recurrencia en castellano legible, para la ficha de un bloque del
+ * calendario (`calendario-mas-info`): a diferencia de `quickOptionsFor`, que
+ * arma opciones a partir de una fecha de vencimiento, esto describe
+ * cualquier regla ya guardada tal cual está (RRULE, sin `DTSTART`) —
+ * "Todos los meses el 14", nunca "FREQ=MONTHLY;BYMONTHDAY=14".
+ */
+export function describeRecurrenceRule(rule: string): string {
+  const { frequency, interval, byDay, byMonthDay, byMonth } = parseRule(rule);
+
+  if (frequency === "DAILY") {
+    return interval === 1 ? "Todos los días" : `Cada ${interval} días`;
+  }
+
+  if (frequency === "WEEKLY") {
+    const isWorkdays = byDay.length === WORKDAY_CODES.length && WORKDAY_CODES.every((code) => byDay.includes(code));
+    if (isWorkdays) return interval === 1 ? "Los días laborables" : `Cada ${interval} semanas, los días laborables`;
+    if (byDay.length > 0) {
+      const days = joinDayNames(byDay);
+      return interval === 1 ? `Los ${days}` : `Cada ${interval} semanas, los ${days}`;
+    }
+    return interval === 1 ? "Todas las semanas" : `Cada ${interval} semanas`;
+  }
+
+  if (frequency === "MONTHLY") {
+    if (byMonthDay !== null) {
+      return interval === 1 ? `Todos los meses el ${byMonthDay}` : `Cada ${interval} meses el ${byMonthDay}`;
+    }
+    return interval === 1 ? "Todos los meses" : `Cada ${interval} meses`;
+  }
+
+  // YEARLY
+  if (byMonthDay !== null && byMonth !== null) {
+    const date = `${byMonthDay} de ${MONTH_NAMES[byMonth - 1]}`;
+    return interval === 1 ? `Todos los años el ${date}` : `Cada ${interval} años el ${date}`;
+  }
+  return interval === 1 ? "Todos los años" : `Cada ${interval} años`;
 }

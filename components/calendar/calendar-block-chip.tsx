@@ -1,18 +1,151 @@
 "use client";
 
+import { useId } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
-import { differenceInMinutes, parseISO } from "date-fns";
+import { differenceInMinutes, format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { useTheme } from "next-themes";
-import { CalendarDays, Repeat, SquareCheck } from "lucide-react";
+import { CalendarDays, Check, FlagTriangleRight, Flame, Repeat, SkipForward, SquareCheck, Tag } from "lucide-react";
 import { useMounted } from "@/hooks/use-mounted";
 import { todayInTimeZone } from "@/lib/dates/today";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { priorityLabel } from "@/lib/validation/tasks";
+import { describeRecurrenceRule } from "@/lib/recurrence/rule";
 import { cn } from "@/lib/utils";
 import type { CalendarBlock, CalendarBlockType } from "@/lib/calendar/block";
 import { eventColorForTheme } from "@/lib/calendar/screen-blocks";
+import { PriorityDot } from "@/components/selectors/priority-select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HOUR_ROW_HEIGHT_PX } from "./grid-metrics";
+
+/**
+ * Demora antes de mostrar la ficha de más info (`calendario-mas-info`, "que
+ * no salte al pasar por encima de camino a otra cosa"): 400ms — bastante
+ * más que el "instantáneo" que se usa en otros lados de la app para no
+ * competir con el arrastre (`@dnd-kit` activa recién a los 8px, así que
+ * cualquier gesto de arrastrar-y-soltar típico ya se resolvió antes de que
+ * este plazo termine), y bastante menos que el segundo largo de un tooltip
+ * nativo. Cierre inmediato (`closeDelay: 0`): al sacar el mouse, no tiene
+ * sentido demorar el cierre de algo no interactivo.
+ */
+const INFO_CARD_OPEN_DELAY_MS = 400;
+
+/** Primera línea no vacía de una descripción, recortada (D-copy, "el principio de la descripción"): nunca el texto entero, que es cosa del detalle. */
+function descriptionExcerpt(description: string): string | null {
+  const firstLine = description.split("\n").find((line) => line.trim().length > 0)?.trim();
+  if (!firstLine) return null;
+  return firstLine.length > 140 ? `${firstLine.slice(0, 140)}…` : firstLine;
+}
+
+/**
+ * Contenido de la ficha de más info (`calendario-mas-info`): reemplaza el
+ * globo nativo (`title`), que solo mostraba el título — la razón del pedido
+ * del dueño. Cada línea solo aparece si el dato existe (D-copy): una tarea
+ * sin etiquetas, límite ni descripción da una ficha corta, no una llena de
+ * huecos.
+ *
+ * Fechas de un solo día (`allDay`, `deadline`) se formatean con `format`
+ * simple, sin `formatInTimeZone`: son fechas de calendario (`yyyy-MM-dd`),
+ * no instantes — pasarlas por una conversión de zona horaria podría
+ * correrlas un día si la zona del navegador difiere de `timezone` (mismo
+ * cuidado que ya toma `calendarRangeLabel`, `lib/calendar/navigation.ts`).
+ * El horario con hora sí es un instante real, así que ahí corresponde
+ * `formatInTimeZone` (igual que `formatBlockTimeRange`, más abajo).
+ */
+function CalendarBlockInfoCard({ block, timezone, timeFormat }: { block: CalendarBlock; timezone: string; timeFormat: 12 | 24 }) {
+  const start = parseISO(block.start);
+  const end = parseISO(block.end);
+  const dateLabel = block.allDay
+    ? format(start, "EEE d 'de' MMM", { locale: es })
+    : formatInTimeZone(start, timezone, "EEE d 'de' MMM", { locale: es });
+  const whenLine = block.allDay
+    ? `Todo el día · ${dateLabel}`
+    : `${formatBlockTimeRange(block, timezone, timeFormat)} · ${differenceInMinutes(end, start)} min · ${dateLabel}`;
+
+  const whereIcon = block.type === "task" ? block.projectIcon : undefined;
+  const whereText =
+    block.type === "event"
+      ? block.calendarName
+      : block.type === "task"
+        ? [block.projectName, block.sectionName].filter(Boolean).join(" › ") || undefined
+        : undefined;
+
+  const recurrenceText = block.type === "task" && block.recurrenceRule ? describeRecurrenceRule(block.recurrenceRule) : null;
+  const deadlineText = block.type === "task" && block.deadline ? `Límite: ${format(parseISO(block.deadline), "d 'de' MMMM", { locale: es })}` : null;
+  const description = block.description ? descriptionExcerpt(block.description) : null;
+
+  const statusText =
+    block.type === "task" && block.completed
+      ? "Completada"
+      : block.type === "habit" && block.skipped
+        ? "Salteado"
+        : block.type === "habit" && block.completed
+          ? "Cumplido"
+          : null;
+
+  return (
+    <div className="flex flex-col gap-1.5 text-left">
+      <p className="text-sm font-medium">{block.title}</p>
+      <div className="flex flex-col gap-1 text-[0.7rem] text-background/80">
+        <span>{whenLine}</span>
+        {whereText && (
+          <span className="flex items-center gap-1.5">
+            {whereIcon && <span aria-hidden>{whereIcon}</span>}
+            {whereText}
+          </span>
+        )}
+        {block.type === "task" && (
+          <span className="flex items-center gap-1.5">
+            <PriorityDot priority={block.priority ?? 4} />
+            {priorityLabel(block.priority ?? 4)}
+          </span>
+        )}
+        {block.type === "task" && block.labels && block.labels.length > 0 && (
+          <span className="flex items-center gap-1.5">
+            <Tag aria-hidden className="size-3 shrink-0" />
+            {block.labels.map((label) => label.name).join(", ")}
+          </span>
+        )}
+        {block.type === "habit" && block.habitFrequencyText && (
+          <span className="flex items-center gap-1.5">
+            <Repeat aria-hidden className="size-3 shrink-0" />
+            {block.habitFrequencyText}
+          </span>
+        )}
+        {recurrenceText && (
+          <span className="flex items-center gap-1.5">
+            <Repeat aria-hidden className="size-3 shrink-0" />
+            {recurrenceText}
+          </span>
+        )}
+        {deadlineText && (
+          <span className="flex items-center gap-1.5">
+            <FlagTriangleRight aria-hidden className="size-3 shrink-0" />
+            {deadlineText}
+          </span>
+        )}
+        {block.type === "habit" && block.habitStreakText && (
+          <span className="flex items-center gap-1.5">
+            <Flame aria-hidden className="size-3 shrink-0" />
+            Racha: {block.habitStreakText}
+          </span>
+        )}
+        {statusText && (
+          <span className="flex items-center gap-1.5">
+            {block.type === "habit" && block.skipped ? (
+              <SkipForward aria-hidden className="size-3 shrink-0" />
+            ) : (
+              <Check aria-hidden className="size-3 shrink-0" />
+            )}
+            {statusText}
+          </span>
+        )}
+        {description && <span>{description}</span>}
+      </div>
+    </div>
+  );
+}
 
 const TYPE_ICON: Record<CalendarBlockType, typeof CalendarDays> = {
   task: SquareCheck,
@@ -177,6 +310,7 @@ export function CalendarBlockChip({
   timeFormat = 24,
   className,
   style,
+  tooltipDisabled = false,
 }: {
   block: CalendarBlock;
   variant: CalendarBlockChipVariant;
@@ -187,10 +321,27 @@ export function CalendarBlockChip({
   timeFormat?: 12 | 24;
   className?: string;
   style?: CSSProperties;
+  /**
+   * Apaga la ficha de más info mientras el bloque se está arrastrando o
+   * redimensionando (`calendario-mas-info`, "no puede pelearse con lo que ya
+   * hace el bloque"): quien envuelve este chip con `@dnd-kit`
+   * (`draggable-timed-block.tsx`, `calendar-view.tsx`) es quien sabe si hay
+   * un gesto en curso — este componente no tiene ese estado. La demora de
+   * apertura (`INFO_CARD_OPEN_DELAY_MS`) ya evita que un arrastre típico la
+   * dispare, pero un arrastre lento sí podría; esto es la red de seguridad
+   * explícita para ese caso.
+   */
+  tooltipDisabled?: boolean;
 }) {
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
   const theme: "light" | "dark" = mounted && resolvedTheme === "dark" ? "dark" : "light";
+  // Conecta la ficha con el bloque para lectores de pantalla (`aria-describedby`):
+  // esta versión de `@base-ui/react` no lo arma sola (probado a mano — el
+  // popup no lleva `role` ni el trigger `aria-describedby`), así que se arma
+  // acá. El nombre del bloque (`aria-label`) no cambia — la ficha es
+  // descripción, no nombre, así que no se duplica en el anuncio inicial.
+  const infoCardId = useId();
 
   // Corrección de exactitud (tarea 3.3, D-B): el color de un evento viene
   // crudo de Google, sin el ajuste por tema que ya tiene el de proyecto o
@@ -276,15 +427,26 @@ export function CalendarBlockChip({
       );
     }
     return (
-      <button
-        type="button"
-        onClick={() => onSelect?.(block)}
-        className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
-        style={sharedStyle}
-        title={block.title}
-      >
-        {legacyContent}
-      </button>
+      <TooltipProvider delay={INFO_CARD_OPEN_DELAY_MS} closeDelay={0}>
+        <Tooltip disabled={tooltipDisabled}>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                onClick={() => onSelect?.(block)}
+                aria-describedby={infoCardId}
+                className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
+                style={sharedStyle}
+              />
+            }
+          >
+            {legacyContent}
+          </TooltipTrigger>
+          <TooltipContent id={infoCardId} className="w-72 max-w-[calc(100vw-2rem)] flex-col items-start gap-0 px-3 py-2.5">
+            <CalendarBlockInfoCard block={block} timezone={timezone} timeFormat={timeFormat} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
@@ -482,17 +644,28 @@ export function CalendarBlockChip({
   }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={block.title}
-      onClick={() => onSelect?.(block)}
-      onKeyDown={handleKeyDown}
-      className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
-      style={sharedStyle}
-      title={block.title}
-    >
-      {ladderContent}
-    </div>
+    <TooltipProvider delay={INFO_CARD_OPEN_DELAY_MS} closeDelay={0}>
+      <Tooltip disabled={tooltipDisabled}>
+        <TooltipTrigger
+          render={
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={block.title}
+              aria-describedby={infoCardId}
+              onClick={() => onSelect?.(block)}
+              onKeyDown={handleKeyDown}
+              className={cn(sharedClassName, "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}
+              style={sharedStyle}
+            />
+          }
+        >
+          {ladderContent}
+        </TooltipTrigger>
+        <TooltipContent id={infoCardId} className="w-72 max-w-[calc(100vw-2rem)] flex-col items-start gap-0 px-3 py-2.5">
+          <CalendarBlockInfoCard block={block} timezone={timezone} timeFormat={timeFormat} />
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

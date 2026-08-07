@@ -134,6 +134,7 @@ export function DraggableTimedBlock({
         onSelect={onSelectBlock}
         onToggleComplete={onToggleComplete}
         className={cn(!disabled && !block.isPreview && "touch-none")}
+        tooltipDisabled={isDragging || isResizing}
       />
       {/*
        * Manija de redimensionar: hoy también se ofrece en un hábito

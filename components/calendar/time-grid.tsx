@@ -17,6 +17,29 @@ import type { DragResult } from "@/lib/calendar/drag";
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
 /**
+ * Crear un bloque en táctil pide doble toque y arrastrar (pedido del dueño,
+ * "en móvil... apenas toco me detecta que quiero crear algo. El crear algo
+ * tiene que ser con doble toque y arrastrar"): un solo toque sobre el fondo
+ * vacío no debe arrancar nada — tiene que dejar pasar el scroll nativo tal
+ * cual, sin ningún efecto (ni `setState`, ni `preventDefault`, ni
+ * `touch-action`). Con mouse y lápiz no cambia nada (`event.pointerType`,
+ * nunca detección de dispositivo una sola vez al cargar): un solo botonazo
+ * sigue arrancando la selección, como siempre.
+ *
+ * Ventana entre los dos toques: 400ms — más que el "doble tap" típico de
+ * Android (~300ms, `ViewConfiguration.getDoubleTapTimeout()`), para que uno
+ * lento no falle (pedido explícito), sin llegar a confundirse con dos
+ * toques deliberadamente separados.
+ */
+const DOUBLE_TAP_WINDOW_MS = 400;
+/** Distancia entre los dos toques: bastante más que el temblor de un dedo, bastante menos que una fila de la grilla (`HOUR_ROW_HEIGHT_PX`, 96px), para que "cerca" siga significando "el mismo lugar". */
+const DOUBLE_TAP_DISTANCE_PX = 40;
+/** Cuánto se puede mover el dedo entre bajar y levantar para que un toque cuente como toque, no como el arranque de un scroll (mismo orden que el "touch slop" de Android, ~8-10px): si se movió más, no queda pendiente para el próximo doble toque. */
+const TAP_MOVEMENT_TOLERANCE_PX = 10;
+
+type PendingTap = { x: number; y: number; time: number };
+
+/**
  * Cada cuánto avanza la línea de la hora actual (tarea 1.1, defecto: hoy
  * se congela para siempre). Cada segundo sería desperdicio: la grilla mide
  * `HOUR_ROW_HEIGHT_PX` (96px) por hora, así que un minuto entero mueve la
@@ -81,18 +104,18 @@ function DayColumn({
   const { setNodeRef } = useDroppable({ id: `${DAY_DROPPABLE_PREFIX}${dateKey}`, data: { dateKey } });
   const containerRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
+  // Toque pendiente de convertirse en el primero de un doble toque (ver el
+  // comentario de `DOUBLE_TAP_WINDOW_MS`): un `ref`, no estado — no debe
+  // disparar un re-render, y el gesto de mouse/lápiz no lo toca nunca.
+  const pendingTapRef = useRef<PendingTap | null>(null);
 
   const positioned = layoutTimedBlocksForDay(blocks, dateKey, timezone);
 
-  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    // Solo si el gesto empieza directamente sobre el fondo vacío: sobre un
-    // bloque existente, este pointerdown nunca llega acá porque el bloque
-    // (o su manija de redimensionar) ya llamó a `stopPropagation` o es el
-    // target real del evento.
+  /** Arranca la selección para crear un bloque: mismo cuerpo que ya tenía `handlePointerDown` antes de sumar el doble toque, ahora compartido entre el camino de mouse/lápiz (un solo botonazo) y el segundo toque de un doble toque táctil. */
+  function startSelectionDrag(event: React.PointerEvent<HTMLDivElement> | PointerEvent) {
     const createRange = onCreateRange;
-    if (event.target !== event.currentTarget || !createRange) return;
     const container = containerRef.current;
-    if (!container) return;
+    if (!createRange || !container) return;
     const rect = container.getBoundingClientRect();
     const startMinutes = clampMinutes(snapToQuarterHour(pixelsToMinutes(event.clientY - rect.top, HOUR_ROW_HEIGHT_PX)), 0, DAY_MINUTES - SNAP_MINUTES);
     setSelection({ startMinutes, endMinutes: startMinutes + SNAP_MINUTES });
@@ -117,6 +140,69 @@ function DayColumn({
 
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp, { once: true });
+  }
+
+  /**
+   * Deja pendiente un toque táctil que no arrancó nada (el primero de un
+   * posible doble toque): sin `preventDefault` ni `setState` acá — el único
+   * trabajo es mirar, con oyentes que tampoco llaman a `preventDefault`, si
+   * termina siendo un toque de verdad (se levanta cerca de donde bajó,
+   * `TAP_MOVEMENT_TOLERANCE_PX`) o el arranque de un scroll (se movió más:
+   * no cuenta para el próximo doble toque).
+   */
+  function trackPendingTap(event: React.PointerEvent<HTMLDivElement>) {
+    const downX = event.clientX;
+    const downY = event.clientY;
+    const downTime = event.timeStamp;
+    const pointerId = event.pointerId;
+
+    function clearListeners() {
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", clearListeners);
+    }
+    function handlePointerUp(upEvent: PointerEvent) {
+      clearListeners();
+      if (upEvent.pointerId !== pointerId) return;
+      const movedTooMuch =
+        Math.abs(upEvent.clientX - downX) > TAP_MOVEMENT_TOLERANCE_PX || Math.abs(upEvent.clientY - downY) > TAP_MOVEMENT_TOLERANCE_PX;
+      pendingTapRef.current = movedTooMuch ? null : { x: downX, y: downY, time: downTime };
+    }
+
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", clearListeners);
+  }
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // Solo si el gesto empieza directamente sobre el fondo vacío: sobre un
+    // bloque existente, este pointerdown nunca llega acá porque el bloque
+    // (o su manija de redimensionar) ya llamó a `stopPropagation` o es el
+    // target real del evento.
+    if (event.target !== event.currentTarget || !onCreateRange) return;
+
+    if (event.pointerType === "touch") {
+      const pending = pendingTapRef.current;
+      const isDoubleTap =
+        pending !== null &&
+        event.timeStamp - pending.time <= DOUBLE_TAP_WINDOW_MS &&
+        Math.abs(event.clientX - pending.x) <= DOUBLE_TAP_DISTANCE_PX &&
+        Math.abs(event.clientY - pending.y) <= DOUBLE_TAP_DISTANCE_PX;
+
+      if (!isDoubleTap) {
+        // Primer toque: no arranca nada, deja pasar el scroll nativo tal
+        // cual (nada de `preventDefault` acá tampoco).
+        trackPendingTap(event);
+        return;
+      }
+      // Segundo toque, cerca y a tiempo del primero: confirmado. Se corta
+      // el gesto nativo desde acá (no antes, en el primer toque, que tiene
+      // que quedar intacto para que el scroll funcione) para que el
+      // navegador no compita por el mismo gesto mientras se arrastra para
+      // definir el tamaño del bloque nuevo.
+      pendingTapRef.current = null;
+      event.preventDefault();
+    }
+
+    startSelectionDrag(event);
   }
 
   return (

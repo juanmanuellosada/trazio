@@ -47,6 +47,12 @@ describe("taskToCalendarBlock", () => {
       end: new Date("2026-08-05T10:45:00-03:00").toISOString(),
       completed: false,
       labels: [],
+      priority: 2,
+      deadline: null,
+      projectName: undefined,
+      projectIcon: undefined,
+      sectionName: undefined,
+      recurrenceRule: undefined,
     });
   });
 
@@ -67,6 +73,12 @@ describe("taskToCalendarBlock", () => {
       end: "2026-08-06",
       completed: false,
       labels: [],
+      priority: 2,
+      deadline: null,
+      projectName: undefined,
+      projectIcon: undefined,
+      sectionName: undefined,
+      recurrenceRule: undefined,
     });
   });
 
@@ -188,6 +200,8 @@ describe("eventToCalendarBlock", () => {
       allDay: false,
       start: "2026-08-05T13:00:00-03:00",
       end: "2026-08-05T14:00:00-03:00",
+      calendarName: undefined,
+      description: null,
     });
   });
 

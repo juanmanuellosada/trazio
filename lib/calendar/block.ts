@@ -57,6 +57,27 @@ export type CalendarBlock = {
   calendarName?: string;
   /** Hábito salteado ese día (grupo 6/7 de `calendario-legible-y-manipulable`, D-F): se queda en el calendario, marcado — no desaparece. `undefined` en una tarea o un evento, que no tienen este concepto. */
   skipped?: boolean;
+
+  // Campos de la ficha de más info (`calendario-mas-info`): la grilla ya
+  // trae `title`/`labels`/etc. arriba; estos son los que faltaban para no
+  // mostrar solo el título en el globo nativo. Mismo criterio que el resto
+  // del tipo: cada uno solo lo llena el dominio que lo tiene, la grilla no
+  // decide nada a partir de ellos salvo mostrarlos si están.
+
+  /** Prioridad de una tarea (`lib/validation/tasks.ts`, 1 Urgente a 4 Baja, nunca `null` en el dominio): `undefined` en un hábito o un evento. */
+  priority?: number;
+  /** Fecha límite de una tarea (`yyyy-MM-dd`), o `null` si no tiene una: `undefined` en un hábito o un evento. */
+  deadline?: string | null;
+  /** Nombre de la sección de una tarea, si quien arma el bloque ya lo resolvió: un hábito o un evento no tienen sección. */
+  sectionName?: string;
+  /** Regla de recurrencia de una tarea (RRULE sin `DTSTART`, `lib/recurrence/rule.ts`), si la tiene: un hábito no se repite por esta vía (su repetición es `frequency_type`) y un evento no trae este dato acá. */
+  recurrenceRule?: string;
+  /** Frecuencia de un hábito, ya en castellano (`formatHabitFrequency`, `lib/habits/format.ts`): quien arma el bloque la resuelve — la grilla no importa ese módulo (D-F, `lib/calendar/screen-blocks.ts`). La duración no viaja aparte: es la misma que ya se puede leer de `start`/`end` en cualquier bloque con horario, como un hábito siempre tiene. */
+  habitFrequencyText?: string;
+  /** Racha de un hábito, ya en castellano (`formatStreak`, `lib/habits/format.ts`): mismo criterio que `habitFrequencyText`. `undefined` mientras la racha todavía no cargó. */
+  habitStreakText?: string;
+  /** Primeras líneas de la descripción de un evento (`CalendarEventInstance.description`, ya viaja sin costo extra): una tarea no trae este dato acá — `description` es jsonb pesado, deliberadamente afuera de `TaskRow` (`lib/tasks/task-columns.ts`). */
+  description?: string | null;
 };
 
 /**

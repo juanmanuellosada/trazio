@@ -18,6 +18,8 @@ import { useSetHabitScheduleOverride } from "@/lib/habits/schedule-overrides";
 import { useHabitScheduleOverridesForRange } from "@/lib/habits/use-habit-schedule-overrides-range";
 import { useSkipHabit, useHabitSkipsForRange } from "@/lib/habits/skips";
 import { useHabitCompletionsForRange } from "@/lib/habits/completions";
+import { useHabitStreaks } from "@/lib/habits/use-habit-streaks";
+import { formatHabitFrequency, formatStreak } from "@/lib/habits/format";
 import { HabitFormDialog } from "@/components/habits/habit-form-dialog";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
 import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
@@ -37,6 +39,7 @@ import { useRecurringTaskFields } from "@/lib/calendar/use-recurring-task-fields
 import { useUpdateEvent } from "@/lib/calendar/use-update-event";
 import { canWriteCalendar, useGoogleCalendars } from "@/lib/calendar/use-google-calendars";
 import { useProjects } from "@/lib/projects/use-projects";
+import { useAllSections } from "@/lib/sections/use-sections";
 import { expandRecurringTaskRange } from "@/lib/recurrence/expand-range";
 import { toastSuccess } from "@/lib/toast";
 import type { CalendarDate } from "@/lib/parser/dates";
@@ -171,6 +174,12 @@ export function ScreenCalendar({
   const { data: projects } = useProjects();
   const projectNameById = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.name] as const)), [projects]);
   const projectIconById = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.icon] as const)), [projects]);
+  // Sección de la tarea, para la ficha de más info (`calendario-mas-info`,
+  // "proyecto › sección"): mismo criterio que `projectNameById` — una
+  // consulta mayorista (`useAllSections`, cruza proyectos, igual que Hoy o
+  // Próximos), no una por tarea.
+  const { data: sections } = useAllSections();
+  const sectionNameById = useMemo(() => new Map((sections ?? []).map((section) => [section.id, section.name] as const)), [sections]);
 
   function canEditEvent(event: CalendarEventInstance): boolean {
     const calendar = calendarById.get(event.calendarId);
@@ -193,6 +202,12 @@ export function ScreenCalendar({
   // pedidos aparte solo para las tareas ya visibles.
   const taskIds = useMemo(() => tasks.map((task) => task.id), [tasks]);
   const recurringTaskFields = useRecurringTaskFields(taskIds);
+  // También la usa `taskBlocks` (más abajo, para la ficha de más info): la
+  // misma consulta de campos de recurrencia ya alcanza para las dos cosas.
+  const recurrenceRuleByTaskId = useMemo(
+    () => new Map((recurringTaskFields.data ?? []).map((fields) => [fields.id, fields.recurrence_rule] as const)),
+    [recurringTaskFields.data],
+  );
 
   const previewBlocks = useMemo(() => {
     if (!options.showFutureRecurrences || !recurringTaskFields.data || visibleDays.length === 0) return [];
@@ -228,11 +243,23 @@ export function ScreenCalendar({
             resolveTaskColor(task),
             projectNameById.get(task.project_id),
             projectIconById.get(task.project_id) ?? undefined,
+            task.section_id ? sectionNameById.get(task.section_id) : undefined,
+            recurrenceRuleByTaskId.get(task.id),
           ),
         )
         .filter((block): block is CalendarBlock => block !== null),
-    [tasks, resolveTaskColor, projectNameById, projectIconById],
+    [tasks, resolveTaskColor, projectNameById, projectIconById, sectionNameById, recurrenceRuleByTaskId],
   );
+
+  // Racha de cada hábito, para la ficha de más info (`calendario-mas-info`):
+  // una consulta por hábito (`useHabitStreaks`, ya la usa `habits-view.tsx`
+  // para toda la lista), nunca de a un bloque por vez — la cantidad de
+  // hábitos de un usuario es chica, a diferencia de sus ocurrencias en el
+  // calendario. Gateada por `mounted`/`now` (mismo motivo que el resto del
+  // reloj de este componente): sin eso, el primer render calcularía la
+  // racha contra una fecha que todavía no es "ahora".
+  const habitIds = useMemo(() => (habits ?? []).map((habit) => habit.id), [habits]);
+  const { streaksById: habitStreaksById } = useHabitStreaks(mounted && now ? habitIds : [], now ?? new Date());
 
   const { habitBlocks, unscheduledHabits } = useMemo(() => {
     if (!options.showHabits || !habits) {
@@ -252,7 +279,20 @@ export function ScreenCalendar({
         if (effectiveTime) {
           const skipped = skipsByDate[day]?.[habit.id] ?? false;
           const completed = completionsByDate[day]?.[habit.id] ?? false;
-          timed.push(habitToCalendarBlock(habit, day, effectiveTime, resolveProjectColorHex(habit.color, theme), timezone, completed, skipped));
+          const streak = habitStreaksById[habit.id];
+          timed.push(
+            habitToCalendarBlock(
+              habit,
+              day,
+              effectiveTime,
+              resolveProjectColorHex(habit.color, theme),
+              timezone,
+              completed,
+              skipped,
+              formatHabitFrequency(habit),
+              streak ? formatStreak(streak.currentStreak, habit.frequency_type) : undefined,
+            ),
+          );
         } else {
           chipHabitIds.add(habit.id);
         }
@@ -264,7 +304,7 @@ export function ScreenCalendar({
       return { id: habit.id, title: habit.name, color: resolveProjectColorHex(habit.color, theme), icon: habit.icon };
     });
     return { habitBlocks: timed, unscheduledHabits: chips };
-  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, rangeCompletions.data, visibleDays, timezone, theme, habitsById]);
+  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, rangeCompletions.data, visibleDays, timezone, theme, habitsById, habitStreaksById]);
 
   // `pendingEventUpdate` (tarea 5.4, D-D): mientras se pregunta el alcance
   // de una serie, el evento real en caché todavía no cambió (`applyEventUpdate`
