@@ -177,7 +177,7 @@ export function ReminderPicker({
                 key={reminder.id}
                 className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-surface"
               >
-                <span className={reminder.delivered_at ? "text-text-secondary line-through" : undefined}>
+                <span className={reminder.delivered_at ? "text-text-completed line-through" : undefined}>
                   {formatReminderMoment(reminder.remind_at)}
                   {reminder.offset_minutes != null && ` · ${relativeOffsetLabel(reminder.offset_minutes)}`}
                 </span>

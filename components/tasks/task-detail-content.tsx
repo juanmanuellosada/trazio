@@ -350,7 +350,7 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
             onBlur={saveTitleNow}
             aria-label="Título de la tarea"
             placeholder="Título de la tarea"
-            className={cn("h-auto flex-1 border-none bg-transparent px-0 text-lg font-medium shadow-none focus-visible:ring-0", isCompleted && "text-text-secondary line-through")}
+            className={cn("h-auto flex-1 border-none bg-transparent px-0 text-lg font-medium shadow-none focus-visible:ring-0", isCompleted && "text-text-completed line-through")}
           />
 
           <DropdownMenu>

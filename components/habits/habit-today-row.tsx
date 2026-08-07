@@ -73,13 +73,15 @@ export function HabitTodayRow({
       <span
         className={cn(
           "min-w-0 flex-1 truncate text-sm text-foreground",
-          habit.completed_today && "text-text-secondary line-through",
+          habit.completed_today && "text-text-completed line-through",
         )}
       >
         {habit.name}
       </span>
 
-      <span className="shrink-0 text-xs text-text-secondary">{formatHabitTime(effectiveTime, timeFormat)}</span>
+      <span className={cn("shrink-0 text-xs text-text-secondary", habit.completed_today && "text-text-completed")}>
+        {formatHabitTime(effectiveTime, timeFormat)}
+      </span>
     </li>
   );
 }

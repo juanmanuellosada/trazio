@@ -16,6 +16,11 @@
   /* Texto */
   --text-primary: #14181f;
   --text-secondary: #5c6675;
+  /* Tercer escalón, solo para texto completado (bloque "completado más
+     sombreado"): más apagado que --text-secondary (que sigue siendo el tono
+     de metadatos sin completar) pero por encima de 4.5:1 contra --background
+     (4.86:1) y contra --surface (4.58:1), el fondo de hover de la fila. */
+  --text-completed: #697280;
 
   /* Marca / acción primaria */
   --primary: #283b56;
@@ -66,6 +71,9 @@
 
   --text-primary: #f1f4f8;
   --text-secondary: #94a3b8;
+  /* Mismo criterio que en :root: 5.44:1 contra --background, 4.74:1 contra
+     --surface. */
+  --text-completed: #818fa4;
 
   --primary: #8ca3c9;
   --primary-foreground: #0f172a;
@@ -109,6 +117,7 @@
   --color-foreground: var(--text-primary);
   --color-surface: var(--surface);
   --color-text-secondary: var(--text-secondary);
+  --color-text-completed: var(--text-completed);
 
   --color-card: var(--surface);
   --color-card-foreground: var(--text-primary);

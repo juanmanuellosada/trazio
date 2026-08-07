@@ -55,7 +55,7 @@ import { useTaskDetail } from "./task-detail-context";
 import { TaskList } from "./task-list";
 import { TaskQuickAddRow } from "./task-quick-add-row";
 
-function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
+function LabelChipView({ label, completed = false }: { label: TaskRowData["labels"][number]; completed?: boolean }) {
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
   // `label.color` ya no es siempre un id de la paleta: desde que
@@ -68,7 +68,15 @@ function LabelChipView({ label }: { label: TaskRowData["labels"][number] }) {
   // de montar, y puede no coincidir con el servidor.
   const hex = resolveProjectColorHex(label.color, mounted && resolvedTheme === "dark" ? "dark" : "light");
   return (
-    <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium text-white" style={{ backgroundColor: hex }}>
+    // `completed`: el color de la etiqueta es un hex de proyecto, no un
+    // token de texto — no hay a dónde bajarlo con `--text-completed`. La
+    // opacidad acá es del chip en sí, no de la fila entera (bloque
+    // "completado más sombreado": esa es justo la que está prohibida,
+    // porque apagaría también el casillero marcado).
+    <span
+      className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium text-white", completed && "opacity-70")}
+      style={{ backgroundColor: hex }}
+    >
       {label.name}
     </span>
   );
@@ -659,7 +667,7 @@ export function TaskRow({
             onKeyDown={isFlat ? undefined : handleTitleKeyDown}
             className={cn(
               "min-w-0 flex-1 overflow-hidden rounded px-0.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              isCompleted && "text-text-secondary",
+              isCompleted && "text-text-completed",
             )}
           >
             {/* Dos líneas en el tablero (D-D, tarea 4.1): en una columna de
@@ -678,7 +686,10 @@ export function TaskRow({
           </button>
 
           {projectInFirstLevel && (
-            <span className="shrink-0 truncate text-xs text-text-secondary" title={projectMetaLabel!}>
+            <span
+              className={cn("shrink-0 truncate text-xs text-text-secondary", isCompleted && "text-text-completed")}
+              title={projectMetaLabel!}
+            >
               {projectMetaLabel}
             </span>
           )}
@@ -686,14 +697,19 @@ export function TaskRow({
 
         {hasSecondLevel && (
           <div className="flex flex-wrap items-center gap-1.5 px-0.5">
-            {due && <span className="shrink-0 text-xs text-text-secondary">{due}</span>}
+            {due && (
+              <span className={cn("shrink-0 text-xs text-text-secondary", isCompleted && "text-text-completed")}>{due}</span>
+            )}
 
             {visibleLabels.map((label) => (
-              <LabelChipView key={label.id} label={label} />
+              <LabelChipView key={label.id} label={label} completed={isCompleted} />
             ))}
 
             {projectInSecondLevel && (
-              <span className="ml-auto shrink-0 truncate text-xs text-text-secondary" title={projectMetaLabel!}>
+              <span
+                className={cn("ml-auto shrink-0 truncate text-xs text-text-secondary", isCompleted && "text-text-completed")}
+                title={projectMetaLabel!}
+              >
                 {projectMetaLabel}
               </span>
             )}
