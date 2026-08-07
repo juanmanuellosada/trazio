@@ -107,3 +107,20 @@ export function resizeBlockToPosition(originalStart: Date, rawEndMinutes: number
 export function durationMinutesBetween(startIso: string, endIso: string): number {
   return differenceInMinutes(parseISO(endIso), parseISO(startIso));
 }
+
+/**
+ * Guard contra el defecto "soltar donde estaba dispara una mutación": el
+ * `activationConstraint` de 8px (`calendar-view.tsx`) ya evita que un clic
+ * suelto arranque un arrastre, pero no evita que un arrastre real termine
+ * exactamente donde empezó (por ejemplo, un movimiento solo horizontal
+ * dentro de la misma columna, o uno vertical chico que vuelve a snapear a
+ * la misma ranura de 15 minutos). `handleMoveOrResize`
+ * (`screen-calendar.tsx`) llama a esto antes de mutar nada — si el rango de
+ * destino coincide con el rango actual del bloque, no hay nada que editar:
+ * ni mutación, ni el diálogo de recurrencia. Comparación por instante
+ * (`Date.getTime()`), no por string ISO, porque `range.start`/`range.end`
+ * son objetos `Date`, no el string crudo de `block.start`/`block.end`.
+ */
+export function isSameRange(blockStart: string, blockEnd: string, range: DragResult): boolean {
+  return parseISO(blockStart).getTime() === range.start.getTime() && parseISO(blockEnd).getTime() === range.end.getTime();
+}

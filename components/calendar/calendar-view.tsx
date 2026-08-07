@@ -38,6 +38,9 @@ import { UnscheduledHabitsRow } from "./unscheduled-habits-row";
 
 type DragActiveData = { kind: "move-block"; block: CalendarBlock } | { kind: "schedule-chip"; chip: UnscheduledHabitChip };
 
+/** `dragPreviewRange` con el día de destino sumado (reporte "falta la sombra del destino"): el rango ya ajustado a la grilla más la columna donde cayó, que puede ser distinta de la de origen. */
+type DragPreviewRange = DragResult & { dateKey: string };
+
 /** Duración de arranque para un bloque que no tenía horario (tarea 6.4): 30 minutos, una de las opciones rápidas del campo de duración estimada (`components/selectors/duration-input.ts`) — el usuario la ajusta después desde ahí si no le sirve. */
 const DEFAULT_UNTIMED_DURATION_MINUTES = 30;
 
@@ -131,11 +134,11 @@ export function CalendarView({
   // Arrastre de un bloque ya programado (grupo 4, D-C): `activeBlock`
   // alimenta la copia del `DragOverlay` (más abajo), `dragOrigin` la sombra
   // del hueco de donde salió (`time-grid.tsx`) y `dragPreviewRange` la hora
-  // de destino ya ajustada a la grilla — las tres se resetean juntas al
-  // terminar o cancelar el gesto (`resetDragState`).
+  // y el día de destino ya ajustados a la grilla — las tres se resetean
+  // juntas al terminar o cancelar el gesto (`resetDragState`).
   const [activeBlock, setActiveBlock] = useState<CalendarBlock | null>(null);
   const [dragOrigin, setDragOrigin] = useState<{ dateKey: string; startMinutes: number; endMinutes: number } | null>(null);
-  const [dragPreviewRange, setDragPreviewRange] = useState<DragResult | null>(null);
+  const [dragPreviewRange, setDragPreviewRange] = useState<DragPreviewRange | null>(null);
 
   function resetDragState() {
     setActiveBlock(null);
@@ -172,7 +175,7 @@ export function CalendarView({
   function handleDragMove(event: DragMoveEvent) {
     const { active, over } = event;
     const activeData = active.data.current as DragActiveData | undefined;
-    if (activeData?.kind !== "move-block" || !over) {
+    if (!activeData || !over) {
       setDragPreviewRange(null);
       return;
     }
@@ -183,9 +186,19 @@ export function CalendarView({
       return;
     }
     const rawStartMinutes = pixelsToMinutes(translatedTop - over.rect.top, HOUR_ROW_HEIGHT_PX);
-    const { block } = activeData;
-    const durationMinutes = block.allDay ? DEFAULT_UNTIMED_DURATION_MINUTES : differenceInMinutes(parseISO(block.end), parseISO(block.start));
-    setDragPreviewRange(moveBlockToPosition(rawStartMinutes, durationMinutes, overData.dateKey, timezone));
+    // Un chip de hábito sin horario (`schedule-chip`) no tiene una duración
+    // propia que conservar (`habit_schedule_overrides` no la guarda, mismo
+    // motivo que `DEFAULT_UNTIMED_DURATION_MINUTES` en `handleDragEnd` de
+    // `screen-calendar.tsx`) — la sombra de destino usa la misma duración de
+    // arranque solo para dibujarse, no cambia qué se guarda al soltar.
+    const durationMinutes =
+      activeData.kind === "move-block"
+        ? activeData.block.allDay
+          ? DEFAULT_UNTIMED_DURATION_MINUTES
+          : differenceInMinutes(parseISO(activeData.block.end), parseISO(activeData.block.start))
+        : DEFAULT_UNTIMED_DURATION_MINUTES;
+    const range = moveBlockToPosition(rawStartMinutes, durationMinutes, overData.dateKey, timezone);
+    setDragPreviewRange({ ...range, dateKey: overData.dateKey });
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -221,6 +234,19 @@ export function CalendarView({
     onScheduleHabitChip?.(chip, { date: overData.dateKey, time: minutesToTimeString(snapped) });
   }
 
+  // Sombra de destino (reporte "falta la sombra del destino mientras se
+  // arrastra"): mismo `{ dateKey, startMinutes, endMinutes }` que ya usa
+  // `dragOrigin`, derivado acá de `dragPreviewRange` (que guarda instantes,
+  // no minutos locales) para que `TimeGrid`/`DayColumn` reciban las dos
+  // sombras con la misma forma.
+  const dragDestination = dragPreviewRange
+    ? {
+        dateKey: dragPreviewRange.dateKey,
+        startMinutes: localMinutesOfDay(dragPreviewRange.start, timezone),
+        endMinutes: localMinutesOfDay(dragPreviewRange.end, timezone),
+      }
+    : null;
+
   const content =
     format === "mes" ? (
       <MonthGrid
@@ -252,6 +278,7 @@ export function CalendarView({
           now={now}
           timeFormat={timeFormat}
           dragOrigin={dragOrigin}
+          dragDestination={dragDestination}
           onSelectBlock={onSelectBlock}
           onToggleComplete={onToggleComplete}
           onResizeBlock={onResizeBlock}

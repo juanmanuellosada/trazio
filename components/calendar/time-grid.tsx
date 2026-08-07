@@ -55,6 +55,7 @@ function DayColumn({
   timezone,
   nowMinutes,
   origin,
+  destination,
   onSelectBlock,
   onToggleComplete,
   onResizeBlock,
@@ -68,6 +69,8 @@ function DayColumn({
   nowMinutes: number | null;
   /** Hueco de origen del bloque que se está arrastrando, si es en este día (tarea 4.3, D-C): ver el comentario largo de `TimeGrid` sobre `dragOrigin`. */
   origin?: { startMinutes: number; endMinutes: number } | null;
+  /** Sombra de destino, si es en este día (reporte "falta la sombra del destino"): ver el comentario largo de `TimeGrid` sobre `dragDestination`. */
+  destination?: { startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
   onToggleComplete?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
@@ -178,6 +181,21 @@ function DayColumn({
         />
       )}
 
+      {destination && (
+        // Sombra en el destino (reporte "falta la sombra del destino
+        // mientras se arrastra"): dónde quedaría el bloque si se suelta
+        // ahora, recalculada en cada `handleDragMove` de `calendar-view.tsx`
+        // — se mueve con el gesto, incluso a otra columna. Borde sólido en
+        // `info` (no punteado): así se distingue tanto del hueco de origen
+        // de arriba (punteado, neutro) como de la selección para crear un
+        // bloque nuevo (punteada, `primary`) — un color y un trazo que este
+        // componente todavía no usaba para nada más.
+        <div
+          className="pointer-events-none absolute right-0 left-0 z-10 rounded-md border-2 border-info bg-info/10"
+          style={{ top: `${minutesToPercent(destination.startMinutes)}%`, height: `${minutesToPercent(destination.endMinutes - destination.startMinutes)}%` }}
+        />
+      )}
+
       {nowMinutes !== null && (
         <div className="pointer-events-none absolute right-0 left-0 z-10" style={{ top: `${minutesToPercent(nowMinutes)}%` }}>
           {/* Roja, distinta de cualquier color que pueda tener un bloque
@@ -217,9 +235,11 @@ function DayColumn({
  * comportamiento por defecto (D-F): esta grilla nunca decide qué mutación
  * corresponde, solo entrega el resultado geométrico a quien la usa.
  *
- * `dragOrigin` (tarea 4.3, D-C): mientras `calendar-view.tsx` arrastra un
- * bloque ya programado, ahí guarda de qué día y qué rango salió — acá solo
- * se compara `dateKey` para decidir en qué columna dibujar la sombra
+ * `dragOrigin`/`dragDestination` (tarea 4.3, D-C, `dragDestination` sumado
+ * por el reporte "falta la sombra del destino"): mientras `calendar-view.tsx`
+ * arrastra un bloque o un chip de hábito, ahí guarda de qué día y qué rango
+ * salió, y a qué día y qué rango se movería si se soltara ahora — acá solo
+ * se compara `dateKey` para decidir en qué columna dibujar cada sombra
  * (`DayColumn`), esta grilla sigue sin saber nada de cómo se calculó.
  */
 export function TimeGrid({
@@ -230,6 +250,7 @@ export function TimeGrid({
   now,
   timeFormat = 24,
   dragOrigin = null,
+  dragDestination = null,
   onSelectBlock,
   onToggleComplete,
   onResizeBlock,
@@ -243,6 +264,7 @@ export function TimeGrid({
   now: Date;
   timeFormat?: 12 | 24;
   dragOrigin?: { dateKey: string; startMinutes: number; endMinutes: number } | null;
+  dragDestination?: { dateKey: string; startMinutes: number; endMinutes: number } | null;
   onSelectBlock?: (block: CalendarBlock) => void;
   onToggleComplete?: (block: CalendarBlock) => void;
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
@@ -327,6 +349,7 @@ export function TimeGrid({
             timezone={timezone}
             nowMinutes={currentTimeMinutes(liveNow, dateKey, timezone)}
             origin={dragOrigin && dragOrigin.dateKey === dateKey ? dragOrigin : null}
+            destination={dragDestination && dragDestination.dateKey === dateKey ? dragDestination : null}
             onSelectBlock={onSelectBlock}
             onToggleComplete={onToggleComplete}
             onResizeBlock={onResizeBlock}

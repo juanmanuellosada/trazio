@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clampMinutes,
   instantFromDayMinutes,
+  isSameRange,
   localMinutesOfDay,
   minutesToTimeString,
   moveBlockToPosition,
@@ -127,6 +128,43 @@ describe("resizeBlockToPosition (tarea 6.2, redimensionar cambia la duración)",
     const originalStart = instantFromDayMinutes("2026-08-05", 9 * 60, TZ);
     const result = resizeBlockToPosition(originalStart, 200, TZ);
     expect(result.start).toBe(originalStart);
+  });
+});
+
+describe("isSameRange (guard: soltar donde estaba no dispara mutación)", () => {
+  it("es igual cuando el rango de destino coincide con el del bloque", () => {
+    const start = instantFromDayMinutes("2026-08-05", 10 * 60, TZ);
+    const end = instantFromDayMinutes("2026-08-05", 11 * 60, TZ);
+    expect(isSameRange(start.toISOString(), end.toISOString(), { start, end })).toBe(true);
+  });
+
+  it("no es igual si el inicio cambió, aunque sea por 15 minutos", () => {
+    const start = instantFromDayMinutes("2026-08-05", 10 * 60, TZ);
+    const end = instantFromDayMinutes("2026-08-05", 11 * 60, TZ);
+    const movedStart = instantFromDayMinutes("2026-08-05", 10 * 60 + 15, TZ);
+    expect(isSameRange(start.toISOString(), end.toISOString(), { start: movedStart, end })).toBe(false);
+  });
+
+  it("no es igual si el fin cambió (redimensionado a la misma posición de siempre no cuenta como distinto, pero un cambio real sí)", () => {
+    const start = instantFromDayMinutes("2026-08-05", 10 * 60, TZ);
+    const end = instantFromDayMinutes("2026-08-05", 11 * 60, TZ);
+    const movedEnd = instantFromDayMinutes("2026-08-05", 11 * 60 + 15, TZ);
+    expect(isSameRange(start.toISOString(), end.toISOString(), { start, end: movedEnd })).toBe(false);
+  });
+
+  it("no es igual si cambió de día, incluso con la misma hora local", () => {
+    const start = instantFromDayMinutes("2026-08-05", 10 * 60, TZ);
+    const end = instantFromDayMinutes("2026-08-05", 11 * 60, TZ);
+    const otherDayStart = instantFromDayMinutes("2026-08-06", 10 * 60, TZ);
+    const otherDayEnd = instantFromDayMinutes("2026-08-06", 11 * 60, TZ);
+    expect(isSameRange(start.toISOString(), end.toISOString(), { start: otherDayStart, end: otherDayEnd })).toBe(false);
+  });
+
+  it("compara por instante, no por representación del string: mismo instante con offset distinto sigue siendo igual", () => {
+    expect(isSameRange("2026-08-05T13:00:00.000Z", "2026-08-05T14:00:00.000Z", {
+      start: new Date("2026-08-05T10:00:00-03:00"),
+      end: new Date("2026-08-05T11:00:00-03:00"),
+    })).toBe(true);
   });
 });
 

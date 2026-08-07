@@ -13,14 +13,14 @@ import { useDeleteTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useTaskDetail } from "@/components/tasks/task-detail-context";
 import { isHabitDueOn } from "@/lib/habits/today";
 import { useHabits } from "@/lib/habits/use-habits";
-import { useMarkHabitDone, useUnmarkHabitDone } from "@/lib/habits/mutations";
+import { useMarkHabitDone, useUnmarkHabitDone, useUpdateHabit } from "@/lib/habits/mutations";
 import { useSetHabitScheduleOverride } from "@/lib/habits/schedule-overrides";
 import { useHabitScheduleOverridesForRange } from "@/lib/habits/use-habit-schedule-overrides-range";
 import { useSkipHabit, useHabitSkipsForRange } from "@/lib/habits/skips";
 import { HabitFormDialog } from "@/components/habits/habit-form-dialog";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
 import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
-import type { DragResult } from "@/lib/calendar/drag";
+import { isSameRange, type DragResult } from "@/lib/calendar/drag";
 import type { CalendarBlock, UnscheduledHabitChip } from "@/lib/calendar/block";
 import type { CalendarEventInstance, EventInput, RecurrenceEditScope } from "@/lib/calendar/events";
 import {
@@ -137,6 +137,7 @@ export function ScreenCalendar({
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const setHabitOverride = useSetHabitScheduleOverride();
+  const updateHabit = useUpdateHabit();
   const markHabitDone = useMarkHabitDone();
   const unmarkHabitDone = useUnmarkHabitDone();
   const skipHabit = useSkipHabit();
@@ -402,6 +403,15 @@ export function ScreenCalendar({
   }
 
   function handleMoveOrResize(block: CalendarBlock, range: DragResult) {
+    // Guard (reporte "soltar donde estaba dispara una mutación"): sin esto,
+    // arrastrar y volver a soltar en la misma ranura de 15 minutos y el
+    // mismo día igual mutaba, y si el bloque era un evento recurrente,
+    // abría el diálogo de alcance sin que hubiera nada que editar. Cubre
+    // mover y redimensionar por igual — las dos llaman a esta misma función
+    // (`onMoveBlock`/`onResizeBlock` en `CalendarView` más abajo). No aplica
+    // a un bloque de todo el día: arrastrarlo a la grilla siempre cambia su
+    // forma (de fecha calendario a rango horario), así que nunca coincide.
+    if (isSameRange(block.start, block.end, range)) return;
     if (block.type === "task") {
       const task = tasksById.get(block.id);
       if (!task) return;
@@ -429,10 +439,19 @@ export function ScreenCalendar({
     applyEventUpdate(event, changes);
   }
 
+  /**
+   * Arrastrar el chip de un hábito sin horario a la grilla le fija el
+   * horario al hábito (`habits.scheduled_time`), no crea un override de un
+   * día: a diferencia de mover una ocurrencia ya programada
+   * (`handleMoveOrResize`), acá no hay horario habitual que preservar —
+   * "sin horario" no es un horario, así que no hay nada que un override
+   * pueda dejar intacto. Consecuencia: todas las ocurrencias pasan a verse
+   * en la grilla a esa hora y el chip de arriba desaparece (deja de estar
+   * en `unscheduledHabits`, `useMemo` de arriba).
+   */
   function handleScheduleHabitChip(chip: UnscheduledHabitChip, target: { date: string; time: string }) {
-    const habit = habitsById.get(chip.id);
-    if (!habit) return;
-    setHabitOverride.mutate({ habitId: chip.id, habit, date: target.date, scheduledTime: target.time, timezone });
+    if (!habitsById.has(chip.id)) return;
+    updateHabit.mutate({ id: chip.id, patch: { scheduled_time: target.time } });
   }
 
   if (!now || !anchorDate) return null;

@@ -135,6 +135,37 @@ describe("CalendarBlockChip — el ícono al lado del título, no encima (tarea 
   });
 });
 
+// Reporte "el bloque arrastrado cambia de tamaño": `overlay` ya no impone su
+// propio ancho fijo ni fuerza dos peldaños — llena el contenedor que arma
+// `@dnd-kit` (mismo alto/ancho del bloque original) y usa la misma escalera
+// que la grilla, para que un bloque de 15 minutos no dibuje horario de más.
+describe("CalendarBlockChip — variant overlay se ve igual que en la grilla (reporte: cambiaba de tamaño al arrastrar)", () => {
+  it("llena su contenedor (h-full w-full), sin ancho fijo propio", () => {
+    const twoHourTask = block({ end: "2026-08-05T12:00:00-03:00" });
+    const { container } = render(<CalendarBlockChip block={twoHourTask} variant="overlay" timezone={TZ} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("w-full");
+    expect(root.className).not.toContain("w-56");
+  });
+
+  it("un bloque de quince minutos entra en modo apretado, igual que en la grilla (no fuerza el horario)", () => {
+    const { container } = render(<CalendarBlockChip block={block()} variant="overlay" timezone={TZ} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("py-0");
+    expect(root.className).toContain("flex-row");
+    expect(screen.queryByText(/–/)).not.toBeInTheDocument();
+  });
+
+  it("un bloque de dos horas muestra la escalera completa, igual que `timed`", () => {
+    const twoHourTask = block({ end: "2026-08-05T12:00:00-03:00", projectName: "Trabajo", labels: [{ id: "l1", name: "Urgente", color: "amarillo" }] });
+    render(<CalendarBlockChip block={twoHourTask} variant="overlay" timezone={TZ} />);
+    expect(screen.getByText("10:00 – 12:00")).toBeInTheDocument();
+    expect(screen.getByText("Trabajo")).toBeInTheDocument();
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
+  });
+});
+
 describe("CalendarBlockChip — formato mes, fuera de alcance (Non-Goal)", () => {
   it("la variante compacta no cambia: sin escalera, sin control de completar", () => {
     const twoHourTask = block({ end: "2026-08-05T12:00:00-03:00", projectName: "Trabajo" });

@@ -37,12 +37,16 @@ export function taskDragPatch(result: DragResult): TaskDragPatch {
 export type HabitDragOverride = { date: string; scheduledTime: string };
 
 /**
- * Hábito (tarea 6.3/6.6, D-H): un arrastre —sea de un bloque ya
- * programado en la grilla o de un chip suelto sin horario— siempre escribe
- * un override del día puntual en `habit_schedule_overrides`, nunca toca
- * `habits.scheduled_time`. Solo importa el inicio: un override no tiene
- * duración propia, esa sigue viniendo de la configuración general del
- * hábito.
+ * Hábito (tarea 6.3/6.6, D-H): mover un bloque ya programado en la grilla
+ * escribe un override del día puntual en `habit_schedule_overrides`, nunca
+ * toca `habits.scheduled_time` (ese horario habitual queda para cualquier
+ * otro día). Solo importa el inicio: un override no tiene duración propia,
+ * esa sigue viniendo de la configuración general del hábito.
+ *
+ * Arrastrar el chip de un hábito *sin* horario es un camino distinto
+ * (`handleScheduleHabitChip` en `screen-calendar.tsx`): ahí no hay un
+ * horario habitual que preservar, así que fija `habits.scheduled_time`
+ * directamente en vez de pasar por acá.
  */
 export function habitDragOverride(start: Date, timezone: string): HabitDragOverride {
   return {

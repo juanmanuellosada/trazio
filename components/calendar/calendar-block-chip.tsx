@@ -35,10 +35,14 @@ const TYPE_SHAPE_CLASS: Record<CalendarBlockType, string> = {
 };
 
 /**
- * `overlay` (grupo 4, D-C): la copia que se dibuja dentro del `DragOverlay`
- * de `calendar-view.tsx` mientras se arrastra un bloque — un portal fuera de
- * la grilla, sin el alto/ancho real del bloque (esos son porcentajes
- * relativos a su columna, que acá no existe), y con tamaño fijo propio.
+ * `overlay` (grupo 4, D-C, corregido — reporte "el bloque arrastrado cambia
+ * de tamaño"): la copia que se dibuja dentro del `DragOverlay` de
+ * `calendar-view.tsx` mientras se arrastra un bloque — un portal fuera de la
+ * grilla, sin columna propia. `@dnd-kit` ya envuelve este portal en un
+ * contenedor que toma el `width`/`height` del nodo original (el bloque en la
+ * grilla), así que el chip no impone su propio tamaño: llena ese contenedor
+ * (`h-full w-full`, igual que `timed`) para verse exactamente como el
+ * original, con la misma escalera de peldaños.
  */
 type CalendarBlockChipVariant = "timed" | "bar" | "compact" | "overlay";
 
@@ -57,7 +61,7 @@ const VARIANT_CLASS: Record<CalendarBlockChipVariant, string> = {
   timed: "h-full w-full flex-col items-stretch justify-start gap-0.5 px-1.5 py-1 text-left",
   bar: "h-6 w-full flex-row items-center gap-1 px-1.5",
   compact: "h-5 w-full flex-row items-center gap-1 px-1",
-  overlay: "w-56 flex-col items-stretch justify-start gap-0.5 px-2 py-1.5 text-left shadow-lg",
+  overlay: "h-full w-full flex-col items-stretch justify-start gap-0.5 px-1.5 py-1 text-left shadow-lg",
 };
 
 /** `py-1` de la variante `timed`: 4px arriba + 4px abajo. */
@@ -76,20 +80,19 @@ function timedBlockHeightPx(block: CalendarBlock): number {
  * (D-A, tarea 2.1): el primero (título, con su control de completar si
  * corresponde) nunca depende de esto — siempre se intenta. Los siguientes
  * peldaños (horario, calendario/proyecto, etiquetas) piden una línea de
- * `LINE_HEIGHT_PX` más cada uno. Solo la variante `timed` crece: `bar` y
+ * `LINE_HEIGHT_PX` más cada uno. Solo `timed` y `overlay` crecen: `bar` y
  * `compact` miden siempre lo mismo, así que se quedan en el peldaño mínimo
  * (`compact`, además, está fuera de alcance de esta ronda — ver más abajo).
  *
- * `overlay` (tarea 4.2, D-C) fuerza dos peldaños siempre: título y horario.
- * No depende del alto real del bloque (que en el `DragOverlay` no significa
- * nada, es una copia flotante de tamaño fijo) — "se ve a qué hora quedaría"
- * es un requisito incondicional, no algo que dependa de si el bloque
- * arrastrado mide 15 minutos o 3 horas.
+ * `overlay` (tarea 4.2, D-C, corregido) usa el mismo cálculo que `timed`: el
+ * `DragOverlay` ahora llena el contenedor de `@dnd-kit` con el alto real del
+ * bloque (ver el comentario de `CalendarBlockChipVariant`), así que un
+ * bloque de 15 minutos arrastrado se ve igual de apretado que en la grilla,
+ * en vez de forzar siempre dos peldaños.
  */
 function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): number {
   const maxSteps = block.type === "event" ? 3 : 4;
-  if (variant === "overlay") return Math.min(2, maxSteps);
-  if (variant !== "timed") return 1;
+  if (variant !== "timed" && variant !== "overlay") return 1;
   const heightPx = timedBlockHeightPx(block);
   let steps = 1;
   while (steps < maxSteps && heightPx >= VERTICAL_PADDING_PX + (steps + 1) * LINE_HEIGHT_PX) steps++;
@@ -190,9 +193,11 @@ export function CalendarBlockChip({
 
   const Icon = TYPE_ICON[block.type];
 
-  // Modo apretado (ver el comentario de `TIGHT_HEIGHT_THRESHOLD_PX`): solo
-  // aplica a la variante `timed`, la única que crece con el alto real.
-  const isTight = variant === "timed" && timedBlockHeightPx(block) < TIGHT_HEIGHT_THRESHOLD_PX;
+  // Modo apretado (ver el comentario de `TIGHT_HEIGHT_THRESHOLD_PX`): aplica
+  // a `timed` y a `overlay`, las únicas dos variantes que crecen con el
+  // alto real (`overlay` corregido, ver el comentario de
+  // `CalendarBlockChipVariant`).
+  const isTight = (variant === "timed" || variant === "overlay") && timedBlockHeightPx(block) < TIGHT_HEIGHT_THRESHOLD_PX;
 
   const sharedClassName = cn(
     // Sin `overflow-hidden` (defecto de accesibilidad, ver el comentario del

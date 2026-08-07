@@ -29,6 +29,19 @@ function lineTopPercent(container: HTMLElement): number {
   return Number(line.style.top.replace("%", ""));
 }
 
+function renderGridWithDrag(
+  props: Partial<{
+    dragOrigin: { dateKey: string; startMinutes: number; endMinutes: number } | null;
+    dragDestination: { dateKey: string; startMinutes: number; endMinutes: number } | null;
+  }>,
+) {
+  return render(
+    <DndContext id="test-time-grid-drag">
+      <TimeGrid visibleDays={[TODAY, OTHER_DAY]} blocks={[]} timezone={TZ} now={new Date("2026-08-05T10:00:00-03:00")} {...props} />
+    </DndContext>,
+  );
+}
+
 describe("TimeGrid — línea de la hora actual", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -60,5 +73,53 @@ describe("TimeGrid — línea de la hora actual", () => {
   it("sigue apareciendo solo en el día de hoy", () => {
     const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), [TODAY, OTHER_DAY]);
     expect(container.querySelectorAll(".bg-destructive")).toHaveLength(1);
+  });
+});
+
+// Reporte "falta la sombra del destino mientras se arrastra": el hueco de
+// origen (punteado, neutro) y la sombra de destino (sólida, `info`) tienen
+// que convivir sin confundirse, y la de destino se dibuja en la columna del
+// día al que apunta `dragDestination`, que puede ser distinta de la de
+// `dragOrigin`.
+describe("TimeGrid — sombra de destino durante el arrastre", () => {
+  it("no dibuja ninguna sombra sin dragOrigin ni dragDestination", () => {
+    const { container } = renderGridWithDrag({});
+    expect(container.querySelector(".border-info")).not.toBeInTheDocument();
+    expect(container.querySelector(".border-muted-foreground\\/50")).not.toBeInTheDocument();
+  });
+
+  it("dibuja la sombra de destino en info, en la posición y el día correctos", () => {
+    const { container } = renderGridWithDrag({ dragDestination: { dateKey: OTHER_DAY, startMinutes: 12 * 60, endMinutes: 13 * 60 } });
+    const shadow = container.querySelector(".border-info") as HTMLElement | null;
+    expect(shadow).toBeInTheDocument();
+    expect(Number(shadow!.style.top.replace("%", ""))).toBeCloseTo((12 * 60 * 100) / (24 * 60));
+    expect(Number(shadow!.style.height.replace("%", ""))).toBeCloseTo((60 * 100) / (24 * 60));
+  });
+
+  it("dibuja origen y destino a la vez, en columnas distintas, sin pisarse", () => {
+    const { container } = renderGridWithDrag({
+      dragOrigin: { dateKey: TODAY, startMinutes: 9 * 60, endMinutes: 10 * 60 },
+      dragDestination: { dateKey: OTHER_DAY, startMinutes: 12 * 60, endMinutes: 13 * 60 },
+    });
+    expect(container.querySelectorAll(".border-info")).toHaveLength(1);
+    expect(container.querySelectorAll(".border-muted-foreground\\/50")).toHaveLength(1);
+  });
+
+  it("mover la sombra de destino a otra columna no deja rastro en la columna anterior", () => {
+    const { container, rerender } = renderGridWithDrag({ dragDestination: { dateKey: TODAY, startMinutes: 9 * 60, endMinutes: 10 * 60 } });
+    expect(container.querySelectorAll(".border-info")).toHaveLength(1);
+
+    rerender(
+      <DndContext id="test-time-grid-drag">
+        <TimeGrid
+          visibleDays={[TODAY, OTHER_DAY]}
+          blocks={[]}
+          timezone={TZ}
+          now={new Date("2026-08-05T10:00:00-03:00")}
+          dragDestination={{ dateKey: OTHER_DAY, startMinutes: 9 * 60, endMinutes: 10 * 60 }}
+        />
+      </DndContext>,
+    );
+    expect(container.querySelectorAll(".border-info")).toHaveLength(1);
   });
 });

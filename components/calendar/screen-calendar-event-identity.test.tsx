@@ -36,7 +36,11 @@ vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }))
 vi.mock("@/lib/habits/use-habits", () => ({ useHabits: () => ({ data: [] }) }));
 vi.mock("@/lib/habits/use-habit-schedule-overrides-range", () => ({ useHabitScheduleOverridesForRange: () => ({ data: {} }) }));
 vi.mock("@/lib/habits/skips", () => ({ useSkipHabit: () => ({ mutate: vi.fn() }), useHabitSkipsForRange: () => ({ data: {} }) }));
-vi.mock("@/lib/habits/mutations", () => ({ useMarkHabitDone: () => ({ mutate: vi.fn() }), useUnmarkHabitDone: () => ({ mutate: vi.fn() }) }));
+vi.mock("@/lib/habits/mutations", () => ({
+  useMarkHabitDone: () => ({ mutate: vi.fn() }),
+  useUnmarkHabitDone: () => ({ mutate: vi.fn() }),
+  useUpdateHabit: () => ({ mutate: vi.fn() }),
+}));
 vi.mock("@/lib/habits/schedule-overrides", () => ({ useSetHabitScheduleOverride: () => ({ mutate: vi.fn() }) }));
 vi.mock("@/lib/tasks/mutations", () => ({ useUpdateTask: () => ({ mutate: vi.fn() }), useDeleteTask: () => ({ mutate: vi.fn() }) }));
 vi.mock("@/lib/projects/use-projects", () => ({ useProjects: () => ({ data: [] }) }));
