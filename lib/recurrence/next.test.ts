@@ -55,6 +55,30 @@ describe("nextOccurrence", () => {
     expect(formatDate(next)).toBe("2026-03-31");
   });
 
+  it('"cada lunes" completada antes de vencer: no repite la fecha de vencimiento, salta al lunes siguiente', () => {
+    // Vence el lunes 2026-08-10, se completa el jueves 2026-08-06, cuatro
+    // días antes. "La primera ocurrencia posterior a hoy" sería el propio
+    // vencimiento (2026-08-10) — el corte correcto es posterior al mayor
+    // entre hoy y el vencimiento, así que la siguiente instancia es el
+    // lunes 2026-08-17, no el 2026-08-10 de nuevo.
+    const next = nextOccurrence({
+      rrule: "FREQ=WEEKLY;BYDAY=MO",
+      dueDate: { y: 2026, m: 8, d: 10 },
+      now: { y: 2026, m: 8, d: 6 },
+    });
+    expect(formatDate(next)).toBe("2026-08-17");
+  });
+
+  it('"cada mes el día 14" completada antes de vencer: salta al mes siguiente, no repite el vencimiento', () => {
+    // Vence el 2026-08-14, se completa el 2026-08-07, una semana antes.
+    const next = nextOccurrence({
+      rrule: "FREQ=MONTHLY;BYMONTHDAY=14",
+      dueDate: { y: 2026, m: 8, d: 14 },
+      now: { y: 2026, m: 8, d: 7 },
+    });
+    expect(formatDate(next)).toBe("2026-09-14");
+  });
+
   it("sin fecha de vencimiento original (intervalo puro sin ancla previa): calcula igual desde el completado", () => {
     const next = nextOccurrence({
       rrule: "FREQ=DAILY;INTERVAL=3",

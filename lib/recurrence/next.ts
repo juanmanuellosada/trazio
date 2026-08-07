@@ -33,14 +33,20 @@ export type NextOccurrenceParams = {
  * fase del cálculo — el valor explícito de la tarea si lo eligió, si no
  * vencimiento original para reglas de calendario o `now` (en la práctica la
  * fecha de completado) para intervalo puro — pero la ocurrencia que se
- * agenda es siempre la primera **estrictamente posterior a hoy**, nunca la
- * inmediatamente siguiente al ancla: así una recurrente vencida no acumula
- * las ocurrencias perdidas (D-E), sin importar cuánto tiempo lleve vencida.
+ * agenda es siempre la primera **estrictamente posterior al mayor entre hoy
+ * y el vencimiento** (nunca solo posterior a hoy): así una recurrente
+ * vencida no acumula las ocurrencias perdidas (D-E), sin importar cuánto
+ * tiempo lleve vencida, y una recurrente que se completa **antes** de
+ * vencer no se queda pegada a su propia fecha de vencimiento, que también
+ * sería "la primera posterior a hoy". Para ancla `"completion"` el corte
+ * sigue siendo `now`: no hay vencimiento del que protegerse.
  */
 export function nextOccurrence({ rrule, dueDate, now, anchor }: NextOccurrenceParams): CalendarDate {
   const resolvedAnchor = resolveAnchor(anchor, rrule);
-  const dtstart = toUTCDate(resolvedAnchor === "due" ? (dueDate ?? now) : now);
+  const anchorDate = resolvedAnchor === "due" ? (dueDate ?? now) : now;
+  const dtstart = toUTCDate(anchorDate);
   const rule = new RRule({ ...RRule.parseString(rrule), dtstart });
-  const next = rule.after(toUTCDate(now), false);
+  const cutoff = resolvedAnchor === "due" && toUTCDate(anchorDate) > toUTCDate(now) ? anchorDate : now;
+  const next = rule.after(toUTCDate(cutoff), false);
   return fromUTCDate(next ?? dtstart);
 }

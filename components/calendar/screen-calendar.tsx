@@ -216,6 +216,7 @@ export function ScreenCalendar({
     const fieldsByTaskId = new Map(recurringTaskFields.data.map((fields) => [fields.id, fields] as const));
 
     return tasks.flatMap((task) => {
+      if (task.completed_at) return [];
       const fields = fieldsByTaskId.get(task.id);
       if (!fields) return [];
       const occurrences = expandRecurringTaskRange(

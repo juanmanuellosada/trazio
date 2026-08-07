@@ -1609,3 +1609,57 @@ completado con "todos los días completados") y
 pueden corregir" pasa a "El futuro no se puede marcar ni corregir", con un
 requirement nuevo que deja explícito que la corrección vive en el calendario
 y el mini-mapa sigue de solo lectura) quedan actualizados.
+
+---
+
+## D53 — Completar una recurrente antes de vencer corta en el vencimiento, no en hoy
+
+**Fecha.** 2026-08-07
+
+**Contexto.** `lib/recurrence/next.ts` calculaba la siguiente ocurrencia como
+la primera de la regla estrictamente posterior a **hoy** (`rule.after(now,
+false)`), para las dos anclas. Eso es correcto para una tarea vencida hace
+rato, que es el caso que el requirement "Una tarea recurrente vencida no se
+adelanta sola" (`openspec/specs/tareas-recurrentes/spec.md`) tenía en mente
+al redactarse. Pero para una regla anclada al calendario (`resolveAnchor` →
+`"due"`: `BYDAY`/`BYMONTHDAY`/`BYMONTH`, o ancla explícita "vencimiento"),
+completada **antes** de que venza — tildar un bloque de un día futuro en el
+calendario semanal, o una fila de Próximos —, "la primera ocurrencia
+posterior a hoy" resultaba ser la propia fecha de vencimiento: la instancia
+nueva nacía con el mismo `due_date` que la recién completada, en vez de
+avanzar a la ocurrencia siguiente. Reportado por el dueño como "se duplica
+en vez de pasar a la siguiente ocurrencia".
+
+**Decisión.** El corte pasa a ser la primera ocurrencia estrictamente
+posterior al **mayor entre hoy y el vencimiento**, solo para ancla `"due"`.
+Para ancla `"completion"` el corte sigue siendo `now`, sin cambios: no hay
+vencimiento del que protegerse, porque la serie ya cuenta desde el
+completado. El requirement "Una tarea recurrente vencida no se adelanta
+sola" se actualiza en el spec vivo, en la misma tanda, para decir la regla
+completa en vez de solo el caso vencido, con un escenario nuevo que cubre
+completar antes de vencer.
+
+**Por qué no se aprovechó para tocar el caso sin fecha.** Una recurrente sin
+ningún vencimiento (`dueDate` nulo) sigue anclando en `now` como hasta
+ahora — `anchorDate` cae a `now` cuando no hay `dueDate`, así que el corte
+también queda en `now`: mismo comportamiento de siempre, sin caso especial
+nuevo que mantener.
+
+**Dos defectos secundarios aparecieron al revisar el camino de completar una
+recurrente, y se corrigieron en la misma tanda:**
+
+- `lib/recurrence/create-next-occurrence.ts` no copiaba `parent_id`: una
+  subtarea recurrente generaba su siguiente instancia en la raíz del
+  proyecto en vez de bajo su padre. Se agrega `parent_id` a las columnas
+  leídas y al insert.
+- `components/calendar/screen-calendar.tsx` (`previewBlocks`) no filtraba
+  `task.completed_at`: con la opción "mostrar repeticiones futuras" activa
+  (apagada por defecto), una recurrente ya completada seguía emitiendo
+  bloques de vista previa. Se agrega el filtro.
+
+**Consecuencia.** `lib/recurrence/next.ts`, `lib/recurrence/create-next-occurrence.ts`,
+`components/calendar/screen-calendar.tsx` y
+`openspec/specs/tareas-recurrentes/spec.md` quedan actualizados. Tests
+nuevos en `lib/recurrence/next.test.ts` y `lib/recurrence/series.test.ts`
+cubren completar antes de vencer, con y sin horario; `lib/recurrence/create-next-occurrence.ts`
+tiene test propio por primera vez.

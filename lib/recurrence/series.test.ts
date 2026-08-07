@@ -111,3 +111,33 @@ describe("planNextOccurrence — ancla elegida explícitamente (repeticion-confi
     expect(planWithoutAnchor?.due_date).toBe("2026-07-13");
   });
 });
+
+/**
+ * Completar antes de vencer (defecto reportado): una regla anclada al
+ * calendario, completada mientras todavía faltan días para el vencimiento,
+ * duplicaba la tarea en la misma fecha de vencimiento en vez de pasar a la
+ * ocurrencia siguiente — porque "la primera ocurrencia posterior a hoy" era
+ * la propia fecha de vencimiento. Cubre los dos casos de hora, con y sin
+ * `due_at`: el defecto no dependía de eso.
+ */
+describe("planNextOccurrence — completar antes de vencer no repite la fecha de vencimiento", () => {
+  it("todo el día: completar cuatro días antes del vencimiento agenda la ocurrencia siguiente, no el mismo vencimiento", () => {
+    // Vence el lunes 2026-08-10, se completa el jueves 2026-08-06.
+    const task = baseTask({ recurrence_rule: "FREQ=WEEKLY;BYDAY=MO", due_date: "2026-08-10", due_at: null });
+    const plan = planNextOccurrence(task, new Date("2026-08-06T12:00:00.000Z"), { y: 2026, m: 8, d: 6 }, TZ);
+    expect(plan?.due_date).toBe("2026-08-17");
+    expect(plan?.due_at).toBeNull();
+  });
+
+  it("con horario: completar antes del vencimiento agenda la ocurrencia siguiente conservando la hora, no el mismo vencimiento", () => {
+    // 2026-08-10 09:00 en America/Argentina/Buenos_Aires (UTC-3) = 12:00 UTC.
+    const task = baseTask({
+      recurrence_rule: "FREQ=WEEKLY;BYDAY=MO",
+      due_date: null,
+      due_at: "2026-08-10T12:00:00.000Z",
+    });
+    const plan = planNextOccurrence(task, new Date("2026-08-06T12:00:00.000Z"), { y: 2026, m: 8, d: 6 }, TZ);
+    expect(plan?.due_date).toBeNull();
+    expect(plan?.due_at).toBe(new Date("2026-08-17T12:00:00.000Z").toISOString());
+  });
+});

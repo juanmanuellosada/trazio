@@ -49,9 +49,12 @@ las subtareas, los comentarios ni los recordatorios de la tarea completada.
 Una tarea recurrente vencida NUNCA SHALL adelantarse automáticamente por el
 paso del tiempo: queda vencida y se muestra en el bloque de atrasadas, igual
 que cualquier otra tarea vencida. Al completarla, la siguiente instancia SHALL
-agendarse en la primera ocurrencia de la regla estrictamente posterior a hoy.
-Las ocurrencias intermedias que quedaron sin completar SHALL descartarse sin
-acumularse.
+agendarse en la primera ocurrencia de la regla estrictamente posterior al
+**mayor entre hoy y la fecha de vencimiento** — no solo posterior a hoy: si se
+completa antes de vencer, "la primera posterior a hoy" puede ser la propia
+fecha de vencimiento, y agendar ahí duplicaría la instancia en vez de avanzar
+a la siguiente. Las ocurrencias intermedias que quedaron sin completar SHALL
+descartarse sin acumularse.
 
 #### Scenario: Una recurrente vencida no genera ninguna ocurrencia por sí sola
 
@@ -68,6 +71,15 @@ acumularse.
   estrictamente posterior a hoy
 - **AND** no se crea ninguna instancia para los días atrasados que se
   perdieron
+
+#### Scenario: Completar una recurrente antes de que venza no la duplica en la misma fecha
+
+- **WHEN** se completa hoy una tarea recurrente semanal anclada al calendario
+  cuya fecha de vencimiento todavía no llegó (por ejemplo, vence el lunes y se
+  completa el jueves anterior)
+- **THEN** la siguiente instancia se agenda en la primera ocurrencia
+  estrictamente posterior a esa fecha de vencimiento, nunca en la fecha de
+  vencimiento misma
 
 ### Requirement: Fin de la serie recurrente
 

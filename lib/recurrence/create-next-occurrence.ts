@@ -5,7 +5,7 @@ import type { RecurrenceAnchor } from "./anchor";
 import { planNextOccurrence } from "./series";
 
 const RECURRING_TASK_COLUMNS =
-  "id, user_id, project_id, section_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, position, task_labels(label_id)";
+  "id, user_id, project_id, section_id, parent_id, title, description, priority, due_date, due_at, duration_minutes, deadline, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor, position, task_labels(label_id)";
 
 /** Mismo default que `lib/preferences/get-user-preferences.ts` para el caso sin fila todavía (no debería pasar tras el aprovisionamiento). */
 const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -24,6 +24,7 @@ type RecurringTaskRow = {
   user_id: string;
   project_id: string;
   section_id: string | null;
+  parent_id: string | null;
   title: string;
   description: Json | null;
   priority: number;
@@ -42,8 +43,9 @@ type RecurringTaskRow = {
 /**
  * Al completar una tarea recurrente (bloque 5.4, requirement "Generar la
  * siguiente ocurrencia al completar una tarea recurrente"): crea la
- * siguiente instancia heredando proyecto, sección, título, descripción,
- * prioridad, duración estimada, fecha límite, `recurrence_anchor` y
+ * siguiente instancia heredando proyecto, sección, padre (`parent_id`, para
+ * que una subtarea recurrente siga siendo subtarea del mismo padre), título,
+ * descripción, prioridad, duración estimada, fecha límite, `recurrence_anchor` y
  * etiquetas — nunca subtareas, comentarios ni recordatorios, que ni siquiera
  * se leen acá. No hace nada
  * si la tarea no tiene `recurrence_rule` o si la serie ya terminó
@@ -95,6 +97,7 @@ export async function createNextRecurringOccurrence(
       user_id: task.user_id,
       project_id: task.project_id,
       section_id: task.section_id,
+      parent_id: task.parent_id,
       title: task.title,
       description: task.description,
       priority: task.priority,
