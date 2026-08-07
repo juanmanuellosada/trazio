@@ -202,12 +202,17 @@ export function CalendarBlockChip({
 
   // Bloque completado (defecto "un bloque completado no se atenúa ni se
   // tacha"): mismo tratamiento que ya usa el resto de la app para un ítem
-  // cumplido — `habit-today-row.tsx`/`task-row.tsx`, `text-text-secondary`
-  // más `line-through` en el título —, no uno inventado acá. Se distingue
-  // del hábito salteado (`opacity-60`, más abajo) porque no comparten
-  // ninguna clase: un bloque puede estar completado o salteado, nunca los
-  // dos a la vez (`useMarkHabitDone` borra el salteo del día al completar),
-  // pero si algún día coexistieran no se confundirían entre sí.
+  // cumplido — `habit-today-row.tsx`/`task-row.tsx`, `text-text-completed`
+  // más `line-through` en el título —, no uno inventado acá. Antes usaba
+  // `text-text-secondary` (un escalón menos apagado): con la paleta de
+  // proyecto/hábito sin sobriar, el fondo del bloque (`displayColor` al
+  // 10%) bajaba de 4.5:1 contra `text-text-completed` en dos de los diez
+  // colores. La paleta sobria (`lib/validation/colors.ts`) lo despeja en
+  // los diez, así que ya no hace falta el escalón intermedio acá. Se
+  // distingue del hábito salteado (`opacity-60`, más abajo) porque no
+  // comparten ninguna clase: un bloque puede estar completado o salteado,
+  // nunca los dos a la vez (`useMarkHabitDone` borra el salteo del día al
+  // completar), pero si algún día coexistieran no se confundirían entre sí.
   const completed = !block.isPreview && (block.completed ?? false);
 
   const sharedClassName = cn(
@@ -227,7 +232,7 @@ export function CalendarBlockChip({
     // atenuado como una vista previa, pero sigue interactivo (el casillero
     // de completar sigue funcionando: saltear es reversible).
     !block.isPreview && block.type === "habit" && block.skipped && "opacity-60",
-    completed && "text-text-secondary",
+    completed && "text-text-completed",
     className,
   );
 
@@ -358,9 +363,24 @@ export function CalendarBlockChip({
             <span
               aria-hidden
               className={cn(
-                "flex size-3 items-center justify-center rounded-full border",
-                completed ? "border-primary bg-primary" : "border-input",
+                "flex size-3 items-center justify-center rounded-full border-2",
+                completed && "border-primary bg-primary",
               )}
+              // Sin marcar (reporte del dueño: "que resalte un poco más, que
+              // tenga el mismo borde que el recuadro"): mismo `displayColor`
+              // que ya usa el borde del bloque, a color pleno — nunca el
+              // `b3` de un bloque completado (ver el comentario de
+              // `sharedStyle` más abajo), porque ese caso nunca se da acá:
+              // marcado implica `completed`, que muestra el relleno
+              // `border-primary bg-primary` en vez de esto. `border-2` (antes
+              // `border`, 1px) es el resaltado: mismo grosor marcado y sin
+              // marcar, para que tildar no le cambie el tamaño al círculo.
+              // El estado marcado se queda con `--primary` a propósito: es
+              // la misma señal de "hecho" que ya usa `task-row.tsx` y
+              // `habit-today-row.tsx` en toda la app — cambiarla acá por
+              // `displayColor` la volvería inconsistente con el resto sin
+              // necesidad, cuando lo pedido era resaltar el sin marcar.
+              style={completed ? undefined : { borderColor: displayColor }}
             >
               {completed && <span aria-hidden className="size-1 rounded-full bg-primary-foreground" />}
             </span>

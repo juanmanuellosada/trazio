@@ -3,17 +3,29 @@
  * No van como variables CSS: son datos de la aplicación, compartidos con el
  * check constraint de Postgres en `projects.color` y `labels.color`, y con
  * el enum de Zod que valida esos mismos campos.
+ *
+ * Variante `dark` revisada (reporte del dueño: "los colores me parecen muy
+ * brillantes, hagamos algo más sobrio"): en tema oscuro estos nueve hex eran
+ * el tono 300/400 de Tailwind, saturación 64-96% y luminosidad 50-76% en
+ * HSL — muy vivos sobre el azul muy oscuro de `--surface`/`--background`. La
+ * corrección baja saturación y luminosidad tope (S ≤ 58%, L ≤ 58%, sin tocar
+ * los que ya estaban por debajo de eso) hasta el nivel de sobriedad que
+ * `marron` ya tenía (S 31%, L 55%), que no se tocó porque no hacía falta.
+ * `light` no cambia: en tema claro son el mismo tono oscurecido de siempre,
+ * nunca leyó "neón" (el reporte fue mirando el calendario en oscuro). Los
+ * diez siguen por encima de 3:1 contra `--surface`/`--background` oscuros
+ * (`docs/design-system.md` §2, tabla con los ratios nuevos).
  */
 export const PROJECT_COLORS = {
-  amarillo: { name: "Amarillo", light: "#B45309", dark: "#FBBF24" },
-  lima: { name: "Lima", light: "#65A30D", dark: "#A3E635" },
-  verde: { name: "Verde", light: "#059669", dark: "#34D399" },
-  turquesa: { name: "Turquesa", light: "#0D9488", dark: "#2DD4BF" },
-  celeste: { name: "Celeste", light: "#0284C7", dark: "#38BDF8" },
-  indigo: { name: "Índigo", light: "#4F46E5", dark: "#818CF8" },
-  violeta: { name: "Violeta", light: "#7C3AED", dark: "#A78BFA" },
-  purpura: { name: "Púrpura", light: "#9333EA", dark: "#C084FC" },
-  magenta: { name: "Magenta", light: "#C026D3", dark: "#E879F9" },
+  amarillo: { name: "Amarillo", light: "#B45309", dark: "#D0AC4F" },
+  lima: { name: "Lima", light: "#65A30D", dark: "#9DCF4C" },
+  verde: { name: "Verde", light: "#059669", dark: "#3CCB97" },
+  turquesa: { name: "Turquesa", light: "#0D9488", dark: "#37CAB7" },
+  celeste: { name: "Celeste", light: "#0284C7", dark: "#56ACD2" },
+  indigo: { name: "Índigo", light: "#4F46E5", dark: "#626DD5" },
+  violeta: { name: "Violeta", light: "#7C3AED", dark: "#7F62D5" },
+  purpura: { name: "Púrpura", light: "#9333EA", dark: "#9456D2" },
+  magenta: { name: "Magenta", light: "#C026D3", dark: "#C256D2" },
   marron: { name: "Marrón", light: "#78350F", dark: "#B08968" },
 } as const;
 

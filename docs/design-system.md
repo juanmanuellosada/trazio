@@ -87,21 +87,29 @@ textual), y varios superan también 4.5:1 sin proponérselo.
 
 | Identificador | Nombre visible | Claro | Contraste (vs. blanco) | Oscuro | Contraste (vs. fondo oscuro) |
 | --- | --- | --- | --- | --- | --- |
-| `amarillo` | Amarillo | `#B45309` | 5.02:1 | `#FBBF24` | 10.69:1 |
-| `lima` | Lima | `#65A30D` | 3.09:1 | `#A3E635` | 11.84:1 |
-| `verde` | Verde | `#059669` | 3.77:1 | `#34D399` | 9.29:1 |
-| `turquesa` | Turquesa | `#0D9488` | 3.74:1 | `#2DD4BF` | 9.59:1 |
-| `celeste` | Celeste | `#0284C7` | 4.10:1 | `#38BDF8` | 8.33:1 |
-| `indigo` | Índigo | `#4F46E5` | 6.29:1 | `#818CF8` | 5.98:1 |
-| `violeta` | Violeta | `#7C3AED` | 5.70:1 | `#A78BFA` | 6.56:1 |
-| `purpura` | Púrpura | `#9333EA` | 5.38:1 | `#C084FC` | 6.76:1 |
-| `magenta` | Magenta | `#C026D3` | 4.71:1 | `#E879F9` | 7.25:1 |
+| `amarillo` | Amarillo | `#B45309` | 5.02:1 | `#D0AC4F` | 8.24:1 |
+| `lima` | Lima | `#65A30D` | 3.09:1 | `#9DCF4C` | 9.75:1 |
+| `verde` | Verde | `#059669` | 3.77:1 | `#3CCB97` | 8.66:1 |
+| `turquesa` | Turquesa | `#0D9488` | 3.74:1 | `#37CAB7` | 8.75:1 |
+| `celeste` | Celeste | `#0284C7` | 4.10:1 | `#56ACD2` | 6.99:1 |
+| `indigo` | Índigo | `#4F46E5` | 6.29:1 | `#626DD5` | 3.97:1 |
+| `violeta` | Violeta | `#7C3AED` | 5.70:1 | `#7F62D5` | 3.92:1 |
+| `purpura` | Púrpura | `#9333EA` | 5.38:1 | `#9456D2` | 3.84:1 |
+| `magenta` | Magenta | `#C026D3` | 4.71:1 | `#C256D2` | 4.72:1 |
 | `marron` | Marrón | `#78350F` | 9.07:1 | `#B08968` | 5.63:1 |
 
 Todos superan 3:1 en los dos temas; ninguno se usa como texto corrido. `marron`
 se probó primero con un tono más anaranjado (`#D97706`) y se descartó: en modo
 oscuro se confundía con la prioridad Alta. `#B08968` es un marrón desaturado,
 sin ambigüedad con el naranja de marca.
+
+La columna `Oscuro` se revisó (reporte del dueño: "los colores me parecen muy
+brillantes, hagamos algo más sobrio"): eran el tono 300/400 de Tailwind, muy
+saturados y muy claros sobre `--surface`/`--background` oscuros. Se bajó tope
+de saturación y luminosidad HSL al nivel que `marron` ya tenía (el único que
+no cambió), sin tocar `Claro` — el reporte fue mirando el calendario en
+oscuro, y el claro nunca leyó "neón". Los diez siguen distinguiéndose entre
+sí y por encima de 3:1 en los dos fondos oscuros.
 
 ### 2.1 Reutilización en la landing: color por tipo de token
 
@@ -565,7 +573,7 @@ variable a un nombre de utilidad de Tailwind (`--color-background`,
   usuario, no la única fuente.
 - Los diez colores de proyecto/etiqueta de la sección 2 se acceden desde
   código como un mapa TypeScript (`{ amarillo: { light: '#B45309', dark:
-  '#FBBF24' }, ... }`) en `lib/validation/colors.ts`, importado tanto por el
+  '#D0AC4F' }, ... }`) en `lib/validation/colors.ts`, importado tanto por el
   esquema de Zod como por los componentes que pintan el punto de color. No son
   clases de Tailwind ni variables `:root` — son datos de la aplicación, y
   Tailwind v4 los consume vía valor arbitrario (`bg-[var(--project-color)]`

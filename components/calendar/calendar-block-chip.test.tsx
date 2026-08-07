@@ -147,14 +147,14 @@ describe("CalendarBlockChip — un bloque completado se ve atenuado y tachado (d
     render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
     const title = screen.getByText("Escribir el informe");
     expect(title).toHaveClass("line-through");
-    expect(title.closest('[role="button"]')).toHaveClass("text-text-secondary");
+    expect(title.closest('[role="button"]')).toHaveClass("text-text-completed");
   });
 
   it("un hábito completado tacha el título y atenúa el texto", () => {
     render(<CalendarBlockChip block={block({ type: "habit", completed: true })} variant="timed" timezone={TZ} />);
     const title = screen.getByText("Escribir el informe");
     expect(title).toHaveClass("line-through");
-    expect(title.closest('[role="button"]')).toHaveClass("text-text-secondary");
+    expect(title.closest('[role="button"]')).toHaveClass("text-text-completed");
   });
 
   it("un bloque pendiente no tacha el título", () => {
@@ -206,6 +206,37 @@ describe("CalendarBlockChip — el borde también se apaga al completar (reporte
     );
     const root = container.firstElementChild as HTMLElement;
     expect(root.style.borderColor).toBe("rgba(2, 132, 199, 0.7)");
+  });
+});
+
+// Reporte del dueño ("que el marcador para marcar como completado resalte un
+// poco más, que tenga el mismo borde que el recuadro de la tarea o hábito"):
+// el casillero usaba tokens neutros (`border-input`/`border-primary`), sin
+// relación con el `displayColor` del bloque que lo contiene.
+describe("CalendarBlockChip — el casillero sin marcar toma el color del bloque (reporte del dueño)", () => {
+  it("sin marcar, el borde del casillero es el mismo displayColor que el recuadro, no un gris neutro", () => {
+    render(<CalendarBlockChip block={block({ completed: false })} variant="timed" timezone={TZ} />);
+    const circle = screen.getByRole("checkbox").firstElementChild as HTMLElement;
+    expect(circle.style.borderColor).toBe("rgb(2, 132, 199)");
+  });
+
+  it("el borde del casillero es más grueso que antes, marcado o no (resaltar un poco más)", () => {
+    render(<CalendarBlockChip block={block({ completed: false })} variant="timed" timezone={TZ} />);
+    expect((screen.getByRole("checkbox").firstElementChild as HTMLElement)).toHaveClass("border-2");
+  });
+
+  it("marcado, el casillero se queda con el relleno de --primary (misma señal de 'hecho' que el resto de la app), no con el color del bloque", () => {
+    render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
+    const circle = screen.getByRole("checkbox").firstElementChild as HTMLElement;
+    expect(circle).toHaveClass("border-primary", "bg-primary", "border-2");
+    expect(circle.style.borderColor).toBe("");
+  });
+
+  it("un bloque completado apaga el borde del recuadro al 70%, pero el casillero (ya con relleno --primary) no se apaga con él", () => {
+    render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
+    const circle = screen.getByRole("checkbox").firstElementChild as HTMLElement;
+    expect(circle.className).not.toMatch(/opacity-/);
+    expect(circle.style.borderColor).not.toContain("0.7");
   });
 });
 
