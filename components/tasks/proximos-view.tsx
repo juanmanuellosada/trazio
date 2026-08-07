@@ -1,18 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTheme } from "next-themes";
 import { addDays, format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { AlertTriangle, CalendarDays } from "lucide-react";
-import { useMounted } from "@/hooks/use-mounted";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { isTaskOverdue, taskDueDay, todayInTimeZone } from "@/lib/dates/today";
-import { useProjects } from "@/lib/projects/use-projects";
 import { useUndatedTasks } from "@/lib/tasks/use-undated-tasks";
 import { useUpcomingTasks } from "@/lib/tasks/use-upcoming-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { resolveTaskPriorityColorHex } from "@/lib/validation/tasks";
 import { Board, type BoardColumn } from "@/components/board/board";
 import { dateColumns, priorityColumns, UNDATED_COLUMN_ID } from "@/lib/board/panel-columns";
 import { dateMovePatch, priorityMovePatch } from "@/lib/board/panel-move";
@@ -96,15 +93,10 @@ export function ProximosView({
 }) {
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
   const { weekStartsOn, timeFormat } = useUserPreferences();
-  const { data: projects } = useProjects();
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
-  const projectColorById = useMemo(
-    () => new Map((projects ?? []).map((p) => [p.id, resolveProjectColorHex(p.color, theme)] as const)),
-    [projects, theme],
-  );
-  const resolveTaskColor = (task: TaskRowData) => projectColorById.get(task.project_id) ?? resolveProjectColorHex(null, theme);
+  // Color por prioridad para el calendario (pedido del dueño: "que las
+  // tareas salgan del color de su prioridad", ya no del proyecto — mismo
+  // criterio que `HoyView`/`SectionedTasks`).
+  const resolveTaskColor = (task: TaskRowData) => resolveTaskPriorityColorHex(task.priority);
   const windowDays = options.daysAhead;
   const { data } = useUpcomingTasks(userId, timezone, windowDays, initialTasks, options.showCompleted);
   const { data: undatedData } = useUndatedTasks(userId, undefined, options.showCompleted);

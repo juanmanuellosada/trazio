@@ -154,11 +154,13 @@ export function DraggableTimedBlock({
        * `calendar-block-chip.tsx` (ancla chica, zona de toque más grande
        * fuera del flujo), con una diferencia a propósito: acá el
        * crecimiento es **solo hacia abajo** (`-bottom-3`, nunca hacia
-       * arriba). Un bloque de quince minutos mide 18px — crecer también
-       * hacia arriba, como el casillero, le dejaría casi sin superficie
-       * propia para moverlo o abrirlo (la manija le ganaría el gesto a todo
-       * lo demás). Creciendo solo hacia abajo, la franja que ya intercepta
-       * el redimensionado no cambia (los mismos 6px de siempre), solo se
+       * arriba). Un bloque chico (modo apretado, por debajo de los 15
+       * minutos — ver `TIGHT_HEIGHT_THRESHOLD_PX` en
+       * `calendar-block-chip.tsx`) casi no tiene alto propio — crecer
+       * también hacia arriba, como el casillero, le dejaría casi sin
+       * superficie propia para moverlo o abrirlo (la manija le ganaría el
+       * gesto a todo lo demás). Creciendo solo hacia abajo, la franja que
+       * ya intercepta el redimensionado no cambia (los mismos 6px de siempre), solo se
        * ensancha el área de toque hacia el espacio libre debajo. Mismo
        * desborde ya documentado sobre el bloque vecino si están pegados sin
        * separación, sin resolverlo tampoco.

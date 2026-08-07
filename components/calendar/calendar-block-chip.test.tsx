@@ -31,19 +31,19 @@ describe("CalendarBlockChip — escalera por alto (D-A, tarea 2.1)", () => {
     expect(screen.queryByText(/–/)).not.toBeInTheDocument();
   });
 
-  it("un bloque de cuarenta minutos agrega el horario, pero no el proyecto ni las etiquetas", () => {
-    const fortyMinuteTask = block({
-      end: "2026-08-05T10:40:00-03:00",
+  it("un bloque de treinta minutos agrega el horario, pero no el proyecto ni las etiquetas", () => {
+    const thirtyMinuteTask = block({
+      end: "2026-08-05T10:30:00-03:00",
       projectName: "Trabajo",
       labels: [{ id: "l1", name: "Urgente", color: "amarillo" }],
     });
-    render(<CalendarBlockChip block={fortyMinuteTask} variant="timed" timezone={TZ} />);
-    expect(screen.getByText("10:00 – 10:40")).toBeInTheDocument();
+    render(<CalendarBlockChip block={thirtyMinuteTask} variant="timed" timezone={TZ} />);
+    expect(screen.getByText("10:00 – 10:30")).toBeInTheDocument();
     expect(screen.queryByText("Trabajo")).not.toBeInTheDocument();
     expect(screen.queryByText("Urgente")).not.toBeInTheDocument();
   });
 
-  it("un bloque de una hora ya entra con los cuatro peldaños, a 72px/hora (antes hacían falta dos horas)", () => {
+  it("un bloque de una hora ya entra con los cuatro peldaños, a 96px/hora (antes hacían falta dos horas)", () => {
     const oneHourTask = block({
       end: "2026-08-05T11:00:00-03:00",
       projectName: "Trabajo",
@@ -314,8 +314,12 @@ describe("CalendarBlockChip — variant overlay se ve igual que en la grilla (re
     expect(root.className).not.toContain("w-56");
   });
 
-  it("un bloque de quince minutos entra en modo apretado, igual que en la grilla (no fuerza el horario)", () => {
-    const { container } = render(<CalendarBlockChip block={block()} variant="overlay" timezone={TZ} />);
+  it("un bloque por debajo de los 15 minutos entra en modo apretado, igual que en la grilla (no fuerza el horario)", () => {
+    // A 96px/hora un bloque de 15 minutos (el paso mínimo de la grilla) ya
+    // no cae en modo apretado (ver el describe de más abajo) — acá hace
+    // falta uno más corto para seguir probando esta rama.
+    const tenMinuteTask = block({ end: "2026-08-05T10:10:00-03:00" });
+    const { container } = render(<CalendarBlockChip block={tenMinuteTask} variant="overlay" timezone={TZ} />);
     const root = container.firstElementChild as HTMLElement;
     expect(root.className).toContain("py-0");
     expect(root.className).toContain("flex-row");
@@ -341,19 +345,32 @@ describe("CalendarBlockChip — formato mes, fuera de alcance (Non-Goal)", () =>
   });
 });
 
-// Defecto encontrado (no en la lista original de tareas): un bloque de
-// quince minutos mide 18px y el primer peldaño de la escalera pedía 24px
-// (relleno vertical + una línea de texto normal) — el contenido se recortaba
-// en fragmentos ilegibles y el control de completar quedaba invisible. La
+// Defecto encontrado (no en la lista original de tareas): un bloque muy
+// corto mide menos que lo que pide el primer peldaño de la escalera (relleno
+// vertical + una línea de texto normal, 24px) — el contenido se recortaba en
+// fragmentos ilegibles y el control de completar quedaba invisible. La
 // salida es apretar, no agrandar (ningún alto mínimo): sin relleno vertical,
-// tipografía más chica, una sola fila.
-describe("CalendarBlockChip — modo apretado (defecto: el bloque de quince minutos era ilegible)", () => {
-  it("un bloque de quince minutos va sin relleno vertical, en una sola fila, con tipografía más chica", () => {
-    const { container } = render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+// tipografía más chica, una sola fila. A 96px/hora (pedido del dueño: subir
+// el alto de la grilla) un bloque de 15 minutos —el paso mínimo de la
+// grilla— mide justo esos 24px y ya no cae acá; el modo apretado queda para
+// duraciones más cortas (una duración corta puesta a mano, o un evento
+// importado de Google).
+describe("CalendarBlockChip — modo apretado (defecto: un bloque muy corto era ilegible)", () => {
+  it("un bloque de diez minutos va sin relleno vertical, en una sola fila, con tipografía más chica", () => {
+    const tenMinuteTask = block({ end: "2026-08-05T10:10:00-03:00" });
+    const { container } = render(<CalendarBlockChip block={tenMinuteTask} variant="timed" timezone={TZ} />);
     const root = container.querySelector('[role="button"]');
     expect(root?.className).toContain("py-0");
     expect(root?.className).toContain("flex-row");
     expect(root?.className).toContain("text-[0.625rem]");
+  });
+
+  it("un bloque de quince minutos —el paso mínimo de la grilla— ya no entra en modo apretado", () => {
+    const { container } = render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    const root = container.querySelector('[role="button"]');
+    expect(root?.className).toContain("py-1");
+    expect(root?.className).toContain("flex-col");
+    expect(root?.className).toContain("text-xs");
   });
 
   it("un bloque de treinta minutos ya entra en modo normal, con el relleno y la dirección de siempre", () => {
@@ -366,7 +383,8 @@ describe("CalendarBlockChip — modo apretado (defecto: el bloque de quince minu
   });
 
   it("el punto que se ve no se achica en modo apretado: sigue midiendo lo mismo", () => {
-    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+    const tenMinuteTask = block({ end: "2026-08-05T10:10:00-03:00" });
+    render(<CalendarBlockChip block={tenMinuteTask} variant="timed" timezone={TZ} />);
     const visibleDot = screen.getByRole("checkbox").firstElementChild;
     expect(visibleDot?.className).toContain("size-3");
   });
@@ -385,8 +403,9 @@ describe("CalendarBlockChip — modo apretado (defecto: el bloque de quince minu
 // calcula layout, así que estas pruebas verifican la clase que produce esa
 // medida, no el número en sí.
 describe("CalendarBlockChip — casillero de completar, área tocable de 24×24 (defecto de accesibilidad)", () => {
-  it("el `<button>` con el rol es el área tocable agrandada, no el punto que se ve", () => {
-    render(<CalendarBlockChip block={block()} variant="timed" timezone={TZ} />);
+  it("el `<button>` con el rol es el área tocable agrandada, no el punto que se ve (en modo apretado)", () => {
+    const tenMinuteTask = block({ end: "2026-08-05T10:10:00-03:00" });
+    render(<CalendarBlockChip block={tenMinuteTask} variant="timed" timezone={TZ} />);
     const checkbox = screen.getByRole("checkbox");
     expect(checkbox.className).toContain("-inset-1.5");
     expect(checkbox.className).not.toContain("size-3");

@@ -102,8 +102,7 @@ function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): n
 
 /**
  * Modo apretado (defecto encontrado, no en la lista original de tareas):
- * un bloque de quince minutos mide 18px (`HOUR_ROW_HEIGHT_PX` es 72), y el
- * primer peldaño de la escalera —relleno vertical más una línea de
+ * el primer peldaño de la escalera —relleno vertical más una línea de
  * texto— pide `VERTICAL_PADDING_PX + LINE_HEIGHT_PX` = 24px. Por debajo de
  * eso el contenido se recortaba en fragmentos sueltos y el control de
  * completar quedaba invisible. El diseño descartó un alto mínimo (mentiría
@@ -111,8 +110,15 @@ function ladderSteps(block: CalendarBlock, variant: CalendarBlockChipVariant): n
  * relleno vertical, tipografía y altura de línea más chicas, una sola
  * línea sin envolver — el mismo recurso que usa Google Calendar. El
  * umbral es exactamente el mismo cálculo que ya usa `ladderSteps` para el
- * primer peldaño, así que con el paso de 15 minutos de la grilla (D-C)
- * solo el bloque de 15 minutos cae en este modo; el de 30 ya entra normal.
+ * primer peldaño.
+ *
+ * Con `HOUR_ROW_HEIGHT_PX` en 96 (pedido del dueño, ver el comentario de
+ * `grid-metrics.ts`), un bloque de 15 minutos —el paso mínimo de la
+ * grilla— mide 24px: justo el umbral, así que ya **no** cae acá (la
+ * comparación es `<`, no `<=`). Este modo queda para duraciones por debajo
+ * de los 15 minutos, que la grilla no ofrece por arrastre pero sí pueden
+ * llegar por una duración corta puesta a mano o un evento importado de
+ * Google.
  */
 const TIGHT_HEIGHT_THRESHOLD_PX = VERTICAL_PADDING_PX + LINE_HEIGHT_PX;
 /** Fila única, sin relleno vertical: mismo contenido de `titleRow`, sin lugar para más peldaños. */
@@ -329,27 +335,28 @@ export function CalendarBlockChip({
         // ancla de 12×12 que no participa del layout (está fuera de flujo,
         // así que no empuja ni la fila ni la escalera de abajo); el círculo
         // que se ve sigue siendo el `span` interno de 12×12, sin cambios.
-        // En un bloque de quince minutos (18px de alto total) esto excede
-        // la caja del bloque — a propósito: se prefirió desbordar sin
-        // dibujar nada ahí antes que sacar el control (el diseño dice que
-        // nunca se cae por falta de espacio). El único límite real es que
-        // los bloques vecinos son elementos separados y absolutamente
+        // En un bloque chico (modo apretado, por debajo de los 15 minutos —
+        // ver el comentario de `TIGHT_HEIGHT_THRESHOLD_PX`) esto excede la
+        // caja del bloque — a propósito: se prefirió desbordar sin dibujar
+        // nada ahí antes que sacar el control (el diseño dice que nunca se
+        // cae por falta de espacio). El único límite real es que los
+        // bloques vecinos son elementos separados y absolutamente
         // posicionados (`draggable-timed-block.tsx`): el desborde hacia
         // arriba gana el clic (por orden de DOM), hacia abajo puede quedar
         // tapado por el bloque siguiente si están pegados sin separación —
         // no se resuelve acá, ver el reporte de la tanda.
         //
         // `z-10` (grupo 4/5, defecto reportado por otra tanda): en un
-        // bloque de 15 y, un poco, de 30 minutos, este desborde se solapa
-        // con la manija de redimensionar (`draggable-timed-block.tsx`,
-        // zona de toque de 18px creciendo hacia abajo desde el borde
-        // inferior). Las dos son absolutas con z-index automático, así que
-        // sin esto ganaba la manija por venir después en el árbol — un
-        // control que se ve y no responde, peor que uno ausente (D-A: el
-        // control de completar nunca se cae). El mismo `z-10` también
-        // resuelve el caso de dos bloques de 15 min pegados: el casillero
-        // del bloque de abajo le gana a la manija del bloque de arriba
-        // aunque se solapen, sin depender de en qué orden se dibujaron.
+        // bloque chico, este desborde se solapa con la manija de
+        // redimensionar (`draggable-timed-block.tsx`, zona de toque de
+        // 18px creciendo hacia abajo desde el borde inferior). Las dos son
+        // absolutas con z-index automático, así que sin esto ganaba la
+        // manija por venir después en el árbol — un control que se ve y no
+        // responde, peor que uno ausente (D-A: el control de completar
+        // nunca se cae). El mismo `z-10` también resuelve el caso de dos
+        // bloques chicos pegados: el casillero del bloque de abajo le gana
+        // a la manija del bloque de arriba aunque se solapen, sin depender
+        // de en qué orden se dibujaron.
         <span className="relative z-10 size-3 shrink-0">
           <button
             type="button"

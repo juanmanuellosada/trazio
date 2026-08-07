@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTheme } from "next-themes";
 import { AlertTriangle, Sun } from "lucide-react";
-import { useMounted } from "@/hooks/use-mounted";
 import { isTaskCompletedToday, isTaskDueToday, isTaskOverdue } from "@/lib/dates/today";
 import { useHoyTasks } from "@/lib/tasks/use-hoy-tasks";
 import { buildHoySequence } from "@/lib/tasks/hoy-sequence";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
-import { useProjects } from "@/lib/projects/use-projects";
 import { useUpdateTask } from "@/lib/tasks/mutations";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { resolveTaskPriorityColorHex } from "@/lib/validation/tasks";
 import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
@@ -197,14 +194,10 @@ export function HoyView({
     );
   }
 
-  // Color por proyecto para el calendario (D-F): mismo criterio que
-  // `ProximosView`/`SectionedTasks`.
-  const { data: projects } = useProjects();
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
-  const resolveTaskColor = (task: TaskRowData) =>
-    resolveProjectColorHex(projects?.find((p) => p.id === task.project_id)?.color ?? null, theme);
+  // Color por prioridad para el calendario (pedido del dueño: "que las
+  // tareas salgan del color de su prioridad", ya no del proyecto — mismo
+  // criterio que `ProximosView`/`SectionedTasks`).
+  const resolveTaskColor = (task: TaskRowData) => resolveTaskPriorityColorHex(task.priority);
 
   // Panel (D-B/D-C, D48): columnas por el modelo compartido, nunca por
   // eventos. "Prioridad" es el default de Hoy (caso especial de D-A, ver el

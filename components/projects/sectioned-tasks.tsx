@@ -2,8 +2,6 @@
 
 import { useRef } from "react";
 import type { ReactNode } from "react";
-import { useTheme } from "next-themes";
-import { useMounted } from "@/hooks/use-mounted";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { AddSectionRow, SectionList } from "@/components/sections/section-list";
 import { TaskList } from "@/components/tasks/task-list";
@@ -18,11 +16,10 @@ import { clickButtonByText } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
 import { dateColumns, priorityColumns, sectionColumns, UNDATED_COLUMN_ID, UNSECTIONED_COLUMN_ID } from "@/lib/board/panel-columns";
 import { dateMovePatch, priorityMovePatch, sectionMovePatch } from "@/lib/board/panel-move";
-import { useProjects } from "@/lib/projects/use-projects";
 import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
 import { useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
-import { resolveProjectColorHex } from "@/lib/validation/colors";
+import { resolveTaskPriorityColorHex } from "@/lib/validation/tasks";
 import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
 import { groupTasks } from "@/lib/view-options/group-tasks";
@@ -107,13 +104,10 @@ export function SectionedTasks({
   const { data: tasksData } = useTasks(projectId, initialTasks);
   const { options } = useViewOptions(viewKey, initialOptions);
   const { weekStartsOn, timeFormat } = useUserPreferences();
-  const { data: projects } = useProjects();
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light";
-  const project = projects?.find((p) => p.id === projectId);
-  const projectColorHex = resolveProjectColorHex(project?.color ?? null, theme);
-  const resolveTaskColor = () => projectColorHex;
+  // Color por prioridad para el calendario (pedido del dueño: "que las
+  // tareas salgan del color de su prioridad", ya no del proyecto — mismo
+  // criterio que `HoyView`/`ProximosView`).
+  const resolveTaskColor = (task: TaskRow) => resolveTaskPriorityColorHex(task.priority);
   const moveTask = useMoveTask();
   const updateTask = useUpdateTask();
   const sections = [...(sectionsData ?? [])].sort((a, b) => a.position - b.position);

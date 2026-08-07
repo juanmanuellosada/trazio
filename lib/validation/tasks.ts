@@ -28,6 +28,31 @@ export function priorityLabel(priority: number): string {
   return TASK_PRIORITIES.find((p) => p.value === priority)?.label ?? "Baja";
 }
 
+/**
+ * Hex de cada prioridad, para el bloque de tarea del calendario ("que las
+ * tareas salgan del color de su prioridad", no del proyecto): mismo valor
+ * que los tokens `--priority-*` de `app/globals.css` que ya usa `PriorityDot`
+ * (`components/selectors/priority-select.tsx`), duplicado acá porque el
+ * chip del calendario (`calendar-block-chip.tsx`) hace aritmética de alfa
+ * sobre el color (`${color}1a` para el fondo), algo que no se puede hacer
+ * sobre `var(--priority-x)`. A diferencia de `PROJECT_COLORS`
+ * (`lib/validation/colors.ts`), el token vale lo mismo en los dos temas, así
+ * que no hace falta un parámetro de tema acá. Si se retoca un tono en
+ * `globals.css`, hay que actualizar este mapa a mano. Prioridad 4 (Baja) es
+ * también el default (`DEFAULT_TASK_PRIORITY`) y el respaldo de un valor
+ * fuera de rango.
+ */
+const TASK_PRIORITY_COLOR_HEX: Record<TaskPriority, string> = {
+  1: "#EC1E2A",
+  2: "#F58220",
+  3: "#3B6FF0",
+  4: "#8A94A0",
+};
+
+export function resolveTaskPriorityColorHex(priority: number): string {
+  return TASK_PRIORITY_COLOR_HEX[priority as TaskPriority] ?? TASK_PRIORITY_COLOR_HEX[DEFAULT_TASK_PRIORITY];
+}
+
 /** Duración estimada en minutos: entero positivo, o vacío. */
 export const durationMinutesSchema = z
   .number()

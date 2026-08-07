@@ -19,8 +19,8 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 /**
  * Cada cuánto avanza la línea de la hora actual (tarea 1.1, defecto: hoy
  * se congela para siempre). Cada segundo sería desperdicio: la grilla mide
- * `HOUR_ROW_HEIGHT_PX` (72px) por hora, así que un minuto entero mueve la
- * línea poco más de un píxel (72/60 = 1.2px) — no hay nada que renderizar de
+ * `HOUR_ROW_HEIGHT_PX` (96px) por hora, así que un minuto entero mueve la
+ * línea poco más de un píxel (96/60 = 1.6px) — no hay nada que renderizar de
  * más seguido que eso. Un minuto es además la unidad natural del reloj que
  * se muestra (`formatHourLabel` no tiene segundos), así que no se pierde
  * precisión visible eligiendo este intervalo.
