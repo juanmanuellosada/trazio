@@ -643,7 +643,12 @@ export function TaskRow({
         {isCompleted && <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" />}
       </button>
 
-      {task.priority !== DEFAULT_TASK_PRIORITY && <PriorityDot priority={task.priority} />}
+      {/* `opacity-70` (reporte del dueño: "los bordes siguen del mismo color... eso también debería apagarse"):
+          mismo tratamiento que ya usa el chip de etiqueta completada (`LabelChipView`, más arriba) — el punto de
+          prioridad es un token de color pleno junto a un título ya gris, no hay a dónde bajarlo salvo por opacidad. */}
+      {task.priority !== DEFAULT_TASK_PRIORITY && (
+        <PriorityDot priority={task.priority} className={isCompleted ? "opacity-70" : undefined} />
+      )}
 
       {/* Fila en niveles (`fila-de-tarea-en-niveles`, D-A): nivel uno (título
           + proyecto/sección anclados a la derecha) y, solo si hay algo que

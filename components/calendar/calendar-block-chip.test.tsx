@@ -158,6 +158,45 @@ describe("CalendarBlockChip — un bloque completado se ve atenuado y tachado (d
   });
 });
 
+// Reporte del dueño ("los bordes de las tareas siguen del mismo color... eso
+// también debería apagarse"): el borde lleva un hex arbitrario (color de
+// proyecto/hábito, sin token al que bajar), así que se apaga por alfa —
+// `b3` (70%), el mismo alfa aritmético que `opacity-70` en el resto de esta
+// ronda (`PriorityDot`, punto de hábito, etiqueta completada).
+describe("CalendarBlockChip — el borde también se apaga al completar (reporte del dueño)", () => {
+  it("una tarea completada baja el borde al 70% de alfa, no al color pleno", () => {
+    render(<CalendarBlockChip block={block({ completed: true })} variant="timed" timezone={TZ} />);
+    const root = screen.getByText("Escribir el informe").closest('[role="button"]') as HTMLElement;
+    expect(root.style.borderColor).toBe("rgba(2, 132, 199, 0.7)");
+  });
+
+  it("un hábito completado también baja el borde al 70% de alfa", () => {
+    render(<CalendarBlockChip block={block({ type: "habit", completed: true })} variant="timed" timezone={TZ} />);
+    const root = screen.getByText("Escribir el informe").closest('[role="button"]') as HTMLElement;
+    expect(root.style.borderColor).toBe("rgba(2, 132, 199, 0.7)");
+  });
+
+  it("un bloque pendiente conserva el borde al color pleno", () => {
+    render(<CalendarBlockChip block={block({ completed: false })} variant="timed" timezone={TZ} />);
+    const root = screen.getByText("Escribir el informe").closest('[role="button"]') as HTMLElement;
+    expect(root.style.borderColor).toBe("rgb(2, 132, 199)");
+  });
+
+  it("un hábito salteado no toca el borde (se distingue de completado: atenúa el bloque entero por opacidad, no el borde por alfa)", () => {
+    render(<CalendarBlockChip block={block({ type: "habit", skipped: true })} variant="timed" timezone={TZ} />);
+    const root = screen.getByText("Escribir el informe").closest('[role="button"]') as HTMLElement;
+    expect(root.style.borderColor).toBe("rgb(2, 132, 199)");
+  });
+
+  it("la variante compacta también apaga el borde de un bloque completado", () => {
+    const { container } = render(
+      <CalendarBlockChip block={block({ end: "2026-08-05T12:00:00-03:00", completed: true })} variant="compact" timezone={TZ} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.borderColor).toBe("rgba(2, 132, 199, 0.7)");
+  });
+});
+
 // El calendario ahora permite marcar hábitos de días pasados (defecto: el
 // rótulo del casillero decía "hoy" sin importar de qué día era el bloque —
 // falso en un bloque del lunes pasado, y justo el texto que lee un lector de

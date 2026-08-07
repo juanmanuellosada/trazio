@@ -68,7 +68,14 @@ export function HabitTodayRow({
       <span aria-hidden className="text-base leading-none">
         {habit.icon}
       </span>
-      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} />
+      {/* `opacity-70` cuando está completado (reporte del dueño): mismo tratamiento que ya usa el chip de
+          etiqueta completada de `task-row.tsx` — el punto de color del hábito es un hex pleno, sin token al
+          que bajar. */}
+      <span
+        aria-hidden
+        className={cn("size-2 shrink-0 rounded-full", habit.completed_today && "opacity-70")}
+        style={{ backgroundColor: hex }}
+      />
 
       <span
         className={cn(

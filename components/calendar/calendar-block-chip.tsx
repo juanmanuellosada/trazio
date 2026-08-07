@@ -231,8 +231,19 @@ export function CalendarBlockChip({
     className,
   );
 
+  // Borde apagado en un bloque completado (reporte del dueño: "los bordes
+  // siguen del mismo color"): `displayColor` es un hex arbitrario (proyecto,
+  // hábito o Google), sin token al que bajar, así que se baja por alfa —
+  // mismo mecanismo que ya usa el fondo de esta línea (`1a`, 10%) y el chip
+  // suelto de `unscheduled-habits-row.tsx`. `b3` es el sufijo de Tailwind
+  // para 70% (mismo alfa aritmético que `opacity-70`, ya el criterio de
+  // "apagado" del resto de esta ronda — `PriorityDot`, punto de hábito y la
+  // etiqueta completada de `task-row.tsx`), así que el vocabulario de
+  // atenuado queda uniforme en vez de inventar un segundo número. El fondo
+  // no se toca: ya está al 10%, bajarlo más no se nota y el borde es el
+  // elemento que el reporte señala.
   const sharedStyle: CSSProperties = {
-    borderColor: displayColor,
+    borderColor: completed ? `${displayColor}b3` : displayColor,
     backgroundColor: `${displayColor}1a`,
     ...style,
   };
