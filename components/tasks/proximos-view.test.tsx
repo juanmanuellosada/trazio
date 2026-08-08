@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { ComposeContextProvider } from "@/components/tasks/compose-context";
@@ -57,6 +57,8 @@ const moveTaskMutate = vi.fn();
 vi.mock("@/lib/tasks/mutations", () => ({
   useUpdateTask: () => ({ mutate: updateTaskMutate }),
   useMoveTask: () => ({ mutate: moveTaskMutate }),
+  useDuplicateTask: () => ({ mutate: vi.fn() }),
+  useDeleteTask: () => ({ mutate: vi.fn() }),
 }));
 
 let currentUpcoming: TaskRow[] = [];
@@ -66,8 +68,18 @@ vi.mock("@/lib/tasks/use-upcoming-tasks", () => ({ useUpcomingTasks: () => ({ da
 vi.mock("@/lib/tasks/use-undated-tasks", () => ({ useUndatedTasks: () => ({ data: currentUndated }) }));
 vi.mock("@/lib/sections/use-sections", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/sections/use-sections")>();
-  return { ...actual, useAllSections: () => ({ data: currentAllSections }) };
+  return { ...actual, useAllSections: () => ({ data: currentAllSections }), useSections: () => ({ data: [] }) };
 });
+vi.mock("@/lib/tasks/use-tasks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/tasks/use-tasks")>();
+  return { ...actual, useTasks: () => ({ data: [] }) };
+});
+// Ajeno al propósito de las pruebas de "tiempo planificado" de más abajo
+// (las primeras de este archivo en montar el modo lista de verdad, en vez
+// de mockear `Board`): arrastra el contexto del parser, mismo criterio que
+// `hoy-view.test.tsx` usa para sus propios mocks ajenos al foco de cada
+// grupo de pruebas.
+vi.mock("./task-quick-add-row", () => ({ TaskQuickAddRow: () => null }));
 
 const TEST_PREFERENCES = {
   timezone: "America/Argentina/Buenos_Aires",
@@ -243,5 +255,65 @@ describe("ProximosView — reordenar dentro de una columna nunca persiste (D25, 
 
     expect(moveTaskMutate).not.toHaveBeenCalled();
     expect(updateTaskMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("ProximosView — tiempo planificado por día (capacidad carga-del-dia, D-B)", () => {
+  it("cada día de la lista muestra su tiempo planificado junto al contador", () => {
+    renderProximos(
+      [
+        task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 90 }),
+        task({ id: "t2", title: "Otra tarea", due_date: "2026-08-05", duration_minutes: 60 }),
+      ],
+      [],
+      [],
+    );
+
+    expect(screen.getByText(/\(2\)/)).toBeInTheDocument();
+    expect(screen.getByText(/2h 30m planificadas/)).toBeInTheDocument();
+  });
+
+  it("una tarea sin duración se informa aparte, no en silencio", () => {
+    renderProximos(
+      [
+        task({ id: "t1", title: "Con duración", due_date: "2026-08-05", duration_minutes: 60 }),
+        task({ id: "t2", title: "Sin duración", due_date: "2026-08-05", duration_minutes: null }),
+      ],
+      [],
+      [],
+    );
+
+    expect(screen.getByText(/1h planificadas · 1 sin duración/)).toBeInTheDocument();
+  });
+
+  it("una tarea completada no suma, aunque 'mostrar completadas' esté activo", () => {
+    renderProximos(
+      [
+        task({ id: "t1", title: "Pendiente", due_date: "2026-08-05", duration_minutes: 30 }),
+        task({ id: "t2", title: "Completada", due_date: "2026-08-05", duration_minutes: 120, completed_at: "2026-08-05T10:00:00.000Z" }),
+      ],
+      [],
+      [],
+      { showCompleted: true },
+    );
+
+    expect(screen.getByText(/30m planificadas/)).toBeInTheDocument();
+    expect(screen.queryByText(/2h 30m planificadas/)).not.toBeInTheDocument();
+  });
+
+  it("las atrasadas nunca entran en el tiempo planificado de un día (D-B): su lista agrupa por vencimiento, no por hoy", () => {
+    renderProximos(
+      [
+        task({ id: "overdue", title: "Atrasada", due_date: "2026-08-01", duration_minutes: 300 }),
+        task({ id: "today", title: "De hoy", due_date: "2026-08-05", duration_minutes: 30 }),
+      ],
+      [],
+      [],
+    );
+
+    // El total de "Hoy" (el primer día de la ventana) es solo la tarea de
+    // hoy: la atrasada nunca aparece en ningún grupo de día de Próximos.
+    expect(screen.getByText(/30m planificadas/)).toBeInTheDocument();
+    expect(screen.queryByText(/5h 30m planificadas/)).not.toBeInTheDocument();
   });
 });

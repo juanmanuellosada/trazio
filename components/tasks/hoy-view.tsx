@@ -25,6 +25,8 @@ import { dateMovePatch, priorityMovePatch } from "@/lib/board/panel-move";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { HoyEventRow } from "@/components/calendar/hoy-event-row";
 import { useHoyEvents } from "@/components/calendar/use-hoy-events";
+import { useDayLoad } from "@/components/calendar/use-day-load";
+import { formatDayLoad } from "@/lib/planning/day-load";
 import { usePublishComposeContext } from "./compose-context";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
@@ -163,6 +165,19 @@ export function HoyView({
     ? orderTasks(applyQuickFilters(completedTodayRaw, options.quickFilters, true), options.order, timezone)
     : [];
 
+  // Tiempo planificado del día (capacidad `carga-del-dia`, D-B): en Hoy las
+  // atrasadas suman, porque están en la pantalla y son trabajo del día —
+  // `formatDayLoad` lo aclara en el texto cuando corresponde.
+  const dayLoad = useDayLoad({
+    todayDate,
+    timezone,
+    now,
+    tasks: [...overdue, ...today],
+    initialHabits,
+    eventsState,
+  });
+  const dayLoadText = formatDayLoad(dayLoad, overdue.length > 0);
+
   // Ver "El orden (D-A, tarea 2.6)" en el comentario de arriba. El agrupador
   // ya no entra en esta cuenta (D-E): la lista de Hoy nunca agrupa, así que
   // solo el orden puede romper la secuencia por default.
@@ -265,6 +280,7 @@ export function HoyView({
             <div className="flex items-center gap-2">
               <Sun aria-hidden className="size-5 text-primary" />
               <h1 className="text-2xl font-semibold text-foreground">Hoy</h1>
+              {dayLoadText && <span className="text-sm font-normal text-text-secondary">{dayLoadText}</span>}
             </div>
             <ViewOptionsBar
               viewKey={VIEW_KEY}

@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { AlertTriangle, CalendarDays } from "lucide-react";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { isTaskOverdue, taskDueDay, todayInTimeZone } from "@/lib/dates/today";
+import { computeDayLoad, formatDayLoad } from "@/lib/planning/day-load";
 import { useUndatedTasks } from "@/lib/tasks/use-undated-tasks";
 import { useUpcomingTasks } from "@/lib/tasks/use-upcoming-tasks";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
@@ -125,15 +126,19 @@ export function ProximosView({
   // render es barato para el tamaño real de estas listas.
   const days = Array.from({ length: windowDays }, (_, offset) => {
     const day = todayInTimeZone(addDays(now, offset), timezone);
-    return {
-      day,
-      offset,
-      tasks: orderTasks(
-        tasks.filter((t) => taskDueDay(t, timezone) === day),
-        options.order,
-        timezone,
-      ),
-    };
+    const dayTasks = orderTasks(
+      tasks.filter((t) => taskDueDay(t, timezone) === day),
+      options.order,
+      timezone,
+    );
+    // Tiempo planificado del día (capacidad `carga-del-dia`, D-B): nunca
+    // suma completadas (pueden estar en `dayTasks` si "mostrar completadas"
+    // está activo) ni atrasadas — a diferencia de Hoy, acá cada grupo es un
+    // día de vencimiento, y las atrasadas viven en su propio bloque aparte.
+    const dayLoad = computeDayLoad(
+      dayTasks.filter((t) => !t.completed_at).map((t) => ({ durationMinutes: t.duration_minutes })),
+    );
+    return { day, offset, tasks: dayTasks, loadText: formatDayLoad(dayLoad) };
   });
 
   const isEmpty = overdue.length === 0 && days.every((d) => d.tasks.length === 0);
@@ -271,7 +276,7 @@ export function ProximosView({
                 </section>
               )}
 
-              {days.map(({ day, offset, tasks: dayTasks }) => {
+              {days.map(({ day, offset, tasks: dayTasks, loadText }) => {
                 const highlighted = offset === 0 || offset === 1;
                 return (
                   <section key={day}>
@@ -287,6 +292,9 @@ export function ProximosView({
                       <span className="font-normal normal-case tracking-normal text-text-secondary">
                         ({dayTasks.length})
                       </span>
+                      {loadText && (
+                        <span className="font-normal normal-case tracking-normal text-text-secondary"> · {loadText}</span>
+                      )}
                     </h2>
                     {dayTasks.length > 0 && (
                       <TaskGroupList tasks={dayTasks} allTasks={tasks} groupBy={options.groupBy} showProject timezone={timezone} />

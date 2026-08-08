@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { HoyEventsResult } from "@/components/calendar/use-hoy-events";
+import type { Habit } from "@/lib/habits/habit-columns";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
 import type { SectionRow } from "@/lib/sections/use-sections";
 import { defaultOptionsForViewKey, type ViewOptions } from "@/lib/view-options/schema";
@@ -41,8 +42,13 @@ vi.mock("@/lib/tasks/use-hoy-tasks", () => ({
   useHoyTasks: () => ({ data: currentTasks }),
 }));
 
-vi.mock("@/lib/habits/use-habits", () => ({ useHabits: () => ({ data: [] }) }));
+vi.mock("@/lib/habits/use-habits", () => ({ useHabits: () => ({ data: currentHabits }) }));
 vi.mock("@/lib/habits/schedule-overrides", () => ({ useHabitScheduleOverridesForDate: () => ({ data: {} }) }));
+vi.mock("@/lib/habits/skips", () => ({ useHabitSkipsForDate: () => ({ data: currentSkips }) }));
+vi.mock("@/lib/habits/mutations", () => ({
+  useMarkHabitDone: () => ({ mutate: vi.fn(), isPending: false }),
+  useUnmarkHabitDone: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 vi.mock("@/components/view-options/view-options-bar", () => ({ ViewOptionsBar: () => null }));
 vi.mock("@/lib/view-options/use-view-options", () => ({
   useViewOptions: (_viewKey: string, initialOptions: unknown) => ({ options: currentOptions ?? initialOptions }),
@@ -117,6 +123,26 @@ vi.mock("@/components/calendar/use-hoy-events", () => ({
 }));
 
 let currentTasks: TaskRowData[] = [];
+let currentHabits: Habit[] = [];
+let currentSkips: Record<string, boolean> = {};
+
+function habit(overrides: Partial<Habit> = {}): Habit {
+  return {
+    id: "habit-1",
+    name: "Meditar",
+    icon: "sun",
+    color: "#000000",
+    duration_minutes: 20,
+    scheduled_time: null,
+    frequency_type: "daily",
+    times_per_week: null,
+    days_of_week: null,
+    is_archived: false,
+    created_at: "2026-01-01T00:00:00.000Z",
+    completed_today: false,
+    ...overrides,
+  };
+}
 
 function task(overrides: Partial<TaskRowData> = {}): TaskRowData {
   return {
@@ -161,6 +187,8 @@ beforeEach(() => {
   updateTaskMutate.mockClear();
   moveTaskMutate.mockClear();
   currentAllSections = [];
+  currentHabits = [];
+  currentSkips = {};
   lastBoardProps = null;
 });
 
@@ -463,5 +491,61 @@ describe("HoyView — reordenar dentro de una columna nunca persiste (D25, Hoy c
 
     expect(moveTaskMutate).not.toHaveBeenCalled();
     expect(updateTaskMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("HoyView — tiempo planificado del día (capacidad carga-del-dia, D-B/D-C)", () => {
+  it("todo con duración: solo el total, en el encabezado", () => {
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 90 })], eventsOk([]));
+    expect(screen.getByText("1h 30m planificadas")).toBeInTheDocument();
+  });
+
+  it("algo sin duración: el total lo dice aparte, nunca en silencio", () => {
+    renderHoy(
+      [
+        task({ id: "t1", title: "Con duración", due_date: "2026-08-05", duration_minutes: 60 }),
+        task({ id: "t2", title: "Sin duración", due_date: "2026-08-05", duration_minutes: null }),
+      ],
+      eventsOk([]),
+    );
+    expect(screen.getByText("1h planificadas · 1 sin duración")).toBeInTheDocument();
+  });
+
+  it("nada tiene duración: solo el conteo, nunca '0m planificadas'", () => {
+    renderHoy([task({ id: "t1", title: "Sin duración", due_date: "2026-08-05", duration_minutes: null })], eventsOk([]));
+    expect(screen.getByText("1 sin duración")).toBeInTheDocument();
+    expect(screen.queryByText(/0m planificadas/)).not.toBeInTheDocument();
+  });
+
+  it("las atrasadas suman en Hoy y el texto lo indica", () => {
+    renderHoy(
+      [
+        task({ id: "overdue", title: "Atrasada", due_date: "2026-08-01", duration_minutes: 30 }),
+        task({ id: "today", title: "De hoy", due_date: "2026-08-05", duration_minutes: 30 }),
+      ],
+      eventsOk([]),
+    );
+    expect(screen.getByText("1h planificadas (incluye atrasadas)")).toBeInTheDocument();
+  });
+
+  it("sin calendario conectado, el total se muestra igual con tareas y hábitos", () => {
+    currentHabits = [habit({ duration_minutes: 15 })];
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 45 })], {
+      status: "not_connected",
+    });
+    expect(screen.getByText("1h planificadas")).toBeInTheDocument();
+  });
+
+  it("un hábito salteado no suma al total", () => {
+    currentHabits = [habit({ id: "h-skip", duration_minutes: 20 })];
+    currentSkips = { "h-skip": true };
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 40 })], eventsOk([]));
+    expect(screen.getByText("40m planificadas")).toBeInTheDocument();
+  });
+
+  it("día sin ningún elemento: no muestra ningún total", () => {
+    renderHoy([], { status: "not_connected" });
+    expect(screen.queryByText(/planificad/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sin duración/)).not.toBeInTheDocument();
   });
 });

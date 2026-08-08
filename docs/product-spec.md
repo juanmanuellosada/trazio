@@ -194,6 +194,14 @@ está vacía."
 
 ### Hoy
 
+En el encabezado, junto al título, cuánto tiempo suma lo planificado del día
+("5h 20m planificadas"): tareas pendientes con duración, hábitos pendientes de
+hoy y eventos con horario, atrasadas incluidas (lo dice el texto). Lo que no
+tiene duración no suma, pero se informa aparte ("· 4 sin duración") — nunca en
+silencio, y nunca "0m planificadas" cuando nada tiene duración. El número no
+juzga: sin color de alerta ni comparación contra el tiempo disponible. Sin
+calendario conectado, o con Google caído, el total sale igual con lo que hay.
+
 Bloques en este orden: atrasadas (destacadas en rojo, la más vencida primero),
 **una sola secuencia con las tareas de hoy y los eventos de hoy intercalados**,
 hábitos del día (con contador de cuántos se hicieron — cuenta todos, incluidos
@@ -235,8 +243,11 @@ por defecto que le corresponde.
 Ventana configurable de una semana a tres meses. Deja afuera las tareas sin fecha.
 Tres formas de verlo:
 
-- **Lista:** agrupada por día, con "Hoy" y "Mañana" resaltados, contador por día y
-  botón para agregar una tarea en ese día.
+- **Lista:** agrupada por día, con "Hoy" y "Mañana" resaltados, contador por día,
+  el tiempo planificado de ese día junto al contador (mismo criterio que Hoy,
+  pero sin las atrasadas: acá cada grupo es un día de vencimiento, y las
+  atrasadas viven en su propio bloque aparte) y botón para agregar una tarea en
+  ese día. Solo en este modo: ni el panel ni el calendario lo muestran.
 - **Panel:** columnas por "agrupar por", con "Fecha" como valor por defecto: sin
   tocar el agrupador, una columna por día de la ventana más "Sin fecha" (las
   atrasadas se suman a la de "Hoy"); eligiéndolo a mano, en cambio, una columna

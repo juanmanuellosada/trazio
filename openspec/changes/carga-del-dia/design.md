@@ -125,12 +125,31 @@ mostrar un dato que es casi todo local.
   (salvo agrupando por fecha, y no vale sostener el número solo para ese
   caso), y la grilla del calendario ya muestra la carga mejor que un número.
 
-### D-F — Formato
+### D-F — Formato, con un formateador propio
 
-`5h 20m`, `45m`, `2h`. Sin ceros a la izquierda, sin "0m" cuando las horas
-son exactas. Es el mismo criterio que `lib/habits/format.ts` ya usa para la
-duración de un hábito: se reusa esa función en vez de escribir una segunda
-forma de escribir lo mismo.
+`5h 20m`, `45m`, `2h`. Sin ceros a la izquierda, sin "0m" cuando las horas son
+exactas.
+
+**Corregido durante la implementación:** la primera versión de esta decisión
+decía que se reusara el formateo de `lib/habits/format.ts`. Es falso —
+`formatHabitDuration` es literalmente `${minutes} min`, sin ninguna lógica de
+horas. No había nada que reusar, y tocarlo para que la hubiera habría cambiado
+la tarjeta de hábito, que está fuera de alcance. El formateador vive en
+`lib/planning/day-load.ts`, junto al cálculo.
+
+### D-G — En Próximos el total suma solo tareas
+
+Próximos en modo lista **no renderiza hábitos ni eventos**: agrupa tareas por
+día de vencimiento y nada más. Así que su total suma solo tareas.
+
+No es una simplificación: un total que incluyera hábitos y eventos no
+coincidiría con lo que hay en pantalla, y un número que no se puede reconciliar
+con lo que se ve es peor que uno acotado. En Hoy sí entran los tres, porque
+Hoy sí los muestra.
+
+Si algún día la lista de Próximos pasa a mostrar hábitos o eventos, este total
+tiene que seguirlos. Queda anotado para que ese día sea una decisión y no un
+olvido.
 
 ## Risks / Trade-offs
 

@@ -39,6 +39,11 @@ de todo el día, ni ningún elemento sin duración.
 En Hoy, las tareas **atrasadas** SHALL entrar en el total, porque se muestran en esa
 pantalla y son trabajo de ese día. Cuando el total incluye atrasadas, SHALL decirlo.
 
+El total de una pantalla SHALL sumar únicamente lo que esa pantalla muestra. En Próximos,
+cuya lista renderiza solo tareas, el total SHALL sumar solo tareas: un total que incluyera
+elementos que no están en pantalla NUNCA SHALL mostrarse, porque no se podría reconciliar
+con lo que se ve.
+
 Un hábito SHALL considerarse pendiente según la misma definición que ya usan los
 contadores de la aplicación: toca ese día, no está archivado, no es anterior a su
 creación, no fue marcado y no fue salteado.
