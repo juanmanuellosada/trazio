@@ -1663,3 +1663,133 @@ recurrente, y se corrigieron en la misma tanda:**
 nuevos en `lib/recurrence/next.test.ts` y `lib/recurrence/series.test.ts`
 cubren completar antes de vencer, con y sin horario; `lib/recurrence/create-next-occurrence.ts`
 tiene test propio por primera vez.
+
+---
+
+## D54 — El calendario se desplaza un año hacia cada lado, no infinito, y nunca recuerda dónde quedó
+
+**Fecha.** 2026-08-08
+
+**Contexto.** `calendario-scroll-infinito` reemplaza la navegación por
+páginas de día/cuatro días/semana por un desplazamiento horizontal continuo
+(`openspec/changes/calendario-scroll-infinito/design.md`). Dos preguntas
+quedaban abiertas al proponerlo: hasta dónde llega el desplazamiento antes
+de necesitar otra forma de moverse, y si la pantalla debía volver a abrir
+donde el usuario la había dejado.
+
+**Decisión — un año para cada lado, no infinito de verdad.** La tira
+continua cubre `CONTINUOUS_RANGE_DAYS` (365) días antes y después de hoy —
+`TOTAL_CONTINUOUS_DAYS`, 731 columnas en total, `lib/calendar/layout.ts`—,
+montando (virtualizando) solo las visibles más un margen de
+`COLUMN_VIRTUALIZATION_MARGIN_DAYS` (siete días, una semana) a cada lado,
+`components/calendar/grid-metrics.ts`. Ir más lejos de un año no está
+resuelto por esta tanda —no hay todavía un selector de fecha en
+`CalendarNav`—, queda para cuando alguien lo pida de verdad.
+
+*Por qué no infinito de verdad.* Un desplazamiento sin límite obliga a
+reposicionar `scrollLeft` cerca de los extremos para no acumular contenido
+sin fin, y eso pelea con la inercia táctil (el gesto "salta" en medio del
+deslizamiento) y le saca a la barra de desplazamiento cualquier significado
+honesto. Un año de cada lado es más de lo que cualquiera recorre arrastrando
+con el dedo, y el límite es indoloro: nadie necesita desplazarse un año
+entero a mano para llegar a algún lado.
+
+*El margen de virtualización se midió, no se adivinó (tarea 4.2).* Antes de
+fijar el número se montó `TimeGrid` con columnas **llenas** de bloques (15
+por día, no vacías) y se cronometró el render de 7 a 31 columnas a la vez:
+el costo por columna resultó chico frente al costo fijo de montar la
+grilla (de 7 a 31 columnas el tiempo total creció apenas ~1.7x), así que una
+semana de margen a cada lado —el peor caso, formato semana, monta 21
+columnas a la vez— queda lejos de cualquier costo notorio.
+
+**Decisión — la posición del desplazamiento no se persiste.** Al entrar a
+cualquier pantalla con calendario, hoy queda como primera columna visible,
+sin importar dónde había quedado la última vez (`components/calendar/screen-calendar.tsx`,
+el estado del desplazamiento arranca en `null` y nunca se guarda en
+`view_preferences` ni en ningún otro lado).
+
+*Por qué.* Volver a una pantalla y encontrarla en una semana de hace un mes
+es desconcertante, y el caso frecuente es mirar lo que viene — el mismo
+motivo por el que ya no se persistía antes con la navegación por páginas.
+Guardar la posición hubiera significado agregar una columna nueva o un
+campo a `view_preferences` solo para un caso de uso que nadie pidió.
+
+**De paso, la barra de desplazamiento horizontal queda oculta** (tarea 9.1,
+pregunta abierta del `design.md`): con un año de ancho, el pulgar de una
+barra nativa sería minúsculo y sin ninguna marca de semana o mes — más
+ruido que referencia. El gesto de arrastrar/deslizar queda como único medio
+para moverse dentro del año (`className="no-scrollbar"`, ya usado en
+`components/ui/command.tsx`).
+
+**Consecuencia.** `lib/calendar/layout.ts` (`TOTAL_CONTINUOUS_DAYS`,
+`dayOffsetFromToday`, `dateAtOffsetFromToday`, `continuousColumnIndex`),
+`components/calendar/grid-metrics.ts` (`COLUMN_VIRTUALIZATION_MARGIN_DAYS`),
+`components/calendar/use-continuous-scroll.ts` (nuevo) y
+`components/calendar/time-grid.tsx` quedan actualizados. Los datos por rango
+(`useCalendarRangeEvents`, `useHabitScheduleOverridesForRange`,
+`useHabitSkipsForRange`, `useHabitCompletionsForRange`) pasan a pedirse por
+trozos de semana ISO con dos semanas de margen (`lib/dates/data-window.ts`),
+para que correrse un día no vuelva a pedir lo ya cargado.
+
+---
+
+## D55 — `position: sticky; left: 0` no pega un ítem de CSS Grid en una grilla que se desplaza de verdad
+
+**Fecha.** 2026-08-08
+
+**Contexto.** El esqueleto de dos ejes de `calendario-scroll-infinito`
+(`design.md`, decisión 1) asumía que `position: sticky` bastaba para fijar
+la columna de horas, la esquina superior izquierda y el hueco de la fila de
+todo el día mientras la grilla se desplaza horizontalmente — la tarea 1.2
+ya había probado que el pegado convivía con el `transform` del overlay de
+arrastre, y quedó por escrito como el supuesto verificado que sostenía todo
+el diseño. Ese supuesto nunca se puso a prueba de verdad: hasta el bloque 4,
+`columnWidthPx` se calculaba para que las columnas visibles llenaran
+exactamente el ancho del contenedor, así que `scrollLeft` era siempre 0 —
+no había desplazamiento horizontal real con el que `sticky` pudiera fallar.
+
+Recién al verificar los bloques 4 a 6 en el navegador (no en jsdom, que no
+hace layout) apareció el defecto: con el desplazamiento continuo de verdad
+(731 columnas), la columna de horas dejaba de mostrar cualquier hora al
+correrse — el texto seguía en el DOM (confirmado con el árbol de
+accesibilidad) pero se pintaba a cientos de miles de píxeles fuera de
+pantalla.
+
+**Causa.** `position: sticky; left: 0` en un ítem de CSS Grid ubicado en
+una sola columna (`grid-column: 1`, sin abarcar más) queda contenido a su
+propia área de grilla para el cálculo de sticky — y esa área es tan angosta
+como el propio ítem. Reproducido en un caso mínimo, aislado de Trazio
+(una grilla de una sola fila con una columna angosta fija y cientos de
+columnas anchas alrededor, sin ningún código de este proyecto): el ítem
+sticky se mueve exactamente como si no tuviera `position: sticky`, en
+cualquier magnitud de desplazamiento, incluso chica (probado con apenas 10
+columnas). Ampliar el área de grilla del ítem a todas las columnas
+(`grid-column: 1 / -1`) tampoco lo arregla. `position: sticky; top: 0` para
+el eje vertical, en cambio, funciona sin problema — el defecto es específico
+del eje que se desplaza de verdad.
+
+**Decisión.** Las tres piezas fijas de la izquierda (esquina, columna de
+horas, hueco de la fila de todo el día) dejan de depender de
+`position: sticky` para el eje horizontal. Cada una queda marcada con
+`data-gutter-cell`, y un único `useEffect` en `TimeGrid`
+(`components/calendar/time-grid.tsx`) escucha el `scroll` del contenedor y
+aplica `transform: translateX(scrollLeft)` a las tres a mano, en cada
+evento — el mismo resultado visual que el pegado prometía, calculado a
+mano porque el navegador no lo hace bien acá. El eje vertical
+(`position: sticky; top: 0`) no se toca: sigue funcionando.
+
+**Por qué no separar la columna de horas en su propio contenedor con
+scroll.** Es exactamente la alternativa que `design.md` descartó en la
+decisión 1 (sincronizar `scrollLeft` a mano entre dos contenedores, fuente
+clásica de temblor). El arreglo elegido sigue usando un único contenedor
+con desplazamiento — solo cambia CÓMO se fija la pieza que no se mueve, de
+CSS puro a un `transform` calculado en cada evento de scroll, que es barato
+(el navegador ya optimiza `transform` para composición, sin relayout).
+
+**Consecuencia.** `components/calendar/time-grid.tsx` y
+`components/calendar/all-day-row.tsx` quedan actualizados. Sin test nuevo
+dedicado (jsdom no hace layout real, así que no puede reproducir ni el
+defecto ni el arreglo); la cobertura de esto es la verificación manual en
+el navegador de esta misma tanda. Si `position: sticky` alguna vez empieza
+a funcionar correctamente para este caso en los navegadores soportados, el
+`transform` a mano se puede volver a sacar sin que nada más dependa de él.

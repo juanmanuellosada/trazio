@@ -3,11 +3,18 @@ import type { CalendarBlock } from "./block";
 import {
   allDaySpans,
   blocksForDay,
+  continuousColumnIndex,
+  continuousVisibleDays,
+  CONTINUOUS_RANGE_DAYS,
   currentTimeMinutes,
+  dateAtOffsetFromToday,
+  dayCountForFormat,
+  dayOffsetFromToday,
   layoutAllDayRow,
   layoutTimedBlocksForDay,
   packIntervals,
   segmentsForDay,
+  TOTAL_CONTINUOUS_DAYS,
   visibleDaysForFormat,
 } from "./layout";
 
@@ -214,26 +221,102 @@ describe("blocksForDay", () => {
   });
 });
 
+describe("dayCountForFormat", () => {
+  it("mapea cada formato continuo a su cantidad de columnas", () => {
+    expect(dayCountForFormat("dia")).toBe(1);
+    expect(dayCountForFormat("cuatro-dias")).toBe(4);
+    expect(dayCountForFormat("semana")).toBe(7);
+  });
+});
+
+describe("continuousVisibleDays", () => {
+  const today = "2026-08-05";
+
+  it("devuelve `dayCount` días seguidos a partir de `startDate`, sin anclarse a ningún inicio de semana", () => {
+    // 2026-08-05 es un miércoles: la tira arranca ahí igual, no se corre al lunes.
+    expect(continuousVisibleDays("2026-08-05", 7, today)).toEqual([
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+      "2026-08-08",
+      "2026-08-09",
+      "2026-08-10",
+      "2026-08-11",
+    ]);
+  });
+
+  it("un solo día devuelve exactamente ese día", () => {
+    expect(continuousVisibleDays("2026-08-05", 1, today)).toEqual(["2026-08-05"]);
+  });
+
+  it("recorta el inicio para no pasar de un año antes de hoy", () => {
+    const days = continuousVisibleDays("2020-01-01", 7, today);
+    expect(days[0]).toBe("2025-08-05"); // exactamente un año antes de `today`
+  });
+
+  it("recorta el inicio para que la tira entera no pase de un año después de hoy", () => {
+    const days = continuousVisibleDays("2030-01-01", 7, today);
+    expect(days[days.length - 1]).toBe("2027-08-05"); // exactamente un año después de `today`
+  });
+});
+
+describe("dayOffsetFromToday / dateAtOffsetFromToday", () => {
+  const today = "2026-08-05";
+
+  it("hoy tiene offset 0", () => {
+    expect(dayOffsetFromToday(today, today)).toBe(0);
+  });
+
+  it("un día futuro tiene offset positivo, uno pasado negativo", () => {
+    expect(dayOffsetFromToday("2026-08-06", today)).toBe(1);
+    expect(dayOffsetFromToday("2026-08-04", today)).toBe(-1);
+  });
+
+  it("son inversas", () => {
+    expect(dateAtOffsetFromToday(dayOffsetFromToday("2026-09-01", today), today)).toBe("2026-09-01");
+    expect(dateAtOffsetFromToday(-10, today)).toBe("2026-07-26");
+  });
+});
+
+describe("continuousColumnIndex", () => {
+  const today = "2026-08-05";
+
+  it("hoy queda exactamente en el medio de la tira", () => {
+    expect(continuousColumnIndex(today, today)).toBe(CONTINUOUS_RANGE_DAYS);
+  });
+
+  it("el total de columnas es un año antes y uno después de hoy, más hoy", () => {
+    expect(TOTAL_CONTINUOUS_DAYS).toBe(CONTINUOUS_RANGE_DAYS * 2 + 1);
+  });
+
+  it("recorta a los bordes de la tira: no hay columna más allá de un año", () => {
+    expect(continuousColumnIndex("1900-01-01", today)).toBe(0);
+    expect(continuousColumnIndex("2100-01-01", today)).toBe(TOTAL_CONTINUOUS_DAYS - 1);
+  });
+});
+
 describe("visibleDaysForFormat", () => {
+  const today = "2026-08-05";
+
   it("día devuelve un único día", () => {
-    expect(visibleDaysForFormat("dia", "2026-08-05", 1)).toEqual(["2026-08-05"]);
+    expect(visibleDaysForFormat("dia", "2026-08-05", 1, today)).toEqual(["2026-08-05"]);
   });
 
-  it("cuatro días devuelve el ancla y los tres siguientes", () => {
-    expect(visibleDaysForFormat("cuatro-dias", "2026-08-05", 1)).toEqual(["2026-08-05", "2026-08-06", "2026-08-07", "2026-08-08"]);
+  it("cuatro días devuelve el inicio y los tres siguientes", () => {
+    expect(visibleDaysForFormat("cuatro-dias", "2026-08-05", 1, today)).toEqual(["2026-08-05", "2026-08-06", "2026-08-07", "2026-08-08"]);
   });
 
-  it("semana respeta `weekStartsOn` y siempre trae 7 días", () => {
-    // 2026-08-05 es un miércoles.
-    const days = visibleDaysForFormat("semana", "2026-08-05", 1);
+  it("semana ya no se ancla a `weekStartsOn`: trae 7 días seguidos desde donde empieza el tramo", () => {
+    // 2026-08-05 es un miércoles: antes esto se corría al lunes (2026-08-03), ahora no.
+    const days = visibleDaysForFormat("semana", "2026-08-05", 1, today);
     expect(days).toHaveLength(7);
-    expect(days[0]).toBe("2026-08-03"); // lunes
-    expect(days[6]).toBe("2026-08-09"); // domingo
+    expect(days[0]).toBe("2026-08-05");
+    expect(days[6]).toBe("2026-08-11");
   });
 
-  it("mes trae semanas completas, incluidos días del mes anterior y siguiente", () => {
+  it("mes trae semanas completas, incluidos días del mes anterior y siguiente, y sigue anclando a `weekStartsOn`", () => {
     // Agosto 2026 empieza un sábado: con semana desde el lunes, la grilla arranca antes del día 1.
-    const days = visibleDaysForFormat("mes", "2026-08-15", 1);
+    const days = visibleDaysForFormat("mes", "2026-08-15", 1, today);
     expect(days[0]).toBe("2026-07-27");
     expect(days.length % 7).toBe(0);
     expect(days).toContain("2026-08-31");

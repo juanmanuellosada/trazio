@@ -2,6 +2,7 @@
 import { DndContext } from "@dnd-kit/core";
 import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DAY_COLUMN_MIN_WIDTH_PX } from "./grid-metrics";
 import { TimeGrid } from "./time-grid";
 
 // Requirement de `calendario-legible-y-manipulable` (grupo 1, tarea 1.1/1.2):
@@ -14,10 +15,10 @@ const TZ = "America/Argentina/Buenos_Aires";
 const TODAY = "2026-08-05";
 const OTHER_DAY = "2026-08-06";
 
-function renderGrid(now: Date, visibleDays: string[]) {
+function renderGrid(now: Date, startDate: string, dayCount = 1) {
   return render(
     <DndContext id="test-time-grid">
-      <TimeGrid visibleDays={visibleDays} blocks={[]} timezone={TZ} now={now} />
+      <TimeGrid startDate={startDate} dayCount={dayCount} blocks={[]} timezone={TZ} now={now} />
     </DndContext>,
   );
 }
@@ -37,7 +38,7 @@ function renderGridWithDrag(
 ) {
   return render(
     <DndContext id="test-time-grid-drag">
-      <TimeGrid visibleDays={[TODAY, OTHER_DAY]} blocks={[]} timezone={TZ} now={new Date("2026-08-05T10:00:00-03:00")} {...props} />
+      <TimeGrid startDate={TODAY} dayCount={2} blocks={[]} timezone={TZ} now={new Date("2026-08-05T10:00:00-03:00")} {...props} />
     </DndContext>,
   );
 }
@@ -52,7 +53,7 @@ describe("TimeGrid — línea de la hora actual", () => {
   });
 
   it("avanza sola con el tiempo, sin volver a montar el componente", () => {
-    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), [TODAY]);
+    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY);
     const firstTop = lineTopPercent(container);
 
     act(() => {
@@ -64,15 +65,39 @@ describe("TimeGrid — línea de la hora actual", () => {
   });
 
   it("es roja (`bg-destructive`/`border-destructive`): no el color de marca ni el de un bloque", () => {
-    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), [TODAY]);
+    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY);
     expect(container.querySelector(".bg-destructive")).toBeInTheDocument();
     expect(container.querySelector(".border-destructive")).toBeInTheDocument();
     expect(container.querySelector(".bg-primary")).not.toBeInTheDocument();
   });
 
-  it("sigue apareciendo solo en el día de hoy", () => {
-    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), [TODAY, OTHER_DAY]);
+  it("sigue apareciendo solo en el día de hoy, aunque la virtualización monte varios días más", () => {
+    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY, 2);
     expect(container.querySelectorAll(".bg-destructive")).toHaveLength(1);
+  });
+});
+
+// Tarea 4.1 (`design.md` decisión 3): la grilla monta lo visible más un
+// margen a cada lado (`COLUMN_VIRTUALIZATION_MARGIN_DAYS`), no solo los
+// `dayCount` días "oficiales" — así una columna que asoma con el
+// desplazamiento o el arrastre contra el borde ya está montada.
+describe("TimeGrid — virtualización de columnas", () => {
+  it("monta el margen a cada lado de lo visible, no solo `dayCount` columnas", () => {
+    const { container } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY, 1);
+    const mounted = container.querySelectorAll("[data-date]");
+    // Un solo día visible, pero con margen de una semana a cada lado: 15 columnas montadas.
+    expect(mounted.length).toBe(15);
+    expect(container.querySelector('[data-date="2026-07-29"]')).toBeInTheDocument();
+    expect(container.querySelector(`[data-date="${TODAY}"]`)).toBeInTheDocument();
+    expect(container.querySelector('[data-date="2026-08-12"]')).toBeInTheDocument();
+  });
+
+  it("la cantidad de columnas montadas no crece con `dayCount`, solo con el margen fijo", () => {
+    const { container: dia } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY, 1);
+    const { container: semana } = renderGrid(new Date("2026-08-05T10:00:00-03:00"), TODAY, 7);
+    // 1 + 7 + 7 = 15 vs. 7 + 7 + 7 = 21: crece con `dayCount`, pero se mantiene acotado (nunca los 731 días de la tira completa).
+    expect(dia.querySelectorAll("[data-date]").length).toBe(15);
+    expect(semana.querySelectorAll("[data-date]").length).toBe(21);
   });
 });
 
@@ -112,7 +137,8 @@ describe("TimeGrid — sombra de destino durante el arrastre", () => {
     rerender(
       <DndContext id="test-time-grid-drag">
         <TimeGrid
-          visibleDays={[TODAY, OTHER_DAY]}
+          startDate={TODAY}
+          dayCount={2}
           blocks={[]}
           timezone={TZ}
           now={new Date("2026-08-05T10:00:00-03:00")}
@@ -136,7 +162,8 @@ describe("TimeGrid — crear arrastrando sobre el fondo vacío: un toque no alca
     const { container } = render(
       <DndContext id="test-time-grid-create">
         <TimeGrid
-          visibleDays={[TODAY]}
+          startDate={TODAY}
+          dayCount={1}
           blocks={[]}
           timezone={TZ}
           now={new Date("2026-08-05T10:00:00-03:00")}
@@ -144,7 +171,9 @@ describe("TimeGrid — crear arrastrando sobre el fondo vacío: un toque no alca
         />
       </DndContext>,
     );
-    const column = container.querySelector(".relative.border-r.border-border") as HTMLElement;
+    // La virtualización monta varias columnas a la vez (margen a cada lado):
+    // apuntar a la de hoy por `data-date`, no a "la primera del DOM".
+    const column = container.querySelector(`[data-date="${TODAY}"]`) as HTMLElement;
     return { container, column, onCreateRange };
   }
 
@@ -225,5 +254,85 @@ describe("TimeGrid — crear arrastrando sobre el fondo vacío: un toque no alca
 
     fireEvent.pointerUp(window, { clientX: 10, clientY: 105, pointerId: 2 });
     expect(onCreateRange).not.toHaveBeenCalled();
+  });
+});
+
+// Tarea 6.1/6.2 (`design.md` decisiones 1 y 5): el desplazamiento nativo del
+// usuario (arrastre, rueda, inercia) mueve `scrollLeft`, y `TimeGrid` lo
+// traduce al nuevo primer día visible. Un cambio externo de `startDate`
+// (nav) hace el camino inverso: reposiciona `scrollLeft`.
+describe("TimeGrid — desplazamiento continuo", () => {
+  function scrollableContainer(container: HTMLElement): HTMLElement {
+    return container.querySelector(".overflow-auto") as HTMLElement;
+  }
+
+  it("desplazarse nativamente un día reporta el nuevo primer día visible", async () => {
+    const onVisibleRangeChange = vi.fn();
+    const { container } = render(
+      <DndContext id="test-time-grid-scroll">
+        <TimeGrid
+          startDate={TODAY}
+          dayCount={7}
+          blocks={[]}
+          timezone={TZ}
+          now={new Date("2026-08-05T10:00:00-03:00")}
+          onVisibleRangeChange={onVisibleRangeChange}
+        />
+      </DndContext>,
+    );
+
+    const scrollEl = scrollableContainer(container);
+    // Al montar ya quedó posicionado en el día inicial (hoy, en el medio de
+    // la tira de un año). Un día de columna más a la derecha (ancho de
+    // arranque en jsdom, `clientWidth` siempre 0).
+    scrollEl.scrollLeft += DAY_COLUMN_MIN_WIDTH_PX;
+    fireEvent.scroll(scrollEl);
+    // El manejador de scroll se agrupa por frame (`requestAnimationFrame`).
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(onVisibleRangeChange).toHaveBeenCalledWith("2026-08-06");
+  });
+
+  it("desplazarse un día hacia atrás también se reporta", async () => {
+    const onVisibleRangeChange = vi.fn();
+    const { container } = render(
+      <DndContext id="test-time-grid-scroll-back">
+        <TimeGrid
+          startDate={TODAY}
+          dayCount={7}
+          blocks={[]}
+          timezone={TZ}
+          now={new Date("2026-08-05T10:00:00-03:00")}
+          onVisibleRangeChange={onVisibleRangeChange}
+        />
+      </DndContext>,
+    );
+
+    const scrollEl = scrollableContainer(container);
+    scrollEl.scrollLeft -= DAY_COLUMN_MIN_WIDTH_PX;
+    fireEvent.scroll(scrollEl);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(onVisibleRangeChange).toHaveBeenCalledWith("2026-08-04");
+  });
+
+  it("un cambio externo de `startDate` (nav) repone `scrollLeft` a la posición de ese día", () => {
+    const { container, rerender } = render(
+      <DndContext id="test-time-grid-nav">
+        <TimeGrid startDate={TODAY} dayCount={7} blocks={[]} timezone={TZ} now={new Date("2026-08-05T10:00:00-03:00")} />
+      </DndContext>,
+    );
+    const scrollEl = scrollableContainer(container);
+    // Al montar ya se posicionó en el día inicial (hoy).
+    const initialScrollLeft = scrollEl.scrollLeft;
+
+    rerender(
+      <DndContext id="test-time-grid-nav">
+        <TimeGrid startDate="2026-08-12" dayCount={7} blocks={[]} timezone={TZ} now={new Date("2026-08-05T10:00:00-03:00")} />
+      </DndContext>,
+    );
+
+    // 2026-08-12 está 7 días después de hoy (2026-08-05): 7 columnas a la derecha de la posición inicial.
+    expect(scrollEl.scrollLeft).toBe(initialScrollLeft + 7 * DAY_COLUMN_MIN_WIDTH_PX);
   });
 });

@@ -339,6 +339,24 @@ bloque:
   formato de calendario: las demás pantallas eligen entre día, cuatro días, semana
   y mes, y navegan libremente.
 
+**Navegación**, distinta según el formato:
+
+- Día, cuatro días y semana se desplazan horizontalmente en forma continua, de a un
+  día por vez, arrastrando o deslizando con el dedo: el formato solo dice cuántos
+  días se ven a la vez (uno, cuatro o siete), no dónde empieza el tramo — la semana
+  no se realinea sola a un día fijo de inicio, se puede quedar mirando de miércoles
+  a martes. Anterior y siguiente corren la vista esa misma cantidad de días, con
+  desplazamiento suave, sin cambiar cuántos se ven. "Hoy" lleva el desplazamiento
+  hasta dejar hoy como primera columna. El desplazamiento alcanza un año hacia atrás
+  y uno hacia adelante desde hoy; más allá de eso no hay, por ahora, otra forma de
+  llegar. Al entrar a la pantalla, siempre arranca con hoy como primera columna: la
+  posición nunca se recuerda de una visita a la siguiente.
+- Mes es la excepción: sigue con su grilla de semanas y navegación de mes en mes,
+  sin desplazamiento continuo.
+- Arrastrar un bloque hasta el borde lateral de la vista desplaza el calendario en
+  esa dirección mientras dura el gesto, para poder soltarlo en un día que no estaba
+  visible al empezar a arrastrar.
+
 ### Barra de opciones de vista
 
 Presente en Bandeja, Hoy, Próximos y Proyecto. **Cada pantalla recuerda las suyas

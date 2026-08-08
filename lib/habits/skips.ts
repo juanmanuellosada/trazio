@@ -1,7 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { dataWindowChunks, isoWeekEnd } from "@/lib/dates/data-window";
 import { reportHabitError } from "./errors";
 import { assertAppliesOnDate } from "./schedule-overrides";
 import type { HabitScheduleFields } from "./today";
@@ -180,26 +182,43 @@ export function useHabitSkipsForDate(date: string) {
 
 /**
  * Salteos de varios días a la vez, agrupados por fecha (grupo 7 de
- * `calendario-legible-y-manipulable`, "montar `CalendarView`"): mismo
- * patrón que `useHabitScheduleOverridesForRange` — una sola consulta para
- * todo el rango visible de la grilla en vez de una por día.
+ * `calendario-legible-y-manipulable`, "montar `CalendarView`"; pasado a
+ * trozos de semana ISO en la tarea 5.2, `design.md` decisión 4): un pedido
+ * por cada semana ISO que cubre el rango visible más el margen
+ * (`dataWindowChunks`), mismo criterio que `useHabitScheduleOverridesForRange`
+ * y `useCalendarRangeEvents` — correrse un día reutiliza los trozos que ya
+ * estaban en caché.
  */
 export function useHabitSkipsForRange(dates: string[]) {
   const supabase = createClient();
-  const datesKey = [...dates].sort().join(",");
+  const chunks = dataWindowChunks(dates);
 
-  return useQuery({
-    queryKey: [...SKIPS_QUERY_BASE, "range", datesKey] as const,
-    queryFn: async () => {
-      if (dates.length === 0) return {} as Record<string, Record<string, boolean>>;
-      const { data, error } = await supabase.from("habit_skips").select("habit_id, date").in("date", dates);
-      if (error) throw error;
-      const byDate: Record<string, Record<string, boolean>> = {};
-      for (const row of data ?? []) {
-        (byDate[row.date] ??= {})[row.habit_id] = true;
-      }
-      return byDate;
-    },
-    enabled: dates.length > 0,
+  const queries = useQueries({
+    queries: chunks.map((weekStart) => ({
+      queryKey: [...SKIPS_QUERY_BASE, "range", "chunk", weekStart] as const,
+      queryFn: async (): Promise<Record<string, Record<string, boolean>>> => {
+        const { data, error } = await supabase
+          .from("habit_skips")
+          .select("habit_id, date")
+          .gte("date", weekStart)
+          .lte("date", isoWeekEnd(weekStart));
+        if (error) throw error;
+        const byDate: Record<string, Record<string, boolean>> = {};
+        for (const row of data ?? []) {
+          (byDate[row.date] ??= {})[row.habit_id] = true;
+        }
+        return byDate;
+      },
+    })),
   });
+
+  const data = useMemo(() => {
+    const merged: Record<string, Record<string, boolean>> = {};
+    for (const query of queries) {
+      for (const [date, byHabit] of Object.entries(query.data ?? {})) merged[date] = { ...merged[date], ...byHabit };
+    }
+    return merged;
+  }, [queries]);
+
+  return { data };
 }

@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CalendarFormat } from "@/lib/calendar/block";
-import { calendarRangeLabel, shiftAnchorDate } from "@/lib/calendar/navigation";
+import { calendarRangeLabel, navigationStepLabel, shiftAnchorDate } from "@/lib/calendar/navigation";
 import { todayInTimeZone } from "@/lib/dates/today";
 
 /**
@@ -12,6 +12,15 @@ import { todayInTimeZone } from "@/lib/dates/today";
  * esto es lo que faltaba para poder moverse de un día/semana/mes al
  * siguiente o volver a hoy, con la unidad de paso del formato activo
  * (`lib/calendar/navigation.ts`).
+ *
+ * Dos modelos conviven desde la tarea 6 (`design.md`, riesgo "dos modelos de
+ * navegación conviviendo"): en día/cuatro días/semana, anterior y siguiente
+ * corren el desplazamiento continuo una pantalla, con desplazamiento suave
+ * (`use-continuous-scroll.ts` lo anima al recibir el `anchorDate` nuevo); en
+ * mes, siguen paginando de mes en mes, como siempre. El `aria-label` de los
+ * dos botones (`navigationStepLabel`) dice cuánto corren en cada formato en
+ * vez de un genérico "Período", para que la diferencia quede clara sin
+ * tener que probarlo.
  */
 export function CalendarNav({
   format,
@@ -39,7 +48,7 @@ export function CalendarNav({
           type="button"
           variant="outline"
           size="icon"
-          aria-label="Período anterior"
+          aria-label={`Retroceder ${navigationStepLabel(format)}`}
           onClick={() => onNavigate(shiftAnchorDate(format, anchorDate, -1))}
         >
           <ChevronLeft aria-hidden className="size-4" />
@@ -48,7 +57,7 @@ export function CalendarNav({
           type="button"
           variant="outline"
           size="icon"
-          aria-label="Período siguiente"
+          aria-label={`Avanzar ${navigationStepLabel(format)}`}
           onClick={() => onNavigate(shiftAnchorDate(format, anchorDate, 1))}
         >
           <ChevronRight aria-hidden className="size-4" />

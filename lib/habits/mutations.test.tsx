@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { playCompletionSound } from "@/lib/completion-sound";
-import { habitCompletionsForRangeQueryKey } from "./completions";
+import { habitCompletionsChunkQueryKey } from "./completions";
 import { useMarkHabitDone, useUnmarkHabitDone } from "./mutations";
 import { habitsQueryKey } from "./use-habits";
 
@@ -255,7 +255,7 @@ describe("useMarkHabitDone / useUnmarkHabitDone — el optimista no confunde la 
 
   it("marcar un día pasado sí actualiza la caché por rango del calendario, con esa fecha", async () => {
     const queryClient = new QueryClient();
-    const rangeKey = habitCompletionsForRangeQueryKey(["2026-08-01", "2026-08-05"]);
+    const rangeKey = habitCompletionsChunkQueryKey("2026-07-27");
     queryClient.setQueryData(rangeKey, {});
     const { result } = renderHook(() => useMarkHabitDone(), { wrapper: wrapperWithClient(queryClient) });
 
@@ -270,7 +270,7 @@ describe("useMarkHabitDone / useUnmarkHabitDone — el optimista no confunde la 
   it("desmarcar un día pasado no toca completed_today y limpia la caché por rango de esa fecha", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(habitsQueryKey(), [{ id: "h1", completed_today: false }]);
-    const rangeKey = habitCompletionsForRangeQueryKey(["2026-08-01", "2026-08-05"]);
+    const rangeKey = habitCompletionsChunkQueryKey("2026-07-27");
     queryClient.setQueryData(rangeKey, { "2026-08-01": { h1: true } });
     const { result } = renderHook(() => useUnmarkHabitDone(), { wrapper: wrapperWithClient(queryClient) });
 

@@ -6,6 +6,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
   useSensor,
   useSensors,
@@ -14,7 +15,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import type { AppContextMenuEntry } from "@/components/primitives/context-menu";
-import { visibleDaysForFormat } from "@/lib/calendar/layout";
+import { dayCountForFormat, visibleDaysForFormat } from "@/lib/calendar/layout";
+import { todayInTimeZone } from "@/lib/dates/today";
 import {
   clampMinutes,
   DAY_MINUTES,
@@ -27,7 +29,6 @@ import {
   type DragResult,
 } from "@/lib/calendar/drag";
 import type { CalendarBlock, CalendarFormat, UnscheduledHabitChip } from "@/lib/calendar/block";
-import { AllDayRow } from "./all-day-row";
 import { CalendarBlockChip } from "./calendar-block-chip";
 import { CreateBlockChoiceDialog } from "./create-block-choice-dialog";
 import { CreateEventDialog } from "./create-event-dialog";
@@ -96,6 +97,7 @@ export function CalendarView({
   getContextMenuEntries,
   onScheduleHabitChip,
   onCreateTask,
+  onVisibleRangeChange,
 }: {
   format: CalendarFormat;
   /** Día ancla en `yyyy-MM-dd`: el día mostrado (formato "dia"), el primero de la ventana (formato "cuatro-dias"), o cualquier día dentro de la semana/mes mostrado. */
@@ -122,8 +124,14 @@ export function CalendarView({
   onScheduleHabitChip?: (chip: UnscheduledHabitChip, target: { date: string; time: string }) => void;
   /** Se pidió crear una tarea en un rango (tarea 6.7): sin este callback, elegir "Tarea" en el diálogo no hace nada — la creación de tareas necesita un proyecto destino que esta vista no conoce. */
   onCreateTask?: (range: DragResult) => void;
+  /** El usuario corrió el desplazamiento continuo (tarea 6.1/6.2, formatos día/cuatro días/semana): nuevo primer día visible, para que `anchorDate` lo siga. */
+  onVisibleRangeChange?: (startDate: string) => void;
 }) {
-  const visibleDays = useMemo(() => visibleDaysForFormat(format, anchorDate, weekStartsOn), [format, anchorDate, weekStartsOn]);
+  const today = todayInTimeZone(now, timezone);
+  const visibleDays = useMemo(
+    () => visibleDaysForFormat(format, anchorDate, weekStartsOn, today),
+    [format, anchorDate, weekStartsOn, today],
+  );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   // Dos estados separados a propósito: `choiceRange` maneja la pregunta
   // "¿tarea o evento?" y `eventRange` sigue vivo mientras se completa el
@@ -262,16 +270,9 @@ export function CalendarView({
     ) : (
       <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border">
         <UnscheduledHabitsRow chips={unscheduledHabits} />
-        <AllDayRow
-          visibleDays={visibleDays}
-          blocks={blocks}
-          previewBlocks={previewBlocks}
-          onSelectBlock={onSelectBlock}
-          onToggleComplete={onToggleComplete}
-          getContextMenuEntries={getContextMenuEntries}
-        />
         <TimeGrid
-          visibleDays={visibleDays}
+          startDate={visibleDays[0] ?? anchorDate}
+          dayCount={dayCountForFormat(format)}
           blocks={blocks}
           previewBlocks={previewBlocks}
           timezone={timezone}
@@ -284,6 +285,7 @@ export function CalendarView({
           onResizeBlock={onResizeBlock}
           getContextMenuEntries={getContextMenuEntries}
           onCreateRange={handleCreateRange}
+          onVisibleRangeChange={onVisibleRangeChange}
         />
       </div>
     );
@@ -309,6 +311,13 @@ export function CalendarView({
     <DndContext
       id="calendar-drag"
       sensors={sensors}
+      // Los droppables (columnas de día) se vuelven a medir en cada frame
+      // mientras dura el arrastre (tarea 7.1, `design.md` decisión 6): sin
+      // esto, dnd-kit solo mide una vez al arrancar el gesto, así que el
+      // autodesplazamiento contra el borde (activado por defecto,
+      // `autoScroll`) movería `scrollLeft` pero la sombra de destino
+      // seguiría apuntando a la posición vieja de las columnas.
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}

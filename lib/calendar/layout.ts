@@ -186,30 +186,96 @@ export function blocksForDay(blocks: CalendarBlock[], dateKey: string, timezone:
   return [...allDay, ...timed];
 }
 
-/**
- * Los días visibles de cada formato (tarea 5.2/5.3, D-E): los cuatro
- * formatos existen siempre, esto solo calcula el rango de fechas de cada
- * uno — el ancho de pantalla no decide qué formato se puede elegir, solo
- * cómo se dibuja el que ya se eligió (eso es cosa de los componentes, no
- * de esta función).
- */
-export function visibleDaysForFormat(viewFormat: CalendarFormat, anchorDate: string, weekStartsOn: 0 | 1 | 6): string[] {
-  const anchor = parseISO(anchorDate);
+/** Cuánto cubre el desplazamiento continuo hacia cada lado de hoy (tarea 3.3, requirement "al menos un año hacia atrás y uno hacia adelante"). Más allá, la vista se alcanza eligiendo una fecha, nunca recorriendo. */
+export const CONTINUOUS_RANGE_DAYS = 365;
 
+/**
+ * Cuántas columnas de día entran a la vez en cada formato continuo (tarea
+ * 3.2, `vista-calendario`): desde este cambio el formato deja de anclar un
+ * rango y solo dice esto. `mes` no tiene una cantidad fija de columnas —
+ * sigue con su propia grilla de semanas, fuera de esta función.
+ */
+export function dayCountForFormat(viewFormat: Exclude<CalendarFormat, "mes">): number {
   switch (viewFormat) {
     case "dia":
-      return [anchorDate];
+      return 1;
     case "cuatro-dias":
-      return [0, 1, 2, 3].map((offset) => toDateKey(addDays(anchor, offset)));
+      return 4;
     case "semana":
-      return eachDayOfInterval({ start: startOfWeek(anchor, { weekStartsOn }), end: endOfWeek(anchor, { weekStartsOn }) }).map(toDateKey);
-    case "mes": {
-      const monthStart = startOfMonth(anchor);
-      const monthEnd = endOfMonth(anchor);
-      return eachDayOfInterval({
-        start: startOfWeek(monthStart, { weekStartsOn }),
-        end: endOfWeek(monthEnd, { weekStartsOn }),
-      }).map(toDateKey);
-    }
+      return 7;
   }
+}
+
+/**
+ * Tira de `dayCount` días consecutivos que empieza en `startDate`, sin
+ * anclarse a ningún día de inicio de semana (tarea 3.1, `design.md`
+ * decisión 7: "la semana deja de alinearse a un día fijo de inicio", D-E).
+ * Acotada a un año antes y uno después de `today` (tarea 3.3): recorrida
+ * hasta ese límite, el inicio se recorta para no salirse de la ventana en
+ * vez de devolver una tira más corta que `dayCount`.
+ */
+export function continuousVisibleDays(startDate: string, dayCount: number, today: string): string[] {
+  const todayDate = parseISO(today);
+  const minStart = toDateKey(addDays(todayDate, -CONTINUOUS_RANGE_DAYS));
+  const maxStart = toDateKey(addDays(todayDate, CONTINUOUS_RANGE_DAYS - dayCount + 1));
+  const clampedStart = startDate < minStart ? minStart : startDate > maxStart ? maxStart : startDate;
+  const start = parseISO(clampedStart);
+  return Array.from({ length: dayCount }, (_, offset) => toDateKey(addDays(start, offset)));
+}
+
+/**
+ * Cuántos días de índice ocupa el desplazamiento continuo (tarea 4.1,
+ * virtualización): un año hacia atrás, hoy, y un año hacia adelante —
+ * `CONTINUOUS_RANGE_DAYS` de cada lado más el propio hoy. Es el largo total
+ * de la tira que arma `dayColumnsTemplate` en `grid-metrics.ts` cuando
+ * dibuja la grilla continua: la mayoría de esas columnas no llegan a
+ * montarse (esa es justamente la virtualización), pero el contenedor con
+ * desplazamiento necesita conocer el total para que la barra de scroll
+ * tenga un tamaño honesto (`design.md`, decisión 3).
+ */
+export const TOTAL_CONTINUOUS_DAYS = CONTINUOUS_RANGE_DAYS * 2 + 1;
+
+/**
+ * Offset en días de `dateKey` respecto de `today`: 0 es hoy, negativo es
+ * pasado, positivo es futuro (tarea 4/6: la posición del desplazamiento
+ * continuo se maneja como un número de columna, no como una fecha, para
+ * poder calcular `scrollLeft` sin volver a parsear strings en cada frame).
+ */
+export function dayOffsetFromToday(dateKey: string, today: string): number {
+  return differenceInCalendarDays(parseISO(dateKey), parseISO(today));
+}
+
+/** Inversa de `dayOffsetFromToday`: la fecha que está `offset` días de `today`. */
+export function dateAtOffsetFromToday(offset: number, today: string): string {
+  return toDateKey(addDays(parseISO(today), offset));
+}
+
+/** Índice de columna (0-based, dentro de `TOTAL_CONTINUOUS_DAYS`) de `dateKey`, con hoy en el medio. Recorta a los bordes de la tira: no hay columna para un día fuera de `[-CONTINUOUS_RANGE_DAYS, CONTINUOUS_RANGE_DAYS]`. */
+export function continuousColumnIndex(dateKey: string, today: string): number {
+  const offset = dayOffsetFromToday(dateKey, today);
+  const clamped = Math.min(Math.max(offset, -CONTINUOUS_RANGE_DAYS), CONTINUOUS_RANGE_DAYS);
+  return clamped + CONTINUOUS_RANGE_DAYS;
+}
+
+/**
+ * Los días visibles de cada formato (tarea 5.2/5.3, D-E; reemplazada en la
+ * tarea 3.1 para dejar de anclar día/cuatro-días/semana a un rango fijo):
+ * los cuatro formatos existen siempre, esto solo calcula el rango de fechas
+ * de cada uno — el ancho de pantalla no decide qué formato se puede elegir,
+ * solo cómo se dibuja el que ya se eligió (eso es cosa de los componentes,
+ * no de esta función). `mes` es la excepción explícita (`design.md`,
+ * non-goal): sigue anclando a `weekStartsOn` con su propia grilla de
+ * semanas, sin desplazamiento continuo ni acotamiento a un año.
+ */
+export function visibleDaysForFormat(viewFormat: CalendarFormat, startDate: string, weekStartsOn: 0 | 1 | 6, today: string): string[] {
+  if (viewFormat === "mes") {
+    const anchor = parseISO(startDate);
+    const monthStart = startOfMonth(anchor);
+    const monthEnd = endOfMonth(anchor);
+    return eachDayOfInterval({
+      start: startOfWeek(monthStart, { weekStartsOn }),
+      end: endOfWeek(monthEnd, { weekStartsOn }),
+    }).map(toDateKey);
+  }
+  return continuousVisibleDays(startDate, dayCountForFormat(viewFormat), today);
 }

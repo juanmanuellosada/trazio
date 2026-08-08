@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, type QueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { dataWindowChunks, isoWeekEnd } from "@/lib/dates/data-window";
 
 /**
  * Completados de un hábito por fecha exacta (defecto "un hábito marcado hoy
@@ -18,34 +20,55 @@ const COMPLETIONS_QUERY_BASE = ["habits", "completions"] as const;
 
 export type HabitCompletionsByDate = Record<string, Record<string, boolean>>;
 
-export function habitCompletionsForRangeQueryKey(dates: string[]) {
-  const datesKey = [...dates].sort().join(",");
-  return [...COMPLETIONS_QUERY_BASE, "range", datesKey] as const;
+/** Clave de un trozo de semana ISO (tarea 5.2, `design.md` decisión 4): mismo formato de marcador (`"range"`) que antes usaba el rango completo, para que `isHabitCompletionsRangeQuery` siga reconociéndolo sin cambios. */
+export function habitCompletionsChunkQueryKey(weekStart: string) {
+  return [...COMPLETIONS_QUERY_BASE, "range", "chunk", weekStart] as const;
 }
 
-/** Cualquier query de rango de completados, sin importar qué rango exacto de fechas tenga cada pantalla montada — mismo criterio que `isCalendarEventsQuery` en `lib/calendar/use-update-event.ts`. */
+/** Cualquier query de rango de completados, sin importar qué trozo exacto tenga cada pantalla montado — mismo criterio que `isCalendarEventsQuery` en `lib/calendar/use-update-event.ts`. */
 export function isHabitCompletionsRangeQuery(query: { queryKey: readonly unknown[] }): boolean {
   return query.queryKey[0] === COMPLETIONS_QUERY_BASE[0] && query.queryKey[1] === COMPLETIONS_QUERY_BASE[1] && query.queryKey[2] === "range";
 }
 
-/** Igual patrón que `useHabitSkipsForRange`: una sola consulta para todo el rango visible de la grilla en vez de una por día. */
+/**
+ * Pasado a trozos de semana ISO en la tarea 5.2 (`design.md` decisión 4):
+ * un pedido por cada semana ISO que cubre el rango visible más el margen
+ * (`dataWindowChunks`), mismo criterio que `useHabitSkipsForRange` —
+ * correrse un día reutiliza los trozos que ya estaban en caché en vez de
+ * volver a pedir todo bajo una `queryKey` que cambiaba con el rango exacto.
+ */
 export function useHabitCompletionsForRange(dates: string[]) {
   const supabase = createClient();
+  const chunks = dataWindowChunks(dates);
 
-  return useQuery({
-    queryKey: habitCompletionsForRangeQueryKey(dates),
-    queryFn: async () => {
-      if (dates.length === 0) return {} as HabitCompletionsByDate;
-      const { data, error } = await supabase.from("habit_completions").select("habit_id, completed_on").in("completed_on", dates);
-      if (error) throw error;
-      const byDate: HabitCompletionsByDate = {};
-      for (const row of data ?? []) {
-        (byDate[row.completed_on] ??= {})[row.habit_id] = true;
-      }
-      return byDate;
-    },
-    enabled: dates.length > 0,
+  const queries = useQueries({
+    queries: chunks.map((weekStart) => ({
+      queryKey: habitCompletionsChunkQueryKey(weekStart),
+      queryFn: async (): Promise<HabitCompletionsByDate> => {
+        const { data, error } = await supabase
+          .from("habit_completions")
+          .select("habit_id, completed_on")
+          .gte("completed_on", weekStart)
+          .lte("completed_on", isoWeekEnd(weekStart));
+        if (error) throw error;
+        const byDate: HabitCompletionsByDate = {};
+        for (const row of data ?? []) {
+          (byDate[row.completed_on] ??= {})[row.habit_id] = true;
+        }
+        return byDate;
+      },
+    })),
   });
+
+  const data = useMemo(() => {
+    const merged: HabitCompletionsByDate = {};
+    for (const query of queries) {
+      for (const [date, byHabit] of Object.entries(query.data ?? {})) merged[date] = { ...merged[date], ...byHabit };
+    }
+    return merged;
+  }, [queries]);
+
+  return { data };
 }
 
 /**

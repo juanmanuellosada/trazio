@@ -1,17 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { es } from "date-fns/locale";
 import { differenceInMinutes, format, parseISO } from "date-fns";
 import { useDroppable } from "@dnd-kit/core";
 import type { AppContextMenuEntry } from "@/components/primitives/context-menu";
-import { currentTimeMinutes, layoutTimedBlocksForDay } from "@/lib/calendar/layout";
+import { CONTINUOUS_RANGE_DAYS, currentTimeMinutes, dateAtOffsetFromToday, layoutTimedBlocksForDay, TOTAL_CONTINUOUS_DAYS } from "@/lib/calendar/layout";
 import { clampMinutes, pixelsToMinutes, snapToQuarterHour, SNAP_MINUTES, DAY_MINUTES } from "@/lib/calendar/drag";
 import { todayInTimeZone } from "@/lib/dates/today";
 import type { CalendarBlock } from "@/lib/calendar/block";
 import { cn } from "@/lib/utils";
+import { AllDayRow } from "./all-day-row";
 import { DraggableTimedBlock } from "./draggable-timed-block";
-import { dayColumnsTemplate, GRID_HEIGHT_PX, GUTTER_WIDTH_PX, HEADER_ROW_HEIGHT_PX, HOUR_ROW_HEIGHT_PX } from "./grid-metrics";
+import {
+  COLUMN_WIDTH_CSS_VAR,
+  dayColumnsTemplate,
+  GRID_HEIGHT_PX,
+  GUTTER_WIDTH_PX,
+  HEADER_ROW_HEIGHT_PX,
+  HOUR_ROW_HEIGHT_PX,
+  useMeasuredColumnWidthPx,
+} from "./grid-metrics";
+import { useContinuousScroll } from "./use-continuous-scroll";
 import type { DragResult } from "@/lib/calendar/drag";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
@@ -212,10 +222,14 @@ function DayColumn({
         containerRef.current = node;
       }}
       onPointerDown={handlePointerDown}
+      // `data-date` (tarea 4/9.3): con la virtualización, varias columnas
+      // montadas a la vez comparten la misma clase — sin esto no hay forma
+      // de apuntar a la de un día puntual desde un test.
+      data-date={dateKey}
       className="relative border-r border-border"
       style={{
         gridColumn,
-        gridRow: 2,
+        gridRow: 3,
         height: GRID_HEIGHT_PX,
         backgroundImage: "repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 100%)",
         backgroundSize: `100% ${HOUR_ROW_HEIGHT_PX}px`,
@@ -327,9 +341,21 @@ function DayColumn({
  * salió, y a qué día y qué rango se movería si se soltara ahora — acá solo
  * se compara `dateKey` para decidir en qué columna dibujar cada sombra
  * (`DayColumn`), esta grilla sigue sin saber nada de cómo se calculó.
+ *
+ * `startDate`/`dayCount` reemplazan a `visibleDays` (tareas 4 y 6,
+ * `design.md` decisiones 1 y 5): el desplazamiento es continuo, así que
+ * esta grilla ya no recibe la lista exacta de días a dibujar, sino de
+ * dónde arranca el tramo visible y cuántos días entran a la vez.
+ * Internamente monta esos días más un margen a cada lado
+ * (`use-continuous-scroll.ts`, `COLUMN_VIRTUALIZATION_MARGIN_DAYS`) dentro
+ * de un único contenedor con `overflow-x`, y reporta hacia arriba
+ * (`onVisibleRangeChange`) cuándo el usuario lo corrió con el gesto nativo
+ * (arrastre, rueda, inercia táctil) para que quien pide los datos y
+ * `anchorDate` se mantengan de acuerdo con lo que se ve.
  */
 export function TimeGrid({
-  visibleDays,
+  startDate,
+  dayCount,
   blocks,
   previewBlocks = [],
   timezone,
@@ -342,8 +368,12 @@ export function TimeGrid({
   onResizeBlock,
   getContextMenuEntries,
   onCreateRange,
+  onVisibleRangeChange,
 }: {
-  visibleDays: string[];
+  /** Primer día del tramo visible (`yyyy-MM-dd`), ya acotado a `CONTINUOUS_RANGE_DAYS` por quien llama (`visibleDaysForFormat`). */
+  startDate: string;
+  /** Cuántos días entran a la vez: 1, 4 o 7 según el formato (`dayCountForFormat`). */
+  dayCount: number;
   blocks: CalendarBlock[];
   previewBlocks?: CalendarBlock[];
   timezone: string;
@@ -357,9 +387,22 @@ export function TimeGrid({
   /** Clic derecho (grupo 7, D-E): resuelto por quien monta la pantalla, según el tipo de bloque (D-F, esta grilla no sabe de dominios). */
   getContextMenuEntries?: (block: CalendarBlock) => AppContextMenuEntry[];
   onCreateRange?: (dateKey: string, startMinutes: number, endMinutes: number) => void;
+  /** El usuario corrió el desplazamiento continuo (tarea 6.1/6.2): nuevo primer día visible. */
+  onVisibleRangeChange?: (startDate: string) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Mismo contenedor para las tres cosas (tarea 2.1/4.1): el que mide su
+  // ancho con `ResizeObserver` es el mismo que se usa para el scroll
+  // horizontal continuo y para posicionar el scroll vertical inicial.
+  const [containerRef, columnWidthPx] = useMeasuredColumnWidthPx(dayCount);
   const today = todayInTimeZone(now, timezone);
+  const mountedWindow = useContinuousScroll({ containerRef, today, startDate, dayCount, columnWidthPx, onVisibleRangeChange });
+  const mountedDays = useMemo(() => {
+    const days: string[] = [];
+    for (let index = mountedWindow.startIndex; index <= mountedWindow.endIndex; index++) {
+      days.push(dateAtOffsetFromToday(index - CONTINUOUS_RANGE_DAYS, today));
+    }
+    return days;
+  }, [mountedWindow.startIndex, mountedWindow.endIndex, today]);
   const merged = blocks.concat(previewBlocks.map((block) => ({ ...block, isPreview: true })));
 
   // La línea de la hora actual se movía nunca (tarea 1.1/1.2, requisito
@@ -382,24 +425,71 @@ export function TimeGrid({
   }, []);
 
   useEffect(() => {
-    const container = scrollRef.current;
+    const container = containerRef.current;
     if (!container) return;
-    const minutesNow = currentTimeMinutes(now, visibleDays[0] ?? today, timezone);
+    const minutesNow = currentTimeMinutes(now, startDate, timezone);
     const targetMinutes = Math.max((minutesNow ?? 7 * 60) - 120, 0);
     container.scrollTop = HEADER_ROW_HEIGHT_PX + (targetMinutes / (24 * 60)) * GRID_HEIGHT_PX;
     // Solo al montar: no queremos pelear con el scroll manual del usuario en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `position: sticky; left: 0` no funciona en Chromium para un ítem de
+  // CSS Grid ubicado en una sola columna (`gridColumn: 1`) dentro de una
+  // grilla que se desplaza horizontalmente de verdad: el elemento queda
+  // "pegado" a su posición natural y se va con el contenido en vez de
+  // quedarse fijo — verificado en vivo, no es un supuesto (D55,
+  // `docs/decisions.md`). Nunca se notó en los bloques 1 a 3 porque
+  // entonces el contenedor no tenía overflow horizontal (`columnWidthPx`
+  // llenaba el ancho exacto de `dayCount` columnas, `scrollLeft` siempre
+  // era 0): recién acá, con la tira continua de verdad, se manifiesta.
+  // `position: sticky; top: 0` para el eje vertical sí funciona (headers y
+  // fila de todo el día se quedan pegados arriba sin problema) — el arreglo
+  // solo hace falta para el eje horizontal: en cada evento de scroll, se
+  // corrige a mano con `transform: translateX(scrollLeft)` sobre las tres
+  // piezas fijas de la izquierda (la esquina, la columna de horas y el
+  // hueco de la fila de todo el día en `all-day-row.tsx`, marcadas con
+  // `data-gutter-cell`).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    function syncGutterTransform() {
+      const shift = `translateX(${container!.scrollLeft}px)`;
+      container!.querySelectorAll<HTMLElement>("[data-gutter-cell]").forEach((cell) => {
+        cell.style.transform = shift;
+      });
+    }
+    syncGutterTransform();
+    container.addEventListener("scroll", syncGutterTransform, { passive: true });
+    return () => container.removeEventListener("scroll", syncGutterTransform);
+  }, [containerRef]);
+
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-      <div className="grid" style={{ gridTemplateColumns: dayColumnsTemplate(visibleDays.length) }}>
+    <div
+      ref={containerRef}
+      // `no-scrollbar` (tarea 9.1, `design.md` pregunta abierta): con un año
+      // de ancho a cada lado, la barra nativa mostraría un pulgar
+      // minúsculo sin ninguna referencia (sin marcas de semana ni mes) —
+      // más ruido que ayuda. El gesto de arrastrar/deslizar queda como
+      // único medio para desplazarse dentro del año; ir más lejos queda
+      // fuera de esta tanda (`design.md`, decisión 3, lo deja para un
+      // selector de fecha que todavía no existe en `CalendarNav`).
+      className="no-scrollbar min-h-0 flex-1 overflow-auto"
+      style={{ [COLUMN_WIDTH_CSS_VAR]: `${columnWidthPx}px` } as React.CSSProperties}
+    >
+      {/* `TOTAL_CONTINUOUS_DAYS` columnas en total (tarea 4.1, `design.md`
+          decisión 3): un año hacia atrás y uno hacia adelante de hoy, para
+          que `scrollLeft` tenga un tamaño honesto. Solo se montan las de
+          `mountedDays` (lo visible más el margen) — el resto son columnas
+          de grilla vacías, sin nodo, que no cuestan nada. */}
+      <div className="grid" style={{ gridTemplateColumns: dayColumnsTemplate(TOTAL_CONTINUOUS_DAYS) }}>
         <div
-          className="sticky top-0 left-0 z-30 border-r border-b border-border bg-background"
+          data-gutter-cell
+          className="sticky top-0 z-30 border-r border-b border-border bg-background"
           style={{ gridColumn: 1, gridRow: 1, width: GUTTER_WIDTH_PX, height: HEADER_ROW_HEIGHT_PX }}
         />
 
-        {visibleDays.map((dateKey, index) => {
+        {mountedDays.map((dateKey, offset) => {
           const isToday = dateKey === today;
           return (
             <div
@@ -408,16 +498,27 @@ export function TimeGrid({
                 "sticky top-0 z-20 flex items-center justify-center border-b border-border bg-background px-1 text-xs capitalize",
                 isToday ? "font-semibold text-primary" : "text-muted-foreground",
               )}
-              style={{ gridColumn: index + 2, gridRow: 1, height: HEADER_ROW_HEIGHT_PX }}
+              style={{ gridColumn: mountedWindow.startIndex + offset + 2, gridRow: 1, height: HEADER_ROW_HEIGHT_PX }}
             >
               {format(parseISO(dateKey), "EEE d", { locale: es })}
             </div>
           );
         })}
 
+        <AllDayRow
+          mountedDays={mountedDays}
+          gridColumnStart={mountedWindow.startIndex + 2}
+          blocks={blocks}
+          previewBlocks={previewBlocks}
+          onSelectBlock={onSelectBlock}
+          onToggleComplete={onToggleComplete}
+          getContextMenuEntries={getContextMenuEntries}
+        />
+
         <div
-          className="sticky left-0 z-10 border-r border-border bg-background text-right text-[0.7rem] text-muted-foreground"
-          style={{ gridColumn: 1, gridRow: 2, width: GUTTER_WIDTH_PX, height: GRID_HEIGHT_PX }}
+          data-gutter-cell
+          className="relative z-10 border-r border-border bg-background text-right text-[0.7rem] text-muted-foreground"
+          style={{ gridColumn: 1, gridRow: 3, width: GUTTER_WIDTH_PX, height: GRID_HEIGHT_PX }}
         >
           {HOURS.map((hour) => (
             <div key={hour} className="-translate-y-2 pr-2" style={{ height: HOUR_ROW_HEIGHT_PX }}>
@@ -426,11 +527,11 @@ export function TimeGrid({
           ))}
         </div>
 
-        {visibleDays.map((dateKey, index) => (
+        {mountedDays.map((dateKey, offset) => (
           <DayColumn
             key={`day-${dateKey}`}
             dateKey={dateKey}
-            gridColumn={index + 2}
+            gridColumn={mountedWindow.startIndex + offset + 2}
             blocks={merged}
             timezone={timezone}
             nowMinutes={currentTimeMinutes(liveNow, dateKey, timezone)}

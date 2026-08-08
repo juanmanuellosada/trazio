@@ -25,6 +25,21 @@ if (typeof Element !== "undefined") {
   if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = () => {};
   }
+  // jsdom no implementa `scrollTo`, que el desplazamiento continuo del
+  // calendario usa para reposicionar `scrollLeft`/`scrollTop` cuando cambia
+  // el día visible desde afuera (`use-continuous-scroll.ts`, tarea 6). Sin
+  // el stub, montar `TimeGrid` tira "container.scrollTo is not a function".
+  // Se aplican `left`/`top` directo a las propiedades (jsdom sí las deja
+  // escribir, aunque no haga layout real): sin eso, los tests de
+  // `time-grid.test.tsx` que verifican la posición resultante no tendrían
+  // nada que leer.
+  if (!Element.prototype.scrollTo) {
+    Element.prototype.scrollTo = function scrollTo(this: Element, ...args: unknown[]) {
+      const options = typeof args[0] === "object" && args[0] !== null ? (args[0] as { left?: number; top?: number }) : { left: args[0] as number, top: args[1] as number };
+      if (typeof options.left === "number") this.scrollLeft = options.left;
+      if (typeof options.top === "number") this.scrollTop = options.top;
+    };
+  }
 }
 
 // jsdom no implementa `matchMedia`, que `useMediaQuery` (bloque 7.10, y ahora

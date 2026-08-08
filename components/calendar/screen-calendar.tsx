@@ -127,10 +127,13 @@ export function ScreenCalendar({
   const mounted = useMounted();
   const now = useMemo(() => (mounted ? new Date() : null), [mounted]);
 
-  // El día mostrado: `null` hasta que se navega a mano (flechas o "Hoy"), y
-  // mientras tanto se deriva de `now` en cada render en vez de guardarse en
-  // estado — nada de sincronizar un default por efecto (mismo motivo que
-  // `now` de arriba).
+  // El primer día visible: `null` hasta que se navega a mano (flechas,
+  // "Hoy", o el desplazamiento continuo, reportado por `CalendarView` vía
+  // `onVisibleRangeChange`, tarea 6.1/6.2/6.3), y mientras tanto se deriva
+  // de `now` en cada render en vez de guardarse en estado — nada de
+  // sincronizar un default por efecto (mismo motivo que `now` de arriba).
+  // Nunca se persiste entre sesiones (`design.md`, decisión 8): la pantalla
+  // siempre abre con hoy como primera columna.
   const [anchorDateOverride, setAnchorDateOverride] = useState<string | null>(null);
   const anchorDate = anchorDateOverride ?? (now ? todayInTimeZone(now, timezone) : null);
 
@@ -155,8 +158,9 @@ export function ScreenCalendar({
   const [pendingEventUpdate, setPendingEventUpdate] = useState<{ event: CalendarEventInstance; changes: EventInput } | null>(null);
 
   const visibleDays = useMemo(
-    () => (anchorDate ? visibleDaysForFormat(options.formato_calendario, anchorDate, weekStartsOn) : []),
-    [options.formato_calendario, anchorDate, weekStartsOn],
+    () =>
+      anchorDate && now ? visibleDaysForFormat(options.formato_calendario, anchorDate, weekStartsOn, todayInTimeZone(now, timezone)) : [],
+    [options.formato_calendario, anchorDate, weekStartsOn, now, timezone],
   );
 
   const rangeEvents = useCalendarRangeEvents(visibleDays, timezone);
@@ -595,6 +599,7 @@ export function ScreenCalendar({
           getContextMenuEntries={buildContextMenuEntries}
           onScheduleHabitChip={handleScheduleHabitChip}
           onCreateTask={setCreateRange}
+          onVisibleRangeChange={setAnchorDateOverride}
         />
       </div>
 
