@@ -1,15 +1,15 @@
 ## 1. Reducer del cursor
 
-- [ ] 1.1 Crear `lib/cursor/reducer.ts` con estado `{ cursorId: string | null }` y acciones `move` (`up`/`down`/`first`/`last`), `set`, `clear` y `reconcile`, todas recibiendo `orderedIds`. Estado puro, sin DOM, mismo estilo que `lib/selection/reducer.ts`.
-- [ ] 1.2 Implementar la regla de reconciliación de D-C: id presente → no se mueve; id ausente → misma posición; lista más corta → última; lista vacía → sin cursor.
-- [ ] 1.3 Sin vuelta en los extremos: `up` en la primera y `down` en la última no hacen nada.
-- [ ] 1.4 Tests del reducer, con foco en la reconciliación: completar la fila señalada, reordenar por realtime, borrar la última, vaciar la lista.
+- [x] 1.1 Crear `lib/cursor/reducer.ts` con estado `{ cursorId: string | null }` y acciones `move` (`up`/`down`/`first`/`last`), `set`, `clear` y `reconcile`, todas recibiendo `orderedIds`. Estado puro, sin DOM, mismo estilo que `lib/selection/reducer.ts`.
+- [x] 1.2 Implementar la regla de reconciliación de D-C: id presente → no se mueve; id ausente → misma posición; lista más corta → última; lista vacía → sin cursor.
+- [x] 1.3 Sin vuelta en los extremos: `up` en la primera y `down` en la última no hacen nada.
+- [x] 1.4 Tests del reducer, con foco en la reconciliación: completar la fila señalada, reordenar por realtime, borrar la última, vaciar la lista.
 
 ## 2. Lista aplanada
 
-- [ ] 2.1 Función compartida que, dados los grupos ya resueltos por la pantalla, devuelva los ids de fila en orden visual, salteando secciones colapsadas y subtareas plegadas, y sin incluir encabezados.
-- [ ] 2.2 Estrenarla en la vista de Proyecto (la más simple) antes de generalizar. Si la firma no alcanza al llegar a la tercera pantalla, corregirla ahí — no antes.
-- [ ] 2.3 Tests del aplanado con sección colapsada, subtareas anidadas de más de un nivel, y agrupación por prioridad.
+- [x] 2.1 Función compartida que, dados los grupos ya resueltos por la pantalla, devuelva los ids de fila en orden visual, salteando secciones colapsadas y subtareas plegadas, y sin incluir encabezados.
+- [ ] 2.2 Estrenarla en la vista de Proyecto (la más simple) antes de generalizar. Si la firma no alcanza al llegar a la tercera pantalla, corregirla ahí — no antes. **Queda para la delegación de los bloques 3-8**: la de los bloques 1-2 no podía tocar `components/` por trabajo en paralelo sobre `task-row.tsx`.
+- [x] 2.3 Tests del aplanado con sección colapsada, subtareas anidadas de más de un nivel, y agrupación por prioridad.
 
 ## 3. Foco y semántica
 
