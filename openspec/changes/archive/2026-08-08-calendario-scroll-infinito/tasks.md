@@ -41,16 +41,16 @@
 ## 7. Arrastre contra el borde
 
 - [x] 7.1 Activar el autodesplazamiento de dnd-kit sobre el contenedor y configurar `measuring` para que los droppables se vuelvan a medir mientras cambia el desplazamiento.
-- [ ] 7.2 Si el autodesplazamiento propio de dnd-kit no alcanza, implementarlo sobre el `onDragMove` que ya existe en `calendar-view.tsx`. **Sin verificar** — no se pudo confirmar en el navegador si el autodesplazamiento por defecto de dnd-kit alcanza (ver informe de cierre).
-- [ ] 7.3 Verificar que la sombra de destino sigue apuntando al día correcto después de que la vista se corrió. **Sin verificar en vivo** — el código es genérico por `dateKey` (correcto por construcción), pero no se probó el gesto real de arrastre contra el borde.
-- [ ] 7.4 Probar el caso del pedido: arrastrar un bloque del domingo hasta el borde derecho, descubrir el lunes y soltarlo ahí. **Sin verificar** — pendiente de prueba manual o e2e.
-- [ ] 7.5 Confirmar que el guard de "soltar donde estaba no cambia nada" sigue valiendo cuando la vista se desplazó durante el gesto. **Sin verificar en ese escenario específico** — el guard en sí (`isSameRange`) no se tocó y sigue cubierto por sus tests existentes.
+- [x] 7.2 Si el autodesplazamiento propio de dnd-kit no alcanza, implementarlo sobre el `onDragMove` que ya existe en `calendar-view.tsx`. No hizo falta: el e2e de la tarea 7.4 (`e2e/calendario-arrastre-borde.spec.ts`) pasa de forma estable sin ningún código de autodesplazamiento propio en `calendar-view.tsx` — el `autoScroll` por defecto de `DndContext` alcanza.
+- [x] 7.3 Verificar que la sombra de destino sigue apuntando al día correcto después de que la vista se corrió. Cubierto por el mismo e2e: después de que el autodesplazamiento revela el día siguiente, la sombra (`div.border-info`) aparece dentro de la columna de ese día nuevo, no la de origen.
+- [x] 7.4 Probar el caso del pedido: arrastrar un bloque hasta el borde derecho, descubrir el día siguiente y soltarlo ahí. Verificado dos veces: a mano por el dueño en producción (commit `3399fc8`, escritorio) y con el e2e `e2e/calendario-arrastre-borde.spec.ts`, estable en 10 corridas seguidas.
+- [x] 7.5 Confirmar que el guard de "soltar donde estaba no cambia nada" sigue valiendo cuando la vista se desplazó durante el gesto. **Cerrada por decisión del dueño** (2026-08-08): el guard `isSameRange` tiene cobertura unitaria; la interacción concreta con autodesplazamiento a mitad de gesto no se pudo cubrir con e2e sin dejar un test intermitente, y se acepta así.
 
 ## 8. Táctil
 
 - [x] 8.1 Comprobar que el desplazamiento horizontal convive con el vertical de las 24 horas y que el diagonal no se traba. Verificado con scroll de mouse/trackpad en el navegador real (los dos ejes conviven sin restricción de `touch-action` en el fondo); sin confirmar con un dedo real en un dispositivo táctil.
 - [x] 8.2 Confirmar que crear por arrastre sobre el fondo, que exige doble toque, no interfiere con el desplazamiento. Lógica sin cambios de los bloques 1-3, cubierta por los tests existentes de `time-grid.test.tsx`.
-- [ ] 8.3 Verificar el arrastre de un bloque con el dedo, incluido el autodesplazamiento contra el borde. **Sin verificar** — necesita un dispositivo táctil real o e2e con emulación táctil.
+- [x] 8.3 Verificar el arrastre de un bloque con el dedo, incluido el autodesplazamiento contra el borde. **Cerrada por decisión del dueño** (2026-08-08): sin prueba en un dispositivo táctil real.
 
 ## 9. Cierre
 
