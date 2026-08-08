@@ -128,24 +128,29 @@ function DayColumn({
     if (!createRange || !container) return;
     const rect = container.getBoundingClientRect();
     const startMinutes = clampMinutes(snapToQuarterHour(pixelsToMinutes(event.clientY - rect.top, HOUR_ROW_HEIGHT_PX)), 0, DAY_MINUTES - SNAP_MINUTES);
-    setSelection({ startMinutes, endMinutes: startMinutes + SNAP_MINUTES });
+    // Se sigue en esta variable, no leyendo el estado en `handleUp`: React
+    // reporta "Cannot update a component while rendering a different
+    // component" si `createRange` (que termina en `setChoiceRange` de
+    // `calendar-view.tsx`) se llama desde dentro de la función updater de
+    // `setSelection` — hay que leer el valor y disparar la llamada después,
+    // no durante el render de `DayColumn`.
+    let endMinutes = startMinutes + SNAP_MINUTES;
+    setSelection({ startMinutes, endMinutes });
 
     function handleMove(moveEvent: PointerEvent) {
       const rawMinutes = pixelsToMinutes(moveEvent.clientY - rect.top, HOUR_ROW_HEIGHT_PX);
-      const endMinutes = clampMinutes(snapToQuarterHour(rawMinutes), startMinutes + SNAP_MINUTES, DAY_MINUTES);
+      endMinutes = clampMinutes(snapToQuarterHour(rawMinutes), startMinutes + SNAP_MINUTES, DAY_MINUTES);
       setSelection({ startMinutes, endMinutes });
     }
 
     function handleUp() {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
-      setSelection((current) => {
-        // `createRange` ya se verificó no nulo antes de registrar estos
-        // listeners; TS no propaga esa verificación dentro de una función
-        // anidada, aunque la variable sea `const`.
-        if (current) createRange!(dateKey, current.startMinutes, current.endMinutes);
-        return null;
-      });
+      setSelection(null);
+      // `createRange` ya se verificó no nulo antes de registrar estos
+      // listeners; TS no propaga esa verificación dentro de una función
+      // anidada, aunque la variable sea `const`.
+      createRange!(dateKey, startMinutes, endMinutes);
     }
 
     window.addEventListener("pointermove", handleMove);

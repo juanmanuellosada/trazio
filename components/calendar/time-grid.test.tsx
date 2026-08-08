@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { DndContext } from "@dnd-kit/core";
 import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -254,6 +255,50 @@ describe("TimeGrid — crear arrastrando sobre el fondo vacío: un toque no alca
 
     fireEvent.pointerUp(window, { clientX: 10, clientY: 105, pointerId: 2 });
     expect(onCreateRange).not.toHaveBeenCalled();
+  });
+});
+
+// Defecto de React ("Cannot update a component (`CalendarView`) while
+// rendering a different component (`DayColumn`)"): `handleUp` de
+// `startSelectionDrag` no puede llamar a `onCreateRange` —que en
+// `calendar-view.tsx` termina en `setChoiceRange`— desde dentro de la
+// función updater de `setSelection`; hay que leer el valor y disparar la
+// llamada después, no durante el render de `DayColumn`. Se reproduce con un
+// padre que tiene su propio estado (como `calendar-view.tsx` de verdad, a
+// diferencia de `onCreateRange` como `vi.fn()` del describe de arriba, que no
+// dispara ningún render ajeno y por eso no puede reproducir esto).
+describe("TimeGrid — crear arrastrando no actualiza otro componente durante el render", () => {
+  function ParentWithOwnState() {
+    const [choiceRange, setChoiceRange] = useState<{ startMinutes: number; endMinutes: number } | null>(null);
+    return (
+      <DndContext id="test-time-grid-create-no-warning">
+        <TimeGrid
+          startDate={TODAY}
+          dayCount={1}
+          blocks={[]}
+          timezone={TZ}
+          now={new Date("2026-08-05T10:00:00-03:00")}
+          onCreateRange={(_dateKey, startMinutes, endMinutes) => setChoiceRange({ startMinutes, endMinutes })}
+        />
+        {choiceRange && <div data-testid="choice">{choiceRange.startMinutes}</div>}
+      </DndContext>
+    );
+  }
+
+  it("soltar tras arrastrar no dispara el warning de React de actualizar un componente durante el render de otro", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container, getByTestId } = render(<ParentWithOwnState />);
+    const column = container.querySelector(`[data-date="${TODAY}"]`) as HTMLElement;
+
+    fireEvent.pointerDown(column, { clientX: 10, clientY: 100, pointerId: 1, pointerType: "mouse" });
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 150, pointerId: 1 });
+
+    // El resultado sigue llegando al padre (mismo comportamiento visible).
+    expect(getByTestId("choice")).toBeInTheDocument();
+    const warnedAboutRenderUpdate = errorSpy.mock.calls.some((call) => String(call[0]).includes("Cannot update a component"));
+    expect(warnedAboutRenderUpdate).toBe(false);
+
+    errorSpy.mockRestore();
   });
 });
 
