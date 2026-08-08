@@ -148,6 +148,8 @@ function SectionItem({
   allSections,
   taskListOptions,
   selectionOrderIds,
+  collapsedTaskIds,
+  onSetCollapsed,
 }: {
   section: SectionRow;
   projectId: string;
@@ -155,6 +157,9 @@ function SectionItem({
   taskListOptions?: SectionTaskListOptions;
   /** Selección múltiple (bloque 7.10-7.13): mismo orden visual combinado que le pasa `SectionedTasks` a la lista de "sin sección" — acá se reparte igual a cada sección. */
   selectionOrderIds?: string[];
+  /** Ver el comentario en `TaskRow` (bloque 3, tarea 2.2 corregida): se reenvía tal cual a la `TaskList` de la sección. */
+  collapsedTaskIds?: ReadonlySet<string>;
+  onSetCollapsed?: (id: string, value: boolean) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const updateSection = useUpdateSection(projectId);
@@ -256,6 +261,8 @@ function SectionItem({
             parentId={null}
             {...taskListOptions}
             selectionOrderIds={selectionOrderIds}
+            collapsedTaskIds={collapsedTaskIds}
+            onSetCollapsed={onSetCollapsed}
           />
         </div>
       )}
@@ -308,6 +315,8 @@ export function SectionList({
   initialSections,
   taskListOptions,
   selectionOrderIds,
+  collapsedTaskIds,
+  onSetCollapsed,
 }: {
   projectId: string;
   initialSections: SectionRow[];
@@ -315,6 +324,9 @@ export function SectionList({
   taskListOptions?: SectionTaskListOptions;
   /** Selección múltiple (bloque 7.10-7.13, capacidad `seleccion-multiple`): orden visual combinado de "sin sección" + cada sección, calculado por `SectionedTasks`. */
   selectionOrderIds?: string[];
+  /** Ver el comentario en `TaskRow` (bloque 3, tarea 2.2 corregida): se reparte igual a cada sección. */
+  collapsedTaskIds?: ReadonlySet<string>;
+  onSetCollapsed?: (id: string, value: boolean) => void;
 }) {
   const { data } = useSections(projectId, initialSections);
   const moveSection = useMoveSection(projectId);
@@ -356,6 +368,8 @@ export function SectionList({
                   allSections={sections}
                   taskListOptions={taskListOptions}
                   selectionOrderIds={selectionOrderIds}
+                  collapsedTaskIds={collapsedTaskIds}
+                  onSetCollapsed={onSetCollapsed}
                 />
               ))}
             </ul>

@@ -53,6 +53,8 @@ export function TaskList({
   showCompleted = true,
   timezone = "UTC",
   selectionOrderIds,
+  collapsedTaskIds,
+  onSetCollapsed,
 }: {
   projectId: string;
   sectionId: string | null;
@@ -67,6 +69,9 @@ export function TaskList({
   timezone?: string;
   /** Orden visual de selección múltiple (bloque 7.10-7.13): solo lo pasa quien monta el nivel superior (`SectionedTasks`), nunca la recursión de subtareas (ver el mismo criterio que `order`/`quickFilters` un poco más arriba) — así el casillero de selección nunca aparece en una subtarea. */
   selectionOrderIds?: string[];
+  /** Ver el comentario de `collapsedTaskIds` en `TaskRow` (bloque 3, tarea 2.2 corregida): solo lo pasa quien cablea el cursor, se reenvía tal cual a cada `TaskRow` — es `TaskRow`, no acá, quien lo vuelve a pasar en su propia recursión de subtareas. */
+  collapsedTaskIds?: ReadonlySet<string>;
+  onSetCollapsed?: (id: string, value: boolean) => void;
 }) {
   const { data } = useTasks(projectId, initialTasks);
   const moveTask = useMoveTask();
@@ -131,6 +136,8 @@ export function TaskList({
                   siblings={rawSiblings}
                   depth={depth}
                   selectionOrderIds={selectionOrderIds}
+                  collapsedTaskIds={collapsedTaskIds}
+                  onSetCollapsed={onSetCollapsed}
                 />
               ))}
             </ul>
@@ -147,6 +154,8 @@ export function TaskList({
               depth={depth}
               showDragHandle={false}
               selectionOrderIds={selectionOrderIds}
+              collapsedTaskIds={collapsedTaskIds}
+              onSetCollapsed={onSetCollapsed}
             />
           ))}
         </ul>

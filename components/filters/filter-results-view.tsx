@@ -13,6 +13,7 @@ import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskRow } from "@/components/tasks/task-row";
 import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
+import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
@@ -109,29 +110,33 @@ export function FilterResultsView({
               description="Cambiá la consulta desde la administración de filtros si esperabas ver algo acá."
             />
           ) : (
-            groups.map((group) => (
-              <section key={group.key}>
-                {group.label && (
-                  <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
-                    {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
-                  </h2>
-                )}
-                <ul className="flex flex-col divide-y divide-border/60">
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      allTasks={allTasks}
-                      siblings={[]}
-                      depth={0}
-                      variant="flat"
-                      selectionOrderIds={orderedIds}
-                      showProject
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))
+            <ListCursorProvider orderedIds={orderedIds}>
+              <div role="listbox" aria-multiselectable aria-label="Tareas" className="space-y-4">
+                {groups.map((group) => (
+                  <section key={group.key}>
+                    {group.label && (
+                      <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
+                        {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
+                      </h2>
+                    )}
+                    <ul className="flex flex-col divide-y divide-border/60">
+                      {group.tasks.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          allTasks={allTasks}
+                          siblings={[]}
+                          depth={0}
+                          variant="flat"
+                          selectionOrderIds={orderedIds}
+                          showProject
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </ListCursorProvider>
           )}
         </div>
 

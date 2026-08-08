@@ -3,6 +3,7 @@
 import type { MouseEvent } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useListCursor } from "@/components/list-cursor/list-cursor-context";
 import { useSelection } from "./selection-context";
 
 /**
@@ -22,6 +23,11 @@ import { useSelection } from "./selection-context";
  */
 export function SelectionCheckbox({ taskId, taskTitle, orderedIds }: { taskId: string; taskTitle: string; orderedIds: string[] }) {
   const selection = useSelection();
+  // Roving tabindex (`cursor-de-lista`, D-A): con el cursor cableado, la
+  // fila entera es el único tab-stop — este casillero sigue siendo
+  // clickeable, pero deja de ser un tab-stop propio (`X` ya lo cubre desde
+  // el teclado, bloque 5.1).
+  const cursor = useListCursor();
   if (!selection) return null;
 
   const checked = selection.isSelected(taskId);
@@ -36,6 +42,7 @@ export function SelectionCheckbox({ taskId, taskTitle, orderedIds }: { taskId: s
     <button
       type="button"
       role="checkbox"
+      tabIndex={cursor ? -1 : undefined}
       aria-checked={checked}
       aria-label={checked ? `Quitar ${taskTitle} de la selección` : `Seleccionar ${taskTitle}`}
       onClick={handleClick}

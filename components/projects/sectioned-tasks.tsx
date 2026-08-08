@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { AddSectionRow, SectionList } from "@/components/sections/section-list";
@@ -10,14 +10,17 @@ import { TaskRow as TaskRowView } from "@/components/tasks/task-row";
 import { usePublishComposeContext } from "@/components/tasks/compose-context";
 import { Board, type BoardColumn } from "@/components/board/board";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
+import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { clickButtonByText } from "@/lib/shortcuts/dom";
 import { useShortcutScope } from "@/lib/shortcuts/context";
+import { flattenVisibleRows, type FlattenGroup, type FlattenRow } from "@/lib/cursor/flatten-visible-rows";
 import { dateColumns, priorityColumns, sectionColumns, UNDATED_COLUMN_ID, UNSECTIONED_COLUMN_ID } from "@/lib/board/panel-columns";
 import { dateMovePatch, priorityMovePatch, sectionMovePatch } from "@/lib/board/panel-move";
 import { useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { useSections, type SectionRow } from "@/lib/sections/use-sections";
+import { siblingsOfTask } from "@/lib/tasks/tree";
 import { useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
 import { resolveTaskPriorityColorHex } from "@/lib/validation/tasks";
 import { contentWidthClass } from "@/lib/view-options/content-width";
@@ -27,6 +30,25 @@ import { orderTasks } from "@/lib/view-options/order-tasks";
 import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { cn } from "@/lib/utils";
+
+/**
+ * Aplana el árbol de subtareas de una tarea de primer nivel para el cursor
+ * (bloque 3, capacidad `cursor-de-lista`, tarea 2.2 corregida acá): mismo
+ * orden por default que ya usa la recursión de `TaskList` para subtareas
+ * ("manual", sin filtrar — ver el comentario de esa función en
+ * `components/tasks/task-list.tsx`), para que el recorrido del cursor
+ * coincida exactamente con lo que se ve. `collapsedTaskIds` es el estado
+ * que reemplaza, para esta pantalla, el `useState` local que `TaskRow` usa
+ * en cualquier otro lugar (ver el comentario de esa prop en `task-row.tsx`).
+ */
+function buildFlattenRow(allTasks: TaskRow[], task: TaskRow, collapsedTaskIds: ReadonlySet<string>): FlattenRow {
+  const children = siblingsOfTask(allTasks, { projectId: task.project_id, sectionId: task.section_id, parentId: task.id });
+  return {
+    id: task.id,
+    collapsed: collapsedTaskIds.has(task.id),
+    children: children.length > 0 ? children.map((child) => buildFlattenRow(allTasks, child, collapsedTaskIds)) : undefined,
+  };
+}
 
 /**
  * Tareas y secciones de un proyecto (bloques 6, 7 y 8, spec §3 "Proyecto":
@@ -223,6 +245,39 @@ export function SectionedTasks({
     .filter((t) => selectionOrderIds.includes(t.id))
     .map((t) => ({ id: t.id, projectId: t.project_id }));
 
+  // Subtareas colapsadas (bloque 3, tarea 2.2 corregida acá): estado
+  // levantado a esta pantalla, en vez del `useState` local que `TaskRow`
+  // usa en cualquier otro lugar (ver el comentario de esa prop) — es lo
+  // único que le faltaba al aplanado del cursor para saber qué subárboles
+  // saltear (design.md, D-B).
+  const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(() => new Set());
+  const handleSetCollapsed = useCallback((id: string, value: boolean) => {
+    setCollapsedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (value) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // Cursor de lista (bloque 3, capacidad `cursor-de-lista`): estrena
+  // `flattenVisibleRows` acá (tarea 2.2) — la única de las tres formas de
+  // ver esta pantalla con subtareas anidadas de verdad es la agrupada por
+  // sección (`options.groupBy === "seccion"`, rama de más abajo); ahí sí
+  // hace falta el árbol completo, con el colapso de cada sección (campo de
+  // la base) y el de cada subtarea (`collapsedTaskIds`, recién levantado).
+  // Agrupada por cualquier otro valor no hay subtareas visibles (`TaskRow`
+  // con `variant="flat"`, más abajo), así que el orden ya calculado para la
+  // selección (`groupedOrderIds`) alcanza tal cual.
+  const sectionCursorGroups: FlattenGroup[] = [
+    { rows: columnTasks(null).map((t) => buildFlattenRow(allTasks, t, collapsedTaskIds)) },
+    ...sections.map((s) => ({
+      collapsed: s.is_collapsed,
+      rows: columnTasks(s.id).map((t) => buildFlattenRow(allTasks, t, collapsedTaskIds)),
+    })),
+  ];
+  const cursorOrderIds = options.groupBy === "seccion" ? flattenVisibleRows(sectionCursorGroups) : groupedOrderIds;
+
   return (
     <SelectionProvider>
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -267,58 +322,66 @@ export function SectionedTasks({
               createTaskProjectId={projectId}
             />
           ) : options.groupBy === "seccion" ? (
-            <div className="space-y-4">
-              <TaskList
-                projectId={projectId}
-                sectionId={null}
-                parentId={null}
-                initialTasks={initialTasks}
-                order={options.order}
-                quickFilters={options.quickFilters}
-                showCompleted={options.showCompleted}
-                timezone={timezone}
-                selectionOrderIds={listOrderIds}
-              />
-              <div ref={sectionListRef}>
-                <SectionList
+            <ListCursorProvider orderedIds={cursorOrderIds}>
+              <div className="space-y-4" role="listbox" aria-multiselectable aria-label="Tareas">
+                <TaskList
                   projectId={projectId}
-                  initialSections={initialSections}
-                  taskListOptions={{
-                    order: options.order,
-                    quickFilters: options.quickFilters,
-                    showCompleted: options.showCompleted,
-                    timezone,
-                  }}
+                  sectionId={null}
+                  parentId={null}
+                  initialTasks={initialTasks}
+                  order={options.order}
+                  quickFilters={options.quickFilters}
+                  showCompleted={options.showCompleted}
+                  timezone={timezone}
                   selectionOrderIds={listOrderIds}
+                  collapsedTaskIds={collapsedTaskIds}
+                  onSetCollapsed={handleSetCollapsed}
                 />
+                <div ref={sectionListRef}>
+                  <SectionList
+                    projectId={projectId}
+                    initialSections={initialSections}
+                    taskListOptions={{
+                      order: options.order,
+                      quickFilters: options.quickFilters,
+                      showCompleted: options.showCompleted,
+                      timezone,
+                    }}
+                    selectionOrderIds={listOrderIds}
+                    collapsedTaskIds={collapsedTaskIds}
+                    onSetCollapsed={handleSetCollapsed}
+                  />
+                </div>
               </div>
-            </div>
+            </ListCursorProvider>
           ) : (
-            <div className="space-y-4">
-              {groupedTasks.map((group) => (
-                <section key={group.key}>
-                  {group.label && (
-                    <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
-                      {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
-                    </h2>
-                  )}
-                  {/* Sin arrastre acá: agrupando por cualquier valor que no sea sección —incluido "nada", la lista corrida (`lista-con-mas-agrupadores`, D-A)— no hay un campo de columna único que escribir al mover, ni una posición comparable entre secciones distintas. Eso es solo el modo panel, y solo agrupado por sección (D-C). */}
-                  <ul className="flex flex-col divide-y divide-border/60">
-                    {group.tasks.map((task) => (
-                      <TaskRowView
-                        key={task.id}
-                        task={task}
-                        allTasks={allTasks}
-                        siblings={[]}
-                        depth={0}
-                        variant="flat"
-                        selectionOrderIds={groupedOrderIds}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
+            <ListCursorProvider orderedIds={cursorOrderIds}>
+              <div className="space-y-4" role="listbox" aria-multiselectable aria-label="Tareas">
+                {groupedTasks.map((group) => (
+                  <section key={group.key}>
+                    {group.label && (
+                      <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
+                        {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
+                      </h2>
+                    )}
+                    {/* Sin arrastre acá: agrupando por cualquier valor que no sea sección —incluido "nada", la lista corrida (`lista-con-mas-agrupadores`, D-A)— no hay un campo de columna único que escribir al mover, ni una posición comparable entre secciones distintas. Eso es solo el modo panel, y solo agrupado por sección (D-C). */}
+                    <ul className="flex flex-col divide-y divide-border/60">
+                      {group.tasks.map((task) => (
+                        <TaskRowView
+                          key={task.id}
+                          task={task}
+                          allTasks={allTasks}
+                          siblings={[]}
+                          depth={0}
+                          variant="flat"
+                          selectionOrderIds={groupedOrderIds}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </ListCursorProvider>
           )}
         </div>
 

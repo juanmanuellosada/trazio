@@ -629,6 +629,20 @@ agrega una sección; `Escape` cierra menús y ventanas emergentes.
 **Menú contextual de tarea:** `T` fecha, `Y` prioridad, `V` mover a, `⇧Ctrl+C`
 copiar enlace, `Ctrl⇧N` abrir en ventana nueva, `⇧Supr` eliminar.
 
+**Cursor de lista** (Bandeja, Hoy, Próximos, Proyecto, Etiqueta y Filtro; nunca
+en panel ni en calendario): `↑`/`↓` mueven una fila señalada por la lista,
+respetando el orden, la agrupación y lo que está colapsado; `Inicio`/`Fin` van
+a la primera y la última fila. Al entrar a la pantalla no hay ninguna fila
+señalada — aparece recién al mover el cursor o hacer clic en una fila.
+`Enter` abre el detalle de la fila señalada; `Espacio` la completa o la
+descompleta, sin desplazar la página. `⇧↑`/`⇧↓` extienden la selección
+múltiple hasta la fila nueva (mismo ancla que `⇧`clic); `X` selecciona o
+deselecciona la fila señalada. `.`, `⇧F10` y la tecla Menú abren el menú de
+acciones de esa fila — el mismo que el clic derecho, con todos sus propios
+atajos (arriba). El cursor es foco real del navegador (no un resaltado
+decorativo): `Tab` entra a la lista una sola vez, en la fila señalada, y sale
+de ella de una.
+
 Un atajo con modificador `Ctrl`/`Cmd` (por ejemplo `Ctrl+S`, `⇧Ctrl+C`,
 `Ctrl⇧N` o `Ctrl/Cmd+Z`) se dispara aunque el foco esté en un campo de texto.
 Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con

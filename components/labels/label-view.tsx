@@ -21,6 +21,7 @@ import { orderTasks } from "@/lib/view-options/order-tasks";
 import type { ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
+import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
@@ -157,30 +158,34 @@ export function LabelView({
               description="Asigná esta etiqueta desde el detalle de una tarea para que aparezca acá."
             />
           ) : (
-            groups.map((group) => (
-              <section key={group.key}>
-                {group.label && (
-                  <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
-                    {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
-                  </h2>
-                )}
-                <ul className="flex flex-col divide-y divide-border/60">
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      allTasks={allTasks}
-                      siblings={[]}
-                      depth={0}
-                      variant="flat"
-                      selectionOrderIds={orderedIds}
-                      showProject
-                      hideLabelId={labelId}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))
+            <ListCursorProvider orderedIds={orderedIds}>
+              <div role="listbox" aria-multiselectable aria-label="Tareas" className="space-y-4">
+                {groups.map((group) => (
+                  <section key={group.key}>
+                    {group.label && (
+                      <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">
+                        {group.label} <span className="font-normal normal-case">({group.tasks.length})</span>
+                      </h2>
+                    )}
+                    <ul className="flex flex-col divide-y divide-border/60">
+                      {group.tasks.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          allTasks={allTasks}
+                          siblings={[]}
+                          depth={0}
+                          variant="flat"
+                          selectionOrderIds={orderedIds}
+                          showProject
+                          hideLabelId={labelId}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </ListCursorProvider>
           )}
         </div>
 

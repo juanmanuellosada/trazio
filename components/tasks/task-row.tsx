@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { useTheme } from "next-themes";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -33,7 +33,9 @@ import { toastSuccess } from "@/lib/toast";
 import { formatTaskDueLabel } from "@/lib/dates/format";
 import { useShortcutScope } from "@/lib/shortcuts/context";
 import type { ShortcutCombo } from "@/lib/shortcuts/types";
+import { clickFirstButton } from "@/lib/shortcuts/dom";
 import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
+import { useListCursor } from "@/components/list-cursor/list-cursor-context";
 import { toDueAt } from "@/lib/parser/dates";
 import { useDeleteTask, useDuplicateTask, useMoveTask, useUpdateTask } from "@/lib/tasks/mutations";
 import { computeIndent, computeOutdent, positionAfterOriginal, positionBeforeOriginal, positionForSwap } from "@/lib/tasks/tree";
@@ -130,6 +132,8 @@ export function TaskRow({
   showProject = false,
   hideLabelId,
   dragOverlay = false,
+  collapsedTaskIds,
+  onSetCollapsed,
 }: {
   task: TaskRowData;
   allTasks: TaskRowData[];
@@ -177,9 +181,25 @@ export function TaskRow({
    * tarjeta dentro de `@dnd-kit`.
    */
   dragOverlay?: boolean;
+  /**
+   * Subtareas colapsadas de toda la pantalla (bloque 3, capacidad
+   * `cursor-de-lista`, tarea 2.2 corregida acá): sin esto, el estado
+   * "plegada" de cada subtarea es local (`useState` propio de esta misma
+   * función) y la pantalla que arma `orderedIds` para el cursor no tiene
+   * forma de saber qué subárboles saltear (design.md, D-B, "la pantalla es
+   * la única que sabe qué está colapsado" — pero de una subtarea, hoy, no
+   * lo sabía). Solo lo pasan las pantallas que cablean el cursor
+   * (`SectionedTasks`, Proyecto/Bandeja); el resto de los llamadores
+   * (subtareas del detalle, tablero) no lo pasan y esta fila sigue
+   * colapsando con estado local, sin cambios de comportamiento.
+   */
+  collapsedTaskIds?: ReadonlySet<string>;
+  /** Ver `collapsedTaskIds`: el par que la escribe. */
+  onSetCollapsed?: (id: string, value: boolean) => void;
 }) {
-  const { open } = useTaskDetail();
+  const { open, openTaskId } = useTaskDetail();
   const selection = useSelection();
+  const cursor = useListCursor();
   // Mismo criterio que el casillero (`SelectionCheckbox`, línea 518 más
   // abajo): `Ctrl`/`Cmd`+clic solo selecciona donde el casillero también
   // existiría (`selectionOrderIds` presente y `depth === 0`) — sin esto no
@@ -194,7 +214,15 @@ export function TaskRow({
   const deleteTask = useDeleteTask();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+  // Ver el comentario de `collapsedTaskIds` en la firma: con la pantalla
+  // controlando el colapso (cursor cableado), este estado local queda sin
+  // usar; sin ella (subtareas del detalle, tablero), sigue siendo el dueño.
+  const collapsed = collapsedTaskIds ? collapsedTaskIds.has(task.id) : localCollapsed;
+  function setCollapsed(value: boolean) {
+    if (onSetCollapsed) onSetCollapsed(task.id, value);
+    else setLocalCollapsed(value);
+  }
   const [addingFirstSubtask, setAddingFirstSubtask] = useState(false);
   // Agregar tarea encima/debajo (`menu-contextual-de-tarea`, D-D): mismo
   // patrón que `addingFirstSubtask` de arriba — una vez abierto, el
@@ -207,6 +235,14 @@ export function TaskRow({
   const [dateSubOpen, setDateSubOpen] = useState(false);
   const [prioritySubOpen, setPrioritySubOpen] = useState(false);
   const now = useMemo(() => new Date(), []);
+  // Cursor de lista (bloque 3, D-A): nodo real de la fila, para el foco
+  // (`ListCursorProvider` lo pide vía `registerRow`) y para devolverlo acá
+  // al cerrar el menú. `menuTriggerRef` envuelve el botón "…" para que "."
+  // lo clickee (bloque 4.5), mismo patrón que ya usa
+  // `clickFirstButton`/`clickButtonByText` para los selectores del detalle.
+  const liRef = useRef<HTMLLIElement>(null);
+  const menuTriggerRef = useRef<HTMLDivElement>(null);
+  const isCursorRow = cursor?.isCursor(task.id) ?? false;
 
   // Al cerrar el menú (por cualquier vía: Escape, clic afuera, elegir un
   // ítem), las filas de fecha/prioridad vuelven a su estado inicial: sin
@@ -215,9 +251,16 @@ export function TaskRow({
   // colapsadas como cualquier submenú.
   function handleMenuOpenChange(open: boolean) {
     setMenuOpen(open);
+    cursor?.setRowMenuOpen(task.id, open);
     if (!open) {
       setDateSubOpen(false);
       setPrioritySubOpen(false);
+      // Requirement "Cerrar el menú devuelve el foco a la fila": si la fila
+      // sigue montada (una acción del propio menú no la borró — ese caso lo
+      // resuelve `reconcile` en `ListCursorProvider`, D-C), recupera el
+      // foco real que tenía antes de abrir el menú, sea por clic derecho o
+      // por el botón "…".
+      liRef.current?.focus();
     }
   }
 
@@ -405,6 +448,35 @@ export function TaskRow({
     { enabled: menuOpen },
   );
 
+  // Atajos del cursor de lista sobre esta fila (bloques 4 y 5, capacidad
+  // `cursor-de-lista`): activos solo mientras esta fila es la señalada, y
+  // apagados mientras su propio menú o el detalle de tarea están abiertos
+  // (tareas 4.4/4.5) — con cualquiera de los dos abiertos, `Enter` y
+  // `Espacio` le pertenecen a ese otro contexto, no a la fila de atrás.
+  // `↑`/`↓`/`⇧↑`/`⇧↓`/`Inicio`/`Fin` no van acá: no dependen de esta fila en
+  // particular, viven una sola vez por pantalla en `ListCursorProvider`.
+  useShortcutScope(
+    [
+      { combo: { key: "Enter" }, handler: () => open(task.id) },
+      { combo: { key: " " }, handler: toggleComplete },
+      {
+        // D-E/5.1: el mismo `toggle` que ya usa el casillero — nunca un
+        // estado de selección propio del teclado. Solo donde el casillero
+        // también existiría (`selectableHere`, depth 0 con selección
+        // múltiple activa en la pantalla): una subtarea señalada no es
+        // seleccionable, igual que hoy no tiene casillero.
+        combo: { key: "x" },
+        handler: () => {
+          if (selectableHere) selection!.toggle(task.id);
+        },
+      },
+      { combo: { key: "." }, handler: () => clickFirstButton(menuTriggerRef.current) },
+      { combo: { key: "F10", shift: true }, handler: () => clickFirstButton(menuTriggerRef.current) },
+      { combo: { key: "ContextMenu" }, handler: () => clickFirstButton(menuTriggerRef.current) },
+    ],
+    { enabled: Boolean(cursor) && isCursorRow && !menuOpen && openTaskId == null },
+  );
+
   // Árbol de acciones del menú (D-A): una sola lista para las dos entradas
   // (clic derecho y botón "…"), renderizada más abajo una vez por cada
   // primitiva (`AppContextMenu`/`DropdownMenu*`) — nunca dos listas escritas
@@ -541,6 +613,11 @@ export function TaskRow({
   // fila (título, casillero de completar, botón "…"), así que ninguno de
   // esos ejecuta su propia acción cuando el modificador está apretado.
   function handleRowClickCapture(event: MouseEvent<HTMLDivElement>) {
+    // Cursor de lista (D-A, requirement "El cursor no aparece solo... o al
+    // hacer clic en una fila"): en fase de captura, así se dispara sin
+    // importar qué control interno haya parado la propagación (ej. el
+    // casillero de selección, más abajo).
+    cursor?.setCursor(task.id);
     if (!selectableHere || !(event.ctrlKey || event.metaKey)) return;
     event.preventDefault();
     event.stopPropagation();
@@ -589,6 +666,17 @@ export function TaskRow({
         // — la reserva es lo que evita que aparezcan empujando el título al
         // pasar el cursor.
         variant === "board" && "gap-1",
+        // Cursor de lista y selección múltiple (bloque 6, capacidad
+        // `cursor-de-lista`, requirement "El cursor se distingue de la
+        // selección múltiple"): la selección es un fondo (mismo lenguaje
+        // que el casillero relleno, D-B), el cursor es un anillo (mismo
+        // `ring` que ya usa el foco estándar de la app, pero fijo en vez de
+        // `focus-visible` — la fila ya tiene el foco real, D-A). Los dos
+        // se combinan sin ambigüedad porque son canales visuales distintos
+        // (relleno vs. contorno): una fila señalada y seleccionada muestra
+        // los dos a la vez.
+        selectableHere && selection!.isSelected(task.id) && "bg-primary/10 hover:bg-primary/15",
+        isCursorRow && "ring-2 ring-inset ring-primary/50",
       )}
       onContextMenu={handleRowContextMenu}
       onClickCapture={handleRowClickCapture}
@@ -602,6 +690,13 @@ export function TaskRow({
           type="button"
           {...attributes}
           {...listeners}
+          // Roving tabindex (D-A, requirement "Tab entra y sale de la lista
+          // de una"): con el cursor cableado, la fila entera es el único
+          // tab-stop — sus controles internos siguen siendo clickeables,
+          // pero `Tab` ya no se detiene en cada uno. Reordenar por teclado
+          // sigue disponible vía el menú ("Mover arriba"/"Mover abajo"),
+          // nunca solo por arrastre (`.claude/rules/frontend.md`).
+          tabIndex={cursor ? -1 : undefined}
           aria-label={`Reordenar ${task.title}`}
           className={cn(
             "flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-text-secondary outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing",
@@ -621,12 +716,13 @@ export function TaskRow({
         <>
           <button
             type="button"
+            tabIndex={cursor ? -1 : undefined}
             aria-label={
               collapsed
                 ? `Mostrar ${children.length} subtareas de ${task.title}, ${completedChildrenCount} completadas`
                 : `Ocultar ${children.length} subtareas de ${task.title}, ${completedChildrenCount} completadas`
             }
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={() => setCollapsed(!collapsed)}
             className="flex size-5 shrink-0 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <ChevronRight className={cn("size-3.5 transition-transform", !collapsed && "rotate-90")} />
@@ -642,6 +738,7 @@ export function TaskRow({
       <button
         type="button"
         role="checkbox"
+        tabIndex={cursor ? -1 : undefined}
         aria-checked={isCompleted}
         aria-label={isCompleted ? `Descompletar ${task.title}` : `Completar ${task.title}`}
         onClick={toggleComplete}
@@ -677,6 +774,7 @@ export function TaskRow({
         <div className="flex min-w-0 items-center gap-1.5">
           <button
             type="button"
+            tabIndex={cursor ? -1 : undefined}
             onClick={handleTitleClick}
             onDoubleClick={() => open(task.id)}
             onKeyDown={isFlat ? undefined : handleTitleKeyDown}
@@ -732,43 +830,75 @@ export function TaskRow({
         )}
       </div>
 
-      <DropdownMenu onOpenChange={handleMenuOpenChange}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Más acciones para ${task.title}`}
-              className={cn(
-                "order-last shrink-0",
-                isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100",
-              )}
-            />
-          }
-        >
-          <MoreHorizontal className="size-4" />
-        </DropdownMenuTrigger>
-        {/* `min-w-72` (bloque 2): el ancho por defecto del menú sigue al botón "…" que lo dispara (`w-(--anchor-width)` en `ui/dropdown-menu.tsx`), angosto de sobra para que un indicador de atajo de tres teclas (`Ctrl` `⇧` `N`) entre en la misma línea que "Abrir en ventana aparte" sin que `overflow-x-hidden` lo recorte. */}
-        <DropdownMenuContent align="end" className="min-w-72">
-          {renderDropdownEntries(menuEntries)}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* `contents`: no agrega caja propia al flex de la fila (D-A) — solo
+          existe para que "." (bloque 4.5) pueda clickear el botón "…" vía
+          `clickFirstButton`, mismo patrón que ya usan los selectores del
+          detalle de tarea (`lib/shortcuts/dom.ts`). */}
+      <div ref={menuTriggerRef} className="contents">
+        <DropdownMenu onOpenChange={handleMenuOpenChange}>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                tabIndex={cursor ? -1 : undefined}
+                aria-label={`Más acciones para ${task.title}`}
+                className={cn(
+                  "order-last shrink-0",
+                  isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-popup-open:opacity-100",
+                )}
+              />
+            }
+          >
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+          {/* `min-w-72` (bloque 2): el ancho por defecto del menú sigue al botón "…" que lo dispara (`w-(--anchor-width)` en `ui/dropdown-menu.tsx`), angosto de sobra para que un indicador de atajo de tres teclas (`Ctrl` `⇧` `N`) entre en la misma línea que "Abrir en ventana aparte" sin que `overflow-x-hidden` lo recorte. */}
+          <DropdownMenuContent align="end" className="min-w-72">
+            {renderDropdownEntries(menuEntries)}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
+  function handleRowFocus() {
+    // D-A: "el cursor es foco real" — cualquier control interno que reciba
+    // foco (clic con mouse en el casillero, el botón "…", etc., ya que
+    // `focus` delega vía `focusin` y burbujea hasta acá) hace de esta fila
+    // la señalada, no solo el foco de la fila misma. `Tab` llegando acá
+    // (sin nada señalado todavía, ver `isTabStop`) queda resuelto igual,
+    // sin caso especial.
+    cursor?.setCursor(task.id);
+  }
+
   return (
     <li
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        liRef.current = node;
+        // La copia del `DragOverlay` (D-D) comparte el `task.id` de la fila
+        // real: si también se registrara, pisaría el nodo real en el mapa
+        // de foco de `ListCursorProvider` mientras dura el arrastre.
+        if (!dragOverlay) cursor?.registerRow(task.id, node);
+      }}
       style={style}
       // `inert` (D-D): la copia del `DragOverlay` no debe ser alcanzable ni
       // por mouse ni por teclado — sin esto, el botón "…" y el casillero de
       // completar quedarían duplicados y tabulables mientras se arrastra.
       inert={dragOverlay}
+      role={cursor ? "option" : undefined}
+      aria-selected={cursor ? (selectableHere ? selection!.isSelected(task.id) : false) : undefined}
+      // Roving tabindex (D-A): la fila señalada es el único tab-stop de la
+      // lista; sin cursor todavía (D-G), la primera fila igual lo es, para
+      // que `Tab` pueda entrar a la lista (`isTabStop`, más que `isCursor`).
+      tabIndex={cursor ? (cursor.isTabStop(task.id) ? 0 : -1) : undefined}
+      onFocus={cursor ? handleRowFocus : undefined}
       className={cn(
         "group",
         isDragging && "opacity-50",
         variant === "board" && "rounded-md bg-background",
         dragOverlay && "w-72 shadow-lg",
+        cursor && "outline-none",
       )}
     >
       {!isFlat && addingAbove && (
@@ -803,7 +933,15 @@ export function TaskRow({
       )}
 
       {!isFlat && hasChildren && !collapsed && (
-        <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} initialTasks={allTasks} depth={depth + 1} />
+        <TaskList
+          projectId={task.project_id}
+          sectionId={null}
+          parentId={task.id}
+          initialTasks={allTasks}
+          depth={depth + 1}
+          collapsedTaskIds={collapsedTaskIds}
+          onSetCollapsed={onSetCollapsed}
+        />
       )}
       {!isFlat && !hasChildren && addingFirstSubtask && (
         <div style={{ paddingLeft: (depth + 1) * 24 }} className="py-0.5">

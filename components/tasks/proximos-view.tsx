@@ -16,11 +16,13 @@ import { dateColumns, priorityColumns, UNDATED_COLUMN_ID } from "@/lib/board/pan
 import { dateMovePatch, priorityMovePatch } from "@/lib/board/panel-move";
 import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
+import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import { useUpdateTask } from "@/lib/tasks/mutations";
 import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
+import { groupTasks } from "@/lib/view-options/group-tasks";
 import { orderTasks } from "@/lib/view-options/order-tasks";
 import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/schema";
 import { useViewOptions } from "@/lib/view-options/use-view-options";
@@ -219,6 +221,16 @@ export function ProximosView({
     options.viewShape === "panel" ? boardColumns.flatMap((c) => c.tasks) : [...overdue, ...days.flatMap((d) => d.tasks)]
   ).map((t) => ({ id: t.id, projectId: t.project_id }));
 
+  // Cursor de lista (bloque 7.4, capacidad `cursor-de-lista`): mismo orden
+  // visual que ya arma `TaskGroupList` para cada bloque (atrasadas y cada
+  // día), aplanado en la secuencia real de la pantalla — un evento no
+  // participa acá porque Próximos no tiene eventos intercalados (eso es
+  // solo Hoy, bloque 7.5).
+  const cursorOrderIds = [
+    ...groupTasks(overdue, options.groupBy, timezone).flatMap((g) => g.tasks.map((t) => t.id)),
+    ...days.flatMap((d) => groupTasks(d.tasks, options.groupBy, timezone).flatMap((g) => g.tasks.map((t) => t.id))),
+  ];
+
   return (
     <SelectionProvider>
       <div className="flex h-full flex-col">
@@ -262,7 +274,8 @@ export function ProximosView({
               description="Acá van a aparecer las tareas atrasadas y las que venzan en los próximos días. Elegí un día para agregar una."
             />
           ) : (
-            <>
+            <ListCursorProvider orderedIds={cursorOrderIds}>
+              <div role="listbox" aria-multiselectable aria-label="Tareas" className="space-y-6">
               {overdue.length > 0 && (
                 <section>
                   {/* No usa el rojo de marca (#EC1E2A): --warning es el token
@@ -305,7 +318,8 @@ export function ProximosView({
                   </section>
                 );
               })}
-            </>
+              </div>
+            </ListCursorProvider>
           )}
         </div>
         )}

@@ -15,6 +15,7 @@ import { effectivePanelGroupBy, type ViewOptions } from "@/lib/view-options/sche
 import { useViewOptions } from "@/lib/view-options/use-view-options";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
+import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
 import type { Habit } from "@/lib/habits/habit-columns";
@@ -196,6 +197,18 @@ export function HoyView({
   // nunca es candidato (`vistas-lista`, "un evento no se puede seleccionar").
   const candidateTasks = [...overdue, ...today, ...completedToday].map((t) => ({ id: t.id, projectId: t.project_id }));
 
+  // Cursor de lista (bloque 7.5, capacidad `cursor-de-lista` — la pantalla
+  // delicada, ver el comentario en `tasks.md`): el cursor recorre solo
+  // filas de tarea, nunca eventos ni hábitos. No es una decisión nueva de
+  // este bloque: reusa exactamente el mismo criterio que ya excluye a los
+  // eventos de la selección múltiple (`todaySequenceTaskIds`, más arriba —
+  // spec `vistas-lista`, "un evento no se puede seleccionar") y a los
+  // hábitos, que ni siquiera pasan por `TaskRow`/`ListCursorProvider` (viven
+  // en `HabitsTodayBlock`, un árbol de componentes aparte). Con el cursor
+  // nunca pudiendo señalar un evento o un hábito, no hace falta decidir qué
+  // hacen `Espacio` o `.` sobre ellos: esas teclas jamás llegan ahí.
+  const cursorOrderIds = [...overdue.map((t) => t.id), ...todaySequenceTaskIds, ...completedToday.map((t) => t.id)];
+
   function renderEventRow(event: (typeof events)[number]) {
     return (
       <HoyEventRow
@@ -323,7 +336,13 @@ export function HoyView({
             />
           </div>
         ) : (
-          <div className={`${contentWidthClass(options.viewShape)} flex-1 space-y-6 overflow-y-auto p-4 sm:p-6`}>
+          <ListCursorProvider orderedIds={cursorOrderIds}>
+          <div
+            role="listbox"
+            aria-multiselectable
+            aria-label="Tareas de hoy"
+            className={`${contentWidthClass(options.viewShape)} flex-1 space-y-6 overflow-y-auto p-4 sm:p-6`}
+          >
             {inboxProjectId && (
               <TaskQuickAddRow projectId={inboxProjectId} sectionId={null} parentId={null} defaultDueDate={todayDate} />
             )}
@@ -416,6 +435,7 @@ export function HoyView({
               </section>
             )}
           </div>
+          </ListCursorProvider>
         )}
 
         <SelectionActionBar candidateTasks={candidateTasks} />
