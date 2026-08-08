@@ -1829,3 +1829,64 @@ que sincroniza badge y título (`lib/pending-count/use-pending-today-sync.ts`)
 vive en un módulo propio, no en `lib/reminders/`, porque después de este
 cambio no toca la tabla `reminders`. `components/settings/app-badge-sync.tsx`
 sigue montado donde estaba.
+
+## D57 — Un recordatorio de hábito se evalúa al enviar, nunca se materializa por adelantado
+
+**Fecha.** 2026-08-08
+
+**Contexto.** Una tarea es una fila con un `due_at` concreto: se puede calcular
+su `remind_at` una vez y guardarlo. Un hábito no es una fila por día, es una
+regla (`frequency_type`, `scheduled_time` opcional) con las excepciones —
+completado, salteado, reprogramado— viviendo en tres tablas laterales que
+pueden cambiar en cualquier momento, incluso un minuto antes del aviso. La
+alternativa evidente, materializar las ocurrencias de los próximos días en
+una tabla propia (como ya hace `reminders` con `remind_at`), fue la primera
+opción evaluada porque reusa el cron existente sin cambios.
+
+**Decisión.** No se generan filas de recordatorio futuras. `claim_due_habit_reminders`
+corre cada minuto y evalúa, contra el estado *actual* de `habits`,
+`habit_schedule_overrides`, `habit_skips` y `habit_completions`, qué avisos
+están vencidos en ese instante. Se descarta materializar porque convierte
+cada excepción en una invalidación: saltear, marcar, reprogramar, archivar,
+editar la frecuencia o la hora, cambiar la zona horaria de la cuenta — cada
+uno pasaría a exigir un trigger que reescriba filas ya generadas, y el que se
+olvide se manifiesta como una notificación de un hábito que ya se hizo, el
+peor modo de falla posible para esta función porque enseña a ignorar los
+avisos.
+
+**Consecuencia.** Ninguna acción sobre un hábito necesita tocar una tabla de
+recordatorios para cancelar o correr su aviso: completar, saltear, reprogramar
+o archivar ya escriben donde siempre escribieron, y el próximo minuto del cron
+ve el estado nuevo. El costo es una consulta más cara por minuto (un join
+sobre hábitos activos con recordatorios) y la regla de "pendiente" escrita en
+SQL además de en TypeScript (`lib/habits/pending-today.ts`), con comentarios
+cruzados en los dos lados y una batería de tests de casos borde
+(`supabase/tests/habit-reminders-claim.test.ts`) como red si alguna vez se
+separan.
+
+## D58 — La ventana de gracia de un recordatorio de hábito lleva cota inferior; la de tarea no
+
+**Fecha.** 2026-08-08
+
+**Contexto.** `claim_due_reminders` (tareas) reclama todo lo vencido con
+`remind_at <= now()`, sin piso: un recordatorio de hace tres días se dispara
+apenas el cron vuelve de una caída, porque cada recordatorio es una fila que
+existe desde que se creó — "vencido hace tres días" es una sola fila vieja.
+Copiar ese mismo criterio para hábitos sería grave por la razón opuesta de
+D57: como una ocurrencia se calcula al vuelo contra la regla, sin cota
+inferior la primera corrida después de este despliegue encontraría vencidas
+*todas* las ocurrencias pasadas de *todos* los hábitos con recordatorio
+configurado, y las mandaría juntas de una.
+
+**Decisión.** `claim_due_habit_reminders` acota el intervalo a
+`momento <= at and momento > at - interval '15 minutes'`. Quince minutos
+porque el cron corre cada minuto: tolera una caída real del cron o de la edge
+function sin perder el aviso, y un aviso quince minutos tarde todavía sirve.
+Más viejo que eso se descarta en silencio, coherente con lo que D7 ya manda
+para tareas ("si no llegó a tiempo, no se reintenta").
+
+**Consecuencia.** Una caída de más de quince minutos pierde los avisos de esa
+ventana — aceptado, es preferible a una andanada de notificaciones viejas
+apenas el sistema vuelve. El número (15) es elegido, no medido: revisarlo
+después de la primera semana en producción con un dispositivo real es la
+pregunta abierta que quedó en `design.md` de `recordatorios-de-habitos`.

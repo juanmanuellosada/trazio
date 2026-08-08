@@ -11,6 +11,7 @@ vi.mock("./handlers", () => ({
   onFiltersRealtimeEvent: vi.fn(),
   onHabitsRealtimeEvent: vi.fn(),
   onHabitCompletionsRealtimeEvent: vi.fn(),
+  onHabitRemindersRealtimeEvent: vi.fn(),
 }));
 
 /** Mock mínimo de un `SupabaseClient` real: alcanza para probar el armado de canales sin Realtime de verdad. */
@@ -45,8 +46,8 @@ function createSupabaseMock() {
   return { channel, removeChannel, channels };
 }
 
-describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2 y 2.9 de fase 3)", () => {
-  it("suscribe exactamente tasks, projects, sections, comments, reminders, filters, habits y habit_completions, filtrados por user_id — ninguna otra tabla", () => {
+describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2, 2.9 de fase 3 y recordatorios-de-habitos)", () => {
+  it("suscribe exactamente tasks, projects, sections, comments, reminders, filters, habits, habit_completions y habit_reminders, filtrados por user_id — ninguna otra tabla", () => {
     const supabase = createSupabaseMock();
     const queryClient = new QueryClient();
     const onStatusChange = vi.fn();
@@ -58,6 +59,7 @@ describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2 y 2.9 d
       "comments",
       "filters",
       "habit_completions",
+      "habit_reminders",
       "habits",
       "projects",
       "reminders",
@@ -92,6 +94,7 @@ describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2 y 2.9 d
     expect(handlers.onFiltersRealtimeEvent).toHaveBeenCalledWith(queryClient);
     expect(handlers.onHabitsRealtimeEvent).toHaveBeenCalledWith(queryClient);
     expect(handlers.onHabitCompletionsRealtimeEvent).toHaveBeenCalledWith(queryClient);
+    expect(handlers.onHabitRemindersRealtimeEvent).toHaveBeenCalledWith(queryClient);
   });
 
   it("informa el status de cada canal al llamador", () => {
@@ -101,20 +104,20 @@ describe("subscribeToRealtime (10.1/10.2, sumado 4.5/4.10/2.12 de fase 2 y 2.9 d
 
     subscribeToRealtime(supabase as never, queryClient, "user-1", onStatusChange);
 
-    expect(onStatusChange).toHaveBeenCalledTimes(8);
+    expect(onStatusChange).toHaveBeenCalledTimes(9);
     expect(onStatusChange).toHaveBeenCalledWith(
-      expect.stringMatching(/tasks|projects|sections|comments|reminders|filters|habits|habit_completions/),
+      expect.stringMatching(/tasks|projects|sections|comments|reminders|filters|habits|habit_completions|habit_reminders/),
       "SUBSCRIBED",
     );
   });
 
-  it("la limpieza da de baja los ocho canales, sin dejar ninguno colgado", () => {
+  it("la limpieza da de baja los nueve canales, sin dejar ninguno colgado", () => {
     const supabase = createSupabaseMock();
     const queryClient = new QueryClient();
 
     const cleanup = subscribeToRealtime(supabase as never, queryClient, "user-1", vi.fn());
     cleanup();
 
-    expect(supabase.removeChannel).toHaveBeenCalledTimes(8);
+    expect(supabase.removeChannel).toHaveBeenCalledTimes(9);
   });
 });

@@ -16,6 +16,16 @@ export type PendingTodayHabit = HabitScheduleFields & { completed_today: boolean
  * caminos de código distintos a propósito (D-H) pero
  * no pueden tener cada uno su propia noción de "pendiente" sin que los dos
  * números terminen contradiciéndose.
+ *
+ * D-G/D-F de `openspec/changes/recordatorios-de-habitos/design.md`: esta
+ * misma regla —toca hoy y no se marcó, más el salteo, que acá no se
+ * consulta porque el llamador ya filtra por `habit_skips` antes de contar—
+ * está escrita otra vez en SQL, en el CTE `due` de
+ * `claim_due_habit_reminders` (`supabase/migrations/20260808000000_habit_reminders.sql`).
+ * Son la misma definición en dos lenguajes, no dos definiciones distintas:
+ * si esta función cambia, esa consulta tiene que cambiar con ella (y
+ * viceversa), y `supabase/tests/habit-reminders-claim.test.ts` es la red
+ * que lo nota si algún día se separan.
  */
 export function isHabitPendingToday(habit: PendingTodayHabit, timezone: string, now: Date): boolean {
   return isHabitDueToday(habit, timezone, now) && !habit.completed_today;

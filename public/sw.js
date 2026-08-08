@@ -18,9 +18,18 @@
 // ni Cache API, para no reabrir D1.
 
 // El payload lo arma la edge function `supabase/functions/enviar-recordatorios/`:
-// `{ title, taskId }`. `title` es el título de la tarea, sin marcado — se
-// pasa tal cual a `showNotification`, que siempre lo muestra como texto
-// plano (D2): la API de notificaciones no interpreta HTML.
+// `{ title, url, taskId }` (ampliado por openspec/changes/recordatorios-de-habitos,
+// D-H — antes era siempre `{ title, taskId }`). `url` ya viene resuelto
+// (`/tarea/<id>` para una tarea, `/habitos` para un hábito), así este
+// service worker no necesita saber de dónde salió el recordatorio. `taskId`
+// se conserva como respaldo: un service worker se actualiza cuando el
+// navegador quiere, así que durante un rato puede convivir una versión
+// vieja de este archivo (que todavía no lee `url`) con la edge function ya
+// actualizada — sin `taskId`, esa ventana abriría la raíz en vez de la
+// tarea. `title` es texto plano (nombre del hábito o título de la tarea,
+// sin marcado) — se pasa tal cual a `showNotification`, que siempre lo
+// muestra como texto plano (D2): la API de notificaciones no interpreta
+// HTML.
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -34,19 +43,22 @@ self.addEventListener("push", (event) => {
   const title = String(payload.title ?? "");
   event.waitUntil(
     self.registration.showNotification(title, {
-      data: { taskId: payload.taskId ?? null },
+      data: { url: payload.url ?? null, taskId: payload.taskId ?? null },
     }),
   );
 });
 
-// Tocar la notificación abre el detalle de esa tarea (spec "Entrega de la
-// notificación push"): si ya hay una pestaña de Trazio abierta, la enfoca
-// y navega ahí; si no, abre una nueva.
+// Tocar la notificación abre su destino (spec "Entrega de la notificación
+// push" de tareas, y "La notificación nombra el hábito y abre la pantalla
+// de Hábitos" de recordatorios-de-habitos): si ya hay una pestaña de Trazio
+// abierta, la enfoca y navega ahí; si no, abre una nueva. `url` manda;
+// `taskId` es el único respaldo para un payload viejo sin `url` (ver el
+// comentario de más arriba).
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const taskId = event.notification.data && event.notification.data.taskId;
-  const url = taskId ? `/tarea/${taskId}` : "/";
+  const data = event.notification.data || {};
+  const url = data.url || (data.taskId ? `/tarea/${data.taskId}` : "/");
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsList) => {

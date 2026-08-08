@@ -8,6 +8,7 @@ import { COMMENTS_MUTATION_KEY } from "@/lib/comments/mutations";
 import { REMINDERS_MUTATION_KEY } from "@/lib/reminders/mutations";
 import { FILTERS_MUTATION_KEY } from "@/lib/filters/mutations";
 import { HABITS_MUTATION_KEY } from "@/lib/habits/mutations";
+import { HABIT_REMINDERS_MUTATION_KEY } from "@/lib/habits/use-habit-reminders";
 
 /**
  * Regla D3 (`design.md`, sección D — el corazón del bloque 10): nadie había
@@ -108,4 +109,16 @@ export function onHabitsRealtimeEvent(queryClient: QueryClient): void {
  */
 export function onHabitCompletionsRealtimeEvent(queryClient: QueryClient): void {
   invalidateUnlessMutating(queryClient, ["habits"], HABITS_MUTATION_KEY);
+}
+
+/**
+ * `openspec/changes/recordatorios-de-habitos` (D-I): manejador de
+ * `habit_reminders`, para que editar los recordatorios de un hábito en una
+ * pestaña se refleje en las demás — mismo criterio que `onRemindersRealtimeEvent`
+ * con los recordatorios de tarea. `habitRemindersQueryKey(habitId)`
+ * (`lib/habits/use-habit-reminders.ts`) empieza con `"habit-reminders"`, así
+ * que invalidar ese único prefijo alcanza para cualquier hábito.
+ */
+export function onHabitRemindersRealtimeEvent(queryClient: QueryClient): void {
+  invalidateUnlessMutating(queryClient, ["habit-reminders"], HABIT_REMINDERS_MUTATION_KEY);
 }

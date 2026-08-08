@@ -134,8 +134,8 @@ nombre, color, ícono y se puede marcar como favorito.
 ### Hábito
 
 Distinto de una tarea: no pertenece a un proyecto, no tiene sección, etiquetas,
-subtareas, prioridad, comentarios ni recordatorios, y no se "termina" — solo se
-archiva cuando se deja de hacer.
+subtareas, prioridad ni comentarios, y no se "termina" — solo se archiva cuando
+se deja de hacer. Sí puede tener **recordatorios**, con reglas propias (sección 9).
 
 Campos: nombre, ícono (emoji), color, duración estimada, hora programada opcional
 (sin hora se considera "todo el día"), y forma de repetirse:
@@ -579,6 +579,28 @@ Al tocarla se abre esa tarea.
 
 **Cada recordatorio se entrega como máximo una vez.** Si no llegó a tiempo, no se
 reintenta.
+
+### Recordatorios de hábito
+
+Un hábito también puede tener varios recordatorios, pero **siempre relativos a su
+hora**: a la hora del hábito, 10/15/30/45 minutos antes, 1/2/3 horas antes. Nunca
+un momento puntual — un hábito se repite, y un instante fijo solo tendría sentido
+la primera vez.
+
+El momento del aviso se calcula, cada día que el hábito toca, contra su **hora
+efectiva de ese día**: la reprogramación puntual si existe, si no la hora habitual
+del hábito, y si el hábito no tiene hora ("todo el día") la misma hora de
+referencia que usan las tareas sin hora.
+
+El aviso **nunca** se envía si, en el momento en que llegaría, el hábito ya está
+completado ese día, fue salteado ese día, no toca por su frecuencia, está
+archivado, o la fecha es anterior a su creación — es exactamente la definición de
+"pendiente de hoy" que ya usa la pantalla de hábitos, evaluada en el instante del
+envío, así que completar o saltear a último momento cancela el aviso.
+
+La notificación muestra el nombre del hábito y, al tocarla, abre la pantalla de
+Hábitos. Misma entrega única que las tareas: como máximo un aviso por hábito, día
+y desfase.
 
 El ícono de la aplicación muestra un número con la cantidad de pendientes de hoy:
 tareas sin completar que vencen hoy o están atrasadas, más hábitos pendientes de

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { X } from "lucide-react";
@@ -23,6 +23,7 @@ import { SelectField, type SelectFieldOption } from "@/components/primitives/sel
 import { ColorSwatchPicker } from "@/components/projects/color-swatch-picker";
 import { EmojiPicker } from "@/components/projects/emoji-picker";
 import { TimeField, DEFAULT_TIME, parseHHMM, toHHMM } from "@/components/selectors/time-field";
+import { HabitReminderPicker } from "@/components/habits/habit-reminder-picker";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 import { cn } from "@/lib/utils";
 
@@ -94,12 +95,14 @@ function toFormValues(habit: Habit): HabitFormFields {
 }
 
 /**
- * Diálogo de alta y edición de hábito (tarea 3.9): reusa `EmojiPicker` y
+ * Diálogo de alta y edición de hábito (tarea 3.9, recordatorios sumados por
+ * `openspec/changes/recordatorios-de-habitos`): reusa `EmojiPicker` y
  * `ColorSwatchPicker` tal cual, con la misma validación de contraste (spec
  * "El color de un hábito sigue la misma paleta y validación que
  * proyectos"). Ningún campo de tarea (spec "Un hábito no lleva atributos
- * de tarea"): sin proyecto, sección, etiquetas, prioridad, subtareas,
- * comentarios ni recordatorios.
+ * de tarea"): sin proyecto, sección, etiquetas, prioridad ni subtareas ni
+ * comentarios propios — los recordatorios SÍ, con reglas propias (siempre
+ * relativos a la hora del hábito, nunca puntuales).
  */
 export function HabitFormDialog({
   open,
@@ -118,7 +121,7 @@ export function HabitFormDialog({
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
   const pending = createHabit.isPending || updateHabit.isPending;
-  const { timeFormat } = useUserPreferences();
+  const { timeFormat, referenceTime } = useUserPreferences();
 
   const {
     register,
@@ -131,12 +134,29 @@ export function HabitFormDialog({
     defaultValues: DEFAULT_VALUES,
   });
 
+  // Recordatorios en borrador (spec "Agregar un recordatorio al crear un
+  // hábito"): solo se usan en el alta, sin `habit.id` todavía —
+  // `HabitReminderPicker` persiste directo contra la base cuando edita un
+  // hábito existente. Se reinician cada vez que el diálogo pasa de cerrado
+  // a abierto, ajustando el estado durante el render (comparando contra la
+  // última apertura sincronizada) en vez de un `setState` dentro de
+  // `useEffect` — mismo patrón que `TimeField`
+  // (`components/selectors/time-field.tsx`), que evita el re-render en
+  // cascada.
+  const [draftReminderOffsets, setDraftReminderOffsets] = useState<number[]>([]);
+  const [syncedOpen, setSyncedOpen] = useState(open);
+  if (open !== syncedOpen) {
+    setSyncedOpen(open);
+    if (open) setDraftReminderOffsets([]);
+  }
+
   useEffect(() => {
     if (!open) return;
     reset(habit ? toFormValues(habit) : DEFAULT_VALUES);
   }, [open, habit, reset]);
 
   const frequencyType = useWatch({ control, name: "frequency_type" });
+  const scheduledTime = useWatch({ control, name: "scheduled_time" });
 
   async function onSubmit(values: HabitFormOutput) {
     if (habit) {
@@ -154,7 +174,7 @@ export function HabitFormDialog({
         },
       });
     } else {
-      await createHabit.mutateAsync(values);
+      await createHabit.mutateAsync({ ...values, reminderOffsets: draftReminderOffsets });
     }
     onOpenChange(false);
   }
@@ -349,6 +369,18 @@ export function HabitFormDialog({
               ) : null}
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <Label>Recordatorios</Label>
+            <HabitReminderPicker
+              habitId={habit?.id}
+              hasScheduledTime={!!scheduledTime}
+              referenceTime={referenceTime ?? "09:00:00"}
+              timeFormat={timeFormat}
+              drafts={draftReminderOffsets}
+              onChange={setDraftReminderOffsets}
+            />
+          </div>
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>

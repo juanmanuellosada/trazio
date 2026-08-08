@@ -1,3 +1,4 @@
+import type { PostgrestError } from "@supabase/supabase-js";
 import { toastError } from "@/lib/toast";
 
 /**
@@ -6,13 +7,24 @@ import { toastError } from "@/lib/toast";
  * `lib/labels/errors.ts`. Los dos primeros casos son los rechazos propios
  * de la capa de datos de este bloque (el futuro no se puede marcar ni
  * desmarcar, decisión del dueño; spec de reprogramación puntual: el
- * override no mueve el hábito de día).
+ * override no mueve el hábito de día). `duplicado` es de
+ * `openspec/changes/recordatorios-de-habitos` (tarea 5.3): el
+ * `unique (habit_id, offset_minutes)` de `habit_reminders`
+ * (`20260808000000_habit_reminders.sql`) no se valida antes con una
+ * consulta, se deja fallar y se traduce acá — clasificado por
+ * `error.code === "23505"` cuando el `PostgrestError` lo expone, mismo
+ * criterio que `lib/labels/errors.ts` con el nombre de etiqueta duplicado.
  */
 const MENSAJES = {
   diaFuturo: {
     quePaso: "No pudimos actualizar el hábito",
     porQue: "no se puede marcar ni desmarcar un día futuro",
     queHacer: "Elegí hoy o un día anterior.",
+  },
+  duplicado: {
+    quePaso: "No pudimos agregar el recordatorio",
+    porQue: "ese hábito ya tiene un recordatorio con ese mismo desfase",
+    queHacer: "Elegí otro momento o quitá el que ya está.",
   },
   overrideInvalido: {
     quePaso: "No pudimos reprogramar el horario",
@@ -41,7 +53,9 @@ const MENSAJES = {
   },
 } as const;
 
-function classify(message: string): keyof typeof MENSAJES {
+function classify(error: unknown, message: string): keyof typeof MENSAJES {
+  const code = (error as Partial<PostgrestError> | null)?.code;
+  if (code === "23505") return "duplicado";
   if (/no se puede marcar ni desmarcar un día futuro/i.test(message)) return "diaFuturo";
   if (/anterior a la creación del hábito/i.test(message)) return "overrideAntesDeCreacion";
   if (/hábito está archivado/i.test(message)) return "overrideArchivado";
@@ -67,6 +81,6 @@ function extractMessage(error: unknown): string {
 
 export function reportHabitError(error: unknown): void {
   const message = extractMessage(error);
-  const { quePaso, porQue, queHacer } = MENSAJES[classify(message)];
+  const { quePaso, porQue, queHacer } = MENSAJES[classify(error, message)];
   toastError(quePaso, porQue, queHacer);
 }

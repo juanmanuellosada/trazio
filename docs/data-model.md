@@ -243,6 +243,43 @@ Reprogramación de un hábito para un día puntual sin tocar su horario habitual
 | `date` | `date` | PK compuesta con `habit_id` |
 | `scheduled_time` | `time` | |
 
+### `habit_reminders`
+
+Reglas de recordatorio de un hábito (`recordatorios-de-habitos`): siempre
+relativas a su hora, nunca puntuales.
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| `id` | `uuid` PK | |
+| `user_id` | `uuid` FK | |
+| `habit_id` | `uuid` FK | `ON DELETE CASCADE` |
+| `offset_minutes` | `integer` | Cero o negativo; único junto con `habit_id` |
+
+### `habit_reminder_deliveries`
+
+El mecanismo de entrega única de un recordatorio de hábito. A diferencia de
+`reminders` (que marca `delivered_at` sobre una fila que ya existía), acá la fila
+**se crea al reclamar**: no hay ocurrencias futuras materializadas (D-A de
+`recordatorios-de-habitos`), así que la clave primaria compuesta es lo que impide
+el duplicado, no un `update`.
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| `habit_id` | `uuid` FK | PK compuesta con `date` y `offset_minutes` |
+| `user_id` | `uuid` FK | |
+| `date` | `date` | Fecha **local** del usuario, no UTC |
+| `offset_minutes` | `integer` | |
+| `delivered_at` | `timestamptz` | |
+
+`claim_due_habit_reminders(p_limit)` es el equivalente de `claim_due_reminders`
+para hábitos: cada minuto evalúa, contra el estado actual de `habits`,
+`habit_schedule_overrides`, `habit_skips` y `habit_completions`, qué ocurrencias
+están vencidas dentro de una ventana de gracia de 15 minutos **con cota
+inferior** — a diferencia de `claim_due_reminders`, que no la tiene, porque acá
+sin esa cota la primera corrida después de desplegar encontraría vencidas todas
+las ocurrencias pasadas de todos los hábitos. Purga en la misma corrida las
+entregas de más de 7 días. No entra en la publicación de Realtime.
+
 ### `calendar_connections` *(fase 4)*
 
 | Columna | Tipo | Notas |
@@ -287,13 +324,15 @@ una vez por consulta en lugar de una vez por fila.
 ## Realtime
 
 Habilitar replicación en: `tasks`, `projects`, `sections`, `labels`, `task_labels`,
-`comments`, `reminders`, `filters`, `habits`, `habit_completions`.
+`comments`, `reminders`, `filters`, `habits`, `habit_completions`, `habit_reminders`.
+`habit_reminder_deliveries` queda afuera a propósito, como `habit_schedule_overrides`
+y `habit_skips`: ninguna interfaz se suscribe a esas tablas.
 
 Cada cliente se suscribe filtrando por su `user_id`. Al recibir un evento, invalidar
 la query de TanStack Query correspondiente en lugar de mutar el caché a mano: es más
 lento en microsegundos y muchísimo más difícil de romper.
 
-Las ocho tablas que un cliente suscribe con ese filtro (todas menos `labels` y
+Las nueve tablas que un cliente suscribe con ese filtro (todas menos `labels` y
 `task_labels`, ver `lib/realtime/subscribe.ts`) necesitan además
 `replica identity full`: con el `default` de Postgres, un DELETE solo manda la
 primary key al WAL, y como esa fila no trae `user_id`, Realtime no puede evaluar

@@ -15,13 +15,23 @@ describe("reportHabitError — el error real de supabase-js no es un `instanceof
     );
   });
 
-  it("sin `.message` de texto, cae en el mensaje genérico sin romper", () => {
-    reportHabitError({ code: "23505" });
+  it("sin `.message` de texto ni `code` reconocido, cae en el mensaje genérico sin romper", () => {
+    reportHabitError({});
 
     expect(toastError).toHaveBeenCalledWith(
       "No pudimos completar la acción",
       "algo falló de nuestro lado",
       "Volvé a intentar en un momento.",
+    );
+  });
+
+  it("`code: '23505'` (el mismo desfase ya agregado a un hábito) se traduce como duplicado, aunque el mensaje no lo diga", () => {
+    reportHabitError({ code: "23505", message: 'duplicate key value violates unique constraint "habit_reminders_habit_id_offset_minutes_key"' });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "No pudimos agregar el recordatorio",
+      "ese hábito ya tiene un recordatorio con ese mismo desfase",
+      "Elegí otro momento o quitá el que ya está.",
     );
   });
 });

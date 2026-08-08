@@ -6,6 +6,7 @@ import {
   onCommentsRealtimeEvent,
   onFiltersRealtimeEvent,
   onHabitCompletionsRealtimeEvent,
+  onHabitRemindersRealtimeEvent,
   onHabitsRealtimeEvent,
   onProjectsRealtimeEvent,
   onRemindersRealtimeEvent,
@@ -18,12 +19,14 @@ export type RealtimeStatus = "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ER
 /**
  * Las tablas con suscripción: las tres de fase 1 (spec
  * `sincronizacion-tiempo-real` y `docs/data-model.md` sección Realtime),
- * `comments`, `reminders` y `filters` de fase 2, y `habits`/
+ * `comments`, `reminders` y `filters` de fase 2, `habits`/
  * `habit_completions` de fase 3 (tarea 2.9 — `habit_schedule_overrides`
  * queda afuera de la publicación por diseño, D-A de `design.md` de
- * `fase-3-habitos`). `labels`, `task_labels` y el resto tienen replicación
- * habilitada en la base para fases posteriores, pero todavía no las
- * suscribe ningún cliente.
+ * `fase-3-habitos`), y `habit_reminders` de
+ * `openspec/changes/recordatorios-de-habitos` (D-I — `habit_reminder_deliveries`
+ * queda afuera, mismo criterio). `labels`, `task_labels` y el resto tienen
+ * replicación habilitada en la base para fases posteriores, pero todavía no
+ * las suscribe ningún cliente.
  */
 const REALTIME_TABLES = [
   { table: "tasks", onEvent: onTasksRealtimeEvent },
@@ -34,6 +37,7 @@ const REALTIME_TABLES = [
   { table: "filters", onEvent: onFiltersRealtimeEvent },
   { table: "habits", onEvent: onHabitsRealtimeEvent },
   { table: "habit_completions", onEvent: onHabitCompletionsRealtimeEvent },
+  { table: "habit_reminders", onEvent: onHabitRemindersRealtimeEvent },
 ] as const;
 
 /**

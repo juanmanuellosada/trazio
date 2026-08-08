@@ -1,13 +1,17 @@
 // Edge function de recordatorios (bloque 4.13/4.14, decisión D-C de
-// design.md): la invoca `pg_cron` cada minuto vía `pg_net`
+// design.md; ampliada por openspec/changes/recordatorios-de-habitos, D-H):
+// la invoca `pg_cron` cada minuto vía `pg_net`
 // (`supabase/migrations/20260729140000_reminders_claim_recalc_and_cron.sql`).
+// El `pg_cron` no cambia: sigue invocando esta misma función.
 //
-// El orden es: reclamar y RECIÉN DESPUÉS enviar. `claim_due_reminders` (la
-// misma migración) hace el `update ... returning` con `for update skip
-// locked` en una sola sentencia atómica — acá no se vuelve a tocar
-// `delivered_at`. Invertir el orden (enviar y marcar después) produce
-// duplicados ante cualquier reintento o solapamiento del cron, que es
-// justo lo que el criterio de aceptación prohíbe.
+// El orden es: reclamar y RECIÉN DESPUÉS enviar, para las dos fuentes.
+// `claim_due_reminders` hace el `update ... returning` con `for update skip
+// locked`; `claim_due_habit_reminders` hace el `insert ... on conflict do
+// nothing returning` (D-B del design de recordatorios-de-habitos) — las dos
+// son la única sentencia que toca su tabla de entrega. Invertir el orden
+// (enviar y marcar/insertar después) produce duplicados ante cualquier
+// reintento o solapamiento del cron, que es justo lo que el criterio de
+// aceptación prohíbe.
 //
 // `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase en
 // toda edge function, no hace falta configurarlos. Las claves VAPID sí:
@@ -24,8 +28,12 @@ const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:soporte@trazio.ap
 
 const BATCH_SIZE = 200;
 
-type ClaimedReminder = { id: string; user_id: string; task_id: string; title: string };
+type ClaimedTaskReminder = { id: string; user_id: string; task_id: string; title: string };
+type ClaimedHabitReminder = { habit_id: string; user_id: string; name: string };
 type PushSubscriptionRow = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
+
+/** Lo mínimo para armar un envío, ya con el destino resuelto (D-H): `url` es lo que sigue `public/sw.js`, `taskId` queda como respaldo para un service worker viejo que todavía no lo lea. */
+type PendingNotification = { user_id: string; title: string; url: string; taskId?: string };
 
 Deno.serve(async () => {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
@@ -38,19 +46,55 @@ Deno.serve(async () => {
 
   // Reclamar antes de enviar (D-C): esta es la única llamada que toca
   // `delivered_at`. Todo lo que sigue puede fallar sin que un recordatorio
-  // ya reclamado vuelva a intentarse en la próxima ejecución del cron.
-  const { data: claimed, error: claimError } = await supabase.rpc("claim_due_reminders", { p_limit: BATCH_SIZE });
-  if (claimError) {
-    console.error("No se pudieron reclamar los recordatorios pendientes", claimError);
-    return new Response(JSON.stringify({ error: claimError.message }), { status: 500 });
+  // de tarea ya reclamado vuelva a intentarse en la próxima ejecución del
+  // cron. Un fallo acá sí aborta la función entera (como antes de este
+  // cambio): sin recordatorios de tarea reclamados no hay nada que este
+  // camino pueda enviar.
+  const { data: claimedTasks, error: taskClaimError } = await supabase.rpc("claim_due_reminders", {
+    p_limit: BATCH_SIZE,
+  });
+  if (taskClaimError) {
+    console.error("No se pudieron reclamar los recordatorios de tarea pendientes", taskClaimError);
+    return new Response(JSON.stringify({ error: taskClaimError.message }), { status: 500 });
+  }
+  const taskReminders = (claimedTasks ?? []) as ClaimedTaskReminder[];
+
+  // Reclamo de hábitos (D-H): deliberadamente aislado con su propio
+  // try/catch en vez de un `if (error) return` como el de arriba. Si esta
+  // mitad nueva falla, los recordatorios de tarea que ya se reclamaron un
+  // instante atrás tienen que enviarse igual — abortar acá los dejaría
+  // reclamados y sin enviar, que es peor que no haberlos tocado (tarea
+  // 4.4: un error en la mitad nueva no puede tirar abajo la que ya
+  // funciona en producción).
+  let habitReminders: ClaimedHabitReminder[] = [];
+  const { data: claimedHabits, error: habitClaimError } = await supabase.rpc("claim_due_habit_reminders", {
+    p_limit: BATCH_SIZE,
+  });
+  if (habitClaimError) {
+    console.error("No se pudieron reclamar los recordatorios de hábito pendientes", habitClaimError);
+  } else {
+    habitReminders = (claimedHabits ?? []) as ClaimedHabitReminder[];
   }
 
-  const reminders = (claimed ?? []) as ClaimedReminder[];
-  if (reminders.length === 0) {
+  const notifications: PendingNotification[] = [
+    ...taskReminders.map((reminder) => ({
+      user_id: reminder.user_id,
+      title: reminder.title,
+      url: `/tarea/${reminder.task_id}`,
+      taskId: reminder.task_id,
+    })),
+    ...habitReminders.map((reminder) => ({
+      user_id: reminder.user_id,
+      title: reminder.name,
+      url: "/habitos",
+    })),
+  ];
+
+  if (notifications.length === 0) {
     return new Response(JSON.stringify({ reclamados: 0, enviados: 0 }), { status: 200 });
   }
 
-  const userIds = [...new Set(reminders.map((reminder) => reminder.user_id))];
+  const userIds = [...new Set(notifications.map((notification) => notification.user_id))];
   const { data: subscriptions, error: subsError } = await supabase
     .from("push_subscriptions")
     .select("id, user_id, endpoint, p256dh, auth")
@@ -71,9 +115,9 @@ Deno.serve(async () => {
   let enviados = 0;
 
   await Promise.all(
-    reminders.flatMap((reminder) => {
-      const subs = subsByUser.get(reminder.user_id) ?? [];
-      const payload = JSON.stringify({ title: reminder.title, taskId: reminder.task_id });
+    notifications.flatMap((notification) => {
+      const subs = subsByUser.get(notification.user_id) ?? [];
+      const payload = JSON.stringify({ title: notification.title, url: notification.url, taskId: notification.taskId });
 
       return subs.map(async (subscription) => {
         try {
@@ -102,7 +146,13 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ reclamados: reminders.length, enviados, suscripciones_eliminadas: invalidSubscriptionIds.length }),
+    JSON.stringify({
+      reclamados: notifications.length,
+      reclamados_tarea: taskReminders.length,
+      reclamados_habito: habitReminders.length,
+      enviados,
+      suscripciones_eliminadas: invalidSubscriptionIds.length,
+    }),
     { status: 200 },
   );
 });

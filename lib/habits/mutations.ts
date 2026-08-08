@@ -28,14 +28,24 @@ function habitsSnapshot(queryClient: QueryClient) {
   return queryClient.getQueryData<Habit[]>(habitsQueryKey());
 }
 
-/** Crea un hábito (tarea 2.2). No es optimista: el `id` lo asigna el servidor, mismo criterio que `useCreateLabel`. */
+/** Entrada de `useCreateHabit`: el formulario más los recordatorios elegidos como borrador antes de que el hábito exista (spec "Agregar un recordatorio al crear un hábito", `openspec/changes/recordatorios-de-habitos`). Los offsets, no filas: no hay `habit_id` todavía. */
+export type CreateHabitInput = HabitFormOutput & { reminderOffsets?: number[] };
+
+/**
+ * Crea un hábito (tarea 2.2). No es optimista: el `id` lo asigna el
+ * servidor, mismo criterio que `useCreateLabel`. Si el diálogo de alta
+ * cargó recordatorios en borrador (`reminderOffsets`), se insertan en un
+ * segundo viaje ya con el `habit_id` real — mismo patrón que
+ * `useCreateTaskFromParse` (`lib/parser/create-task-from-parse.ts`) con los
+ * recordatorios de una tarea nueva.
+ */
 export function useCreateHabit() {
   const queryClient = useQueryClient();
   const supabase = createClient();
 
   return useMutation({
     mutationKey: HABITS_MUTATION_KEY,
-    mutationFn: async (input: HabitFormOutput) => {
+    mutationFn: async (input: CreateHabitInput) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -57,7 +67,20 @@ export function useCreateHabit() {
         .select(HABIT_COLUMNS)
         .single();
       if (error) throw error;
-      return toHabit(data as unknown as HabitRawRow);
+      const habit = toHabit(data as unknown as HabitRawRow);
+
+      if (input.reminderOffsets && input.reminderOffsets.length > 0) {
+        const { error: remindersError } = await supabase.from("habit_reminders").insert(
+          input.reminderOffsets.map((offsetMinutes) => ({
+            user_id: session.user.id,
+            habit_id: habit.id,
+            offset_minutes: offsetMinutes,
+          })),
+        );
+        if (remindersError) throw remindersError;
+      }
+
+      return habit;
     },
     onSuccess: () => toastSuccess("Hábito creado."),
     onError: reportHabitError,

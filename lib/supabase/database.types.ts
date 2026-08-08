@@ -127,6 +127,67 @@ export type Database = {
           },
         ]
       }
+      habit_reminder_deliveries: {
+        Row: {
+          date: string
+          delivered_at: string
+          habit_id: string
+          offset_minutes: number
+          user_id: string
+        }
+        Insert: {
+          date: string
+          delivered_at?: string
+          habit_id: string
+          offset_minutes: number
+          user_id: string
+        }
+        Update: {
+          date?: string
+          delivered_at?: string
+          habit_id?: string
+          offset_minutes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_reminder_deliveries_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_reminders: {
+        Row: {
+          habit_id: string
+          id: string
+          offset_minutes: number
+          user_id: string
+        }
+        Insert: {
+          habit_id: string
+          id?: string
+          offset_minutes: number
+          user_id: string
+        }
+        Update: {
+          habit_id?: string
+          id?: string
+          offset_minutes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_reminders_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_schedule_overrides: {
         Row: {
           date: string
@@ -668,6 +729,14 @@ export type Database = {
         Returns: {
           best_streak: number
           current_streak: number
+        }[]
+      }
+      claim_due_habit_reminders: {
+        Args: { at?: string; p_limit?: number }
+        Returns: {
+          habit_id: string
+          name: string
+          user_id: string
         }[]
       }
       claim_due_reminders: {
