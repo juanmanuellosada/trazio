@@ -34,6 +34,16 @@ export function isProtectedPath(pathname: string): boolean {
 }
 
 /**
+ * `@supabase/ssr` guarda la sesión en cookies `sb-<ref>-auth-token`, partidas
+ * en `sb-<ref>-auth-token.0`, `.1`, etc. cuando no entran en una sola cookie.
+ * Su sola presencia, sin verificarlas, basta para distinguir "no hay sesión"
+ * de "hay sesión pero no se pudo confirmar ahora".
+ */
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some(({ name }) => /^sb-.*-auth-token/.test(name));
+}
+
+/**
  * Refresca la sesión en cada petición y protege `app/(app)/**`. Redirige a
  * login conservando el destino original en `next` para volver ahí después
  * de iniciar sesión.
@@ -77,6 +87,16 @@ export async function updateSession(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (!user && isProtectedPath(pathname)) {
+    if (hasSupabaseAuthCookie(request)) {
+      // Hay cookies de sesión pero `getClaims()` no pudo confirmarla ahora
+      // (fallo transitorio de red, JWKS o GoTrue: no es un contrato estable
+      // como para clasificar el `error`). No redirigir a alguien que puede
+      // tener una sesión válida: dejar pasar el request tal cual y que la
+      // página resuelva con su propio `getCurrentUser()`.
+      supabaseResponse.headers.set("Cache-Control", "private, no-store");
+      return supabaseResponse;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
