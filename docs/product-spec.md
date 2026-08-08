@@ -196,8 +196,13 @@ está vacía."
 
 Bloques en este orden: atrasadas (destacadas en rojo, la más vencida primero),
 **una sola secuencia con las tareas de hoy y los eventos de hoy intercalados**,
-hábitos del día (con contador de cuántos se hicieron), y — si se activa la
-opción — las completadas. El botón de agregar precarga la fecha de hoy.
+hábitos del día (con contador de cuántos se hicieron — cuenta todos, incluidos
+los que el control de completadas oculta), y — si se activa la opción — las
+completadas. El botón de agregar precarga la fecha de hoy.
+
+Con el control de completadas apagado, un hábito ya marcado ese día también
+deja de listarse ahí, igual que una tarea hecha; uno salteado no es lo mismo
+que uno hecho, así que sigue viéndose.
 
 La secuencia de tareas y eventos ordena en tres tramos: primero los eventos de
 todo el día y los que vienen de un día anterior, después todo lo que tiene hora
@@ -305,7 +310,9 @@ el mismo contenido en un bloque de quince minutos que en uno de varias horas—:
 - Tarea: título, horario, proyecto y etiquetas, más un control para completarla que
   nunca se cae por falta de espacio.
 - Hábito: lo mismo que una tarea, más una marca que lo identifica como hábito. Un
-  hábito salteado ese día se ve marcado, sin desaparecer del calendario.
+  hábito salteado ese día se ve marcado, sin desaparecer del calendario. Uno ya
+  marcado ese día responde al control de completadas de la barra de opciones,
+  igual que una tarea completada: con el control apagado, deja de dibujarse.
 
 **Arrastrar y redimensionar**, en las tres pantallas y para los tres tipos de
 bloque:
@@ -364,7 +371,10 @@ por separado.**
 
 - Forma de ver: lista, panel o calendario.
 - Formato del calendario: semana, mes, cuatro días o día.
-- Mostrar u ocultar: completadas, hábitos, repeticiones futuras.
+- Mostrar u ocultar: completadas, hábitos, repeticiones futuras. "Completadas"
+  cubre tanto las tareas hechas como los hábitos ya marcados ese día —el criterio
+  es el estado, no el tipo—; un hábito salteado no es un hábito hecho, así que
+  sigue viéndose con el control apagado.
 - Cuántos días adelante mostrar.
 - Orden: manual, por nombre, por fecha o por prioridad.
 - Agrupar por: nada, sección, fecha, prioridad o etiqueta en la lista. "Nada"

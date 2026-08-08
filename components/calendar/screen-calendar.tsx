@@ -284,6 +284,11 @@ export function ScreenCalendar({
         if (effectiveTime) {
           const skipped = skipsByDate[day]?.[habit.id] ?? false;
           const completed = completionsByDate[day]?.[habit.id] ?? false;
+          // `completadas-oculta-tambien-los-habitos` (D-A): el control de
+          // completadas cubre también los hábitos, con el mismo criterio que
+          // ya se aplica a una tarea. Un hábito salteado no es un hábito
+          // cumplido (D50), así que sigue dibujándose.
+          if (!options.showCompleted && completed && !skipped) continue;
           const streak = habitStreaksById[habit.id];
           timed.push(
             habitToCalendarBlock(
@@ -309,7 +314,19 @@ export function ScreenCalendar({
       return { id: habit.id, title: habit.name, color: resolveProjectColorHex(habit.color, theme), icon: habit.icon };
     });
     return { habitBlocks: timed, unscheduledHabits: chips };
-  }, [options.showHabits, habits, rangeOverrides.data, rangeSkips.data, rangeCompletions.data, visibleDays, timezone, theme, habitsById, habitStreaksById]);
+  }, [
+    options.showHabits,
+    options.showCompleted,
+    habits,
+    rangeOverrides.data,
+    rangeSkips.data,
+    rangeCompletions.data,
+    visibleDays,
+    timezone,
+    theme,
+    habitsById,
+    habitStreaksById,
+  ]);
 
   // `pendingEventUpdate` (tarea 5.4, D-D): mientras se pregunta el alcance
   // de una serie, el evento real en caché todavía no cambió (`applyEventUpdate`

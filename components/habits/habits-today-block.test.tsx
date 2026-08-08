@@ -47,8 +47,8 @@ function habit(overrides: Partial<Habit> = {}): Habit {
   };
 }
 
-function renderBlock(habits: Habit[]) {
-  return render(<HabitsTodayBlock timezone={TZ} now={NOW} todayDate={TODAY} initialHabits={habits} />);
+function renderBlock(habits: Habit[], showCompleted = true) {
+  return render(<HabitsTodayBlock timezone={TZ} now={NOW} todayDate={TODAY} initialHabits={habits} showCompleted={showCompleted} />);
 }
 
 describe("HabitsTodayBlock", () => {
@@ -105,5 +105,44 @@ describe("HabitsTodayBlock", () => {
     ]);
     const items = screen.getAllByRole("listitem").map((li) => li.textContent);
     expect(items).toEqual(["Tarde — 18:00", "Mañana — 20:00"]);
+  });
+
+  // `completadas-oculta-tambien-los-habitos` (D-B, D-A, D-C): mismo control
+  // que ya oculta las tareas completadas en el resto de Hoy.
+  describe("el control de completadas también oculta los hábitos ya marcados", () => {
+    it("con las completadas apagadas, un hábito ya marcado no se lista", () => {
+      renderBlock(
+        [
+          habit({ id: "1", name: "Meditar", completed_today: true, scheduled_time: "07:00" }),
+          habit({ id: "2", name: "Leer", completed_today: false, scheduled_time: "20:00" }),
+        ],
+        false,
+      );
+      expect(screen.queryByText("Meditar — 07:00")).not.toBeInTheDocument();
+      expect(screen.getByText("Leer — 20:00")).toBeInTheDocument();
+    });
+
+    it("con las completadas apagadas, un hábito pendiente (o salteado — nunca marca `completed_today`) sigue en la lista", () => {
+      renderBlock([habit({ id: "1", name: "Correr", completed_today: false, scheduled_time: "07:00" })], false);
+      expect(screen.getByText("Correr — 07:00")).toBeInTheDocument();
+    });
+
+    it("con las completadas prendidas, un hábito ya marcado sigue en la lista", () => {
+      renderBlock([habit({ id: "1", name: "Meditar", completed_today: true, scheduled_time: "07:00" })], true);
+      expect(screen.getByText("Meditar — 07:00")).toBeInTheDocument();
+    });
+
+    it("el contador sigue contando todos los hábitos, incluidos los ocultos", () => {
+      renderBlock(
+        [
+          habit({ id: "1", name: "Meditar", completed_today: true }),
+          habit({ id: "2", name: "Leer", completed_today: false }),
+        ],
+        false,
+      );
+      expect(screen.getByText("Hábitos de hoy (1 de 2)")).toBeInTheDocument();
+      // La lista quedó más corta (un solo `<li>`) aunque el contador diga 2.
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    });
   });
 });

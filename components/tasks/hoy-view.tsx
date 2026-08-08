@@ -374,7 +374,13 @@ export function HoyView({
             )}
 
             {options.showHabits && (
-              <HabitsTodayBlock timezone={timezone} now={now} todayDate={todayDate} initialHabits={initialHabits} />
+              <HabitsTodayBlock
+                timezone={timezone}
+                now={now}
+                todayDate={todayDate}
+                initialHabits={initialHabits}
+                showCompleted={options.showCompleted}
+              />
             )}
 
             {eventsState.status === "unavailable" && (

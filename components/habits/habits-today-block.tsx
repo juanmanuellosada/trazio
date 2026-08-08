@@ -32,11 +32,19 @@ export function HabitsTodayBlock({
   now,
   todayDate,
   initialHabits,
+  showCompleted,
 }: {
   timezone: string;
   now: Date;
   todayDate: string;
   initialHabits: Habit[];
+  /**
+   * `completadas-oculta-tambien-los-habitos` (D-B): mismo control que ya
+   * oculta las tareas completadas. `doneCount`/`dueToday.length` (más abajo)
+   * siguen contando TODOS los hábitos del día (D-C) — es lo que explica por
+   * qué la lista queda más corta.
+   */
+  showCompleted: boolean;
 }) {
   const { data } = useHabits(timezone, initialHabits);
   const { data: overridesByHabitId } = useHabitScheduleOverridesForDate(todayDate);
@@ -56,6 +64,10 @@ export function HabitsTodayBlock({
   if (dueToday.length === 0) return null;
 
   const doneCount = dueToday.filter((h) => h.completed_today).length;
+  // Salteado no es lo mismo que hecho (D50, D-A): `completed_today` nunca
+  // conviven con un salteo (`useMarkHabitDone` borra el salteo al marcar),
+  // así que ocultar por este único campo ya deja un hábito salteado visible.
+  const visibleHabits = showCompleted ? dueToday : dueToday.filter((h) => !h.completed_today);
 
   return (
     <section>
@@ -63,7 +75,7 @@ export function HabitsTodayBlock({
         Hábitos de hoy ({doneCount} de {dueToday.length})
       </h2>
       <ul className="flex flex-col">
-        {dueToday.map((habit) => (
+        {visibleHabits.map((habit) => (
           <HabitTodayRow
             key={habit.id}
             habit={habit}
