@@ -90,7 +90,7 @@ El elemento central. Campos:
 | Duración estimada | En minutos. Define el alto del bloque en la vista de calendario. |
 | Fecha límite | Fecha tope, distinta de la fecha en que se planea trabajarla. |
 | Etiquetas | Varias por tarea. |
-| Subtareas | Anidadas, sin límite de niveles. |
+| Subtareas | Anidadas, sin límite de niveles. Una tarea con subtareas muestra `completadas/total` de sus subtareas directas, tanto en su fila (plegada o desplegada) como en su detalle. |
 | Comentarios | Hilo propio, texto plano. |
 | Recordatorios | Uno o varios. |
 | Recurrencia | Regla RRULE. |

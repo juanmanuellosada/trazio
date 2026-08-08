@@ -35,7 +35,7 @@ import {
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { useAutosave } from "@/lib/tasks/use-autosave";
 import { useTask, type TaskDetail } from "@/lib/tasks/use-task";
-import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
+import { tasksQueryKey, useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
 import { taskTitleSchema } from "@/lib/validation/tasks";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { ReminderPicker } from "@/components/reminders/reminder-picker";
@@ -76,6 +76,13 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
   // evento de Realtime) mientras sigue editando la misma tarea.
   const [title, setTitle] = useState(task.title);
   const isCompleted = task.completed_at != null;
+
+  // Mismo criterio de conteo que la fila (D-A, `task-row.tsx`): subtareas
+  // directas, no el subárbol. `useTasks` es la misma query que ya usa
+  // `TaskList` para listar estas subtareas más abajo — sin consulta nueva.
+  const { data: allProjectTasks } = useTasks(task.project_id);
+  const children = (allProjectTasks ?? []).filter((t) => t.parent_id === task.id);
+  const completedChildrenCount = children.filter((c) => c.completed_at).length;
 
   const titleAutosave = useAutosave(title, (value) => {
     const trimmed = value.trim();
@@ -466,7 +473,14 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
             </div>
 
             <div ref={subtasksFieldRef} className="space-y-1.5">
-              <span className={FIELD_LABEL_CLASS}>Subtareas</span>
+              <span className={FIELD_LABEL_CLASS}>
+                Subtareas
+                {children.length > 0 && (
+                  <span className="ml-1.5 text-text-secondary">
+                    {completedChildrenCount}/{children.length}
+                  </span>
+                )}
+              </span>
               <TaskList projectId={task.project_id} sectionId={null} parentId={task.id} />
             </div>
 

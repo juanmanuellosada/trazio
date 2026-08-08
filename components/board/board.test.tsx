@@ -237,3 +237,21 @@ describe("Board — la tarjeta muestra dos líneas de título (tarea 4.1)", () =
     expect(titleSpan.className).toContain("line-clamp-2");
   });
 });
+
+describe("Board — sin contador de subtareas (tarea 1.4, `contador-de-subtareas`)", () => {
+  beforeEach(async () => {
+    const supabaseClientModule = await import("@/lib/supabase/client");
+    (supabaseClientModule.createClient as ReturnType<typeof vi.fn>).mockImplementation(stubSupabaseClient);
+  });
+
+  it("una tarea con subtareas no muestra el contador ni el chevron en modo panel", () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const child = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const columns: BoardColumn[] = [{ id: "col-a", title: "A", tasks: [parent, child] }];
+    renderBoard(columns, true);
+
+    expect(screen.getByText("Preparar la mudanza")).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+\/\d+$/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /subtareas de/ })).toBeNull();
+  });
+});

@@ -234,6 +234,7 @@ export function TaskRow({
   const style = { transform: CSS.Transform.toString(transform), transition };
   const children = isFlat ? [] : allTasks.filter((t) => t.parent_id === task.id);
   const hasChildren = children.length > 0;
+  const completedChildrenCount = children.filter((c) => c.completed_at).length;
   const isCompleted = task.completed_at != null;
   const due = formatTaskDueLabel(task, { now, ...preferences });
 
@@ -617,14 +618,23 @@ export function TaskRow({
           diferencia de la lista y de `variant="flat"`, donde el espacio
           sigue reservado para mantener la fila alineada). */}
       {variant === "board" ? null : hasChildren ? (
-        <button
-          type="button"
-          aria-label={collapsed ? `Mostrar subtareas de ${task.title}` : `Ocultar subtareas de ${task.title}`}
-          onClick={() => setCollapsed((c) => !c)}
-          className="flex size-5 shrink-0 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <ChevronRight className={cn("size-3.5 transition-transform", !collapsed && "rotate-90")} />
-        </button>
+        <>
+          <button
+            type="button"
+            aria-label={
+              collapsed
+                ? `Mostrar ${children.length} subtareas de ${task.title}, ${completedChildrenCount} completadas`
+                : `Ocultar ${children.length} subtareas de ${task.title}, ${completedChildrenCount} completadas`
+            }
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex size-5 shrink-0 items-center justify-center rounded-md text-text-secondary outline-none hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <ChevronRight className={cn("size-3.5 transition-transform", !collapsed && "rotate-90")} />
+          </button>
+          <span aria-hidden className="shrink-0 text-xs text-text-secondary">
+            {completedChildrenCount}/{children.length}
+          </span>
+        </>
       ) : (
         <span aria-hidden className="size-5 shrink-0" />
       )}

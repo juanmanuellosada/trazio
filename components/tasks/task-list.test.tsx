@@ -340,3 +340,106 @@ describe("TaskList — alta de tareas (bloque 11.2)", () => {
     });
   });
 });
+
+describe("TaskList — contador de subtareas directas (D-A/D-B/D-C/D-D)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateError.current = null;
+    mock.updateCalls.length = 0;
+    mock.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
+  });
+
+  it("una tarea con subtareas muestra completadas/total", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c2 = task({ id: "c2", title: "Subtarea 2", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c3 = task({ id: "c3", title: "Subtarea 3", parent_id: "p" });
+    const c4 = task({ id: "c4", title: "Subtarea 4", parent_id: "p" });
+    const c5 = task({ id: "c5", title: "Subtarea 5", parent_id: "p" });
+    renderList([parent, c1, c2, c3, c4, c5]);
+
+    await screen.findByRole("button", { name: "Preparar la mudanza" });
+    expect(screen.getByText("2/5")).toBeInTheDocument();
+  });
+
+  it("una tarea sin subtareas no muestra contador", async () => {
+    renderList([task({ id: "t1", title: "Pagar el alquiler" })]);
+
+    await screen.findByRole("button", { name: "Pagar el alquiler" });
+    expect(screen.queryByText(/^\d+\/\d+$/)).toBeNull();
+  });
+
+  it("el contador cuenta solo las subtareas directas, no el subárbol completo", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Hija 1", parent_id: "p" });
+    const c2 = task({ id: "c2", title: "Hija 2", parent_id: "p" });
+    const c3 = task({ id: "c3", title: "Hija 3", parent_id: "p" });
+    const g1 = task({ id: "g1", title: "Nieta 1", parent_id: "c1" });
+    const g2 = task({ id: "g2", title: "Nieta 2", parent_id: "c1" });
+    const g3 = task({ id: "g3", title: "Nieta 3", parent_id: "c1" });
+    const g4 = task({ id: "g4", title: "Nieta 4", parent_id: "c1" });
+    renderList([parent, c1, c2, c3, g1, g2, g3, g4]);
+
+    await screen.findByRole("button", { name: "Preparar la mudanza" });
+    expect(screen.getByText("0/3")).toBeInTheDocument();
+    expect(screen.queryByText("0/7")).toBeNull();
+  });
+
+  it("el contador sigue visible tanto desplegada (default) como plegada", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c2 = task({ id: "c2", title: "Subtarea 2", parent_id: "p" });
+    renderList([parent, c1, c2]);
+
+    // Las subtareas empiezan desplegadas (`collapsed` arranca en `false`).
+    expect(await screen.findByText("1/2")).toBeInTheDocument();
+
+    const chevron = screen.getByRole("button", { name: "Ocultar 2 subtareas de Preparar la mudanza, 1 completadas" });
+    fireEvent.click(chevron);
+
+    await screen.findByRole("button", { name: "Mostrar 2 subtareas de Preparar la mudanza, 1 completadas" });
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+  });
+
+  it("completar una subtarea actualiza el contador de 2/5 a 3/5", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c2 = task({ id: "c2", title: "Subtarea 2", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c3 = task({ id: "c3", title: "Subtarea 3", parent_id: "p" });
+    const c4 = task({ id: "c4", title: "Subtarea 4", parent_id: "p" });
+    const c5 = task({ id: "c5", title: "Subtarea 5", parent_id: "p" });
+    renderList([parent, c1, c2, c3, c4, c5]);
+
+    expect(await screen.findByText("2/5")).toBeInTheDocument();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Completar Subtarea 3" });
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(screen.getByText("3/5")).toBeInTheDocument());
+  });
+
+  it("buscar la tarea por su nombre accesible sigue funcionando, sin el contador incorporado", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c2 = task({ id: "c2", title: "Subtarea 2", parent_id: "p" });
+    renderList([parent, c1, c2]);
+
+    // Si el contador estuviera adentro del botón, el nombre accesible pasaría
+    // a ser "Preparar la mudanza 1/2" y esta búsqueda exacta fallaría.
+    expect(await screen.findByRole("button", { name: "Preparar la mudanza" })).toBeInTheDocument();
+  });
+
+  it("la etiqueta del chevron incluye el conteo de subtareas", async () => {
+    const parent = task({ id: "p", title: "Preparar la mudanza" });
+    const c1 = task({ id: "c1", title: "Subtarea 1", parent_id: "p", completed_at: "2024-01-01T00:00:00Z" });
+    const c2 = task({ id: "c2", title: "Subtarea 2", parent_id: "p" });
+    const c3 = task({ id: "c3", title: "Subtarea 3", parent_id: "p" });
+    const c4 = task({ id: "c4", title: "Subtarea 4", parent_id: "p" });
+    const c5 = task({ id: "c5", title: "Subtarea 5", parent_id: "p" });
+    renderList([parent, c1, c2, c3, c4, c5]);
+
+    expect(
+      await screen.findByRole("button", { name: "Ocultar 5 subtareas de Preparar la mudanza, 1 completadas" }),
+    ).toBeInTheDocument();
+  });
+});
