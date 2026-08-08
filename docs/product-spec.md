@@ -580,8 +580,15 @@ Al tocarla se abre esa tarea.
 **Cada recordatorio se entrega como máximo una vez.** Si no llegó a tiempo, no se
 reintenta.
 
-El ícono de la aplicación muestra un número con la cantidad de pendientes de hoy
-(tareas más hábitos).
+El ícono de la aplicación muestra un número con la cantidad de pendientes de hoy:
+tareas sin completar que vencen hoy o están atrasadas, más hábitos pendientes de
+hoy. Es el mismo número que el contador de Hoy del panel lateral, y **no** suma
+recordatorios — un recordatorio es un aviso sobre una tarea que ya está contada.
+
+El mismo número aparece antepuesto entre paréntesis al título del documento
+(`(8) Trazio`), y se mantiene al navegar entre pantallas. Es la única de las dos
+superficies que funciona en todas las plataformas: el badge del ícono, en
+particular, no se dibuja en Linux aunque el navegador lo soporte.
 
 ---
 

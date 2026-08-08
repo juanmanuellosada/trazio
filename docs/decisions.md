@@ -1793,3 +1793,39 @@ defecto ni el arreglo); la cobertura de esto es la verificación manual en
 el navegador de esta misma tanda. Si `position: sticky` alguna vez empieza
 a funcionar correctamente para este caso en los navegadores soportados, el
 `transform` a mano se puede volver a sacar sin que nada más dependa de él.
+
+---
+
+## D56 — El badge deja de contar recordatorios; el título del documento existe porque el badge no se pinta en Linux
+
+**Fecha.** 2026-08-08
+
+**Contexto.** El badge del ícono contaba filas de `reminders` de hoy sin entregar
+más hábitos pendientes, en vez de tareas más hábitos: quien tenía ocho tareas
+para hoy y ningún recordatorio configurado veía en el ícono solo el número de
+sus hábitos, un número distinto del contador de Hoy del panel lateral para la
+misma pregunta ("cuánto me queda hoy"). Además, verificado contra la
+documentación de Chrome y de MDN, la API de badging está disponible en
+Chromium sobre Linux pero el sistema no pinta el badge — solo se muestra en
+Windows y macOS con la PWA instalada. El indicador no existía de hecho en la
+máquina de quien más lo usa.
+
+**Decisión.** El badge pasa a contar lo mismo que `getTodayTaskCount`
+(`lib/tasks/today-count.ts`): tareas sin completar que vencen hoy o están
+atrasadas, más hábitos pendientes de hoy. Deja de contar recordatorios —
+reemplazo, no suma, porque un recordatorio es casi siempre sobre una tarea que
+ya entra en el conteo y sumarlo la contaría dos veces. `document.title` lleva
+el mismo número antepuesto entre paréntesis (`(8) Trazio`), reaplicado después
+de cada cambio de ruta porque el `metadata` del App Router reescribe el título
+al navegar y se lo lleva puesto: es la única de las dos superficies que
+funciona en Linux, sin instalar la PWA y en cualquier navegador.
+
+**Consecuencia.** `lib/reminders/use-app-badge.ts` se elimina. El criterio de
+"atrasada o vence hoy" se extrajo a `dueTodayOrOverdueFilter`
+(`lib/tasks/hoy-filter.ts`), la misma función que ya usa la vista Hoy, para
+que el panel lateral (`lib/tasks/today-count.ts`) y el nuevo módulo del
+cliente (`lib/pending-count/pending-today-count.ts`) nunca diverjan. El hook
+que sincroniza badge y título (`lib/pending-count/use-pending-today-sync.ts`)
+vive en un módulo propio, no en `lib/reminders/`, porque después de este
+cambio no toca la tabla `reminders`. `components/settings/app-badge-sync.tsx`
+sigue montado donde estaba.

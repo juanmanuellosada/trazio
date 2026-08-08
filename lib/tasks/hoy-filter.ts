@@ -1,6 +1,21 @@
 import { dayBoundsUtc, todayInTimeZone, type TaskDueFields } from "@/lib/dates/today";
 
 /**
+ * Criterio de "atrasada o vence hoy" (bloque 8.2, condiciones que un `.or()`
+ * de PostgREST acepta sueltas): `due_date` en el pasado o `due_at` antes de
+ * que termine el día. Es la mitad "pendiente" del filtro de candidatas de
+ * la vista Hoy (`hoyCandidatesFilter`, abajo) — la fuente de verdad que
+ * también usa `lib/tasks/today-count.ts` (panel lateral) y
+ * `lib/pending-count/pending-today-count.ts` (badge del ícono y título) para
+ * no escribir este criterio una tercera vez.
+ */
+export function dueTodayOrOverdueFilter(now: Date, timezone: string): string {
+  const today = todayInTimeZone(now, timezone);
+  const { endUtc } = dayBoundsUtc(now, timezone);
+  return `due_date.lte.${today},due_at.lte.${endUtc}`;
+}
+
+/**
  * Filtro PostgREST compartido por la lectura de servidor y la del cliente
  * de la vista Hoy (bloque 8.2): candidatas a alguno de sus tres bloques —
  * pendientes atrasadas o que vencen hoy, más las completadas hoy (para el
@@ -10,9 +25,8 @@ import { dayBoundsUtc, todayInTimeZone, type TaskDueFields } from "@/lib/dates/t
  * acota qué candidatas trae la consulta.
  */
 export function hoyCandidatesFilter(now: Date, timezone: string): string {
-  const today = todayInTimeZone(now, timezone);
   const { startUtc, endUtc } = dayBoundsUtc(now, timezone);
-  return `and(completed_at.is.null,or(due_date.lte.${today},due_at.lte.${endUtc})),and(completed_at.gte.${startUtc},completed_at.lte.${endUtc})`;
+  return `and(completed_at.is.null,or(${dueTodayOrOverdueFilter(now, timezone)})),and(completed_at.gte.${startUtc},completed_at.lte.${endUtc})`;
 }
 
 /**

@@ -17,8 +17,12 @@ const PREFERENCES: UserPreferences = {
   defaultProjectId: null,
 };
 
+// `usePathname` la necesita `AppBadgeSync` desde el cambio
+// `pendientes-en-el-icono-y-el-titulo` (`use-pending-today-sync.ts`, D-B):
+// reaplica el `(N) ` del título en cada cambio de ruta.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => "/hoy",
 }));
 
 /**

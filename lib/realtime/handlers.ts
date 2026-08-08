@@ -69,11 +69,13 @@ export function onCommentsRealtimeEvent(queryClient: QueryClient): void {
 }
 
 /**
- * Bloque 4.10: manejador de `reminders`, para mantener sincronizados entre
- * pestañas y dispositivos tanto la lista de recordatorios de una tarea
- * (`lib/reminders/use-reminders.ts`, prefijo `["reminders", "task", id]`)
- * como el conteo del badge (`lib/reminders/use-app-badge.ts`, clave
- * `["reminders", "badge-count"]`) — las dos empiezan con `"reminders"`.
+ * Bloque 4.10: manejador de `reminders`, para mantener sincronizada entre
+ * pestañas y dispositivos la lista de recordatorios de una tarea
+ * (`lib/reminders/use-reminders.ts`, prefijo `["reminders", "task", id]`).
+ * El badge del ícono y el título del documento ya no dependen de esta
+ * tabla (`pendientes-en-el-icono-y-el-titulo`): su conteo vive bajo
+ * `["tasks", "pending-today-count"]` y `["habits"]`, que
+ * `onTasksRealtimeEvent` y `onHabitsRealtimeEvent` ya invalidan.
  */
 export function onRemindersRealtimeEvent(queryClient: QueryClient): void {
   invalidateUnlessMutating(queryClient, ["reminders"], REMINDERS_MUTATION_KEY);
