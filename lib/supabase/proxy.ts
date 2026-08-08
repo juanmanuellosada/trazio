@@ -44,11 +44,28 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
 }
 
 /**
+ * Header con el `pathname` + `search` del pedido original (D-C de
+ * `redireccion-al-login`): un Server Component no puede leer la URL actual
+ * (limitación documentada de Next.js), así que `app/(app)/layout.tsx` —el
+ * `redirect` que de verdad se ejecuta cuando este proxy deja pasar una
+ * sesión no verificada— lo lee de acá con `headers()` para conservar el
+ * destino en su propio `redirect("/login")`.
+ */
+export const PATHNAME_HEADER = "x-pathname";
+
+/**
  * Refresca la sesión en cada petición y protege `app/(app)/**`. Redirige a
  * login conservando el destino original en `next` para volver ahí después
  * de iniciar sesión.
  */
 export async function updateSession(request: NextRequest) {
+  // Se setea antes de crear cualquier `NextResponse.next({ request })`: ese
+  // helper reenvía los headers de `request` tal como estén en ese momento
+  // (los vuelca en `x-middleware-request-*`), así que todo lo que se cree
+  // después de esta línea ya lo lleva. No cambia el criterio de decisión de
+  // más abajo (cookies presentes/ausentes): solo agrega este header.
+  request.headers.set(PATHNAME_HEADER, `${request.nextUrl.pathname}${request.nextUrl.search}`);
+
   let supabaseResponse = NextResponse.next({ request });
 
   // Con Fluid compute no hay que guardar este cliente en una variable

@@ -1,6 +1,7 @@
 import { Inbox } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/current-user";
+import { loginRedirectPath } from "@/lib/supabase/login-redirect-path";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getSections } from "@/lib/sections/get-sections";
 import { getTasks } from "@/lib/tasks/get-tasks";
@@ -24,7 +25,11 @@ import { TaskQuickAddRow } from "@/components/tasks/task-quick-add-row";
 export default async function BandejaPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    // Este `redirect` no llega a ejecutarse en la práctica: el de
+    // `app/(app)/layout.tsx` siempre gana (D-C de `redireccion-al-login`).
+    // Queda consistente igual, para que quien lo lea no lo tome como un
+    // camino real que perdió el destino.
+    redirect(loginRedirectPath("/bandeja"));
   }
 
   const inboxProjectId = await getInboxProjectId(user.id);

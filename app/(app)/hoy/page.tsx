@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/current-user";
+import { loginRedirectPath } from "@/lib/supabase/login-redirect-path";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getHoyTasks } from "@/lib/tasks/get-hoy-tasks";
@@ -21,7 +22,11 @@ import { HoyView } from "@/components/tasks/hoy-view";
 export default async function HoyPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    // Este `redirect` no llega a ejecutarse en la práctica: el de
+    // `app/(app)/layout.tsx` siempre gana (D-C de `redireccion-al-login`).
+    // Queda consistente igual, para que quien lo lea no lo tome como un
+    // camino real que perdió el destino.
+    redirect(loginRedirectPath("/hoy"));
   }
 
   const now = new Date();

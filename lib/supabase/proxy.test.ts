@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
-import { isProtectedPath, updateSession } from "./proxy";
+import { PATHNAME_HEADER, isProtectedPath, updateSession } from "./proxy";
 
 // `updateSession` crea su cliente con `createServerClient`; lo mockeamos
 // para controlar qué devuelve `getClaims()` sin pegarle a GoTrue de verdad.
@@ -91,5 +91,24 @@ describe("updateSession", () => {
     const response = await updateSession(request);
 
     expect(response.headers.get("location")).toBeNull();
+  });
+
+  /**
+   * D-C de `redireccion-al-login`: `app/(app)/layout.tsx` no puede leer la
+   * URL actual por su cuenta (limitación de los Server Components), así que
+   * la lee de este header. Se prueba en el camino de respaldo (cookies
+   * presentes, verificación no confirmada) porque es el que de verdad lo
+   * necesita: ahí el proxy deja pasar y es el layout el que redirige.
+   */
+  it("deja pasar con el pathname (y el search) en el header para que el layout pueda conservarlos", async () => {
+    mockGetClaims({ data: null, error: { message: "fetch failed", status: 0 } });
+    const request = buildRequest("/proyecto/abc123?tab=notas", AUTH_COOKIE);
+
+    const response = await updateSession(request);
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get(`x-middleware-request-${PATHNAME_HEADER}`)).toBe(
+      "/proyecto/abc123?tab=notas",
+    );
   });
 });

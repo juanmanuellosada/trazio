@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/current-user";
+import { loginRedirectPath } from "@/lib/supabase/login-redirect-path";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
 import { getUpcomingTasks } from "@/lib/tasks/get-upcoming-tasks";
@@ -18,7 +19,11 @@ import { ProximosView } from "@/components/tasks/proximos-view";
 export default async function ProximosPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    // Este `redirect` no llega a ejecutarse en la práctica: el de
+    // `app/(app)/layout.tsx` siempre gana (D-C de `redireccion-al-login`).
+    // Queda consistente igual, para que quien lo lea no lo tome como un
+    // camino real que perdió el destino.
+    redirect(loginRedirectPath("/proximos"));
   }
 
   const now = new Date();

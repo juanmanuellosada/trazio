@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { PATHNAME_HEADER } from "@/lib/supabase/proxy";
+import { loginRedirectPath } from "@/lib/supabase/login-redirect-path";
 import { getSidebarProjects } from "@/lib/projects/get-sidebar-projects";
 import { getAllProjects } from "@/lib/projects/get-all-projects";
 import { getInboxProjectId } from "@/lib/projects/get-inbox-project";
@@ -33,13 +36,19 @@ import { SettingsModal } from "@/components/settings/settings-modal";
  * Layout de la app privada (bloque 5): panel lateral de escritorio, barra +
  * hoja de teléfono, y el `QueryClientProvider` de TanStack Query que
  * necesitan las mutaciones de los bloques siguientes. El proxy
- * (`lib/supabase/proxy.ts`) ya protege estas rutas; el `redirect` de acá es
- * un resguardo, no la barrera principal.
+ * (`lib/supabase/proxy.ts`) redirige cuando no hay cookies de sesión, pero
+ * cuando las hay y no puede confirmarlas en el momento, deja pasar el
+ * request y es este `redirect` el que confirma la sesión de verdad
+ * (`redireccion-al-login`, D-C): no es un resguardo, es el que se ejecuta en
+ * ese caso — gana sobre el `redirect`/`notFound` de cada página porque este
+ * layout envuelve las 13 rutas protegidas, y además hace falta antes: las
+ * consultas de abajo usan `user.id` para armar el panel lateral.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    const next = (await headers()).get(PATHNAME_HEADER);
+    redirect(next ? loginRedirectPath(next) : "/login");
   }
 
   const supabase = await createClient();
