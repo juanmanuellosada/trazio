@@ -99,6 +99,18 @@ describe("FilterFormDialog", () => {
     expect(screen.getByRole("button", { name: "due:next7days" })).toBeVisible();
   });
 
+  /**
+   * Guardar como filtro desde el buscador (D-C de
+   * `buscador-con-lenguaje-de-consulta/design.md`, tarea 3.2): la consulta
+   * llega precargada, sin obligar a reescribirla.
+   */
+  it("initialQuery precarga la consulta al crear un filtro nuevo", () => {
+    renderDialog({ initialQuery: "priority:1 & due:overdue" });
+
+    const queryField = screen.getByLabelText("Consulta") as HTMLTextAreaElement;
+    expect(queryField).toHaveValue("priority:1 & due:overdue");
+  });
+
   it("la referencia lista todos los campos del lenguaje, con su ejemplo tocable", async () => {
     const user = userEvent.setup();
     renderDialog();

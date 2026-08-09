@@ -9,7 +9,7 @@ pinta con el mismo componente sin tocarlo.
 
 ## Goals / Non-Goals
 
-**Goals:** que escribir `p1 due:overdue` en el buscador haga lo que dice, sin
+**Goals:** que escribir `priority:1 & due:overdue` en el buscador haga lo que dice, sin
 duplicar ni el parser ni la evaluación.
 
 **Non-Goals:** un modo mixto (texto libre + campos en la misma consulta),

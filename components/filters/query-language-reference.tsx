@@ -48,15 +48,23 @@ export function QueryLanguageReference({ onPickExample }: { onPickExample: (exam
             type="button"
             variant="outline"
             size="xs"
-            className="w-fit font-mono"
+            className="w-fit max-w-full text-left font-mono whitespace-normal break-words"
             onClick={() => onPickExample(QUERY_COMBINED_EXAMPLE)}
           >
             {QUERY_COMBINED_EXAMPLE}
           </Button>
-          <ul className="flex flex-col gap-2.5">
+          {/*
+            Alto tope con scroll propio (nunca fila junto al ejemplo, D-D):
+            la lista de campos va a crecer (D-E, "deadline", sección,
+            subproyectos), así que no puede depender de que el diálogo tenga
+            lugar de sobra. Con esto el diálogo que la contiene no crece sin
+            límite, y el campo de consulta y la vista previa —arriba de la
+            referencia— siguen a la vista mientras se recorre esta lista.
+          */}
+          <ul className="flex max-h-56 flex-col gap-2.5 overflow-y-auto">
             {QUERY_FIELD_REFERENCE.map((entry) => (
-              <li key={entry.field} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-                <div className="min-w-28 shrink-0">
+              <li key={entry.field} className="flex flex-col gap-1">
+                <div>
                   <p className="text-sm font-medium text-foreground">{entry.label}</p>
                   <p className="text-xs text-text-secondary">{entry.values}</p>
                 </div>
@@ -64,7 +72,7 @@ export function QueryLanguageReference({ onPickExample }: { onPickExample: (exam
                   type="button"
                   variant="outline"
                   size="xs"
-                  className="w-fit font-mono"
+                  className="w-fit max-w-full text-left font-mono whitespace-normal break-words"
                   onClick={() => onPickExample(entry.example)}
                 >
                   {entry.example}

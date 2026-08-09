@@ -6,7 +6,7 @@ valores— y una función SQL, `buscar_tareas(ast)`, que evalúa una consulta ya
 parseada. Todo eso lo usan **solo los filtros guardados**.
 
 El buscador, mientras tanto, hace `textSearch` sobre `search_vector` y nada
-más. Escribir `p1 due:overdue` ahí no busca tareas urgentes vencidas: busca
+más. Escribir `priority:1 & due:overdue` ahí no busca tareas urgentes vencidas: busca
 tareas que contengan literalmente ese texto, y no encuentra ninguna.
 
 Las dos mitades ya existen. No se hablan.

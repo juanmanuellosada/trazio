@@ -12,7 +12,7 @@ NUNCA SHALL ofrecerse un selector para elegir el modo: se decide por lo escrito.
 
 #### Scenario: Una consulta se resuelve como consulta
 
-- **WHEN** se escribe `p1 due:overdue` en el buscador
+- **WHEN** se escribe `priority:1 & due:overdue` en el buscador
 - **THEN** SHALL devolver las tareas de prioridad 1 vencidas
 - **AND** NUNCA SHALL buscar ese texto literal
 
@@ -35,6 +35,12 @@ Cuando lo escrito parece una consulta pero tiene un error de sintaxis, el buscad
 - **WHEN** se escribe `(priority:1 & due:today` en el buscador
 - **THEN** SHALL mostrarse un error en español indicando la posición del problema
 - **AND** NUNCA SHALL mostrarse una lista vacía sin explicación
+
+#### Scenario: Un texto con dos puntos que no empieza con un campo conocido sigue siendo texto
+
+- **WHEN** se escribe `14:30` o `nota: comprar` en el buscador
+- **THEN** SHALL buscarse como texto, con el comportamiento de siempre
+- **AND** NUNCA SHALL mostrarse un error de sintaxis, porque lo que precede al primer ":" ("14", "nota") no es un campo conocido del lenguaje de consulta
 
 ### Requirement: Una consulta del buscador se puede guardar como filtro
 

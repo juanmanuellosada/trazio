@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search as SearchIcon } from "lucide-react";
+import { Save, Search as SearchIcon } from "lucide-react";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useSearch } from "@/lib/search/use-search";
 import { useRecentTasks } from "@/lib/search/use-recent-tasks";
@@ -11,6 +11,7 @@ import { TaskListEmptyState } from "@/components/tasks/task-list-empty-state";
 import { TaskRow } from "@/components/tasks/task-row";
 import { ShortcutHint } from "@/components/shortcuts/shortcut-hint";
 import { useTaskDetail } from "@/components/tasks/task-detail-context";
+import { FilterFormDialog } from "@/components/filters/filter-form-dialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,6 +38,8 @@ export function SearchCommand({
   const showRecent = term.length === 0;
   const recent = useRecentTasks(showRecent);
   const navDestinations = filterNavDestinations(term);
+  const [savingFilter, setSavingFilter] = useState(false);
+  const searchedQuery = search.status === "listo" && search.mode === "consulta" ? search.query : undefined;
 
   function selectTask(taskId: string) {
     openTask(taskId);
@@ -49,71 +52,90 @@ export function SearchCommand({
   }
 
   return (
-    <Command shouldFilter={false}>
-      <CommandInput
-        autoFocus
-        value={term}
-        onValueChange={setTerm}
-        placeholder="Buscá por título o descripción…"
-        aria-label="Buscar tareas"
-      />
-      <CommandList className={cn("max-h-72", listClassName)}>
-        {showRecent && (
-          <CommandGroup heading="Visto recientemente">
-            {recent.data && recent.data.length > 0 ? (
-              recent.data.map((task) => (
-                <CommandItem key={task.id} value={`reciente-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
-                  <ul className="w-full">
-                    <TaskRow task={task} allTasks={recent.data!} siblings={[]} depth={0} variant="flat" showProject />
-                  </ul>
-                </CommandItem>
-              ))
-            ) : (
-              <p className="px-2 py-3 text-sm text-text-secondary">
-                Todavía no viste ninguna tarea. Las que abras van a aparecer acá.
-              </p>
-            )}
-          </CommandGroup>
-        )}
-
-        {!showRecent && (
-          <CommandGroup heading="Resultados">
-            {search.status === "corto" ? (
-              <p className="px-2 py-3 text-sm text-text-secondary">Escribí un carácter más para buscar.</p>
-            ) : search.status === "buscando" ? (
-              <p className="px-2 py-3 text-sm text-text-secondary">Buscando…</p>
-            ) : search.tasks.length === 0 ? (
-              <TaskListEmptyState
-                icon={SearchIcon}
-                title="No encontramos tareas para esa búsqueda."
-                description="Probá con otra palabra del título o de la descripción."
-              />
-            ) : (
-              search.tasks.map((task) => (
-                <CommandItem key={task.id} value={`resultado-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
-                  <ul className="w-full">
-                    <TaskRow task={task} allTasks={search.tasks} siblings={[]} depth={0} variant="flat" showProject />
-                  </ul>
-                </CommandItem>
-              ))
-            )}
-          </CommandGroup>
-        )}
-
-        <CommandGroup heading="Ir a">
-          {navDestinations.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-text-secondary">Ningún destino coincide con esa búsqueda.</p>
-          ) : (
-            navDestinations.map((destination) => (
-              <CommandItem key={destination.id} value={destination.label} onSelect={() => selectDestination(destination.href)}>
-                <destination.icon className="size-4" />
-                <span className="flex-1">{destination.label}</span>
-                <ShortcutHint combo={destination.shortcut} />
-              </CommandItem>
-            ))
+    <>
+      <Command shouldFilter={false}>
+        <CommandInput
+          autoFocus
+          value={term}
+          onValueChange={setTerm}
+          placeholder="Buscá por título o descripción…"
+          aria-label="Buscar tareas"
+        />
+        <CommandList className={cn("max-h-72", listClassName)}>
+          {showRecent && (
+            <CommandGroup heading="Visto recientemente">
+              {recent.data && recent.data.length > 0 ? (
+                recent.data.map((task) => (
+                  <CommandItem key={task.id} value={`reciente-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
+                    <ul className="w-full">
+                      <TaskRow task={task} allTasks={recent.data!} siblings={[]} depth={0} variant="flat" showProject />
+                    </ul>
+                  </CommandItem>
+                ))
+              ) : (
+                <p className="px-2 py-3 text-sm text-text-secondary">
+                  Todavía no viste ninguna tarea. Las que abras van a aparecer acá.
+                </p>
+              )}
+            </CommandGroup>
           )}
-        </CommandGroup>
-      </CommandList>
-    </Command>
+
+          {!showRecent && (
+            <CommandGroup heading="Resultados">
+              {search.status === "corto" ? (
+                <p className="px-2 py-3 text-sm text-text-secondary">Escribí un carácter más para buscar.</p>
+              ) : search.status === "error" ? (
+                // D-B de buscador-con-lenguaje-de-consulta/design.md: un error
+                // de sintaxis se muestra, nunca cae en silencio a una lista
+                // vacía sin explicar por qué.
+                <p role="alert" className="px-2 py-3 text-sm text-error">
+                  {search.error.message}
+                </p>
+              ) : search.status === "buscando" ? (
+                <p className="px-2 py-3 text-sm text-text-secondary">Buscando…</p>
+              ) : search.tasks.length === 0 ? (
+                <TaskListEmptyState
+                  icon={SearchIcon}
+                  title="No encontramos tareas para esa búsqueda."
+                  description="Probá con otra palabra del título o de la descripción."
+                />
+              ) : (
+                search.tasks.map((task) => (
+                  <CommandItem key={task.id} value={`resultado-${task.id}`} className="p-0" onSelect={() => selectTask(task.id)}>
+                    <ul className="w-full">
+                      <TaskRow task={task} allTasks={search.tasks} siblings={[]} depth={0} variant="flat" showProject />
+                    </ul>
+                  </CommandItem>
+                ))
+              )}
+              {searchedQuery !== undefined && (
+                // Guardar como filtro (D-C): cierra el círculo de escribir una
+                // consulta en el buscador y quererla de nuevo más tarde, sin
+                // reescribirla en la pantalla de Filtros.
+                <CommandItem value="guardar-consulta-como-filtro" onSelect={() => setSavingFilter(true)}>
+                  <Save className="size-4" />
+                  <span>Guardá esta consulta como filtro</span>
+                </CommandItem>
+              )}
+            </CommandGroup>
+          )}
+
+          <CommandGroup heading="Ir a">
+            {navDestinations.length === 0 ? (
+              <p className="px-2 py-3 text-sm text-text-secondary">Ningún destino coincide con esa búsqueda.</p>
+            ) : (
+              navDestinations.map((destination) => (
+                <CommandItem key={destination.id} value={destination.label} onSelect={() => selectDestination(destination.href)}>
+                  <destination.icon className="size-4" />
+                  <span className="flex-1">{destination.label}</span>
+                  <ShortcutHint combo={destination.shortcut} />
+                </CommandItem>
+              ))
+            )}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+      <FilterFormDialog open={savingFilter} onOpenChange={setSavingFilter} initialQuery={searchedQuery} />
+    </>
   );
 }

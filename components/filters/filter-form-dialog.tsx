@@ -44,15 +44,21 @@ const DEFAULT_VALUES: FilterFormValues = {
  * `setValue("query", …)`, que actualiza el mismo campo que ya dispara la
  * vista previa de arriba — así probar un ejemplo muestra al instante cuántas
  * tareas coincide sobre los datos propios, sin ningún camino aparte.
+ *
+ * `initialQuery` (D-C de `buscador-con-lenguaje-de-consulta/design.md`,
+ * tarea 3.1): al crear un filtro desde una consulta ya escrita en el
+ * buscador, precarga el campo en vez de obligar a reescribirla acá.
  */
 export function FilterFormDialog({
   open,
   onOpenChange,
   filter,
+  initialQuery,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   filter?: FilterRow;
+  initialQuery?: string;
 }) {
   const nameId = useId();
   const isEditing = !!filter;
@@ -86,9 +92,11 @@ export function FilterFormDialog({
             icon: filter.icon ?? undefined,
             isFavorite: filter.is_favorite,
           }
-        : DEFAULT_VALUES,
+        : initialQuery
+          ? { ...DEFAULT_VALUES, query: initialQuery }
+          : DEFAULT_VALUES,
     );
-  }, [open, filter, reset]);
+  }, [open, filter, initialQuery, reset]);
 
   async function onSubmit(values: FilterFormOutput) {
     if (filter) {
@@ -104,7 +112,14 @@ export function FilterFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      {/*
+        Alto tope al del viewport (nunca crece más allá, ni empuja "Crear
+        filtro" fuera de pantalla) y el cuerpo con su propio scroll — mismo
+        patrón que el detalle de tarea (`task-detail-panel.tsx`), el otro
+        modal centrado de la app con contenido que puede superar el alto
+        disponible.
+      */}
+      <DialogContent className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar filtro" : "Nuevo filtro"}</DialogTitle>
           <DialogDescription>
@@ -114,83 +129,94 @@ export function FilterFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor={nameId}>Nombre</Label>
-            <Input
-              id={nameId}
-              autoFocus
-              aria-invalid={!!errors.name}
-              aria-describedby={errors.name ? `${nameId}-error` : undefined}
-              className="h-11 text-base"
-              {...register("name")}
-            />
-            {errors.name ? (
-              <p id={`${nameId}-error`} role="alert" className="text-sm text-error">
-                {errors.name.message}
-              </p>
-            ) : null}
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label htmlFor={nameId}>Nombre</Label>
+              <Input
+                id={nameId}
+                autoFocus
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? `${nameId}-error` : undefined}
+                className="h-11 text-base"
+                {...register("name")}
+              />
+              {errors.name ? (
+                <p id={`${nameId}-error`} role="alert" className="text-sm text-error">
+                  {errors.name.message}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor={`${nameId}-query`}>Consulta</Label>
-            <Textarea
-              id={`${nameId}-query`}
-              rows={2}
-              placeholder="priority:1,2 & due:next7days & !label:espera"
-              className="font-mono text-sm"
-              aria-invalid={!!errors.query}
-              {...register("query")}
-            />
-            {errors.query ? (
-              <p role="alert" className="text-sm text-error">
-                {errors.query.message}
-              </p>
-            ) : preview.status === "error" ? (
-              <p role="alert" className="text-sm text-error">
-                {preview.message}
-              </p>
-            ) : preview.status === "listo" ? (
-              <p className="text-sm text-text-secondary">
-                {preview.count} {preview.count === 1 ? "tarea coincide" : "tareas coinciden"}
-              </p>
-            ) : preview.status === "cargando" ? (
-              <p className="text-sm text-text-secondary">Contando…</p>
-            ) : null}
+            {/*
+              Sticky arriba del scroll (bloque 5.4): la referencia se abre
+              hacia abajo y su lista de campos puede quedar más alta que el
+              alto disponible, así que el campo de consulta y la vista previa
+              del conteo se fijan en vez de scrollear con el resto — si no,
+              tocar un ejemplo lejos en la lista (`due`, `created`) los saca
+              de la pantalla justo cuando su resultado importa.
+            */}
+            <div className="sticky top-0 z-10 space-y-1.5 bg-popover pb-0.5">
+              <Label htmlFor={`${nameId}-query`}>Consulta</Label>
+              <Textarea
+                id={`${nameId}-query`}
+                rows={2}
+                placeholder="priority:1,2 & due:next7days & !label:espera"
+                className="font-mono text-sm"
+                aria-invalid={!!errors.query}
+                {...register("query")}
+              />
+              {errors.query ? (
+                <p role="alert" className="text-sm text-error">
+                  {errors.query.message}
+                </p>
+              ) : preview.status === "error" ? (
+                <p role="alert" className="text-sm text-error">
+                  {preview.message}
+                </p>
+              ) : preview.status === "listo" ? (
+                <p className="text-sm text-text-secondary">
+                  {preview.count} {preview.count === 1 ? "tarea coincide" : "tareas coinciden"}
+                </p>
+              ) : preview.status === "cargando" ? (
+                <p className="text-sm text-text-secondary">Contando…</p>
+              ) : null}
+            </div>
+
             <QueryLanguageReference
               onPickExample={(example) => setValue("query", example, { shouldValidate: true, shouldDirty: true })}
             />
-          </div>
 
-          <div className="flex items-start gap-4">
-            <div className="flex-1">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <Controller
+                  control={control}
+                  name="color"
+                  render={({ field }) => (
+                    <ColorSwatchPicker value={field.value} onChange={field.onChange} error={errors.color?.message} />
+                  )}
+                />
+              </div>
               <Controller
                 control={control}
-                name="color"
+                name="icon"
                 render={({ field }) => (
-                  <ColorSwatchPicker value={field.value} onChange={field.onChange} error={errors.color?.message} />
+                  <EmojiPicker value={field.value} onChange={field.onChange} error={errors.icon?.message} />
                 )}
               />
             </div>
-            <Controller
-              control={control}
-              name="icon"
-              render={({ field }) => (
-                <EmojiPicker value={field.value} onChange={field.onChange} error={errors.icon?.message} />
-              )}
-            />
-          </div>
 
-          {!isEditing && (
-            <label className="flex items-center gap-1.5 text-sm text-foreground">
-              <input
-                type="checkbox"
-                className="size-3.5 rounded border-input accent-primary"
-                {...register("isFavorite")}
-              />
-              Marcar como favorito
-            </label>
-          )}
+            {!isEditing && (
+              <label className="flex items-center gap-1.5 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  className="size-3.5 rounded border-input accent-primary"
+                  {...register("isFavorite")}
+                />
+                Marcar como favorito
+              </label>
+            )}
+          </div>
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>

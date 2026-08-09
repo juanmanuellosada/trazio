@@ -45,6 +45,13 @@ Principios:
 Instalación: la app es instalable desde el navegador (PWA) y en el teléfono se agrega
 a la pantalla de inicio. No hay aplicación en tiendas.
 
+Instalada, el ícono ofrece dos accesos directos al mantenerlo apretado: "Nueva tarea"
+y "Hoy". Y Trazio aparece en el menú de compartir del sistema: compartir un texto, un
+título o un enlace abre el alta rápida con eso precargado, nunca crea la tarea sola —
+hace falta confirmar como cualquier alta. Compartir un enlace con título deja el
+título como texto y el enlace en la descripción. No se reciben archivos ni imágenes
+compartidos (Trazio no tiene adjuntos).
+
 ---
 
 ## 2. Entidades
@@ -287,6 +294,15 @@ Orden por fecha de completado, la más reciente primero (D25), no manual.
 Busca en título y descripción. Mínimo dos caracteres, hasta 50 resultados,
 mostrando primero las pendientes y después por fecha. La búsqueda es literal: no
 corrige errores de tipeo.
+
+Si lo escrito parsea como una consulta del lenguaje de filtros (sección 7), se
+resuelve como consulta en vez de como texto — se detecta por lo escrito, sin
+ningún selector para elegir el modo. Una palabra suelta que se parece a un campo
+(por ejemplo `label` o `due`, sin `:`) sigue siendo texto. Un error de sintaxis se
+muestra en español señalando la posición, igual que al editar un filtro, y nunca
+cae en silencio a una búsqueda de texto. El tope de 50 resultados vale también en
+este modo. Una consulta válida se puede guardar como filtro, con la consulta
+precargada en el alta.
 
 ### Hábitos
 
