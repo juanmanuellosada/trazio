@@ -31,7 +31,7 @@ Extiende `auth.users`. Se crea por trigger al registrarse.
 | --- | --- | --- |
 | `id` | `uuid` PK | Igual a `auth.users.id` |
 | `full_name` | `text` | |
-| `avatar_url` | `text` | |
+| `avatar_url` | `text` nullable | Foto de Google. `handle_new_user()` la copia de `raw_user_meta_data` (`avatar_url` o `picture`) al registrarse; las cuentas anteriores a esta función recibieron backfill en la misma migración. Se refresca en cada login con Google por un trigger sobre `UPDATE` de `auth.users` — el login con correo y contraseña nunca lo dispara. Solo la foto; el nombre no se refresca. |
 | `created_at` | `timestamptz` | |
 
 ### `user_preferences`
@@ -49,6 +49,7 @@ Una fila por usuario, creada junto con el perfil.
 | `default_view` | `text` | Pantalla al entrar |
 | `default_project_id` | `uuid` FK | Destino del alta rápida |
 | `reference_time` | `time` | Hora de referencia para recordatorios relativos: a qué hora se considera que vence una tarea con día pero sin hora |
+| `sound_on_complete` | `boolean` | Suena al completar una tarea. Encendido por default. |
 | `seeded_at` | `timestamptz` nullable | No nulo si la cuenta ya recibió su contenido de ejemplo (`onboarding-con-ejemplos`). Cuentas anteriores a esta función quedan marcadas por backfill en la misma migración que agregó la columna. |
 
 ### `projects`
@@ -59,7 +60,7 @@ Una fila por usuario, creada junto con el perfil.
 | `user_id` | `uuid` FK | |
 | `parent_id` | `uuid` FK nullable | Auto-referencia. Máximo 3 niveles. |
 | `name` | `text` | |
-| `color` | `text` nullable | Id de la paleta fija; nulo solo en la Bandeja de entrada (D27) |
+| `color` | `text` nullable | Id de la paleta fija (diez colores) o un hex personalizado `#RRGGBB` (D29); nulo solo en la Bandeja de entrada (D27) |
 | `icon` | `text` | Emoji; nulo en la Bandeja de entrada |
 | `description` | `text` | |
 | `preferred_view` | `text` | `list` \| `board` |
@@ -67,6 +68,7 @@ Una fila por usuario, creada junto con el perfil.
 | `is_favorite` | `boolean` | |
 | `is_archived` | `boolean` | |
 | `is_example` | `boolean` | `true` en el proyecto sembrado por `onboarding-con-ejemplos`. Único `true` por usuario. |
+| `share_token` | `text` nullable | Token del enlace de lectura público (`enlace-de-lectura-de-un-proyecto`). Nulo = no compartido; desactivar lo vuelve a nulo, nunca borra la fila. Nunca en la Bandeja. Índice único parcial entre los tokens no nulos. |
 | `position` | `numeric` | Orden manual |
 
 **Reglas de integridad:**
@@ -81,6 +83,19 @@ Una fila por usuario, creada junto con el perfil.
 
 **Sobre `position`:** usar `numeric` y no `integer` permite insertar entre dos
 elementos calculando el promedio, sin reescribir toda la lista en cada arrastre.
+
+**Sobre el enlace de lectura (`share_token`):** `regenerate_project_share_token(p_project_id)`
+genera (o regenera — es la misma operación) el token, `security invoker` porque
+la política `projects_update_own` ya decide si el llamador es dueño del
+proyecto. `get_shared_project(p_token)` es la lectura pública: recibe **solo
+el token**, nunca un id de proyecto, y es la única función de todo el
+esquema otorgada al rol `anon`. Corre `security definer` para poder leer sin
+depender de RLS, pero devuelve una lista blanca de columnas armada a mano con
+`jsonb_build_object` — nunca `select *` — así que una columna nueva en
+`projects`, `sections` o `tasks` no se filtra por accidente hasta que alguien
+la agregue a esa lista a propósito. Token inexistente y token revocado
+devuelven lo mismo (`null`): no hay forma de distinguir "nunca existió" de
+"se compartió y se dejó de compartir".
 
 ### `sections`
 
@@ -110,6 +125,7 @@ La tabla central.
 | `parent_id` | `uuid` FK nullable | Subtareas, sin límite de niveles |
 | `title` | `text` | **Texto plano** |
 | `description` | `jsonb` nullable | Documento de Tiptap |
+| `description_text` | `text` nullable | Copia en texto plano de `description`, escrita por la aplicación en el mismo update que ella (el jsonb de Tiptap no es indexable directamente). Alimenta `search_vector`. |
 | `priority` | `smallint` | 1 Urgente … 4 Baja |
 | `due_date` | `date` nullable | Vencimiento sin hora |
 | `due_at` | `timestamptz` nullable | Vencimiento con hora |
@@ -119,6 +135,8 @@ La tabla central.
 | `recurrence_rule` | `text` nullable | RRULE |
 | `recurrence_ends_at` | `timestamptz` nullable | |
 | `recurrence_count` | `integer` nullable | |
+| `recurrence_anchor` | `text` nullable | `due` \| `completion`: desde qué fecha cuenta la próxima ocurrencia. Vacío = deducir de la forma de la regla (`lib/recurrence/anchor.ts`). |
+| `search_vector` | `tsvector` generada | Columna `generated always as (...) stored` sobre `title` y `description_text`. Ver más abajo. |
 | `position` | `numeric` | |
 | `created_at` / `updated_at` | `timestamptz` | |
 
@@ -130,9 +148,15 @@ zona horaria; esta forma los evita.
 **Índices necesarios:** `(user_id, due_date)`, `(user_id, due_at)`,
 `(user_id, project_id, position)`, `(user_id, completed_at)`, `(parent_id)`.
 
-Para el buscador: índice GIN sobre `to_tsvector('spanish', title)`. Usar la
-configuración `spanish` y no `simple` — maneja los acentos y la derivación
-correctamente.
+Para el buscador: `search_vector` usa la configuración propia
+`extensions.spanish_unaccent` (copia de `spanish` con el mapeo alterado para
+pasar primero por `unaccent` y después por `spanish_stem` — necesario para
+que `to_tsvector` sea `IMMUTABLE` y pueda vivir en una columna generada) y no
+`spanish` a secas ni `simple`: además de la derivación, ignora acentos
+("reunion" encuentra "reunión"). Índice GIN sobre `search_vector`. El mismo
+buscador de `filters`/`query:` usa esta misma configuración (D-B de
+`mas-campos-en-el-lenguaje-de-consulta`), así que buscar desde el filtro y
+desde el buscador da el mismo resultado.
 
 ### `labels`
 
@@ -141,7 +165,7 @@ correctamente.
 | `id` | `uuid` PK | |
 | `user_id` | `uuid` FK | |
 | `name` | `text` | Único por usuario |
-| `color` | `text` | |
+| `color` | `text` | Misma paleta fija que `projects.color`, con el mismo hex personalizado `#RRGGBB` admitido (D29) |
 | `is_favorite` | `boolean` | |
 
 ### `task_labels`
@@ -156,7 +180,7 @@ de RLS. Ambos FK con `ON DELETE CASCADE`.
 | `id` | `uuid` PK | |
 | `user_id` | `uuid` FK | |
 | `task_id` | `uuid` FK | `ON DELETE CASCADE` |
-| `content` | `jsonb` | Documento de Tiptap |
+| `content` | `text` | Texto plano. Revierte D2 para comentarios (`comentarios-en-texto-plano`) — la descripción de la tarea sigue siendo `jsonb` de Tiptap, esto es solo comentarios |
 | `created_at` / `updated_at` | `timestamptz` | Si difieren, se muestra "editado" |
 
 ### `reminders`
@@ -200,12 +224,27 @@ suscripción.
 | `user_id` | `uuid` FK | |
 | `name` | `text` | |
 | `query` | `text` | La consulta en crudo |
-| `color` / `icon` | `text` | |
+| `color` | `text` | Misma paleta fija que `projects.color`, con el mismo hex personalizado `#RRGGBB` admitido (D29) |
+| `icon` | `text` | |
 | `is_favorite` | `boolean` | |
 | `is_example` | `boolean` | `true` en el filtro sembrado por `onboarding-con-ejemplos`. Único `true` por usuario (índice único parcial). |
 
 Se guarda la consulta como texto, no parseada. El parser corre en tiempo de
 ejecución, así se puede mejorar sin migrar datos.
+
+### `view_preferences`
+
+Opciones de vista (agrupador, orden, filtros de la pantalla) por pantalla.
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| `user_id` | `uuid` FK | PK compuesta con `view_key` |
+| `view_key` | `text` | Texto libre armado por la aplicación: `bandeja`, `hoy`, `proximos`, `proyecto:<id>`, `etiqueta:<id>`, `filtro:<id>` |
+| `options` | `jsonb` | Default `{}` |
+
+Sin columna `id` propia ni foreign key hacia `projects`/`labels`/`filters`: una
+fila de una pantalla cuyo proyecto, etiqueta o filtro ya se borró queda
+huérfana sin error, y la aplicación simplemente la ignora al leer.
 
 ### `habits`
 
@@ -247,6 +286,24 @@ Reprogramación de un hábito para un día puntual sin tocar su horario habitual
 | `user_id` | `uuid` FK | |
 | `date` | `date` | PK compuesta con `habit_id` |
 | `scheduled_time` | `time` | |
+
+### `habit_skips`
+
+Día puntual en que el usuario decidió no hacer un hábito, sin tocar su racha
+ni su horario habitual.
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| `habit_id` | `uuid` FK | `ON DELETE CASCADE`. PK compuesta con `date` |
+| `user_id` | `uuid` FK | |
+| `date` | `date` | |
+
+Tabla propia, separada tanto de `habit_completions` (que es lo único que lee
+`calcular_racha_habito`: guardar el salteo ahí arriesgaría que algún cambio
+futuro a esa función lo cuente sin querer) como de `habit_schedule_overrides`
+(que reprograma un horario, un concepto distinto de "decidí no hacerlo este
+día"). Fuera de la publicación de Realtime, igual que
+`habit_schedule_overrides`: ninguna interfaz se suscribe todavía.
 
 ### `habit_reminders`
 
@@ -323,6 +380,44 @@ create policy "{tabla}_delete_own" on public.{tabla}
 
 El subselect en `auth.uid()` no es cosmético: permite que Postgres evalúe la función
 una vez por consulta en lugar de una vez por fila.
+
+---
+
+## Permisos de funciones
+
+`create function` le otorga `EXECUTE` a `PUBLIC` por default. Ese privilegio
+es **aditivo**: un rol lo tiene si se lo dieron a él directamente O a
+`PUBLIC`, sin importar qué se le haya revocado a él en particular. De eso se
+desprende la regla, y no hay atajo:
+
+> Para toda función nueva, revocar `EXECUTE` de los **tres** roles —
+> `public`, `anon`, `authenticated` — y otorgarlo explícitamente solo al que
+> corresponda. Revocar de uno o dos nunca alcanza.
+
+El proyecto se equivocó en las dos mitades posibles de este error, con meses
+de diferencia:
+
+- `20260726014219_security_revoke_public_execute.sql` corrige revocar
+  puntualmente de `anon`/`authenticated` y olvidarse de `public` — el `=X`
+  (grant a `PUBLIC`) seguía en el ACL de la función, así que el advisor de
+  seguridad la siguió marcando después del primer intento.
+- `20260809040000_security_function_grants_audit.sql` corrige el error
+  espejado: revocar de `public` (o no revocar nada) y confiar en que un
+  `grant ... to <rol>` puntual alcanzaba. Dos de las cuatro funciones
+  corregidas ahí son `security definer` y le devuelven `user_id`, `task_id`
+  y el título de la tarea de **cualquier usuario** a quien las llamara por
+  PostgREST con la clave publicable — el riesgo real, no solo el advisor.
+
+**El Supabase local no reproduce este problema.** Localmente las migraciones
+corren como el rol `postgres`, y ese rol no tiene default privileges que
+alcancen a otros roles: verificado contra `pg_default_acl` del Supabase
+local de este proyecto, el default ACL de `postgres` para funciones nuevas
+solo se autootorga `EXECUTE` a sí mismo. El de `supabase_admin`, en cambio,
+otorga `EXECUTE` en funciones nuevas a `anon`, `authenticated` y
+`service_role` automáticamente — ese es el rol con las default privileges
+peligrosas, y el que hace que una función nueva nazca ejecutable de más en
+Supabase hosteado. Un test de permisos en verde en local no dice nada sobre
+producción — hay que verificar contra producción.
 
 ---
 
