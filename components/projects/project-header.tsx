@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Star } from "lucide-react";
+import { Link2, MoreHorizontal, Star } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useDuplicateProject, useUpdateProject } from "@/lib/projects/mutations";
+import { useProjectShareLink } from "@/lib/projects/share-link";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import type { ViewOptions } from "@/lib/view-options/schema";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 import { DeleteExampleContentDialog } from "./delete-example-content-dialog";
+import { ShareProjectDialog } from "./share-project-dialog";
 
 /**
  * Encabezado de la vista de proyecto (bloque 6): nombre, descripción y las
@@ -56,12 +58,26 @@ export function ProjectHeader({
   const duplicateProject = useDuplicateProject();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  // `enabled: !project.is_inbox`: la Bandeja nunca ofrece "Compartir" (ni el
+  // ítem de menú, ni esta indicación), así que tampoco tiene sentido pedir
+  // su `share_token` (siempre nulo) al montar esta pantalla.
+  const { data: shareToken } = useProjectShareLink(project.id, !project.is_inbox);
+  const isShared = Boolean(shareToken);
 
   return (
     <header className="border-b border-border px-4 py-4 sm:px-6">
       <div className="flex w-full max-w-content mx-auto items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-2xl font-semibold text-foreground">{project.name}</h1>
+            {isShared && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[0.65rem] font-medium text-text-secondary">
+                <Link2 className="size-3" aria-hidden />
+                Compartido
+              </span>
+            )}
+          </div>
           {project.description ? <p className="mt-1 text-sm text-text-secondary">{project.description}</p> : null}
         </div>
 
@@ -94,6 +110,9 @@ export function ProjectHeader({
                   >
                     Duplicar
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                    {isShared ? "Compartir…" : "Compartir"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
                       updateProject.mutate({ id: project.id, patch: { is_archived: !project.is_archived } })
@@ -119,6 +138,7 @@ export function ProjectHeader({
       {!project.is_inbox && (
         <>
           <ProjectFormDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
+          <ShareProjectDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} projectName={project.name} />
           {project.is_example ? (
             <DeleteExampleContentDialog
               open={deleteOpen}

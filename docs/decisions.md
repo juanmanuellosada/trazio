@@ -1890,3 +1890,33 @@ ventana — aceptado, es preferible a una andanada de notificaciones viejas
 apenas el sistema vuelve. El número (15) es elegido, no medido: revisarlo
 después de la primera semana en producción con un dispositivo real es la
 pregunta abierta que quedó en `design.md` de `recordatorios-de-habitos`.
+
+## D59 — "Sin compartir" se acota: se publica una vista de solo lectura, sin cuentas invitadas
+
+**Fecha.** 2026-08-09
+
+**Contexto.** `docs/product-spec.md` §13 decía, sin matices, "sin equipos,
+compartir, invitar ni asignar" — la misma decisión que sostiene que Trazio es
+de una persona por cuenta y que ninguna fila necesita más política de RLS que
+`auth.uid() = user_id`. `enlace-de-lectura-de-un-proyecto` pide mostrar un
+proyecto a alguien sin cuenta, y en una primera lectura eso suena a violar esa
+decisión.
+
+**Decisión.** No la viola: se acota. Compartir, en el sentido que `docs/product-spec.md`
+§13 prohibía, es que **otra cuenta** edite, comente o reciba una tarea
+asignada — eso sigue sin existir, y este cambio no crea ningún camino hacia
+ahí. Lo que se agrega es distinto en naturaleza: un enlace de lectura
+resuelto por un token de 256 bits (`get_shared_project`,
+20260809030000_get_shared_project.sql), consumido por el rol `anon` —no por
+otra cuenta autenticada—, que nunca puede escribir nada. No hay invitación,
+no hay una segunda cuenta viendo las filas de la primera a través de RLS, no
+hay asignación. Es la misma diferencia que ya existía entre "ver una
+captura de pantalla" y "tener acceso a la cuenta": esto es una captura de
+pantalla que se actualiza sola, con un botón para apagarla.
+
+**Consecuencia.** `docs/product-spec.md` §13 y la lista de "Fuera de alcance"
+de este mismo cambio (`proposal.md`) quedan explícitas: equipos, invitar,
+asignar y editar ajeno siguen fuera; enlace de lectura no. Cualquier
+propuesta futura que empiece a acercarse a "otra cuenta con permisos sobre
+tus filas" tiene que pasar por esta misma pregunta — y, salvo que también se
+acote con la misma precisión, la respuesta sigue siendo no.

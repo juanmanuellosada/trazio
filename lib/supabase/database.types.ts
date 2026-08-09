@@ -353,6 +353,7 @@ export type Database = {
           parent_id: string | null
           position: number
           preferred_view: string
+          share_token: string | null
           user_id: string
         }
         Insert: {
@@ -368,6 +369,7 @@ export type Database = {
           parent_id?: string | null
           position: number
           preferred_view?: string
+          share_token?: string | null
           user_id: string
         }
         Update: {
@@ -383,6 +385,7 @@ export type Database = {
           parent_id?: string | null
           position?: number
           preferred_view?: string
+          share_token?: string | null
           user_id?: string
         }
         Relationships: [
@@ -760,6 +763,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_shared_project: { Args: { p_token: string }; Returns: Json }
       rebalance_project_positions: {
         Args: { p_parent_id?: string }
         Returns: undefined
@@ -771,6 +775,10 @@ export type Database = {
       rebalance_task_positions: {
         Args: { p_project_id: string; p_section_id?: string }
         Returns: undefined
+      }
+      regenerate_project_share_token: {
+        Args: { p_project_id: string }
+        Returns: string
       }
     }
     Enums: {

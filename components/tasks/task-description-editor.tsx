@@ -11,8 +11,16 @@ import { LinkDialog } from "./description-editor/link-dialog";
 
 const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
-const EDITOR_CONTENT_CLASS = cn(
-  "min-h-32 text-base leading-relaxed outline-none",
+/**
+ * Reglas de tipografía anidada para el HTML que produce
+ * `descriptionEditorExtensions()` (títulos, listas, citas, código, tablas,
+ * listas de tareas...), separadas de `min-h-32`/`outline-none` (propias del
+ * lienzo editable) para que `components/public/read-only-description.tsx`
+ * —la vista pública de `enlace-de-lectura-de-un-proyecto`, que renderiza el
+ * mismo JSONB pero nunca como un campo editable— pueda reusarlas sin
+ * heredar una altura mínima ni un contorno de foco que no le corresponden.
+ */
+export const EDITOR_CONTENT_TYPOGRAPHY_CLASS = cn(
   "[&_p]:my-1",
   "[&_h1]:mt-3 [&_h1]:mb-1 [&_h1]:text-xl [&_h1]:font-semibold",
   "[&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-lg [&_h2]:font-semibold",
@@ -32,6 +40,8 @@ const EDITOR_CONTENT_CLASS = cn(
   "[&_ul[data-type=taskList]_li>label]:mt-0.5",
   "[&_ul[data-type=taskList]_li[data-checked=true]>div>p]:text-text-secondary [&_ul[data-type=taskList]_li[data-checked=true]>div>p]:line-through",
 );
+
+const EDITOR_CONTENT_CLASS = cn("min-h-32 text-base leading-relaxed outline-none", EDITOR_CONTENT_TYPOGRAPHY_CLASS);
 
 /**
  * Descripción de una tarea (bloque 7): Tiptap, guardada como jsonb, con

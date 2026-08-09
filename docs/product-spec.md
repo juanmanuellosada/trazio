@@ -286,7 +286,10 @@ Agrupada por sección —su valor por defecto, como Bandeja de entrada—: prime
 tareas sin sección, después cada sección colapsable con su propio botón de agregar.
 Tareas y secciones se reordenan arrastrando (solo con orden manual y sin agrupación
 activa). Desde el menú del proyecto: editar, favorito, agregar sección, duplicar,
-archivar, eliminar.
+compartir, archivar, eliminar. "Compartir" genera, copia, regenera o desactiva
+un enlace de lectura público (D59): quien lo tenga ve el proyecto sin cuenta,
+en una pantalla propia y sin ningún control de escritura. La Bandeja de
+entrada nunca lo ofrece.
 
 Agrupada por cualquier otro valor —incluido "nada"— se ve sin los bloques de
 sección: "nada" es una sola lista corrida, y el resto arma bloques por fecha,
@@ -753,7 +756,11 @@ Decisiones tomadas. No son omisiones ni cosas pendientes:
 3. **Sin idiomas además del español.**
 4. **Sin markdown en el título** de las tareas.
 5. **Sin recordatorios por email.** Solo push.
-6. **Sin equipos, compartir, invitar ni asignar** tareas a otra persona.
+6. **Sin equipos, invitar, asignar tareas a otra persona ni edición ajena.**
+   Acotado por D59: un proyecto sí puede generar un **enlace de lectura**
+   (§3 "Proyecto") — quien lo tenga ve el proyecto sin cuenta y sin poder
+   cambiar nada. No es una cuenta invitada ni una segunda persona con
+   permisos sobre tus filas.
 7. **Sin adjuntar archivos** a tareas ni comentarios.
 8. **Sin aplicación en tiendas.** Solo web instalable.
 9. **Sin proveedores de calendario además de Google.**
