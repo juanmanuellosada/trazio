@@ -151,6 +151,8 @@ export function TaskQuickAddRow({
   autoOpen,
   variant = "compact",
   onCancel,
+  initialTitle,
+  initialDescription,
 }: {
   projectId: string;
   sectionId: string | null;
@@ -190,17 +192,29 @@ export function TaskQuickAddRow({
   variant?: "compact" | "full";
   /** Solo lo usa `variant="full"`: cierra el diálogo que lo contiene en vez de solo colapsar el composer, porque acá no hay a qué colapsar (bloque 7.2). */
   onCancel?: () => void;
+  /**
+   * Texto inicial del título (`accesos-directos-y-compartir`, tarea 2.2):
+   * precarga desde lo compartido por el sistema (`app/compartir/route.ts`)
+   * o desde el acceso directo "Nueva tarea" del manifest. Solo se lee al
+   * montar — no se resincroniza si cambia después, igual que cualquier
+   * `defaultX` de este componente.
+   */
+  initialTitle?: string;
+  /** Descripción inicial en texto plano, mismo origen que `initialTitle` (D-B: un enlace compartido con título cae acá). */
+  initialDescription?: string;
 }) {
   const [adding, setAdding] = useState(variant === "full" || autoOpen === true);
   // Solo importa en `full` (D-C): el modal global arranca mostrando título y
   // destino nada más; el resto de los campos aparece recién al desplegar.
   // `compact` no usa este estado — siempre muestra todo apenas se abre, ya
   // desplegado, porque llegar ahí (clic en "Agregar tarea") ya declaró la
-  // intención.
-  const [fieldsExpanded, setFieldsExpanded] = useState(false);
+  // intención. Con una descripción precargada (un enlace compartido, tarea
+  // 2.3) arranca igual desplegado: si quedara detrás de "Mostrar más
+  // campos", la persona podría confirmar sin haber visto qué se guarda.
+  const [fieldsExpanded, setFieldsExpanded] = useState(Boolean(initialDescription));
   const showAllFields = variant === "compact" || fieldsExpanded;
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [description, setDescription] = useState(initialDescription ?? "");
   const [disabledMatches, setDisabledMatches] = useState<Set<string>>(new Set());
   // Guarda contra qué texto se calculó el último resultado del parser: si
   // el usuario siguió escribiendo desde entonces, todavía no hay un

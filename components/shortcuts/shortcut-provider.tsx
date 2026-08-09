@@ -47,8 +47,55 @@ export function ShortcutProvider({
     timer: null,
   });
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // Precarga del alta rápida cuando la abrió una URL, no el botón ni `Q`
+  // (`accesos-directos-y-compartir`): `null` en los otros dos disparadores.
+  const [quickAddPrefill, setQuickAddPrefill] = useState<{ text: string; description: string | null } | null>(null);
   const [eventRange, setEventRange] = useState<{ start: Date; end: Date } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  /**
+   * Cierra el diálogo y descarta la precarga (si la hubo), para que abrirlo
+   * de nuevo con `Q` o el botón del panel lateral no arrastre el texto de
+   * una URL anterior.
+   */
+  const handleQuickAddOpenChange = useCallback((open: boolean) => {
+    setQuickAddOpen(open);
+    if (!open) setQuickAddPrefill(null);
+  }, []);
+
+  /**
+   * "Nueva tarea" y el destino de compartir del manifest (`app/manifest.ts`,
+   * `app/compartir/route.ts`) no tienen una pantalla propia que abrir por
+   * URL (D-C del design): en vez de eso llegan como `?agregar=1` o
+   * `?compartido=…` sobre una pantalla que ya existe, y este único punto —
+   * el mismo que ya monta el diálogo global para el botón y `Q` — los lee
+   * al montar y abre el diálogo con ese texto puesto. `window.location`
+   * directo, no `useSearchParams`: el disparador siempre es una navegación
+   * dura (acceso directo del ícono, intent de compartir), así que alcanza
+   * con leerlo una vez al montar, sin la exigencia de un límite de
+   * `Suspense` que pediría el hook de Next para lo mismo.
+   *
+   * Sin crear nada acá (D-A): solo abre el diálogo con el texto — la tarea
+   * se confirma a mano como cualquier alta.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const agregar = params.get("agregar");
+    const compartido = params.get("compartido");
+    if (agregar === null && compartido === null) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza con la URL de entrada (sistema externo: acceso directo del ícono o intent de compartir), no deriva estado de un render
+    setQuickAddPrefill(compartido !== null ? { text: compartido, description: params.get("descripcion") } : null);
+    setQuickAddOpen(true);
+
+    // Limpia los parámetros usados para que un refresh o "atrás" no vuelva a
+    // abrir el alta con el mismo texto.
+    params.delete("agregar");
+    params.delete("compartido");
+    params.delete("descripcion");
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+  }, []);
 
   const pushScope = useCallback((scope: ShortcutScope) => {
     scopesRef.current.push(scope);
@@ -137,7 +184,12 @@ export function ShortcutProvider({
   return (
     <ShortcutRegistryContext.Provider value={{ pushScope }}>
       {children}
-      <GlobalQuickAddDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} inboxProjectId={inboxProjectId} />
+      <GlobalQuickAddDialog
+        open={quickAddOpen}
+        onOpenChange={handleQuickAddOpenChange}
+        inboxProjectId={inboxProjectId}
+        initialPrefill={quickAddPrefill}
+      />
       <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
       {eventRange && (
         <CreateEventDialog

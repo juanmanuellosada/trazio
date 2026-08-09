@@ -45,5 +45,32 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    // Accesos directos al mantener apretado el ícono instalado (D-C de
+    // `accesos-directos-y-compartir`): dos, no más — algunos sistemas
+    // recortan la lista a cuatro sin avisar, y una lista larga acá es
+    // ruido. Ninguno de los dos apunta a una pantalla nueva: "Hoy" ya
+    // existe, y "Nueva tarea" abre el alta rápida global con el parámetro
+    // `agregar` sobre la Bandeja (`ShortcutProvider` lo lee al montar) en
+    // vez de inventar una ruta propia solo para el alta. Sin `icons`
+    // propios: sin uno hecho a mano, el sistema usa el de la app.
+    shortcuts: [
+      { name: "Nueva tarea", url: "/bandeja?agregar=1" },
+      { name: "Hoy", url: "/hoy" },
+    ],
+    // Destino de compartir (D-B): `GET`, no `POST`, porque no recibimos
+    // archivos (Trazio no tiene adjuntos, decisión tomada) — con `GET` los
+    // tres campos llegan en la URL y `app/compartir/route.ts` los lee sin
+    // parsear un cuerpo. Ese mismo route.ts es el que combina `title`,
+    // `text` y `url` de forma tolerante y redirige al alta rápida; acá solo
+    // se declara el contrato.
+    share_target: {
+      action: "/compartir",
+      method: "GET",
+      params: {
+        title: "title",
+        text: "text",
+        url: "url",
+      },
+    },
   };
 }

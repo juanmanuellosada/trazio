@@ -35,16 +35,27 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
  *
  * Abre plegado (D-C): `variant="full"` sin forzar ningún campo desplegado
  * más que título y destino — el propio componente resuelve ese plegado.
+ *
+ * `initialPrefill` (`accesos-directos-y-compartir`) es el tercer disparador:
+ * además del botón del panel lateral y `Q`, `ShortcutProvider` abre este
+ * mismo diálogo con texto puesto cuando la URL trae `agregar` o
+ * `compartido` — el acceso directo "Nueva tarea" y el destino de compartir
+ * del manifest, respectivamente. Ninguno de los dos crea la tarea acá (D-A):
+ * solo precargan el título (y la descripción, D-B) del mismo alta que ya
+ * pide confirmación manual.
  */
 export function GlobalQuickAddDialog({
   open,
   onOpenChange,
   inboxProjectId,
+  initialPrefill,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Último eslabón de la cadena de destino (D-B): sin contexto de vista ni proyecto por defecto, cae acá. `null` solo si la Bandeja todavía no se resolvió (D27: no debería pasar en uso normal). */
   inboxProjectId: string | null;
+  /** Texto (y descripción) a precargar cuando este diálogo lo abrió una URL en vez del botón o `Q`. `undefined`/`null` en los otros dos disparadores. */
+  initialPrefill?: { text: string; description: string | null } | null;
 }) {
   const viewContext = useComposeContext();
   const preferences = useUserPreferences();
@@ -71,6 +82,8 @@ export function GlobalQuickAddDialog({
         defaultDueDate={viewContext.defaultDueDate ?? undefined}
         variant="full"
         onCancel={() => onOpenChange(false)}
+        initialTitle={initialPrefill?.text}
+        initialDescription={initialPrefill?.description ?? undefined}
       />
     </AppDialog>
   );
