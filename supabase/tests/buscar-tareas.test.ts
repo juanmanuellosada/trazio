@@ -453,3 +453,318 @@ describe("buscar_tareas: due:today usa la zona horaria del usuario, no la del se
     }
   });
 });
+
+/**
+ * Los cinco campos de `mas-campos-en-el-lenguaje-de-consulta`. `deadline`
+ * reusa el análisis de valores de `due` (D-A); `section` y `project_tree`
+ * necesitan datos propios (secciones y un árbol de proyectos), así que cada
+ * describe crea y borra lo que usa en vez de reutilizar los fixtures del
+ * caso de referencia de arriba.
+ */
+describe("buscar_tareas: deadline reusa el análisis de valores de due (D-A)", () => {
+  it("deadline:overdue y deadline:before:FECHA devuelven lo esperado", async () => {
+    const { data: project, error: projectError } = await userA.client
+      .from("projects")
+      .select("id")
+      .eq("user_id", userA.id)
+      .limit(1)
+      .single();
+    const projA = unwrap(project, projectError, "Proyecto de A (reutilizado)");
+
+    const { data: overdueData, error: overdueError } = await userA.client
+      .from("tasks")
+      .insert({
+        user_id: userA.id,
+        project_id: projA.id,
+        title: "Fecha límite vencida",
+        deadline: "2026-01-01",
+        position: 4000,
+      })
+      .select("id")
+      .single();
+    const overdueTask = unwrap(overdueData, overdueError, "Fecha límite vencida");
+
+    const { data: futureData, error: futureError } = await userA.client
+      .from("tasks")
+      .insert({
+        user_id: userA.id,
+        project_id: projA.id,
+        title: "Fecha límite futura",
+        deadline: "2027-01-01",
+        position: 4001,
+      })
+      .select("id")
+      .single();
+    const futureTask = unwrap(futureData, futureError, "Fecha límite futura");
+
+    try {
+      const { data: overdueResult, error: overdueQueryError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "deadline", condition: { kind: "overdue" } },
+      });
+      expect(overdueQueryError).toBeNull();
+      const overdueIds = (overdueResult ?? []).map((t: { id: string }) => t.id);
+      expect(overdueIds).toContain(overdueTask.id);
+      expect(overdueIds).not.toContain(futureTask.id);
+
+      const { data: beforeResult, error: beforeQueryError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "deadline", condition: { kind: "before", date: "2026-06-01" } },
+      });
+      expect(beforeQueryError).toBeNull();
+      const beforeIds = (beforeResult ?? []).map((t: { id: string }) => t.id);
+      expect(beforeIds).toContain(overdueTask.id);
+      expect(beforeIds).not.toContain(futureTask.id);
+    } finally {
+      await userA.client.from("tasks").delete().in("id", [overdueTask.id, futureTask.id]);
+    }
+  });
+});
+
+describe("buscar_tareas: project sigue comparando el nombre exacto, nunca descendientes (tarea 3.1)", () => {
+  it("project_tree trae el árbol completo; project solo el proyecto exacto", async () => {
+    const { data: raizData, error: raizError } = await userA.client
+      .from("projects")
+      .insert({ user_id: userA.id, name: "Casa árbol", color: "celeste", position: 2000 })
+      .select("id")
+      .single();
+    const raiz = unwrap(raizData, raizError, "Proyecto raíz");
+
+    const { data: hijoData, error: hijoError } = await userA.client
+      .from("projects")
+      .insert({ user_id: userA.id, parent_id: raiz.id, name: "Casa árbol / Cocina", color: "celeste", position: 2001 })
+      .select("id")
+      .single();
+    const hijo = unwrap(hijoData, hijoError, "Subproyecto");
+
+    const { data: nietoData, error: nietoError } = await userA.client
+      .from("projects")
+      .insert({ user_id: userA.id, parent_id: hijo.id, name: "Casa árbol / Cocina / Heladera", color: "celeste", position: 2002 })
+      .select("id")
+      .single();
+    const nieto = unwrap(nietoData, nietoError, "Nieto (tercer nivel)");
+
+    const { data: raizTaskData, error: raizTaskError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: raiz.id, title: "Tarea de la raíz", position: 5000 })
+      .select("id")
+      .single();
+    const raizTask = unwrap(raizTaskData, raizTaskError, "Tarea de la raíz");
+
+    const { data: hijoTaskData, error: hijoTaskError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: hijo.id, title: "Tarea del hijo", position: 5001 })
+      .select("id")
+      .single();
+    const hijoTask = unwrap(hijoTaskData, hijoTaskError, "Tarea del hijo");
+
+    const { data: nietoTaskData, error: nietoTaskError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: nieto.id, title: "Tarea del nieto", position: 5002 })
+      .select("id")
+      .single();
+    const nietoTask = unwrap(nietoTaskData, nietoTaskError, "Tarea del nieto");
+
+    try {
+      const { data: treeResult, error: treeError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "project_tree", values: ["Casa árbol"] },
+      });
+      expect(treeError).toBeNull();
+      const treeIds = (treeResult ?? []).map((t: { id: string }) => t.id);
+      expect(treeIds).toContain(raizTask.id);
+      expect(treeIds).toContain(hijoTask.id);
+      expect(treeIds).toContain(nietoTask.id);
+
+      // Verificación explícita de la tarea 3.1: `project:` sigue devolviendo
+      // exactamente lo mismo que antes, sin descendientes.
+      const { data: exactResult, error: exactError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "project", values: ["Casa árbol"] },
+      });
+      expect(exactError).toBeNull();
+      const exactIds = (exactResult ?? []).map((t: { id: string }) => t.id);
+      expect(exactIds).toEqual([raizTask.id]);
+      expect(exactIds).not.toContain(hijoTask.id);
+      expect(exactIds).not.toContain(nietoTask.id);
+    } finally {
+      await userA.client.from("tasks").delete().in("id", [raizTask.id, hijoTask.id, nietoTask.id]);
+      await userA.client.from("projects").delete().in("id", [nieto.id, hijo.id, raiz.id]);
+    }
+  });
+});
+
+describe("buscar_tareas: section compara por nombre y cruza proyectos (D-C)", () => {
+  it('section:"Por hacer" devuelve las tareas de las dos secciones con ese nombre, en proyectos distintos', async () => {
+    const { data: projectOneData, error: projectOneError } = await userA.client
+      .from("projects")
+      .insert({ user_id: userA.id, name: "Proyecto con sección uno", color: "celeste", position: 2100 })
+      .select("id")
+      .single();
+    const projectOne = unwrap(projectOneData, projectOneError, "Proyecto con sección uno");
+
+    const { data: projectTwoData, error: projectTwoError } = await userA.client
+      .from("projects")
+      .insert({ user_id: userA.id, name: "Proyecto con sección dos", color: "verde", position: 2101 })
+      .select("id")
+      .single();
+    const projectTwo = unwrap(projectTwoData, projectTwoError, "Proyecto con sección dos");
+
+    const { data: sectionOneData, error: sectionOneError } = await userA.client
+      .from("sections")
+      .insert({ user_id: userA.id, project_id: projectOne.id, name: "Por hacer", position: 1000 })
+      .select("id")
+      .single();
+    const sectionOne = unwrap(sectionOneData, sectionOneError, "Sección Por hacer (proyecto uno)");
+
+    const { data: sectionTwoData, error: sectionTwoError } = await userA.client
+      .from("sections")
+      .insert({ user_id: userA.id, project_id: projectTwo.id, name: "Por hacer", position: 1000 })
+      .select("id")
+      .single();
+    const sectionTwo = unwrap(sectionTwoData, sectionTwoError, "Sección Por hacer (proyecto dos)");
+
+    const { data: taskOneData, error: taskOneError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projectOne.id, section_id: sectionOne.id, title: "Tarea de la sección uno", position: 5100 })
+      .select("id")
+      .single();
+    const taskOne = unwrap(taskOneData, taskOneError, "Tarea de la sección uno");
+
+    const { data: taskTwoData, error: taskTwoError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projectTwo.id, section_id: sectionTwo.id, title: "Tarea de la sección dos", position: 5100 })
+      .select("id")
+      .single();
+    const taskTwo = unwrap(taskTwoData, taskTwoError, "Tarea de la sección dos");
+
+    try {
+      const { data: sectionResult, error: sectionError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "section", values: ["Por hacer"] },
+      });
+      expect(sectionError).toBeNull();
+      const sectionIds = (sectionResult ?? []).map((t: { id: string }) => t.id);
+      expect(sectionIds).toContain(taskOne.id);
+      expect(sectionIds).toContain(taskTwo.id);
+
+      const { data: scopedResult, error: scopedError } = await userA.client.rpc("buscar_tareas", {
+        ast: {
+          type: "and",
+          left: { type: "field", field: "project", values: ["Proyecto con sección uno"] },
+          right: { type: "field", field: "section", values: ["Por hacer"] },
+        },
+      });
+      expect(scopedError).toBeNull();
+      expect((scopedResult ?? []).map((t: { id: string }) => t.id)).toEqual([taskOne.id]);
+    } finally {
+      await userA.client.from("tasks").delete().in("id", [taskOne.id, taskTwo.id]);
+      await userA.client.from("projects").delete().in("id", [projectOne.id, projectTwo.id]);
+    }
+  });
+});
+
+describe("buscar_tareas: no_label reusa el análisis booleano de no_project", () => {
+  it("no_label:true devuelve tareas sin ninguna etiqueta, no_label:false las que tienen al menos una", async () => {
+    const { data: project, error: projectError } = await userA.client
+      .from("projects")
+      .select("id")
+      .eq("user_id", userA.id)
+      .limit(1)
+      .single();
+    const projA = unwrap(project, projectError, "Proyecto de A (reutilizado)");
+
+    const { data: labelData, error: labelError } = await userA.client
+      .from("labels")
+      .insert({ user_id: userA.id, name: "Etiqueta para no_label", color: "verde" })
+      .select("id")
+      .single();
+    const label = unwrap(labelData, labelError, "Etiqueta para no_label");
+
+    const { data: labeledData, error: labeledError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projA.id, title: "Tarea con etiqueta (no_label)", position: 5200 })
+      .select("id")
+      .single();
+    const labeledTask = unwrap(labeledData, labeledError, "Tarea con etiqueta (no_label)");
+    assertOk(
+      (await userA.client.from("task_labels").insert({ task_id: labeledTask.id, label_id: label.id, user_id: userA.id })).error,
+      "Asignar etiqueta a la tarea de no_label",
+    );
+
+    const { data: unlabeledData, error: unlabeledError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projA.id, title: "Tarea sin etiqueta (no_label)", position: 5201 })
+      .select("id")
+      .single();
+    const unlabeledTask = unwrap(unlabeledData, unlabeledError, "Tarea sin etiqueta (no_label)");
+
+    try {
+      const { data: withoutLabel, error: withoutLabelError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "no_label", value: true },
+      });
+      expect(withoutLabelError).toBeNull();
+      const withoutLabelIds = (withoutLabel ?? []).map((t: { id: string }) => t.id);
+      expect(withoutLabelIds).toContain(unlabeledTask.id);
+      expect(withoutLabelIds).not.toContain(labeledTask.id);
+
+      const { data: withLabel, error: withLabelError } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "no_label", value: false },
+      });
+      expect(withLabelError).toBeNull();
+      const withLabelIds = (withLabel ?? []).map((t: { id: string }) => t.id);
+      expect(withLabelIds).toContain(labeledTask.id);
+      expect(withLabelIds).not.toContain(unlabeledTask.id);
+    } finally {
+      await userA.client.from("tasks").delete().in("id", [labeledTask.id, unlabeledTask.id]);
+      await userA.client.from("labels").delete().eq("id", label.id);
+    }
+  });
+});
+
+describe('buscar_tareas: due:notime es fecha presente y hora ausente (D-D), nunca una tarea sin fecha', () => {
+  it("due:notime trae la tarea con due_date, no la que tiene due_at con hora, y nunca la que no tiene ninguna fecha", async () => {
+    const { data: project, error: projectError } = await userA.client
+      .from("projects")
+      .select("id")
+      .eq("user_id", userA.id)
+      .limit(1)
+      .single();
+    const projA = unwrap(project, projectError, "Proyecto de A (reutilizado)");
+
+    const { data: noTimeData, error: noTimeError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projA.id, title: "Con fecha, sin hora", due_date: "2026-09-01", position: 5300 })
+      .select("id")
+      .single();
+    const noTimeTask = unwrap(noTimeData, noTimeError, "Con fecha, sin hora");
+
+    const { data: withTimeData, error: withTimeError } = await userA.client
+      .from("tasks")
+      .insert({
+        user_id: userA.id,
+        project_id: projA.id,
+        title: "Con fecha y hora",
+        due_at: "2026-09-01T15:00:00-03:00",
+        position: 5301,
+      })
+      .select("id")
+      .single();
+    const withTimeTask = unwrap(withTimeData, withTimeError, "Con fecha y hora");
+
+    const { data: noDateData, error: noDateError } = await userA.client
+      .from("tasks")
+      .insert({ user_id: userA.id, project_id: projA.id, title: "Sin ninguna fecha", position: 5302 })
+      .select("id")
+      .single();
+    const noDateTask = unwrap(noDateData, noDateError, "Sin ninguna fecha");
+
+    try {
+      const { data, error } = await userA.client.rpc("buscar_tareas", {
+        ast: { type: "field", field: "due", condition: { kind: "notime" } },
+      });
+      expect(error).toBeNull();
+      const ids = (data ?? []).map((t: { id: string }) => t.id);
+      expect(ids).toContain(noTimeTask.id);
+      expect(ids).not.toContain(withTimeTask.id);
+      expect(ids).not.toContain(noDateTask.id);
+    } finally {
+      await userA.client.from("tasks").delete().in("id", [noTimeTask.id, withTimeTask.id, noDateTask.id]);
+    }
+  });
+});

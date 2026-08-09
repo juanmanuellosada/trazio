@@ -559,15 +559,22 @@ elige o crea una etiqueta.
 | Campo | Valores |
 | --- | --- |
 | `priority` | `1` a `4`, combinables con comas |
-| `due` | `today`, `tomorrow`, `overdue`, `nodate`, `next7days`, `next30days`, fecha exacta `YYYY-MM-DD`, `due:before:FECHA`, `due:after:FECHA` |
+| `due` | `today`, `tomorrow`, `overdue`, `nodate`, `notime`, `next7days`, `next30days`, fecha exacta `YYYY-MM-DD`, `due:before:FECHA`, `due:after:FECHA` |
+| `deadline` | misma forma que `due` (sin `notime`: la fecha límite nunca tiene hora) |
 | `label` | nombre de una o varias etiquetas |
-| `project` | nombre de uno o varios proyectos |
+| `no_label` | `true` / `false`: tareas sin ninguna etiqueta |
+| `project` | nombre de uno o varios proyectos, comparación exacta |
+| `project_tree` | nombre de uno o varios proyectos, incluye las tareas de sus subproyectos a cualquier profundidad |
+| `section` | nombre de una o varias secciones; compara por nombre y cruza proyectos, igual que `label` y `project` |
 | `completed` | `true` / `false` |
 | `search` | texto a buscar en título o descripción |
 | `recurring` | `true` / `false` |
 | `subtask` | `true` / `false` |
 | `created` | fecha exacta, `created:before:`, `created:after:` |
 | `no_project` | tareas de la Bandeja de entrada |
+
+`notime` selecciona las tareas con fecha de vencimiento y sin hora — nunca las que
+no tienen ninguna fecha, que son `due:nodate`.
 
 Se combinan con `&` (y), `|` (o) y `!` (no), y se agrupan con paréntesis. Varios
 valores separados por coma dentro de un campo equivalen a un "o" entre ellos.

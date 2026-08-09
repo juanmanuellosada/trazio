@@ -3,7 +3,13 @@ import { isQueryField, type QueryField } from "./ast";
 import { QueryLanguageError, toQueryParseError, type QueryParseError } from "./errors";
 import { describeQueryFields } from "./field-reference";
 import { tokenize, type Token } from "./tokenize";
-import { isDueKeyword, isValidBooleanValue, isValidIsoDate, isValidPriorityValue } from "./validate-values";
+import {
+  isDeadlineKeyword,
+  isDueKeyword,
+  isValidBooleanValue,
+  isValidIsoDate,
+  isValidPriorityValue,
+} from "./validate-values";
 
 export type QueryParseResult = { ok: true; ast: AstNode } | { ok: false; error: QueryParseError };
 
@@ -135,8 +141,14 @@ class Parser {
         return this.parsePriorityField();
       case "label":
         return this.parseNameListField("label");
+      case "no_label":
+        return this.parseBooleanField("no_label");
       case "project":
         return this.parseNameListField("project");
+      case "project_tree":
+        return this.parseNameListField("project_tree");
+      case "section":
+        return this.parseNameListField("section");
       case "completed":
         return this.parseBooleanField("completed");
       case "recurring":
@@ -149,6 +161,8 @@ class Parser {
         return this.parseSearchField();
       case "due":
         return this.parseDueField();
+      case "deadline":
+        return this.parseDeadlineField();
       case "created":
         return this.parseCreatedField();
     }
@@ -172,7 +186,7 @@ class Parser {
     return { type: "field", field: "priority", values };
   }
 
-  private parseNameListField(field: "label" | "project"): AstNode {
+  private parseNameListField(field: "label" | "project" | "project_tree" | "section"): AstNode {
     const values: string[] = [];
     for (;;) {
       const token = this.parseValueToken();
@@ -183,7 +197,7 @@ class Parser {
     return { type: "field", field, values } as AstNode;
   }
 
-  private parseBooleanField(field: "completed" | "recurring" | "subtask" | "no_project"): AstNode {
+  private parseBooleanField(field: "completed" | "recurring" | "subtask" | "no_project" | "no_label"): AstNode {
     const token = this.parseValueToken();
     if (!isValidBooleanValue(token.value)) {
       throw new QueryLanguageError(
@@ -212,36 +226,52 @@ class Parser {
     return token.value;
   }
 
-  private parseDueField(): AstNode {
+  /**
+   * Analizador compartido de `due` y `deadline` (D-A de design.md: "son dos
+   * fechas de la misma tarea con la misma pregunta detrás"). `keyword`
+   * recibe el chequeo de palabra clave de cada campo — `due` acepta
+   * `notime` además, `deadline` no (D-D) — y `fieldLabel` solo se usa para
+   * el mensaje de error.
+   */
+  private parseDateCondition(
+    fieldLabel: "due" | "deadline",
+    isKeyword: (value: string) => boolean,
+  ): { kind: string; date?: string } {
     const first = this.peek();
 
-    if (first.type === "WORD" && isDueKeyword(first.value)) {
+    if (first.type === "WORD" && isKeyword(first.value)) {
       this.advance();
-      return {
-        type: "field",
-        field: "due",
-        condition: { kind: first.value as "today" | "tomorrow" | "overdue" | "nodate" | "next7days" | "next30days" },
-      };
+      return { kind: first.value };
     }
 
     if (first.type === "WORD" && (first.value === "before" || first.value === "after")) {
       this.advance();
       this.expectColon(first);
       const date = this.parseDateToken();
-      return { type: "field", field: "due", condition: { kind: first.value, date } };
+      return { kind: first.value, date };
     }
 
     if (first.type === "WORD" && isValidIsoDate(first.value)) {
       this.advance();
-      return { type: "field", field: "due", condition: { kind: "exact", date: first.value } };
+      return { kind: "exact", date: first.value };
     }
 
     const token = this.parseValueToken();
     throw new QueryLanguageError(
-      `Valor inválido para "due": "${token.value}".`,
+      `Valor inválido para "${fieldLabel}": "${token.value}".`,
       token.start,
       Math.max(token.value.length, 1),
     );
+  }
+
+  private parseDueField(): AstNode {
+    const condition = this.parseDateCondition("due", isDueKeyword);
+    return { type: "field", field: "due", condition } as AstNode;
+  }
+
+  private parseDeadlineField(): AstNode {
+    const condition = this.parseDateCondition("deadline", isDeadlineKeyword);
+    return { type: "field", field: "deadline", condition } as AstNode;
   }
 
   private parseCreatedField(): AstNode {

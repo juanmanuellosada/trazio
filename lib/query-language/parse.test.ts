@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseQuery } from "./parse";
 
 /**
- * Tests unitarios del parser (bloque 2.10): los diez campos, precedencia,
+ * Tests unitarios del parser (bloque 2.10): los campos, precedencia,
  * paréntesis, negación de grupo, comillas, y el caso de referencia del
  * roadmap. Cada test verifica la forma del AST, no el resultado de
  * evaluarlo — eso lo cubren los tests de `buscar_tareas` en
@@ -19,7 +19,7 @@ function fail(result: ReturnType<typeof parseQuery>) {
   return result.error;
 }
 
-describe("los diez campos", () => {
+describe("los campos", () => {
   it("priority: un solo valor", () => {
     expect(ok(parseQuery("priority:1"))).toEqual({ type: "field", field: "priority", values: [1] });
   });
@@ -108,6 +108,59 @@ describe("los diez campos", () => {
 
   it("no_project: true", () => {
     expect(ok(parseQuery("no_project:true"))).toEqual({ type: "field", field: "no_project", value: true });
+  });
+
+  it("deadline: palabra clave, fecha exacta y comparadores, igual que due", () => {
+    expect(ok(parseQuery("deadline:overdue"))).toEqual({
+      type: "field",
+      field: "deadline",
+      condition: { kind: "overdue" },
+    });
+    expect(ok(parseQuery("deadline:2026-08-10"))).toEqual({
+      type: "field",
+      field: "deadline",
+      condition: { kind: "exact", date: "2026-08-10" },
+    });
+    expect(ok(parseQuery("deadline:before:2026-08-01"))).toEqual({
+      type: "field",
+      field: "deadline",
+      condition: { kind: "before", date: "2026-08-01" },
+    });
+    expect(ok(parseQuery("deadline:after:2026-08-01"))).toEqual({
+      type: "field",
+      field: "deadline",
+      condition: { kind: "after", date: "2026-08-01" },
+    });
+  });
+
+  it('deadline: "notime" no es un valor válido, es exclusivo de due (D-D)', () => {
+    const error = fail(parseQuery("deadline:notime"));
+    expect(error.message).toMatch(/Valor inválido para "deadline"/);
+  });
+
+  it("due: notime", () => {
+    expect(ok(parseQuery("due:notime"))).toEqual({ type: "field", field: "due", condition: { kind: "notime" } });
+  });
+
+  it("section: un nombre entre comillas", () => {
+    expect(ok(parseQuery('section:"Por hacer"'))).toEqual({
+      type: "field",
+      field: "section",
+      values: ["Por hacer"],
+    });
+  });
+
+  it("project_tree: un nombre", () => {
+    expect(ok(parseQuery("project_tree:Casa"))).toEqual({
+      type: "field",
+      field: "project_tree",
+      values: ["Casa"],
+    });
+  });
+
+  it("no_label: true y false", () => {
+    expect(ok(parseQuery("no_label:true"))).toEqual({ type: "field", field: "no_label", value: true });
+    expect(ok(parseQuery("no_label:false"))).toEqual({ type: "field", field: "no_label", value: false });
   });
 });
 

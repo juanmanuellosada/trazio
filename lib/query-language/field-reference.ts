@@ -8,9 +8,9 @@ import { QUERY_FIELDS, type QueryField } from "./ast";
  * referencia visual del alta de filtro (`query-language-reference.tsx`).
  * Ninguno de los dos mantiene su propia lista de campos — la mantienen acá,
  * en el mismo orden que `QUERY_FIELDS`. El día que el lenguaje sume un
- * campo (`deadline`, sección, subproyectos), el chequeo de tipos de
- * `Record<QueryField, …>` obliga a agregar su entrada acá; una vez
- * agregada, aparece sola en los dos lugares que leen de acá.
+ * campo, el chequeo de tipos de `Record<QueryField, …>` obliga a agregar su
+ * entrada acá; una vez agregada, aparece sola en los dos lugares que leen
+ * de acá.
  */
 export type QueryFieldHelp = {
   field: QueryField;
@@ -26,11 +26,29 @@ const FIELD_HELP: Record<QueryField, Omit<QueryFieldHelp, "field">> = {
   priority: { label: "Prioridad", values: "1 a 4, combinables con comas", example: "priority:1,2" },
   due: {
     label: "Vencimiento",
-    values: "today, tomorrow, overdue, nodate, next7days, next30days, una fecha AAAA-MM-DD, due:before:FECHA o due:after:FECHA",
+    values:
+      "today, tomorrow, overdue, nodate, notime, next7days, next30days, una fecha AAAA-MM-DD, due:before:FECHA o due:after:FECHA",
     example: "due:next7days",
   },
+  deadline: {
+    label: "Fecha límite",
+    values:
+      "today, tomorrow, overdue, nodate, next7days, next30days, una fecha AAAA-MM-DD, deadline:before:FECHA o deadline:after:FECHA",
+    example: "deadline:overdue",
+  },
   label: { label: "Etiqueta", values: "nombre de una o varias etiquetas, separadas por coma", example: "label:trabajo" },
+  no_label: { label: "Sin etiqueta", values: "true o false: tareas sin ninguna etiqueta", example: "no_label:true" },
   project: { label: "Proyecto", values: "nombre de uno o varios proyectos, separados por coma", example: "project:personal" },
+  project_tree: {
+    label: "Proyecto y subproyectos",
+    values: "nombre de uno o varios proyectos, separados por coma: incluye las tareas de sus subproyectos",
+    example: "project_tree:personal",
+  },
+  section: {
+    label: "Sección",
+    values: "nombre de una o varias secciones, separadas por coma",
+    example: 'section:"Por hacer"',
+  },
   completed: { label: "Completada", values: "true o false", example: "completed:false" },
   search: { label: "Texto", values: "texto a buscar en el título o la descripción", example: "search:informe" },
   recurring: { label: "Recurrente", values: "true o false", example: "recurring:true" },

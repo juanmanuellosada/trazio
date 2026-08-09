@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Los diez campos del lenguaje de consulta (spec `lenguaje-de-consulta`,
- * D-A de design.md): lista blanca única de la que salen tanto el parser
+ * Los campos del lenguaje de consulta (spec `lenguaje-de-consulta`, D-A de
+ * design.md): lista blanca única de la que salen tanto el parser
  * (`parse.ts`, que rechaza cualquier otro nombre) como la función Postgres
  * `buscar_tareas` (que vuelve a validar del lado del servidor, porque el
  * AST puede llegar de cualquier lado, no solo del parser del cliente).
@@ -10,8 +10,12 @@ import { z } from "zod";
 export const QUERY_FIELDS = [
   "priority",
   "due",
+  "deadline",
   "label",
+  "no_label",
   "project",
+  "project_tree",
+  "section",
   "completed",
   "search",
   "recurring",
@@ -30,11 +34,31 @@ const isoDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha tiene que tener el formato AAAA-MM-DD.");
 
-/** Palabras clave de `due` que no llevan fecha (D-A). */
-export const DUE_KEYWORDS = ["today", "tomorrow", "overdue", "nodate", "next7days", "next30days"] as const;
+/** Palabras clave de `due` que no llevan fecha (D-A). `notime` es un valor más de este mismo espacio (D-D): fecha presente y hora ausente. */
+export const DUE_KEYWORDS = ["today", "tomorrow", "overdue", "nodate", "notime", "next7days", "next30days"] as const;
 export type DueKeyword = (typeof DUE_KEYWORDS)[number];
 
 const dueConditionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("today") }),
+  z.object({ kind: z.literal("tomorrow") }),
+  z.object({ kind: z.literal("overdue") }),
+  z.object({ kind: z.literal("nodate") }),
+  z.object({ kind: z.literal("notime") }),
+  z.object({ kind: z.literal("next7days") }),
+  z.object({ kind: z.literal("next30days") }),
+  z.object({ kind: z.literal("exact"), date: isoDateSchema }),
+  z.object({ kind: z.literal("before"), date: isoDateSchema }),
+  z.object({ kind: z.literal("after"), date: isoDateSchema }),
+]);
+export type DueCondition = z.infer<typeof dueConditionSchema>;
+
+/**
+ * Condición de `deadline` (D-A): mismo análisis de valores que `due`, salvo
+ * `notime` — `deadline` es siempre una fecha sin hora (columna `date`, sin
+ * un equivalente a `due_at`), así que la pregunta "¿tiene hora?" no aplica
+ * (D-D la deja como valor exclusivo de `due`).
+ */
+const deadlineConditionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("today") }),
   z.object({ kind: z.literal("tomorrow") }),
   z.object({ kind: z.literal("overdue") }),
@@ -45,7 +69,7 @@ const dueConditionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("before"), date: isoDateSchema }),
   z.object({ kind: z.literal("after"), date: isoDateSchema }),
 ]);
-export type DueCondition = z.infer<typeof dueConditionSchema>;
+export type DeadlineCondition = z.infer<typeof deadlineConditionSchema>;
 
 const createdConditionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("exact"), date: isoDateSchema }),
@@ -66,15 +90,39 @@ const dueFieldSchema = z.object({
   condition: dueConditionSchema,
 });
 
+const deadlineFieldSchema = z.object({
+  type: z.literal("field"),
+  field: z.literal("deadline"),
+  condition: deadlineConditionSchema,
+});
+
 const labelFieldSchema = z.object({
   type: z.literal("field"),
   field: z.literal("label"),
   values: z.array(z.string().min(1)).min(1),
 });
 
+const noLabelFieldSchema = z.object({
+  type: z.literal("field"),
+  field: z.literal("no_label"),
+  value: z.boolean(),
+});
+
 const projectFieldSchema = z.object({
   type: z.literal("field"),
   field: z.literal("project"),
+  values: z.array(z.string().min(1)).min(1),
+});
+
+const projectTreeFieldSchema = z.object({
+  type: z.literal("field"),
+  field: z.literal("project_tree"),
+  values: z.array(z.string().min(1)).min(1),
+});
+
+const sectionFieldSchema = z.object({
+  type: z.literal("field"),
+  field: z.literal("section"),
   values: z.array(z.string().min(1)).min(1),
 });
 
@@ -115,7 +163,7 @@ const noProjectFieldSchema = z.object({
 });
 
 /**
- * Unión de los diez nodos de campo. No es un `z.discriminatedUnion` sobre
+ * Unión de los nodos de campo. No es un `z.discriminatedUnion` sobre
  * `field` porque zod exige que cada rama sea un objeto plano con el
  * discriminante — acá alcanza con `z.union`, que prueba cada rama y ya es
  * suficientemente barato para un AST de consulta (nunca tiene miles de
@@ -124,8 +172,12 @@ const noProjectFieldSchema = z.object({
 const fieldNodeSchema = z.union([
   priorityFieldSchema,
   dueFieldSchema,
+  deadlineFieldSchema,
   labelFieldSchema,
+  noLabelFieldSchema,
   projectFieldSchema,
+  projectTreeFieldSchema,
+  sectionFieldSchema,
   completedFieldSchema,
   searchFieldSchema,
   recurringFieldSchema,

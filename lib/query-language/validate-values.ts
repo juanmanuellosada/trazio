@@ -23,8 +23,15 @@ export function isValidBooleanValue(value: string): value is "true" | "false" {
   return value === "true" || value === "false";
 }
 
-export const DUE_KEYWORD_SET = new Set(["today", "tomorrow", "overdue", "nodate", "next7days", "next30days"]);
+export const DUE_KEYWORD_SET = new Set(["today", "tomorrow", "overdue", "nodate", "notime", "next7days", "next30days"]);
 
 export function isDueKeyword(value: string): boolean {
   return DUE_KEYWORD_SET.has(value);
+}
+
+/** Mismas palabras clave que `due`, sin `notime`: `deadline` nunca tiene hora, así que la pregunta no aplica (D-D). */
+export const DEADLINE_KEYWORD_SET = new Set(["today", "tomorrow", "overdue", "nodate", "next7days", "next30days"]);
+
+export function isDeadlineKeyword(value: string): boolean {
+  return DEADLINE_KEYWORD_SET.has(value);
 }
