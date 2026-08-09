@@ -18,4 +18,4 @@
 
 - [x] 3.1 Actualizar `docs/product-spec.md` en las acciones de un proyecto.
 - [x] 3.2 `pnpm lint && pnpm typecheck && pnpm test` en verde.
-- [ ] 3.3 Verificar en el navegador con un proyecto grande, y medir cuánto tarda. **Pendiente**: `.env.local` apunta al Supabase de producción, así que esta verificación necesita datos reales y no se puede hacer desde acá sin tocarlos. Queda para quien pueda probar contra un entorno propio.
+- [x] 3.3 Verificar en el navegador con un proyecto grande, y medir cuánto tarda. **Pendiente**: `.env.local` apunta al Supabase de producción, así que esta verificación necesita datos reales y no se puede hacer desde acá sin tocarlos. Queda para quien pueda probar contra un entorno propio. **Cerrada por decisión del dueño** (2026-08-09): sin verificación en el navegador ni en dispositivo real.

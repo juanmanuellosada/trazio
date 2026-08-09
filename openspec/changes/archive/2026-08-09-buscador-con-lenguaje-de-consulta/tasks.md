@@ -18,4 +18,4 @@
 
 - [x] 4.1 Actualizar `docs/product-spec.md` en la sección del buscador.
 - [x] 4.2 `pnpm lint && pnpm typecheck && pnpm test` en verde.
-- [ ] 4.3 Verificar en el navegador con las dos formas de escribir.
+- [x] 4.3 Verificar en el navegador con las dos formas de escribir. **Cerrada por decisión del dueño** (2026-08-09): sin verificación en el navegador ni en dispositivo real.

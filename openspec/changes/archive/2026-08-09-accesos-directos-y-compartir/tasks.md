@@ -2,7 +2,7 @@
 
 - [x] 1.1 Declarar `shortcuts` en `app/manifest.ts` con "Nueva tarea" y "Hoy", apuntando a rutas existentes. A lo sumo cuatro (D-C).
 - [x] 1.2 Si el alta rápida no se puede abrir por URL, resolverlo con un parámetro sobre una pantalla que ya exista, sin inventar una pantalla nueva.
-- [ ] 1.3 Verificar en un Android con la PWA instalada que el menú del ícono los muestra y que cada uno llega a su pantalla. **Sin verificar: requiere un dispositivo Android real.**
+- [x] 1.3 Verificar en un Android con la PWA instalada que el menú del ícono los muestra y que cada uno llega a su pantalla. **Sin verificar: requiere un dispositivo Android real.** **Cerrada por decisión del dueño** (2026-08-09): sin verificación en el navegador ni en dispositivo real.
 
 ## 2. Destino de compartir
 
@@ -16,5 +16,5 @@
 
 - [x] 3.1 Mirar cómo se ve un texto compartido muy largo y decidir si el título se corta y el resto va a la descripción.
 - [x] 3.2 Actualizar `docs/product-spec.md` en la parte de instalación.
-- [ ] 3.3 `pnpm lint && pnpm typecheck && pnpm test` en verde.
-- [ ] 3.4 Probar el flujo completo desde un teléfono real: compartir un artículo del navegador y confirmar que llega al alta con el título puesto. **Sin verificar: requiere un dispositivo real.**
+- [x] 3.3 `pnpm lint && pnpm typecheck && pnpm test` en verde. **Verificado**: 1693 tests en verde antes de desplegar.
+- [x] 3.4 Probar el flujo completo desde un teléfono real: compartir un artículo del navegador y confirmar que llega al alta con el título puesto. **Sin verificar: requiere un dispositivo real.** **Cerrada por decisión del dueño** (2026-08-09): sin verificación en el navegador ni en dispositivo real.

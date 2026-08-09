@@ -22,7 +22,7 @@
 
 - [x] 4.1 Actualizar `docs/product-spec.md`: el panel lateral y la sección de atajos.
 - [x] 4.2 `pnpm lint && pnpm typecheck && pnpm test` en verde.
-- [ ] 4.3 Verificar en el navegador con una cuenta sin filtros: tiene que poder llegar y crear el primero sin saber la ruta.
+- [x] 4.3 Verificar en el navegador con una cuenta sin filtros: tiene que poder llegar y crear el primero sin saber la ruta. **Cerrada por decisión del dueño** (2026-08-09): sin verificación en el navegador ni en dispositivo real.
 
 ## 5. Referencia del lenguaje
 
