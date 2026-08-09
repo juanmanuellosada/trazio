@@ -6,12 +6,14 @@ import { FiltersCollapsibleList } from "./label-filter-lists";
 import type { FilterRow } from "@/lib/filters/use-filters";
 
 /**
- * Tests de la lista colapsable de filtros (bloque 8.4): solo lista los no
- * favoritos (los favoritos ya están en la sección Favoritos), no se
- * renderiza si no queda ninguno, y expandir/contraer muestra u oculta la
- * lista. La de etiquetas se sacó en `etiquetas-sin-lista-duplicada` (D-A);
- * sus casos de cero etiquetas y todas favoritas se reapuntaron a
- * `app-sidebar.test.tsx`, describe "AppSidebar — acceso Etiquetas".
+ * Tests de la lista colapsable de filtros (bloque 8.4, `filtros-alcanzables`
+ * bloque 3): solo lista los no favoritos (los favoritos ya están en la
+ * sección Favoritos), nunca desaparece por estar vacía —requirement "La
+ * lista de filtros no desaparece por estar vacía"—, y expandir/contraer
+ * muestra u oculta la lista cuando sí hay alguno. La de etiquetas se sacó
+ * en `etiquetas-sin-lista-duplicada` (D-A); sus casos de cero etiquetas y
+ * todas favoritas se reapuntaron a `app-sidebar.test.tsx`, describe
+ * "AppSidebar — acceso Etiquetas".
  */
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
@@ -41,10 +43,20 @@ const plainFilter = {
 } satisfies FilterRow;
 
 describe("FiltersCollapsibleList", () => {
-  it("no renderiza nada si todos los filtros son favoritos", () => {
+  it("sin ningún filtro, muestra el estado vacío con acceso a crear el primero", () => {
+    mockUseFilters.mockReturnValue({ data: [] });
+    render(<FiltersCollapsibleList />);
+
+    expect(screen.getByText("Todavía no tenés filtros.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Creá el primero" })).toHaveAttribute("href", "/filtros");
+  });
+
+  it("si todos los filtros son favoritos, muestra el mismo estado vacío (no quedan no favoritos que listar)", () => {
     mockUseFilters.mockReturnValue({ data: [favoriteFilter] });
-    const { container } = render(<FiltersCollapsibleList />);
-    expect(container).toBeEmptyDOMElement();
+    render(<FiltersCollapsibleList />);
+
+    expect(screen.getByText("Todavía no tenés filtros.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Urgente" })).not.toBeInTheDocument();
   });
 
   it("lista los filtros no favoritos al expandir", async () => {

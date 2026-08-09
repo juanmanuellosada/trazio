@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ColorSwatchPicker } from "@/components/projects/color-swatch-picker";
 import { EmojiPicker } from "@/components/projects/emoji-picker";
+import { QueryLanguageReference } from "./query-language-reference";
 
 const DEFAULT_VALUES: FilterFormValues = {
   name: "",
@@ -37,6 +38,12 @@ const DEFAULT_VALUES: FilterFormValues = {
  * muestra su vista previa en vivo (`useFilterPreviewCount`, debounce de
  * 300ms): un conteo de coincidencias mientras se escribe, o el error de
  * sintaxis en español si el parser no puede interpretarla todavía.
+ *
+ * Debajo de la vista previa vive `QueryLanguageReference`
+ * (`filtros-alcanzables`, bloque 5): tocar uno de sus ejemplos llama a
+ * `setValue("query", …)`, que actualiza el mismo campo que ya dispara la
+ * vista previa de arriba — así probar un ejemplo muestra al instante cuántas
+ * tareas coincide sobre los datos propios, sin ningún camino aparte.
  */
 export function FilterFormDialog({
   open,
@@ -58,6 +65,7 @@ export function FilterFormDialog({
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FilterFormValues, unknown, FilterFormOutput>({
     resolver: zodResolver(filterFormSchema),
@@ -149,6 +157,9 @@ export function FilterFormDialog({
             ) : preview.status === "cargando" ? (
               <p className="text-sm text-text-secondary">Contando…</p>
             ) : null}
+            <QueryLanguageReference
+              onPickExample={(example) => setValue("query", example, { shouldValidate: true, shouldDirty: true })}
+            />
           </div>
 
           <div className="flex items-start gap-4">

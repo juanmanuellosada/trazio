@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle2, Inbox, Repeat, Search, Sun, Tag } from "lucide-react";
+import { CalendarDays, CheckCircle2, Filter, Inbox, Repeat, Search, Sun, Tag } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { SidebarAddTask } from "./sidebar-add-task";
 import { SidebarAddEvent } from "./sidebar-add-event";
@@ -39,11 +39,15 @@ function getInitials(source: string): string {
  * cuenta, accesos rápidos (agregar tarea, agregar evento —bloque 7.6— y
  * buscar), accesos principales (Bandeja, Hoy, Próximos, Etiquetas —lleva a la
  * administración, `/etiquetas`, capacidad `administracion-de-etiquetas`—,
- * Hábitos, Completado — ese orden lo fija `docs/product-spec.md`), Favoritos
- * (proyectos, etiquetas y filtros marcados como tales), árbol de proyectos,
- * lista colapsable de filtros (la de etiquetas se sacó en
- * `etiquetas-sin-lista-duplicada`, D-A: el acceso principal ya cubre ese
- * caso), y pie.
+ * Filtros —lleva a `/filtros`, capacidad `filtros-guardados`, sumado en
+ * `filtros-alcanzables` junto a Etiquetas porque las dos son formas de
+ * cruzar proyectos—, Hábitos, Completado — ese orden lo fija
+ * `docs/product-spec.md`), Favoritos (proyectos, etiquetas y filtros
+ * marcados como tales), árbol de proyectos, lista colapsable de filtros (la
+ * de etiquetas se sacó en `etiquetas-sin-lista-duplicada`, D-A: el acceso
+ * principal ya cubre ese caso; la de filtros se queda con estado vacío en
+ * vez de sacarse, `filtros-alcanzables` D-A: el árbol de proyectos puede
+ * empujarla fuera de la vista), y pie.
  */
 export function SidebarContent({
   collapsed = false,
@@ -128,6 +132,13 @@ export function SidebarContent({
             icon={Tag}
             collapsed={collapsed}
             shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.etiquetas }]}
+          />
+          <NavLink
+            href="/filtros"
+            label="Filtros"
+            icon={Filter}
+            collapsed={collapsed}
+            shortcut={[{ key: CHORD_TRIGGER_KEY }, { key: CHORD_KEY_BY_DESTINATION.filtros }]}
           />
           <NavLink
             href="/habitos"

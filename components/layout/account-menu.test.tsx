@@ -94,10 +94,10 @@ describe("AccountMenu", () => {
     await user.click(screen.getByRole("button", { name: "Menú de cuenta" }));
     await screen.findByRole("menu");
 
-    // Tema, Configuración, Filtros, Cerrar sesión: cuatro pasos hasta la
-    // última opción (el separador antes de "Cerrar sesión" no cuenta como
-    // parada de la navegación por teclado).
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
+    // Tema, Configuración, Cerrar sesión: tres pasos hasta la última opción
+    // (el separador antes de "Cerrar sesión" no cuenta como parada de la
+    // navegación por teclado).
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
 
     await waitFor(() => expect(signOut).toHaveBeenCalled());
     expect(push).toHaveBeenCalledWith("/");
@@ -114,18 +114,14 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("menuitem", { name: "Etiquetas" })).not.toBeInTheDocument();
   });
 
-  it("Filtros navega a la pantalla de administración de filtros", async () => {
+  it("no ofrece una entrada 'Filtros': ese acceso vive en el panel lateral y en G F (filtros-alcanzables)", async () => {
     const user = userEvent.setup();
     renderMenu();
 
     await user.click(screen.getByRole("button", { name: "Menú de cuenta" }));
+    await screen.findByRole("menu");
 
-    const item = await screen.findByRole("menuitem", { name: "Filtros" });
-    expect(item).not.toHaveAttribute("href");
-
-    await user.click(item);
-
-    expect(push).toHaveBeenCalledWith("/filtros");
+    expect(screen.queryByRole("menuitem", { name: "Filtros" })).not.toBeInTheDocument();
   });
 
   it("Escape cierra el menú sin ejecutar ninguna opción", async () => {

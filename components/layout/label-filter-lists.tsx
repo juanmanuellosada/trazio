@@ -44,18 +44,47 @@ function ListTrigger({ icon: Icon, label, open }: { icon: typeof Tag; label: str
 
 /**
  * Lista colapsable de filtros (bloque 8.4, capacidad `filtros-guardados`,
- * requirement "Ubicación de los filtros en el panel lateral"): solo los no
- * favoritos. Se devuelve `null` sin filtros no favoritos porque, a diferencia
- * de Etiquetas (`etiquetas-sin-lista-duplicada`, D-C), la administración de
- * filtros sigue enterrada en el menú de cuenta: esta lista es su único
- * rastro en el panel lateral.
+ * requirement "La lista de filtros no desaparece por estar vacía"): solo
+ * los no favoritos. Ya no se devuelve `null` sin filtros —eso es justo lo
+ * que `filtros-alcanzables` corrigió (proposal.md): Filtros ahora también
+ * tiene su propio acceso principal en `sidebar-content.tsx` y `G F`, pero
+ * esta lista se queda igual, con un estado vacío que invita a crear el
+ * primero (D-A de `filtros-alcanzables`), en vez de sacarse.
+ *
+ * No es el mismo tratamiento que recibió Etiquetas: su lista equivalente,
+ * `LabelsCollapsibleList`, ya no existe en este archivo — se eliminó por
+ * completo (no se ocultó) en `etiquetas-sin-lista-duplicada`, D-A, porque
+ * Etiquetas ya tenía acceso principal y una segunda fila para lo mismo
+ * sobraba (ese cambio, en su D-C, dejó anotado que a Filtros le tocaba
+ * primero el acceso propio y recién después evaluar si la lista sobraba:
+ * esta es esa evaluación). La diferencia de trato es a propósito: el árbol
+ * de proyectos puede empujar esta lista fuera de la vista en una cuenta con
+ * varios proyectos, así que sigue haciendo falta un rastro de "acá hay
+ * filtros" cerca de Favoritos y Proyectos — cosa que la lista de etiquetas,
+ * más corta y menos usada para saltar directo a un ítem puntual, no
+ * necesitaba mantener duplicada.
  */
 export function FiltersCollapsibleList() {
   const [open, setOpen] = useState(false);
   const { data } = useFilters();
   const filters = ((data ?? []) as FilterRow[]).filter((f) => !f.is_favorite);
 
-  if (filters.length === 0) return null;
+  if (filters.length === 0) {
+    return (
+      <div className="flex flex-col gap-1 px-2.5 py-1">
+        <div className="flex h-9 items-center gap-2 text-sm font-medium text-text-secondary">
+          <FilterIcon className="size-4 shrink-0" />
+          <span>Filtros</span>
+        </div>
+        <p className="pl-5 text-sm text-text-secondary">
+          Todavía no tenés filtros.{" "}
+          <Link href="/filtros" className="font-medium text-primary hover:underline">
+            Creá el primero
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

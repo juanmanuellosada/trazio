@@ -161,6 +161,37 @@ describe("AppSidebar — acceso Etiquetas", () => {
 });
 
 /**
+ * Tests del acceso principal "Filtros" (`filtros-alcanzables`, tareas
+ * 1.1-1.3, requirement "Los filtros se alcanzan desde la navegación
+ * principal"): se muestra siempre, entre Etiquetas y Hábitos, con su propia
+ * tecla del acorde `G` — nunca hacía falta conocer la ruta `/filtros` de
+ * antemano.
+ */
+describe("AppSidebar — acceso Filtros", () => {
+  it("se muestra entre Etiquetas y Hábitos, con destino /filtros", () => {
+    renderSidebar();
+
+    const mainNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const filtros = screen.getByRole("link", { name: "Filtros" });
+
+    expect(mainNav).toContainElement(filtros);
+    expect(filtros).toHaveAttribute("href", "/filtros");
+
+    const links = Array.from(mainNav.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(links.indexOf("/etiquetas")).toBeLessThan(links.indexOf("/filtros"));
+    expect(links.indexOf("/filtros")).toBeLessThan(links.indexOf("/habitos"));
+  });
+
+  it("anuncia G F como su atajo, la misma tecla que efectivamente navega", () => {
+    renderSidebar();
+
+    const filtros = screen.getByRole("link", { name: "Filtros" });
+    expect(filtros).toHaveTextContent("G");
+    expect(filtros).toHaveTextContent("F");
+  });
+});
+
+/**
  * Contador de Bandeja de entrada: mismo patrón que el contador de Hoy
  * (`todayCount`, ver `nav-link.tsx`) — un badge junto al acceso, oculto
  * cuando no hay tareas pendientes.

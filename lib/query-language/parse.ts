@@ -1,6 +1,7 @@
 import type { AstNode } from "./ast";
 import { isQueryField, type QueryField } from "./ast";
 import { QueryLanguageError, toQueryParseError, type QueryParseError } from "./errors";
+import { describeQueryFields } from "./field-reference";
 import { tokenize, type Token } from "./tokenize";
 import { isDueKeyword, isValidBooleanValue, isValidIsoDate, isValidPriorityValue } from "./validate-values";
 
@@ -118,7 +119,7 @@ class Parser {
 
     if (!isQueryField(fieldName)) {
       throw new QueryLanguageError(
-        `Campo desconocido: "${fieldName}". Los campos disponibles son priority, due, label, project, completed, search, recurring, subtask, created y no_project.`,
+        `Campo desconocido: "${fieldName}". Los campos disponibles son ${describeQueryFields()}.`,
         fieldToken.start,
         fieldToken.value.length,
       );

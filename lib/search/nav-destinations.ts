@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle2, Inbox, Repeat, Sun, Tag, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckCircle2, Filter, Inbox, Repeat, Sun, Tag, type LucideIcon } from "lucide-react";
 import { CHORD_KEY_BY_DESTINATION, CHORD_ROUTES, CHORD_TRIGGER_KEY, type ChordDestination } from "@/lib/shortcuts/chord";
 import type { ShortcutCombo } from "@/lib/shortcuts/types";
 import { normalize } from "@/lib/parser/normalize";
@@ -28,6 +28,7 @@ const NAV_DESTINATIONS: NavDestination[] = [
   destination("hoy", "Hoy", Sun),
   destination("proximos", "Próximos", CalendarDays),
   destination("etiquetas", "Etiquetas", Tag),
+  destination("filtros", "Filtros", Filter),
   destination("habitos", "Hábitos", Repeat),
   destination("completado", "Completado", CheckCircle2),
 ];

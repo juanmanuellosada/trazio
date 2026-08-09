@@ -72,4 +72,52 @@ describe("FilterFormDialog", () => {
       expect.objectContaining({ name: "Urgentes", query: "priority:1" }),
     );
   });
+
+  /**
+   * Referencia del lenguaje (`filtros-alcanzables`, bloque 5): tocar un
+   * ejemplo lo inserta en el campo y dispara la vista previa existente
+   * (requirement "Tocar un ejemplo lo prueba"), y la referencia abierta
+   * nunca tapa el campo ni la vista previa (requirement, D-E de
+   * `filtros-guardados`).
+   */
+  it("tocar un ejemplo de la referencia lo inserta en Consulta y muestra la vista previa", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Campos del lenguaje" }));
+
+    const queryField = screen.getByLabelText("Consulta") as HTMLTextAreaElement;
+    await user.click(screen.getByRole("button", { name: "priority:1,2" }));
+
+    expect(queryField).toHaveValue("priority:1,2");
+    expect(await screen.findByText("3 tareas coinciden")).toBeInTheDocument();
+
+    // El campo, la vista previa y la referencia conviven en pantalla: nada
+    // se tapa al abrirla.
+    expect(queryField).toBeVisible();
+    expect(screen.getByText("3 tareas coinciden")).toBeVisible();
+    expect(screen.getByRole("button", { name: "due:next7days" })).toBeVisible();
+  });
+
+  it("la referencia lista todos los campos del lenguaje, con su ejemplo tocable", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Campos del lenguaje" }));
+
+    for (const example of [
+      "priority:1,2",
+      "due:next7days",
+      "label:trabajo",
+      "project:personal",
+      "completed:false",
+      "search:informe",
+      "recurring:true",
+      "subtask:false",
+      "created:after:2026-01-01",
+      "no_project:true",
+    ]) {
+      expect(screen.getByRole("button", { name: example })).toBeInTheDocument();
+    }
+  });
 });

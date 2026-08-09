@@ -56,6 +56,13 @@ es un requisito existente de `lenguaje-de-consulta`, ya implementado.
 `components/layout/sidebar-content.tsx` o quien arme la navegación principal,
 y `components/layout/account-menu.tsx` (quitar el enlace).
 
+Salió al implementar, no previsto acá: `lib/search/nav-destinations.ts`, la
+lista del grupo "Ir a" del buscador (`Ctrl/Cmd+K`). Es la misma
+`ChordDestination` que arma el acorde `G` y su propio comentario decía
+"mismo orden y destinos que el panel lateral" — dejar a Filtros afuera
+mantenía cerrada una de las dos puertas que este cambio existe para abrir, y
+volvía falso ese comentario.
+
 **Atajos** — una tecla más en el acorde `G`, que hoy tiene `I`, `H`, `P`, `E`,
 `C` y `A`. Hay que elegir una libre y verificar que no colisione.
 

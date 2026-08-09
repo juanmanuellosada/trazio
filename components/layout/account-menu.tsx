@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Filter, LogOut, MoreVertical, Settings } from "lucide-react";
+import { LogOut, MoreVertical, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +35,6 @@ import { ThemeToggle } from "./theme-toggle";
  * esos atributos en silencio.
  */
 export function AccountMenu({ collapsed }: { collapsed: boolean }) {
-  const router = useRouter();
   const { open: openSettings } = useSettings();
   const { signOut, loading: loggingOut } = useSignOut();
 
@@ -63,15 +61,11 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
             administración de etiquetas ahora se alcanza desde el ítem
             principal del panel lateral (`sidebar-content.tsx`) y desde `G E`,
             no desde este menú que ni siquiera habla de etiquetas. */}
-        {/* "Filtros" (capacidad `filtros-guardados`): mismo caso que tenía
-            "Etiquetas" antes de moverse — la página de administración de
-            filtros (`/filtros`) no es la lista principal de navegación ni la
-            página de un filtro puntual, así que entra acá. Queda pendiente
-            su propia propuesta para moverla, no se arrastra en esta. */}
-        <DropdownMenuItem onClick={() => router.push("/filtros")}>
-          <Filter className="size-4" />
-          Filtros
-        </DropdownMenuItem>
+        {/* "Filtros" salió de acá (`filtros-alcanzables`, D-C): mismo caso
+            que "Etiquetas" antes de moverse — ahora tiene su propio acceso
+            principal en `sidebar-content.tsx` y `G F`, así que este enlace
+            enterrado, en un menú de tema, configuración y cerrar sesión,
+            sobraba. */}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} disabled={loggingOut}>
           <LogOut className="size-4" />

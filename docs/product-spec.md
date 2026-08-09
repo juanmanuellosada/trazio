@@ -418,13 +418,15 @@ Colapsable a una versión angosta de solo íconos. De arriba abajo:
 2. Accesos rápidos: agregar tarea, agregar evento (si hay calendario conectado),
    abrir buscador.
 3. Accesos principales: Bandeja de entrada, Hoy (con contador de pendientes que
-   suma tareas y hábitos), Próximos, Etiquetas (administración), Hábitos, Completado.
+   suma tareas y hábitos), Próximos, Etiquetas (administración), Filtros
+   (administración), Hábitos, Completado.
 4. Favoritos: proyectos, etiquetas y filtros marcados como tales.
 5. Árbol de proyectos, con cantidad de tareas por proyecto, ramas colapsables,
    botón para crear subproyecto, y arrastrar para reordenar entre hermanos.
    Anidar un proyecto o cambiarlo de padre se hace desde el menú contextual o
    el diálogo "Mover a…".
-6. Lista colapsable de filtros.
+6. Lista colapsable de filtros. Nunca desaparece por estar vacía: sin ningún
+   filtro muestra un estado vacío con acceso para crear el primero.
 7. Al pie: cambiar tema, Configuración, cerrar sesión.
 
 ### Barra inferior (teléfono)
@@ -625,8 +627,8 @@ particular, no se dibuja en Linux aunque el navegador lo soporte.
 ## 10. Atajos de teclado
 
 **Generales:** `Ctrl/Cmd+Z` deshacer; `G` seguido de `I` (Bandeja), `H` (Hoy),
-`P` (Próximos), `E` (Etiquetas), `C` (Completado), `A` (Hábitos); `S` buscador;
-`Q` nueva tarea; `E` nuevo evento de calendario.
+`P` (Próximos), `E` (Etiquetas), `F` (Filtros), `C` (Completado), `A` (Hábitos);
+`S` buscador; `Q` nueva tarea; `E` nuevo evento de calendario.
 
 **Detalle de tarea:** `Ctrl+S` guardar, `D` fecha, `L` fecha límite, `F` prioridad,
 `R` recordatorios, `O` proyecto, `E` etiquetas, `N` nueva subtarea.
