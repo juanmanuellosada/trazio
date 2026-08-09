@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   DndContext,
@@ -39,7 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import { useMounted } from "@/hooks/use-mounted";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
-import { useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
+import { useDuplicateProject, useMoveProject, useUpdateProject } from "@/lib/projects/mutations";
 import { useLabels, type Label } from "@/lib/labels/use-labels";
 import { useFilters, type FilterRow } from "@/lib/filters/use-filters";
 import { MAX_PROJECT_DEPTH, positionForIndex, positionForSwap, projectDepth } from "@/lib/projects/tree";
@@ -93,7 +93,8 @@ function ProjectLink({ project, taskCount }: { project: ProjectRow; taskCount: n
 /**
  * Menú contextual de un proyecto (bloque 6.6): el camino sin arrastre para
  * todo lo que también se puede hacer arrastrando (reordenar, anidar), más
- * el resto de acciones del proyecto (editar, favorito, archivar, borrar).
+ * el resto de acciones del proyecto (editar, duplicar, favorito, archivar,
+ * borrar).
  */
 function ProjectActionsMenu({
   project,
@@ -108,7 +109,9 @@ function ProjectActionsMenu({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const router = useRouter();
   const updateProject = useUpdateProject();
+  const duplicateProject = useDuplicateProject();
   const [editOpen, setEditOpen] = useState(false);
   const [createSubOpen, setCreateSubOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -134,6 +137,15 @@ function ProjectActionsMenu({
             <DropdownMenuItem onClick={() => setCreateSubOpen(true)}>Agregar subproyecto</DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              duplicateProject.mutate(project, {
+                onSuccess: (newProjectId) => router.push(`/proyecto/${newProjectId}`),
+              })
+            }
+          >
+            Duplicar
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => updateProject.mutate({ id: project.id, patch: { is_favorite: !project.is_favorite } })}
           >

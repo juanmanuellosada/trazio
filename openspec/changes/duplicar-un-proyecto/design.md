@@ -63,6 +63,21 @@ Mientras tanto, la acción tiene que mostrar que está trabajando: es de las
 pocas de Trazio que no puede ser optimista, porque los ids nuevos los asigna
 el servidor.
 
+### D-E — Dos precisiones que salieron al implementar
+
+**Una subtarea completada se copia y nace pendiente.** `duplicateTaskTree`
+copia el subárbol entero de la tarea que recibe, y podar los descendientes
+completados obligaría a reimplementar su recorrido — justamente lo que este
+diseño evita al reusarlo. Pero además el comportamiento es el correcto: la
+regla de excluir completadas existe para que la copia no nazca con trabajo
+hecho que nadie hizo, y una subtarea que renace pendiente devuelve la lista de
+pasos completa, que es lo que se busca al repetir un proceso. La exclusión
+aplica a las tareas **raíz**.
+
+**"Junto al original" significa hermano.** La copia hereda el `parent_id` del
+original, así que duplicar un subproyecto produce otro subproyecto del mismo
+padre, no un proyecto raíz. Es la lectura que conserva el lugar en el árbol.
+
 ## Risks / Trade-offs
 
 **[Un proyecto grande tarda]** → D-D: indicador de progreso y apertura al

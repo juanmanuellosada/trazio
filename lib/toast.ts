@@ -33,3 +33,18 @@ export function toastSuccess(
     duration: options?.action ? AUTO_DISMISS_CON_ACCION_MS : AUTO_DISMISS_MS,
   });
 }
+
+/**
+ * Toast que se queda mientras dura una acción que no puede ser optimista
+ * (`duplicar-un-proyecto`, D-D: el id lo asigna el servidor y el bucle
+ * inserta de a una tarea, así que puede tardar). Devuelve el id para
+ * sacarlo con `dismissToast` una vez que la acción termina, sea éxito o
+ * error — a diferencia de `toastError`/`toastSuccess`, no se auto-descarta.
+ */
+export function toastLoading(message: string): string | number {
+  return toast.loading(message);
+}
+
+export function dismissToast(id: string | number): void {
+  toast.dismiss(id);
+}

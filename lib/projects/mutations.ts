@@ -2,10 +2,11 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { toastSuccess } from "@/lib/toast";
+import { dismissToast, toastLoading, toastSuccess } from "@/lib/toast";
 import type { ProjectFormOutput } from "@/lib/validation/projects";
+import { duplicateProject } from "./duplicate";
 import { reportProjectError } from "./errors";
-import { needsRebalance, nextSiblingPosition, siblingsOf, subtreeIds } from "./tree";
+import { needsRebalance, nextSiblingPosition, positionAfterOriginal, siblingsOf, subtreeIds } from "./tree";
 import { projectsQueryKey, type ProjectRow } from "./use-projects";
 
 function snapshot(queryClient: QueryClient) {
@@ -144,6 +145,45 @@ export function useMoveProject() {
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(projectsQueryKey, context.previous);
       reportProjectError(error);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+  });
+}
+
+/**
+ * Duplica un proyecto (`duplicar-un-proyecto`): no es optimista, ni siquiera
+ * en el sentido en que edición/archivado lo son (nada de `onMutate` tocando
+ * el caché) — el id nuevo lo asigna el servidor y hace falta antes de poder
+ * abrir la copia. Mientras tanto, un toast de carga es el indicador de que
+ * está trabajando (D-D del design: puede tardar, el bucle inserta de a una
+ * tarea); se saca al terminar, sea éxito o error, y el llamador es quien
+ * abre la copia en su propio `onSuccess` (necesita el `router` del
+ * componente, que esta capa no tiene).
+ */
+export function useDuplicateProject() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
+    mutationFn: async (project: ProjectRow) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("No hay sesión activa.");
+
+      const projects = snapshot(queryClient) ?? [];
+      const position = positionAfterOriginal(projects, project);
+      return duplicateProject(supabase, session.user.id, project.id, position);
+    },
+    onMutate: () => ({ toastId: toastLoading("Duplicando proyecto…") }),
+    onError: (error, _project, context) => {
+      if (context?.toastId != null) dismissToast(context.toastId);
+      reportProjectError(error);
+    },
+    onSuccess: (_newProjectId, _project, context) => {
+      if (context?.toastId != null) dismissToast(context.toastId);
+      toastSuccess("Proyecto duplicado.");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
   });

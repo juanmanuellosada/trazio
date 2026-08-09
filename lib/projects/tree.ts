@@ -89,6 +89,14 @@ export function needsRebalance(orderedSiblingPositions: number[], position: numb
  * posición; `currentIndex` es su índice ahí. Devuelve `null` si ya está en
  * el extremo correspondiente.
  */
+/** Posición para insertar la copia de un proyecto duplicado, justo después del original (`duplicar-un-proyecto`). */
+export function positionAfterOriginal(projects: ProjectRow[], original: ProjectRow): number {
+  const siblings = siblingsOf(projects, original.parent_id);
+  const index = siblings.findIndex((p) => p.id === original.id);
+  const after = siblings[index + 1];
+  return after ? (original.position + after.position) / 2 : original.position + SIBLING_SPACING;
+}
+
 export function positionForSwap<T extends { position: number }>(
   sorted: T[],
   currentIndex: number,

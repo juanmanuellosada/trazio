@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useUpdateProject } from "@/lib/projects/mutations";
+import { useDuplicateProject, useUpdateProject } from "@/lib/projects/mutations";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import type { ViewOptions } from "@/lib/view-options/schema";
 import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
@@ -24,9 +24,10 @@ import { DeleteExampleContentDialog } from "./delete-example-content-dialog";
 /**
  * Encabezado de la vista de proyecto (bloque 6): nombre, descripción y las
  * acciones del proyecto. La Bandeja de entrada no ofrece
- * "Editar" (no se puede renombrar — B3 del design de fase 1), "Archivar" ni
- * "Eliminar" (bloque 6.7): directamente no se renderiza el menú de acciones
- * para ella, no solo se deshabilitan sus opciones.
+ * "Editar" (no se puede renombrar — B3 del design de fase 1), "Duplicar",
+ * "Archivar" ni "Eliminar" (bloque 6.7, `duplicar-un-proyecto`): directamente
+ * no se renderiza el menú de acciones para ella, no solo se deshabilitan sus
+ * opciones.
  *
  * El disparador de opciones de vista (`interfaz-descubrible`, D-A) vive acá
  * adentro, separado de favorito/menú por un `Separator` vertical: son
@@ -52,6 +53,7 @@ export function ProjectHeader({
 }) {
   const router = useRouter();
   const updateProject = useUpdateProject();
+  const duplicateProject = useDuplicateProject();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -83,6 +85,15 @@ export function ProjectHeader({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setEditOpen(true)}>Editar</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      duplicateProject.mutate(project, {
+                        onSuccess: (newProjectId) => router.push(`/proyecto/${newProjectId}`),
+                      })
+                    }
+                  >
+                    Duplicar
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
                       updateProject.mutate({ id: project.id, patch: { is_archived: !project.is_archived } })

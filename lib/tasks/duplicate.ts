@@ -27,6 +27,27 @@ type FullTask = {
 };
 
 /**
+ * `duplicar-un-proyecto` reusa esta función tarea raíz por tarea raíz para
+ * copiar un proyecto entero: la copia no puede quedar en el proyecto viejo
+ * (el default de acá abajo, `source.project_id`/`source.section_id`, que le
+ * sirve al duplicado de una sola tarea). `projectId`/`sectionId` la
+ * redirigen: la raíz cae en `sectionId` (ya mapeada a la sección nueva por
+ * el llamador), y sus descendientes en `projectId` sin sección — mismo
+ * criterio que ya usa `useMoveTask` al cruzar de proyecto (cascada
+ * `section_id: null`, `lib/tasks/mutations.ts`): una sección no tiene
+ * sentido para una subtarea fuera de su proyecto de origen.
+ *
+ * `onCopied` deja que el llamador arme un mapa id-viejo → id-nuevo de todo
+ * el subárbol (raíz incluida) sin repetir el recorrido: `duplicar-un-
+ * proyecto` lo usa para copiar las etiquetas de cada tarea después.
+ */
+export type DuplicateTaskTreeOptions = {
+  projectId?: string;
+  sectionId?: string | null;
+  onCopied?: (oldId: string, newId: string) => void;
+};
+
+/**
  * Duplica una tarea y sus subtareas, recursivamente (requirement "Duplicar
  * una tarea" del spec de `tareas`, F2 del design): la copia nace pendiente
  * (sin `completed_at`), con su propia `created_at` (no se copia: la deja
@@ -44,6 +65,7 @@ export async function duplicateTaskTree(
   supabase: SupabaseClient,
   rootId: string,
   rootPosition: number,
+  options?: DuplicateTaskTreeOptions,
 ): Promise<string> {
   const subtree = await fetchTaskSubtree<FullTask>(supabase, rootId, FULL_COLUMNS);
   const root = subtree.find((t) => t.id === rootId);
@@ -59,8 +81,8 @@ export async function duplicateTaskTree(
       .from("tasks")
       .insert({
         user_id: source.user_id,
-        project_id: source.project_id,
-        section_id: source.section_id,
+        project_id: options?.projectId ?? source.project_id,
+        section_id: options ? (source.id === rootId ? (options.sectionId ?? null) : null) : source.section_id,
         parent_id: newParentId,
         title: source.title,
         description: source.description,
@@ -80,6 +102,7 @@ export async function duplicateTaskTree(
     if (error) throw error;
 
     newRootId ??= data.id;
+    options?.onCopied?.(source.id, data.id);
 
     for (const child of subtree.filter((t) => t.parent_id === source.id)) {
       queue.push({ source: child, newParentId: data.id, position: child.position });
