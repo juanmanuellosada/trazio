@@ -286,10 +286,17 @@ Agrupada por sección —su valor por defecto, como Bandeja de entrada—: prime
 tareas sin sección, después cada sección colapsable con su propio botón de agregar.
 Tareas y secciones se reordenan arrastrando (solo con orden manual y sin agrupación
 activa). Desde el menú del proyecto: editar, favorito, agregar sección, duplicar,
-compartir, archivar, eliminar. "Compartir" genera, copia, regenera o desactiva
-un enlace de lectura público (D59): quien lo tenga ve el proyecto sin cuenta,
-en una pantalla propia y sin ningún control de escritura. La Bandeja de
-entrada nunca lo ofrece.
+compartir, copiar como markdown, archivar, eliminar. "Compartir" genera, copia,
+regenera o desactiva un enlace de lectura público (D59): quien lo tenga ve el
+proyecto sin cuenta, en una pantalla propia y sin ningún control de escritura.
+La Bandeja de entrada nunca lo ofrece. "Copiar como markdown" deja en el
+portapapeles el proyecto entero como texto (D60): nombre y descripción del
+proyecto, cada sección con su descripción y sus tareas —marcadas `- [x]` si
+están completadas—, con subtareas anidadas, la descripción de cada tarea, y
+por tarea su fecha de vencimiento, prioridad, duración estimada y etiquetas.
+El orden es siempre el mismo —primero las tareas sin sección, después cada
+sección por su posición—, sin importar los filtros o el agrupador que estén
+puestos. La Bandeja de entrada tampoco lo ofrece.
 
 Agrupada por cualquier otro valor —incluido "nada"— se ve sin los bloques de
 sección: "nada" es una sola lista corrida, y el resto arma bloques por fecha,
@@ -753,6 +760,10 @@ Decisiones tomadas. No son omisiones ni cosas pendientes:
 
 1. **Sin modo offline.** La app requiere internet.
 2. **Sin exportar ni importar datos.** En ninguna versión.
+   Acotado por D60: un proyecto sí se puede **copiar como markdown** al
+   portapapeles desde su menú (§3 "Proyecto"). No es un archivo, no tiene
+   formato versionado y no hay camino de vuelta — no es exportar en el
+   sentido que esta decisión prohíbe.
 3. **Sin idiomas además del español.**
 4. **Sin markdown en el título** de las tareas.
 5. **Sin recordatorios por email.** Solo push.

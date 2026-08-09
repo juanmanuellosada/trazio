@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { topLevelTasksForSection } from "./build-tree";
 import type { SharedTask } from "./types";
+import type { TaskRow } from "@/lib/tasks/task-columns";
 
 function task(overrides: Partial<SharedTask> & { id: string }): SharedTask {
   return {
@@ -55,5 +56,34 @@ describe("topLevelTasksForSection", () => {
     const tasks = [second, first];
 
     expect(topLevelTasksForSection(tasks, null).map((t) => t.id)).toEqual(["second", "first"]);
+  });
+
+  it("acepta un array de TaskRow (lado privado) y conserva sus campos propios", () => {
+    function task(overrides: Partial<TaskRow> & { id: string }): TaskRow {
+      return {
+        project_id: "proj-1",
+        section_id: null,
+        parent_id: null,
+        title: "Tarea",
+        priority: 4,
+        due_date: null,
+        due_at: null,
+        duration_minutes: null,
+        deadline: null,
+        completed_at: null,
+        position: 0,
+        labels: [],
+        ...overrides,
+      };
+    }
+
+    const top = task({ id: "top", position: 1, labels: [{ id: "l1", name: "Urgente", color: "red" }], completed_at: "2026-01-01" });
+    const tasks = [top];
+
+    const [topNode] = topLevelTasksForSection(tasks, null);
+    expect(topNode.position).toBe(1);
+    expect(topNode.labels).toEqual([{ id: "l1", name: "Urgente", color: "red" }]);
+    expect(topNode.completed_at).toBe("2026-01-01");
+    expect(topNode.subtasks).toEqual([]);
   });
 });

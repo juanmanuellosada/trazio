@@ -1920,3 +1920,31 @@ asignar y editar ajeno siguen fuera; enlace de lectura no. Cualquier
 propuesta futura que empiece a acercarse a "otra cuenta con permisos sobre
 tus filas" tiene que pasar por esta misma pregunta — y, salvo que también se
 acote con la misma precisión, la respuesta sigue siendo no.
+
+## D60 — "Sin exportar ni importar" se acota: copiar un proyecto como markdown al portapapeles no es exportar
+
+**Fecha.** 2026-08-09
+
+**Contexto.** `docs/product-spec.md` §13 dice, sin matices, "sin exportar ni
+importar datos, en ninguna versión" (D3). `copiar-un-proyecto-como-markdown`
+pide poder copiar un proyecto entero al portapapeles como texto, y en una
+primera lectura eso suena a violar esa decisión.
+
+**Decisión.** No la viola: se acota. Exportar, en el sentido que D3 prohibía,
+es un **ciclo de portabilidad**: un archivo de respaldo, un formato
+versionado que hay que sostener con sus propias migraciones, y un camino de
+vuelta —un importador— que reconstruye la cuenta desde ese archivo. Eso es lo
+que arrastra superficie de mantenimiento real. Copiar un proyecto como
+markdown al portapapeles no es eso: no hay archivo, no hay formato
+versionado, no hay camino de vuelta, no reconstruye nada. Es la misma acción
+que ya existe en una tarea con "copiar enlace directo", con el contenido en
+vez de la URL.
+
+**Consecuencia.** Sigue sin haber exportación de la cuenta, descarga de
+archivos, importador ni formato de intercambio. Cualquier propuesta futura
+que se acerque a "un archivo que se puede volver a cargar" tiene que pasar
+por esta misma pregunta — y, salvo que también se acote con la misma
+precisión, la respuesta sigue siendo no. Esto tampoco es la revisión que la
+nota de D3 dejó pendiente "para poder revisarlo más adelante con la
+información a la vista": el derecho de acceso de la Ley 25.326 y la
+migración desde otra herramienta siguen sin estar cubiertos.

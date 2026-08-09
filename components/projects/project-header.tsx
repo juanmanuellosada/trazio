@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link2, MoreHorizontal, Star } from "lucide-react";
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useDuplicateProject, useUpdateProject } from "@/lib/projects/mutations";
+import { copyProjectMarkdown, prefetchProjectMarkdownSources } from "@/lib/projects/copy-project-markdown";
 import { useProjectShareLink } from "@/lib/projects/share-link";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import type { ViewOptions } from "@/lib/view-options/schema";
@@ -54,6 +56,7 @@ export function ProjectHeader({
   initialOptions: ViewOptions;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const updateProject = useUpdateProject();
   const duplicateProject = useDuplicateProject();
   const [editOpen, setEditOpen] = useState(false);
@@ -93,7 +96,11 @@ export function ProjectHeader({
             </Button>
 
             {!project.is_inbox && (
-              <DropdownMenu>
+              <DropdownMenu
+                onOpenChange={(open) => {
+                  if (open) prefetchProjectMarkdownSources(queryClient, project.id);
+                }}
+              >
                 <DropdownMenuTrigger
                   render={<Button variant="ghost" size="icon-sm" aria-label="Más acciones del proyecto" />}
                 >
@@ -109,6 +116,9 @@ export function ProjectHeader({
                     }
                   >
                     Duplicar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void copyProjectMarkdown(queryClient, project)}>
+                    Copiar como markdown
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShareOpen(true)}>
                     {isShared ? "Compartir…" : "Compartir"}
