@@ -3,6 +3,7 @@ import { NavLink } from "./nav-link";
 import { SidebarAddTask } from "./sidebar-add-task";
 import { SidebarAddEvent } from "./sidebar-add-event";
 import { AccountMenu } from "./account-menu";
+import { AccountAvatar } from "./account-avatar";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
 import { FiltersCollapsibleList } from "./label-filter-lists";
 import { Separator } from "@/components/ui/separator";
@@ -18,18 +19,12 @@ export type SidebarContentProps = {
   collapsed?: boolean;
   fullName: string | null;
   email: string | null;
+  avatarUrl: string | null;
   todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
 };
-
-function getInitials(source: string): string {
-  const trimmed = source.trim();
-  if (!trimmed) return "?";
-  const parts = trimmed.split(/\s+/).slice(0, 2);
-  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
-}
 
 /**
  * Contenido del panel lateral (bloque 5.3, ampliado en el bloque 8 de fase
@@ -53,12 +48,12 @@ export function SidebarContent({
   collapsed = false,
   fullName,
   email,
+  avatarUrl,
   todayCount,
   inboxTaskCount,
   projects,
   initialProjects,
 }: SidebarContentProps) {
-  const initials = getInitials(fullName ?? email ?? "?");
   // El conteo de tareas por proyecto todavía sale de la proyección liviana
   // del Server Component (`getSidebarProjects`): el bloque 6 no toca
   // `tasks`, así que ese número se actualiza recién con el bloque 7.
@@ -71,12 +66,7 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className={cn("flex items-center gap-2.5 p-3", collapsed && "justify-center px-0")}>
-        <span
-          aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-        >
-          {initials}
-        </span>
+        <AccountAvatar avatarUrl={avatarUrl} fullName={fullName} email={email} size={32} />
         {!collapsed && (
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">{fullName ?? "Tu cuenta"}</p>
@@ -172,7 +162,7 @@ export function SidebarContent({
 
       <Separator />
       <div className="p-2">
-        <AccountMenu collapsed={collapsed} />
+        <AccountMenu collapsed={collapsed} fullName={fullName} email={email} avatarUrl={avatarUrl} />
       </div>
     </div>
   );

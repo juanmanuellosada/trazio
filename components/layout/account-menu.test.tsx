@@ -29,7 +29,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
 }));
 
-function renderMenu(collapsed = false) {
+function renderMenu(collapsed = false, avatarUrl: string | null = null) {
   const queryClient = new QueryClient();
   const clearSpy = vi.spyOn(queryClient, "clear");
   let settings: ReturnType<typeof useSettings> | null = null;
@@ -41,7 +41,7 @@ function renderMenu(collapsed = false) {
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
         <CaptureSettings />
-        <AccountMenu collapsed={collapsed} />
+        <AccountMenu collapsed={collapsed} fullName="Ana Pérez" email="ana@example.com" avatarUrl={avatarUrl} />
       </SettingsProvider>
     </QueryClientProvider>,
   );
@@ -122,6 +122,17 @@ describe("AccountMenu", () => {
     await screen.findByRole("menu");
 
     expect(screen.queryByRole("menuitem", { name: "Filtros" })).not.toBeInTheDocument();
+  });
+
+  it("el disparador muestra las iniciales de la cuenta cuando no hay foto (foto-de-perfil-de-google)", () => {
+    renderMenu();
+    expect(screen.getByText("AP")).toBeInTheDocument();
+  });
+
+  it("el disparador muestra la foto de la cuenta cuando hay avatarUrl", () => {
+    renderMenu(false, "https://lh3.googleusercontent.com/a/foto");
+    const img = screen.getByRole("presentation", { hidden: true }) as HTMLImageElement;
+    expect(img.src).toBe("https://lh3.googleusercontent.com/a/foto");
   });
 
   it("Escape cierra el menú sin ejecutar ninguna opción", async () => {

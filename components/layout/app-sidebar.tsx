@@ -19,6 +19,7 @@ const STORAGE_KEY = "trazio:sidebar-collapsed";
 export function AppSidebar({
   fullName,
   email,
+  avatarUrl,
   todayCount,
   inboxTaskCount,
   projects,
@@ -26,6 +27,7 @@ export function AppSidebar({
 }: {
   fullName: string | null;
   email: string | null;
+  avatarUrl: string | null;
   todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
@@ -81,6 +83,7 @@ export function AppSidebar({
         collapsed={collapsed}
         fullName={fullName}
         email={email}
+        avatarUrl={avatarUrl}
         todayCount={todayCount}
         inboxTaskCount={inboxTaskCount}
         projects={projects}

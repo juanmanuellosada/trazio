@@ -9,6 +9,7 @@ export type SettingsData = {
   userId: string;
   email: string | null;
   fullName: string | null;
+  avatarUrl: string | null;
   /** Si la cuenta ya tiene una contraseña (D_google): sin esto, el
    * formulario de cambio no sabría si pedir la contraseña actual o no. */
   hasPassword: boolean;
@@ -50,7 +51,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
   const userId = userData.user.id;
 
   const [{ data: profile }, { data: preferences }] = await Promise.all([
-    supabase.from("profiles").select("full_name").eq("id", userId).single(),
+    supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).single(),
     supabase
       .from("user_preferences")
       .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete, reference_time")
@@ -64,6 +65,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     userId,
     email: userData.user.email ?? null,
     fullName: profile?.full_name ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
     hasPassword: identities.some((identity) => identity.provider === "email"),
     googleIdentity: identities.find((identity) => identity.provider === "google") ?? null,
     timezone: preferences?.timezone ?? "America/Argentina/Buenos_Aires",

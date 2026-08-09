@@ -20,6 +20,7 @@ function renderNav(inboxTaskCount = 0) {
       <MobileNav
         fullName="Ana"
         email="ana@example.com"
+        avatarUrl={null}
         todayCount={0}
         inboxTaskCount={inboxTaskCount}
         projects={[]}

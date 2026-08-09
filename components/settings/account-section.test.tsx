@@ -52,6 +52,7 @@ function renderSection(props: Partial<Parameters<typeof AccountSection>[0]> = {}
         userId="user-1"
         fullName="Juan"
         email="juan@trazio.com.ar"
+        avatarUrl={null}
         hasPassword
         googleIdentity={null}
         {...props}
@@ -65,6 +66,17 @@ describe("AccountSection (bloque 9.4)", () => {
     vi.clearAllMocks();
     eq.mockResolvedValue({ error: null });
     unlinkIdentity.mockResolvedValue({ data: {}, error: null });
+  });
+
+  it("sin avatarUrl, muestra las iniciales de la cuenta (foto-de-perfil-de-google)", () => {
+    renderSection();
+    expect(screen.getByText("J")).toBeInTheDocument();
+  });
+
+  it("con avatarUrl, muestra la foto de la cuenta", () => {
+    renderSection({ avatarUrl: "https://lh3.googleusercontent.com/a/foto" });
+    const img = screen.getByRole("presentation", { hidden: true }) as HTMLImageElement;
+    expect(img.src).toBe("https://lh3.googleusercontent.com/a/foto");
   });
 
   it("muestra el correo como texto, no como campo editable", () => {

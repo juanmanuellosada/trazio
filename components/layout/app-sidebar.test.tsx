@@ -45,7 +45,7 @@ vi.mock("@/lib/labels/use-labels", async (importOriginal) => {
 
 const STORAGE_KEY = "trazio:sidebar-collapsed";
 
-function renderSidebar(inboxTaskCount = 0) {
+function renderSidebar(inboxTaskCount = 0, avatarUrl: string | null = null) {
   const queryClient = new QueryClient();
   render(
     <QueryClientProvider client={queryClient}>
@@ -55,6 +55,7 @@ function renderSidebar(inboxTaskCount = 0) {
             <AppSidebar
               fullName="Ana"
               email="ana@example.com"
+              avatarUrl={avatarUrl}
               todayCount={0}
               inboxTaskCount={inboxTaskCount}
               projects={[]}
@@ -110,6 +111,30 @@ describe("AppSidebar — colapso", () => {
 
     expect(await screen.findByRole("button", { name: "Colapsar panel lateral" })).toBeInTheDocument();
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe("0");
+  });
+});
+
+/**
+ * Tests del avatar de cuenta en el panel lateral (`foto-de-perfil-de-google`,
+ * requirement "El avatar de cuenta muestra la foto, con las iniciales como
+ * respaldo"): iniciales por defecto, foto cuando hay `avatarUrl`.
+ */
+describe("AppSidebar — avatar de cuenta", () => {
+  // "A" aparece dos veces: el bloque de perfil arriba del panel y el
+  // disparador de `AccountMenu` al pie, las dos superficies del panel
+  // lateral que muestran la cuenta (`sidebar-content.tsx`).
+  it("sin avatarUrl, muestra las iniciales", () => {
+    renderSidebar();
+    expect(screen.getAllByText("A").length).toBeGreaterThan(0);
+  });
+
+  it("con avatarUrl, muestra la foto", () => {
+    renderSidebar(0, "https://lh3.googleusercontent.com/a/foto");
+    const images = screen.getAllByRole("presentation", { hidden: true }) as HTMLImageElement[];
+    expect(images.length).toBeGreaterThan(0);
+    for (const img of images) {
+      expect(img.src).toBe("https://lh3.googleusercontent.com/a/foto");
+    }
   });
 });
 

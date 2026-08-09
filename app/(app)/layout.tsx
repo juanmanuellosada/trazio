@@ -54,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient();
   const [{ data: profile }, preferences, sidebarProjects, initialProjects, initialSections, theme, inboxProjectId] =
     await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).single(),
       getUserPreferences(user.id),
       getSidebarProjects(user.id),
       getAllProjects(user.id),
@@ -66,6 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const todayCount = await getTodayTaskCount(user.id, preferences.timezone);
   const fullName = profile?.full_name ?? null;
+  const avatarUrl = profile?.avatar_url ?? null;
   const todayDate = todayInTimeZone(new Date(), preferences.timezone);
 
   return (
@@ -100,6 +101,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         <AppSidebar
                           fullName={fullName}
                           email={user.email}
+                          avatarUrl={avatarUrl}
                           todayCount={todayCount}
                           inboxTaskCount={inboxTaskCount}
                           projects={projects}
@@ -109,6 +111,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                           <MobileNav
                             fullName={fullName}
                             email={user.email}
+                            avatarUrl={avatarUrl}
                             todayCount={todayCount}
                             inboxTaskCount={inboxTaskCount}
                             projects={projects}

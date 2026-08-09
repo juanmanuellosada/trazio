@@ -117,6 +117,7 @@ export function SettingsModal() {
                 userId={data.userId}
                 fullName={data.fullName}
                 email={data.email}
+                avatarUrl={data.avatarUrl}
                 hasPassword={data.hasPassword}
                 googleIdentity={data.googleIdentity}
               />

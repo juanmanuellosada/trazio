@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/primitives/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AccountAvatar } from "@/components/layout/account-avatar";
 import { PasswordSection } from "./password-section";
 
 /**
@@ -31,12 +32,14 @@ export function AccountSection({
   userId,
   fullName,
   email,
+  avatarUrl,
   hasPassword,
   googleIdentity,
 }: {
   userId: string;
   fullName: string | null;
   email: string | null;
+  avatarUrl: string | null;
   hasPassword: boolean;
   googleIdentity: UserIdentity | null;
 }) {
@@ -60,7 +63,10 @@ export function AccountSection({
 
   return (
     <section className="space-y-6">
-      <h2 className="text-lg font-semibold text-foreground">Cuenta</h2>
+      <div className="flex items-center gap-3">
+        <AccountAvatar avatarUrl={avatarUrl} fullName={fullName} email={email} size={48} />
+        <h2 className="text-lg font-semibold text-foreground">Cuenta</h2>
+      </div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div className="space-y-1.5">

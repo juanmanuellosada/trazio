@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 export function MobileNav({
   fullName,
   email,
+  avatarUrl,
   todayCount,
   inboxTaskCount,
   projects,
@@ -28,6 +29,7 @@ export function MobileNav({
 }: {
   fullName: string | null;
   email: string | null;
+  avatarUrl: string | null;
   todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
@@ -58,6 +60,7 @@ export function MobileNav({
             <SidebarContent
               fullName={fullName}
               email={email}
+              avatarUrl={avatarUrl}
               todayCount={todayCount}
               inboxTaskCount={inboxTaskCount}
               projects={projects}

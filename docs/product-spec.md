@@ -446,7 +446,8 @@ por separado.**
 
 Colapsable a una versión angosta de solo íconos. De arriba abajo:
 
-1. Nombre y correo de la cuenta.
+1. Foto de perfil (o iniciales, si no tiene) junto con nombre y correo de la
+   cuenta.
 2. Accesos rápidos: agregar tarea, agregar evento (si hay calendario conectado),
    abrir buscador.
 3. Accesos principales: Bandeja de entrada, Hoy (con contador de pendientes que
@@ -694,7 +695,9 @@ Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con
 
 ## 11. Configuración
 
-- **Perfil** — cambiar nombre, ver correo (no editable), cambiar contraseña.
+- **Perfil** — cambiar nombre, ver correo (no editable), cambiar contraseña. Si la
+  cuenta se creó o entró con Google, muestra su foto de perfil (se refresca en
+  cada inicio de sesión); si no, muestra sus iniciales.
 - **Tema** — claro, oscuro o según el sistema.
 - **Instalación** — instalar como app, instrucciones para iPhone.
 - **General** — zona horaria (lista IANA completa), formato de fecha, formato de
