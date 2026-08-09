@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-import { AlertTriangle, Sun } from "lucide-react";
-import { isTaskCompletedToday, isTaskDueToday, isTaskOverdue } from "@/lib/dates/today";
+import { useMemo, useState } from "react";
+import { addDays, parseISO } from "date-fns";
+import { AlertTriangle, CalendarClock, Sun } from "lucide-react";
+import { isTaskCompletedToday, isTaskDueToday, isTaskOverdue, todayInTimeZone } from "@/lib/dates/today";
 import { useHoyTasks } from "@/lib/tasks/use-hoy-tasks";
 import { buildHoySequence } from "@/lib/tasks/hoy-sequence";
 import type { TaskRow as TaskRowData } from "@/lib/tasks/use-tasks";
-import { useUpdateTask } from "@/lib/tasks/mutations";
+import { useBulkUpdateTasks, useUpdateTask, type BulkTaskRef } from "@/lib/tasks/mutations";
 import { resolveTaskPriorityColorHex } from "@/lib/validation/tasks";
 import { contentWidthClass } from "@/lib/view-options/content-width";
 import { applyQuickFilters } from "@/lib/view-options/filter-tasks";
@@ -18,6 +19,10 @@ import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { ListCursorProvider } from "@/components/list-cursor/list-cursor-context";
 import { SelectionActionBar } from "@/components/selection/selection-action-bar";
 import { SelectionProvider } from "@/components/selection/selection-context";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { OVERLAY_MODAL } from "@/components/primitives/overlay";
+import { CalendarGrid } from "@/components/selectors/calendar-grid";
 import type { Habit } from "@/lib/habits/habit-columns";
 import { HabitsTodayBlock } from "@/components/habits/habits-today-block";
 import { Board, type BoardColumn } from "@/components/board/board";
@@ -119,6 +124,76 @@ const VIEW_KEY = "hoy";
  * de formato de calendario acá (`showCalendarFormat={false}`), ni
  * deshabilitado.
  */
+/**
+ * Reprogramar las atrasadas en conjunto (`openspec/changes/reprogramar-las-atrasadas`):
+ * botón en el encabezado del bloque de atrasadas, sin pasar por el modo de
+ * selección múltiple. Reusa `useBulkUpdateTasks` — la misma mutación en lote
+ * que `SelectionActionBar`, con su misma integración con deshacer — así que
+ * no hay lógica nueva acá, solo a qué tareas se la aplica.
+ *
+ * `tasks` es exactamente lo que el bloque está mostrando (`overdue`, ya
+ * pasado por los filtros rápidos y el orden activos, D-A): con un filtro
+ * activo, el conteo del botón y el alcance de la acción bajan juntos.
+ *
+ * Hoy y Mañana son un toque una vez abierto el selector (D-C); cualquier
+ * otra fecha usa el mismo `CalendarGrid` que el resto de la app. Nunca
+ * ofrece "Sin fecha" (D-C): sacarle la fecha a una atrasada la haría
+ * desaparecer de Hoy sin dejar rastro, lo contrario de reprogramar. Sigue
+ * disponible desde la selección múltiple para quien lo busque.
+ */
+function OverdueRescheduleAction({
+  tasks,
+  weekStartsOn,
+  todayDate,
+  tomorrowDate,
+}: {
+  tasks: BulkTaskRef[];
+  weekStartsOn: 0 | 1 | 6;
+  todayDate: string;
+  tomorrowDate: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState(() => parseISO(todayDate));
+  const bulkUpdate = useBulkUpdateTasks();
+
+  function reschedule(dueDate: string) {
+    bulkUpdate.mutate({ tasks, patch: { due_date: dueDate, due_at: null } });
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={OVERLAY_MODAL}>
+      <PopoverTrigger
+        render={<Button type="button" variant="outline" size="xs" />}
+        aria-label={`Reprogramar ${tasks.length} ${tasks.length === 1 ? "tarea atrasada" : "tareas atrasadas"}`}
+      >
+        <CalendarClock aria-hidden />
+        Reprogramar {tasks.length}
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        <div className="flex gap-1.5">
+          <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => reschedule(todayDate)}>
+            Hoy
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => reschedule(tomorrowDate)}>
+            Mañana
+          </Button>
+        </div>
+        <div className="border-t border-border pt-2.5">
+          <CalendarGrid
+            month={month}
+            onMonthChange={setMonth}
+            selectedDate={null}
+            today={todayDate}
+            weekStartsOn={weekStartsOn}
+            onSelectDate={reschedule}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function HoyView({
   userId,
   timezone,
@@ -142,6 +217,7 @@ export function HoyView({
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
   const { weekStartsOn, timeFormat } = useUserPreferences();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
+  const tomorrowDate = todayInTimeZone(addDays(now, 1), timezone);
   const tasks = data ?? [];
   const updateTask = useUpdateTask();
 
@@ -361,9 +437,17 @@ export function HoyView({
                         para prioridad Urgente y el ícono de la app
                         (docs/design-system.md §1). "Atrasadas" usa --warning, el
                         token semántico pensado para esto. */}
-                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-warning">
-                      <AlertTriangle aria-hidden className="size-4" />
-                      Atrasadas
+                    <h2 className="mb-2 flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-warning">
+                        <AlertTriangle aria-hidden className="size-4" />
+                        Atrasadas
+                      </span>
+                      <OverdueRescheduleAction
+                        tasks={overdue.map((t) => ({ id: t.id, projectId: t.project_id }))}
+                        weekStartsOn={weekStartsOn}
+                        todayDate={todayDate}
+                        tomorrowDate={tomorrowDate}
+                      />
                     </h2>
                     <TaskGroupList tasks={overdue} allTasks={tasks} groupBy="nada" showProject />
                   </section>

@@ -62,6 +62,11 @@ Agrupa tareas. Tiene nombre, color, ícono (emoji), descripción y vista preferi
 (lista o panel).
 
 - Se puede marcar como **favorito** (aparece destacado en el panel lateral).
+- Se puede **duplicar**: crea una copia junto al original, con sus secciones (con
+  su descripción) y sus tareas pendientes (con subtareas y etiquetas). No copia
+  tareas completadas, comentarios, recordatorios ni el estado de favorito o
+  archivado; las fechas se copian tal cual, no se limpian ni se corren. No
+  arrastra los subproyectos del original.
 - Se puede **archivar**: deja de verse en el día a día sin perder nada.
 - Se puede **eliminar**: borra también sus secciones y todas sus tareas. Requiere
   confirmación explícita mostrando cuántas tareas se pierden.
@@ -215,6 +220,17 @@ hábitos del día (con contador de cuántos se hicieron — cuenta todos, inclui
 los que el control de completadas oculta), y — si se activa la opción — las
 completadas. El botón de agregar precarga la fecha de hoy.
 
+El encabezado del bloque de atrasadas ofrece reprogramarlas todas de un
+toque, sin entrar al modo de selección: el botón dice cuántas alcanza
+("Reprogramar 12"), ofrece Hoy y Mañana directo y cualquier otra fecha con el
+mismo calendario del resto de la app. Alcanza exactamente a las atrasadas que
+se están mostrando — con un filtro rápido activo, no toca las que dejó
+afuera. No pide confirmación y se deshace como una sola acción, igual que el
+resto de las acciones en lote de la selección múltiple. No ofrece "Sin
+fecha": sacarle la fecha a una atrasada la haría desaparecer de Hoy sin dejar
+rastro, lo contrario de reprogramarla. Sigue disponible desde la selección
+múltiple.
+
 Con el control de completadas apagado, un hábito ya marcado ese día también
 deja de listarse ahí, igual que una tarea hecha; uno salteado no es lo mismo
 que uno hecho, así que sigue viéndose.
@@ -269,8 +285,8 @@ Tres formas de verlo:
 Agrupada por sección —su valor por defecto, como Bandeja de entrada—: primero las
 tareas sin sección, después cada sección colapsable con su propio botón de agregar.
 Tareas y secciones se reordenan arrastrando (solo con orden manual y sin agrupación
-activa). Desde el menú del proyecto: editar, favorito, agregar sección, archivar,
-eliminar.
+activa). Desde el menú del proyecto: editar, favorito, agregar sección, duplicar,
+archivar, eliminar.
 
 Agrupada por cualquier otro valor —incluido "nada"— se ve sin los bloques de
 sección: "nada" es una sola lista corrida, y el resto arma bloques por fecha,

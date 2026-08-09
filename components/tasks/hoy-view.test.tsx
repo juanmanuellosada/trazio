@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { HoyEventsResult } from "@/components/calendar/use-hoy-events";
@@ -66,11 +67,13 @@ vi.mock("@/lib/calendar/use-delete-event", () => ({ useDeleteEvent: () => ({ mut
 // cableado" de más abajo pueda comprobar qué patch escribió cada mover.
 const updateTaskMutate = vi.fn();
 const moveTaskMutate = vi.fn();
+const bulkUpdateTasksMutate = vi.fn();
 vi.mock("@/lib/tasks/mutations", () => ({
   useUpdateTask: () => ({ mutate: updateTaskMutate }),
   useMoveTask: () => ({ mutate: moveTaskMutate }),
   useDuplicateTask: () => ({ mutate: vi.fn() }),
   useDeleteTask: () => ({ mutate: vi.fn() }),
+  useBulkUpdateTasks: () => ({ mutate: bulkUpdateTasksMutate }),
 }));
 let currentAllSections: SectionRow[] = [];
 vi.mock("@/lib/sections/use-sections", () => ({
@@ -186,6 +189,7 @@ function event(overrides: Partial<TestEvent> = {}): TestEvent {
 beforeEach(() => {
   updateTaskMutate.mockClear();
   moveTaskMutate.mockClear();
+  bulkUpdateTasksMutate.mockClear();
   currentAllSections = [];
   currentHabits = [];
   currentSkips = {};
@@ -547,5 +551,84 @@ describe("HoyView — tiempo planificado del día (capacidad carga-del-dia, D-B/
     renderHoy([], { status: "not_connected" });
     expect(screen.queryByText(/planificad/)).not.toBeInTheDocument();
     expect(screen.queryByText(/sin duración/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * `openspec/changes/reprogramar-las-atrasadas`, tareas 2.1-2.4: la acción en
+ * el encabezado del bloque de atrasadas, sin pasar por selección múltiple.
+ */
+describe("HoyView — reprogramar las atrasadas desde el encabezado", () => {
+  it("reprograma todas las atrasadas mostradas a hoy, con una sola llamada a la mutación en lote (2.1, 2.3)", async () => {
+    const user = userEvent.setup();
+    renderHoy(
+      [
+        task({ id: "overdue-1", title: "Pagar el alquiler", due_date: "2026-08-01" }),
+        task({ id: "overdue-2", title: "Llamar al contador", due_date: "2026-08-02" }),
+      ],
+      eventsOk([]),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar 2 tareas atrasadas" }));
+    await user.click(screen.getByRole("button", { name: "Hoy" }));
+
+    expect(bulkUpdateTasksMutate).toHaveBeenCalledTimes(1);
+    expect(bulkUpdateTasksMutate).toHaveBeenCalledWith({
+      tasks: [
+        { id: "overdue-1", projectId: "project-1" },
+        { id: "overdue-2", projectId: "project-1" },
+      ],
+      patch: { due_date: "2026-08-05", due_at: null },
+    });
+  });
+
+  it("reprograma a mañana", async () => {
+    const user = userEvent.setup();
+    renderHoy([task({ id: "overdue-1", title: "Pagar el alquiler", due_date: "2026-08-01" })], eventsOk([]));
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar 1 tarea atrasada" }));
+    await user.click(screen.getByRole("button", { name: "Mañana" }));
+
+    expect(bulkUpdateTasksMutate).toHaveBeenCalledWith({
+      tasks: [{ id: "overdue-1", projectId: "project-1" }],
+      patch: { due_date: "2026-08-06", due_at: null },
+    });
+  });
+
+  it("un filtro rápido activo acota el alcance a lo que se está mostrando (2.2, D-A)", async () => {
+    const user = userEvent.setup();
+    renderHoy(
+      [
+        task({ id: "urgente", title: "Tarea urgente", priority: 1, due_date: "2026-08-01" }),
+        task({ id: "baja", title: "Tarea de baja prioridad", priority: 4, due_date: "2026-08-02" }),
+      ],
+      eventsOk([]),
+      { quickFilters: { deadline: "cualquiera", priority: 1, labelId: null } },
+    );
+
+    // Sin la de baja prioridad: el filtro rápido ya la dejó afuera del bloque.
+    expect(screen.queryByText("Tarea de baja prioridad")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar 1 tarea atrasada" }));
+    await user.click(screen.getByRole("button", { name: "Hoy" }));
+
+    expect(bulkUpdateTasksMutate).toHaveBeenCalledWith({
+      tasks: [{ id: "urgente", projectId: "project-1" }],
+      patch: { due_date: "2026-08-05", due_at: null },
+    });
+  });
+
+  it("no ofrece 'Sin fecha' (2.4, D-C)", async () => {
+    const user = userEvent.setup();
+    renderHoy([task({ id: "overdue-1", title: "Pagar el alquiler", due_date: "2026-08-01" })], eventsOk([]));
+
+    await user.click(screen.getByRole("button", { name: "Reprogramar 1 tarea atrasada" }));
+
+    expect(screen.queryByText("Sin fecha")).not.toBeInTheDocument();
+  });
+
+  it("no aparece si no hay atrasadas", () => {
+    renderHoy([task({ id: "today-task", title: "Tarea de hoy", due_date: "2026-08-05" })], eventsOk([]));
+    expect(screen.queryByText(/^Reprogramar/)).not.toBeInTheDocument();
   });
 });
