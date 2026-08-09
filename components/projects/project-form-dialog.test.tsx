@@ -56,6 +56,7 @@ const existingProject: ProjectRow = {
   is_inbox: false,
   is_favorite: false,
   is_archived: false,
+  is_example: false,
   position: 1000,
 };
 

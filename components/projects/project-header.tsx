@@ -19,6 +19,7 @@ import { ViewOptionsBar } from "@/components/view-options/view-options-bar";
 import { cn } from "@/lib/utils";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
+import { DeleteExampleContentDialog } from "./delete-example-content-dialog";
 
 /**
  * Encabezado de la vista de proyecto (bloque 6): nombre, descripción y las
@@ -32,6 +33,11 @@ import { DeleteProjectDialog } from "./delete-project-dialog";
  * acciones de naturaleza distinta (configurar cómo se ve la lista vs. actuar
  * sobre el proyecto en sí). `showViewShape` siempre `true`: Proyecto tiene
  * modo panel.
+ *
+ * El proyecto de ejemplo (`project.is_example`, `onboarding-con-ejemplos`
+ * D-D) cambia el destructivo del menú por "Borrar los ejemplos" y abre
+ * `DeleteExampleContentDialog` en vez de `DeleteProjectDialog`: la misma
+ * confirmación, pero que además se lleva el hábito de ejemplo.
  */
 export function ProjectHeader({
   project,
@@ -86,7 +92,7 @@ export function ProjectHeader({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-                    Eliminar
+                    {project.is_example ? "Borrar los ejemplos" : "Eliminar"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -102,13 +108,23 @@ export function ProjectHeader({
       {!project.is_inbox && (
         <>
           <ProjectFormDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
-          <DeleteProjectDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            project={project}
-            allProjects={allProjects}
-            onDeleted={() => router.push("/bandeja")}
-          />
+          {project.is_example ? (
+            <DeleteExampleContentDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              project={project}
+              allProjects={allProjects}
+              onDeleted={() => router.push("/bandeja")}
+            />
+          ) : (
+            <DeleteProjectDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              project={project}
+              allProjects={allProjects}
+              onDeleted={() => router.push("/bandeja")}
+            />
+          )}
         </>
       )}
     </header>

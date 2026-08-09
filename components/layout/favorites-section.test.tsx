@@ -44,6 +44,7 @@ const project = {
   is_inbox: false,
   is_favorite: true,
   is_archived: false,
+  is_example: false,
   position: 0,
 } satisfies ProjectRow;
 

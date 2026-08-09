@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { seedExampleContentIfNeeded } from "@/lib/onboarding/seed-example-content";
 
 const GENERIC_FALLBACK = "/bandeja";
 
@@ -16,11 +17,23 @@ export function pathForDefaultView(defaultView: string | null | undefined): stri
  * cual — la preferencia solo decide el destino genérico de "entré sin
  * pedir nada en particular", que es cuando `next` es el fallback de
  * `lib/safe-path.ts`.
+ *
+ * Este es el único punto de entrada que comparten los tres caminos de login
+ * (`app/entrar/route.ts`, la Server Action de `app/(auth)/login/`, y el
+ * callback de OAuth/recuperación en `app/(auth)/callback/`), así que acá se
+ * dispara el sembrado del contenido de ejemplo
+ * (`openspec/changes/onboarding-con-ejemplos`, D-F): corre incondicionalmente,
+ * antes de resolver `next`, para que también alcance a una entrada con un
+ * destino puntual y no solo a la genérica. `seedExampleContentIfNeeded` nunca
+ * tira y es barata para una cuenta ya sembrada (un solo `update` que no
+ * encuentra fila), así que no hay motivo para saltearla en ningún camino.
  */
 export async function resolveEntryPath(userId: string, next: string): Promise<string> {
+  const supabase = await createClient();
+  await seedExampleContentIfNeeded(supabase, userId);
+
   if (next !== GENERIC_FALLBACK) return next;
 
-  const supabase = await createClient();
   const { data } = await supabase
     .from("user_preferences")
     .select("default_view")

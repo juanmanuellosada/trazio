@@ -445,7 +445,15 @@ Google. Después del registro se envía un correo de confirmación vía Resend.
 donde se define la nueva contraseña. (Este flujo es obligatorio en la fase 1.)
 
 Al iniciar sesión por primera vez, la cuenta ya tiene su Bandeja de entrada creada.
-Cerrar sesión limpia todo lo guardado localmente.
+Además recibe, una sola vez, contenido de ejemplo: un proyecto "Ejemplos" con cuatro
+tareas —una con fecha, hora y prioridad ya puestas por el parser, una con subtareas,
+una con una etiqueta y una sin nada—, un hábito sin hora programada, y un filtro
+guardado y marcado favorito con una consulta pensada para usarse de verdad (vencidas
+o de hoy, en las dos prioridades más altas). No es un recorrido guiado: es contenido
+real que se usa o se borra. "Borrar los ejemplos", disponible desde el propio
+proyecto, se lleva el proyecto, el hábito y el filtro en una sola acción. Una cuenta
+creada antes de que existiera esta función nunca recibe este contenido. Cerrar sesión
+limpia todo lo guardado localmente.
 
 ### Selección múltiple
 

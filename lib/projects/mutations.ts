@@ -52,7 +52,7 @@ export function useCreateProject() {
           is_favorite: input.isFavorite,
         })
         .select(
-          "id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, position",
+          "id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, is_example, position",
         )
         .single();
       if (error) throw error;

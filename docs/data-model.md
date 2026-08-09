@@ -49,6 +49,7 @@ Una fila por usuario, creada junto con el perfil.
 | `default_view` | `text` | Pantalla al entrar |
 | `default_project_id` | `uuid` FK | Destino del alta rápida |
 | `reference_time` | `time` | Hora de referencia para recordatorios relativos: a qué hora se considera que vence una tarea con día pero sin hora |
+| `seeded_at` | `timestamptz` nullable | No nulo si la cuenta ya recibió su contenido de ejemplo (`onboarding-con-ejemplos`). Cuentas anteriores a esta función quedan marcadas por backfill en la misma migración que agregó la columna. |
 
 ### `projects`
 
@@ -65,11 +66,13 @@ Una fila por usuario, creada junto con el perfil.
 | `is_inbox` | `boolean` | Único `true` por usuario |
 | `is_favorite` | `boolean` | |
 | `is_archived` | `boolean` | |
+| `is_example` | `boolean` | `true` en el proyecto sembrado por `onboarding-con-ejemplos`. Único `true` por usuario. |
 | `position` | `numeric` | Orden manual |
 
 **Reglas de integridad:**
 
 - Índice único parcial: un solo proyecto con `is_inbox = true` por usuario.
+- Índice único parcial: un solo proyecto con `is_example = true` por usuario.
 - Trigger que impide borrar o archivar el proyecto de Bandeja de entrada.
 - Constraint o trigger que impide anidar más de tres niveles.
 - Constraint que impide que un proyecto sea su propio ancestro.
@@ -199,6 +202,7 @@ suscripción.
 | `query` | `text` | La consulta en crudo |
 | `color` / `icon` | `text` | |
 | `is_favorite` | `boolean` | |
+| `is_example` | `boolean` | `true` en el filtro sembrado por `onboarding-con-ejemplos`. Único `true` por usuario (índice único parcial). |
 
 Se guarda la consulta como texto, no parseada. El parser corre en tiempo de
 ejecución, así se puede mejorar sin migrar datos.
@@ -217,6 +221,7 @@ ejecución, así se puede mejorar sin migrar datos.
 | `times_per_week` | `smallint` nullable | |
 | `days_of_week` | `smallint[]` nullable | |
 | `is_archived` | `boolean` | |
+| `is_example` | `boolean` | `true` en el hábito sembrado por `onboarding-con-ejemplos`. Único `true` por usuario (índice único parcial). |
 | `created_at` | `timestamptz` | El hábito no existe antes de esta fecha |
 
 ### `habit_completions`

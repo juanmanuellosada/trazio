@@ -22,11 +22,13 @@ export type ProjectRow = {
   is_inbox: boolean;
   is_favorite: boolean;
   is_archived: boolean;
+  /** true para el proyecto que sembró la cuenta al entrar por primera vez (`onboarding-con-ejemplos`, D-D): es lo que decide si el menú del proyecto ofrece "Borrar los ejemplos" en vez de "Eliminar". */
+  is_example: boolean;
   position: number;
 };
 
 const PROJECT_COLUMNS =
-  "id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, position";
+  "id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, is_example, position";
 
 export const projectsQueryKey = ["projects"] as const;
 

@@ -73,6 +73,7 @@ export type Database = {
           color: string
           icon: string | null
           id: string
+          is_example: boolean
           is_favorite: boolean
           name: string
           query: string
@@ -82,6 +83,7 @@ export type Database = {
           color: string
           icon?: string | null
           id?: string
+          is_example?: boolean
           is_favorite?: boolean
           name: string
           query: string
@@ -91,6 +93,7 @@ export type Database = {
           color?: string
           icon?: string | null
           id?: string
+          is_example?: boolean
           is_favorite?: boolean
           name?: string
           query?: string
@@ -253,6 +256,7 @@ export type Database = {
           icon: string
           id: string
           is_archived: boolean
+          is_example: boolean
           name: string
           scheduled_time: string | null
           times_per_week: number | null
@@ -267,6 +271,7 @@ export type Database = {
           icon: string
           id?: string
           is_archived?: boolean
+          is_example?: boolean
           name: string
           scheduled_time?: string | null
           times_per_week?: number | null
@@ -281,6 +286,7 @@ export type Database = {
           icon?: string
           id?: string
           is_archived?: boolean
+          is_example?: boolean
           name?: string
           scheduled_time?: string | null
           times_per_week?: number | null
@@ -340,6 +346,7 @@ export type Database = {
           icon: string | null
           id: string
           is_archived: boolean
+          is_example: boolean
           is_favorite: boolean
           is_inbox: boolean
           name: string
@@ -354,6 +361,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_archived?: boolean
+          is_example?: boolean
           is_favorite?: boolean
           is_inbox?: boolean
           name: string
@@ -368,6 +376,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_archived?: boolean
+          is_example?: boolean
           is_favorite?: boolean
           is_inbox?: boolean
           name?: string
@@ -622,6 +631,7 @@ export type Database = {
           default_project_id: string | null
           default_view: string
           reference_time: string
+          seeded_at: string | null
           sound_on_complete: boolean
           theme: string
           time_format: number
@@ -634,6 +644,7 @@ export type Database = {
           default_project_id?: string | null
           default_view?: string
           reference_time?: string
+          seeded_at?: string | null
           sound_on_complete?: boolean
           theme?: string
           time_format?: number
@@ -646,6 +657,7 @@ export type Database = {
           default_project_id?: string | null
           default_view?: string
           reference_time?: string
+          seeded_at?: string | null
           sound_on_complete?: boolean
           theme?: string
           time_format?: number

@@ -14,7 +14,7 @@ export async function getAllProjects(userId: string): Promise<ProjectRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("projects")
-    .select("id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, position")
+    .select("id, name, color, icon, description, parent_id, is_inbox, is_favorite, is_archived, is_example, position")
     .eq("user_id", userId)
     .order("position", { ascending: true });
 
