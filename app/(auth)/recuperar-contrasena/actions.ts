@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { requestPasswordResetSchema, type RequestPasswordResetInput } from "@/lib/validation/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl } from "@/lib/site-url";
+import { getRequestHost, getSiteUrl } from "@/lib/site-url";
 import { translateAuthError } from "@/lib/auth/errors";
 
 export type RequestResetResult = { success: true } | { success: false; message: string };
@@ -24,9 +25,10 @@ export async function requestPasswordResetAction(
     };
   }
 
+  const siteUrl = getSiteUrl(getRequestHost(await headers()));
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${getSiteUrl()}/callback?next=${encodeURIComponent("/restablecer-contrasena")}`,
+    redirectTo: `${siteUrl}/callback?next=${encodeURIComponent("/restablecer-contrasena")}`,
   });
 
   if (error) {

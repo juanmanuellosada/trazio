@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { registerSchema, type RegisterInput } from "@/lib/validation/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl } from "@/lib/site-url";
+import { getRequestHost, getSiteUrl } from "@/lib/site-url";
 import { translateAuthError } from "@/lib/auth/errors";
 
 export type RegisterResult =
@@ -25,13 +26,14 @@ export async function registerAction(input: RegisterInput): Promise<RegisterResu
   }
 
   const { name, email, password } = parsed.data;
+  const siteUrl = getSiteUrl(getRequestHost(await headers()));
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { full_name: name },
-      emailRedirectTo: `${getSiteUrl()}/callback`,
+      emailRedirectTo: `${siteUrl}/callback`,
     },
   });
 

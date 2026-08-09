@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { translateAuthErrorCode } from "@/lib/auth/errors";
 import { resolveEntryPath } from "@/lib/preferences/get-default-view-path";
 import { appendNext, safeNextPath } from "@/lib/safe-path";
-import { getSiteUrl } from "@/lib/site-url";
+import { getRequestHost, getSiteUrl } from "@/lib/site-url";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { LoginForm } from "./login-form";
 
@@ -29,7 +30,7 @@ export default async function LoginPage({
     redirect(await resolveEntryPath(user.id, next));
   }
 
-  const siteUrl = getSiteUrl();
+  const siteUrl = getSiteUrl(getRequestHost(await headers()));
   const initialError = errorParam ? translateAuthErrorCode(errorParam) : null;
 
   return (

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
-import { getSiteUrl } from "@/lib/site-url";
+import { getRequestHost, getSiteUrl } from "@/lib/site-url";
 import { consumeOAuthStateCookie } from "@/lib/calendar/oauth-state";
 import { GoogleReauthRequiredError, GoogleTransientError, exchangeAuthorizationCode } from "@/lib/calendar/google-client";
 import { GoogleMissingRefreshTokenError, saveConnectionFromExchange } from "@/lib/calendar/connection";
@@ -18,7 +18,7 @@ import { GoogleMissingRefreshTokenError, saveConnectionFromExchange } from "@/li
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const siteUrl = getSiteUrl();
+  const siteUrl = getSiteUrl(getRequestHost(request.headers));
 
   const user = await getCurrentUser();
   if (!user) {
