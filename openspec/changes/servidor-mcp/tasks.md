@@ -78,12 +78,46 @@ los resultados crudos.
       panel" en la Ola 3: el camino reproducible es un script versionado en el
       repo que haga el `PATCH`.
 
-## 2. Esquema: `position` por defecto
+## 2. Esquema: `position` por defecto — OLA COMPLETADA (2026-08-10)
 
-- [ ] 2.1 Migración: `tasks.position` y `projects.position` pasan a nullable (quitar `not null`, sin agregar `default` de columna — el cálculo necesita ver otras filas, ver D-F).
-- [ ] 2.2 Función de trigger `BEFORE INSERT` que completa `position` cuando llega `null`, agrupando por `user_id, project_id, section_id, parent_id` en `tasks` y por `user_id, parent_id` en `projects`, con el mismo espaciado (1000) que `lib/tasks/tree.ts` y `lib/projects/tree.ts` usan del lado del cliente.
-- [ ] 2.3 Tests SQL (`supabase/tests/`): insert sin `position` en un contexto con hermanos, sin hermanos, e insert que sí manda `position` (no se sobrescribe) — para `tasks` y `projects`.
-- [ ] 2.4 `pnpm db:types`.
+- [x] 2.1 Migración: `tasks.position`, `projects.position` y `sections.position` **siguen `not null`, sin cambio de esquema.**
+      Corrige el texto original de esta tarea (que pedía volverla nullable):
+      se verificó de forma empírica, no solo leída, que un trigger `BEFORE
+      INSERT` a nivel de fila corre antes de que Postgres chequee la
+      restricción `NOT NULL` (prueba con una tabla descartable, `psql` dentro
+      del contenedor `supabase_db_trazio`) — así que la columna se queda
+      `not null` y la garantía se mantiene para cualquier otro camino de
+      inserción. Migración:
+      `supabase/migrations/20260810000000_position_default_trigger.sql`.
+      Se agregó `sections` también (no estaba en el texto original de esta
+      tarea, pero D-F la incluye explícitamente entre las tres tablas
+      afectadas y el pedido de la ola la pide).
+- [x] 2.2 Tres funciones de trigger `BEFORE INSERT` (una por tabla, no una
+      genérica parametrizada), que solo actúan cuando `NEW.position is
+      null`: `tasks` agrupa por `user_id, project_id, parent_id` cuando
+      `parent_id` no es nulo, o por `user_id, project_id, section_id` (`is
+      not distinct from`) cuando es de primer nivel — replica exactamente
+      `siblingsOfTask` de `lib/tasks/tree.ts`; `projects` agrupa por
+      `user_id, parent_id` (`is not distinct from`), como `siblingsOf` de
+      `lib/projects/tree.ts`; `sections` agrupa por `user_id, project_id`.
+      Mismo espaciado (1000) que `SIBLING_SPACING`, con comentario cruzado en
+      ambos lados. Concurrencia: cada función toma un
+      `pg_advisory_xact_lock` con clave = tabla + contexto de hermanos antes
+      de leer `max(position)`, para que dos inserciones sin `position` en el
+      mismo contexto no calculen el mismo valor — justificación completa en
+      el comentario de cabecera de la migración. `SECURITY INVOKER` (no
+      definer): la RLS ya acota por `user_id`, y el filtro explícito por
+      `user_id` adentro es la misma segunda línea de defensa que ya usan las
+      funciones de rebalanceo.
+- [x] 2.3 Tests SQL: `supabase/tests/position-default.test.ts` — insert sin
+      `position` con hermanos y sin hermanos, dos contextos que no se pisan
+      (dos secciones del mismo proyecto, subtarea anidada vs. tarea de
+      primer nivel, dos proyectos distintos), e insert que manda `position`
+      explícita y se respeta tal cual — para las tres tablas, no solo
+      `tasks` y `projects` como decía el texto original.
+- [x] 2.4 `pnpm db:types:local` (local, no `pnpm db:types`: esta ola no toca
+      el proyecto hospedado). Sin diff en `lib/supabase/database.types.ts`:
+      no cambió ninguna columna nullable ni de tipo, coherente con 2.1.
 
 **Nota de la Ola 1 (1.3):** no hay constraint de unicidad sobre `position` ni
 criterio de desempate en los `.order("position")` existentes. No es alcance
@@ -93,9 +127,31 @@ abrirse como deuda aparte, fuera de `servidor-mcp`.
 
 ## 3. Servidor OAuth y registro de clientes
 
-- [ ] 3.1 `[auth.oauth_server] enabled = true` y `allow_dynamic_registration = true` en `supabase/config.toml` (stack local). Para el proyecto hospedado, **escribir un script versionado en el repo** que haga `PATCH /v1/projects/{ref}/config/auth` con `oauth_server_enabled: true`, `oauth_server_allow_dynamic_registration: true` y `oauth_server_authorization_path` apuntando a `/oauth/consent` (resultado de 1.4 — no se habilita por `config.toml` ni por el panel).
+- [x] 3.1 `[auth.oauth_server] enabled = true` y `allow_dynamic_registration = true` en `supabase/config.toml` (stack local). Para el proyecto hospedado, **escribir un script versionado en el repo** que haga `PATCH /v1/projects/{ref}/config/auth` con `oauth_server_enabled: true`, `oauth_server_allow_dynamic_registration: true` y `oauth_server_authorization_path` apuntando a `/oauth/consent` (resultado de 1.4 — no se habilita por `config.toml` ni por el panel).
+      **Resultado (2026-08-10):** `supabase/config.toml` actualizado (local, ya
+      verificado de punta a punta más abajo). Script en
+      `scripts/enable-oauth-server.mjs`: token de la Management API por
+      `SUPABASE_ACCESS_TOKEN`, ref del proyecto por `SUPABASE_PROJECT_REF` o
+      `--project-ref`, ninguno hardcodeado. Solo lectura por defecto (compara
+      estado actual vs. deseado sin escribir), requiere `--apply` explícito
+      para el `PATCH`, idempotente (si ya está en el estado deseado no manda
+      ningún `PATCH`), verifica el resultado contra el endpoint público de
+      metadata después de aplicar, y falla claro (exit 1, sin tocar la red)
+      si falta el token o el ref. Advierte si el Site URL del proyecto no
+      coincide con `www.trazio.com.ar` (requisito de mismo origen de D-A).
+      Procedimiento documentado en `docs/setup-mcp-oauth-server.md` (registrado
+      en la tabla de documentación de `AGENTS.md`).
 - [ ] 3.2 Correr el script de 3.1 contra el proyecto hospedado y confirmar con el test binario de 1.4 (`GET .well-known/oauth-authorization-server/auth/v1` ya no devuelve `feature_disabled`).
+      **Sin hacer a propósito:** requiere un token de la Management API que
+      el agente no tiene y que no debe generarse por cuenta propia — habilitar
+      una función en beta sobre la instancia de producción del dueño es su
+      decisión. Queda pendiente de que el dueño corra
+      `docs/setup-mcp-oauth-server.md` cuando decida.
 - [ ] 3.3 Probar el registro dinámico de un cliente de prueba contra el proyecto hospedado (no solo local), confirmando que devuelve `client_id` sin secreto.
+      **Parcial:** verificado contra el stack **local** (`POST
+      /auth/v1/oauth/clients/register` devuelve 201 con `client_id`,
+      `client_type: "public"`, sin secreto). Contra el proyecto hospedado
+      queda pendiente de 3.2, mismo motivo.
 
 *(Se elimina la tarea de actualizar `@supabase/supabase-js`: la Ola 1 confirmó
 que la versión instalada ya expone `auth.oauth.getAuthorizationDetails`,

@@ -146,6 +146,7 @@ Antes de dar por terminada cualquier tarea: `pnpm lint && pnpm typecheck && pnpm
 | `docs/roadmap.md` | Las cuatro fases y sus criterios de aceptación |
 | `docs/decisions.md` | Decisiones tomadas y su razón |
 | `docs/setup-google-calendar.md` | Paso a paso de credenciales en Google Cloud (fase 4) |
+| `docs/setup-mcp-oauth-server.md` | Paso a paso para habilitar el servidor OAuth 2.1 de Supabase en producción (servidor MCP) |
 
 ---
 

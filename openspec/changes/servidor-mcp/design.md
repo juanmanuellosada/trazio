@@ -325,17 +325,68 @@ El MCP no tiene ese caché, y no debería necesitarlo para crear una tarea.
   que se está insertando (`NEW.project_id`, etc.), así que no puede
   calcular "hermanos de esta fila" sin un trigger.
 - **(C, elegida) `BEFORE INSERT` trigger que completa `position` cuando llega
-  `NULL`.** `position` pasa a ser nullable en el esquema (deja de tener
-  `not null` sin default) y una función de trigger, una por tabla o una
-  genérica parametrizada, calcula `coalesce(max(hermanos.position), 0) +
-  1000` con el mismo agrupamiento que ya usa el cliente, y la asigna antes
-  del insert si `NEW.position is null`. El navegador **sigue mandando la
-  suya** (no pierde el optimismo instantáneo de que la tarea aparezca en el
-  lugar correcto antes de que vuelva la respuesta del servidor); el MCP la
-  omite y confía en el trigger. `projects` ya tiene precedente de un trigger
+  `NULL`.** La columna se mantiene `numeric not null` sin cambios — no hace
+  falta relajar la restricción (ver nota abajo). Una función de trigger
+  calcula `coalesce(max(hermanos.position), 0) + 1000` con el mismo
+  agrupamiento que ya usa el cliente, y la asigna antes del insert si
+  `NEW.position is null`. El navegador **sigue mandando la suya** (no pierde
+  el optimismo instantáneo de que la tarea aparezca en el lugar correcto
+  antes de que vuelva la respuesta del servidor); el MCP la omite y confía en
+  el trigger. `projects` ya tiene precedente de un trigger
   `BEFORE INSERT/UPDATE` para validar profundidad y ciclos
   (`20260726011602_projects.sql`) — este no es el primer trigger de
   comportamiento sobre esa tabla.
+
+**Nota — la decisión cambió durante la implementación (Ola 2, ver
+`supabase/migrations/20260810000000_position_default_trigger.sql`):** esta
+alternativa se evaluó originalmente volviendo `position` nullable (quitarle
+`not null`) para que el trigger pudiera completarla sin chocar con la
+restricción. Se probó volver la columna nullable y resultó innecesario: se
+verificó de forma empírica —con una tabla descartable, no leyendo
+documentación— que Postgres evalúa los triggers `BEFORE INSERT` a nivel de
+fila **antes** de chequear las restricciones `NOT NULL`. El trigger puede
+escribir un valor no nulo en `NEW.position`, y cuando la restricción se
+evalúa después ya la encuentra satisfecha. `position` sigue siendo
+`numeric not null` sin default en `tasks`, `projects` y `sections`, sin
+ningún cambio de esquema, y la garantía de no-nulidad se conserva intacta
+para cualquier otro camino de inserción que sí mande `position` — la
+preocupación que motivaba volverla nullable en primer lugar. La
+implementación tampoco terminó siendo "una por tabla o una genérica
+parametrizada" como contemplaba el texto original de esta alternativa: son
+tres funciones, una por tabla (`tasks_default_position`,
+`projects_default_position`, `sections_default_position`), porque cada una
+agrupa hermanos con columnas distintas (`project_id` + `section_id` +
+`parent_id` para tareas, `parent_id` para proyectos, `project_id` para
+secciones) y una función genérica hubiera necesitado SQL dinámico para eso
+sin ganar mucho a cambio.
+
+**Concurrencia — resuelta en la implementación, no prevista en el diseño
+original de esta alternativa:** dos inserciones sin `position` en el mismo
+contexto de hermanos (dos llamados del MCP seguidos, o el MCP y el navegador
+a la vez) podrían calcular el mismo `max(position) + 1000` si corrieran en
+paralelo sin coordinarse. Cada función toma un `pg_advisory_xact_lock` con
+una clave compuesta por tabla más el contexto de hermanos
+(`project_id`/`section_id`/`parent_id` según la tabla) **antes** de leer
+`max(position)`, así que la segunda inserción del mismo contexto espera a
+que la primera termine y ve su valor ya escrito. Esto no afecta al camino
+del navegador: el navegador nunca entra en esta rama del trigger porque
+siempre manda su propia `position` (el trigger solo actúa cuando
+`NEW.position is null`).
+
+**`security invoker`, no `security definer`:** las tres funciones de trigger
+son `security invoker` con `search_path = ''`. Es coherente con la
+convención dominante del repo: `security definer` se reserva para lo que
+corre sin sesión de usuario (el cron de recordatorios, el alta de cuenta al
+registrarse, el enlace público de proyecto compartido), y `security invoker`
+para lo que sí corre bajo la sesión de quien inserta y debe respetar RLS —
+como estos triggers, o `buscar_tareas`.
+
+**Alcance: `tasks`, `projects` y `sections`, las tres.** El trigger de base
+de datos cubre las tres tablas a nivel de esquema, `sections` incluida. Esto
+no contradice que "`sections` no está en el alcance de escritura del MCP"
+(ver el párrafo anterior y Non-Goals): esa es una decisión sobre qué toca el
+MCP, no sobre qué protege el esquema — el trigger de `sections` cubre
+cualquier camino de inserción a esa tabla, tenga o no MCP de por medio.
 
 **Por qué (C) y no (A):** una sola fuente de verdad para "cómo se calcula la
 posición por defecto", útil no solo para el MCP sino para cualquier inserción
