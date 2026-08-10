@@ -546,6 +546,28 @@ Con conexión, los cambios en tareas, proyectos, secciones, etiquetas, comentari
 recordatorios, filtros y hábitos se reflejan casi al instante en cualquier otra
 pestaña o dispositivo con la misma cuenta.
 
+### Acceso por un asistente de IA (MCP)
+
+Trazio expone un servidor MCP para que un asistente de IA (Claude, ChatGPT u otro
+cliente compatible) se conecte a la cuenta por conversación. La conexión se
+autoriza desde una pantalla de consentimiento propia de Trazio (acotamiento de D3,
+decisión D63): se muestra qué cliente pide acceso y se aprueba o rechaza.
+
+El asistente puede **leer** tareas, hábitos, proyectos, secciones, etiquetas y
+filtros, y **escribir**: crear y editar tareas, hábitos, proyectos, etiquetas y
+filtros, completar tareas y archivar. **El MCP nunca ofrece borrar** — borrar
+sigue siendo exclusivo de la app, con su confirmación y su deshacer.
+
+Desde Configuración → Aplicaciones conectadas se ve qué asistentes tienen acceso y
+se revoca cada uno individualmente, en cualquier momento.
+
+**Limitación que hay que conocer:** el acceso que se autoriza no tiene forma de
+acotarse a "solo lectura" — es una limitación del servidor de autorización, no una
+elección de Trazio. Quien reciba el acceso puede hacer, contra la base de datos,
+todo lo que puede hacer el dueño de la cuenta, incluido borrar, sin pasar por las
+herramientas del MCP. Que el MCP no ofrezca borrar es una propiedad de sus
+herramientas, no una restricción del acceso que se otorgó.
+
 ---
 
 ## 6. Alta rápida en lenguaje natural
@@ -748,6 +770,8 @@ Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con
 - **Notificaciones y recordatorios** — activar o desactivar push, y la hora de
   referencia para los recordatorios relativos sobre tareas sin hora.
 - **Calendarios** — conexión con Google Calendar y qué calendarios se muestran.
+- **Aplicaciones conectadas** — qué asistentes de IA autorizaste por MCP (§5
+  "Acceso por un asistente de IA"), y la acción de revocar cada uno.
 
 No hay selector de idioma: la app es solo en español.
 
@@ -789,6 +813,11 @@ Decisiones tomadas. No son omisiones ni cosas pendientes:
    portapapeles desde su menú (§3 "Proyecto"). No es un archivo, no tiene
    formato versionado y no hay camino de vuelta — no es exportar en el
    sentido que esta decisión prohíbe.
+   Acotado también por D63: la cuenta sí se puede conectar a un **asistente
+   de IA por MCP** (§5 "Acceso por un asistente de IA"), habilitado y
+   revocable por el usuario, acotado por RLS y sin borrado expuesto. No hay
+   archivo, no hay formato de intercambio, no hay importador — sigue sin ser
+   exportar en el sentido que esta decisión prohíbe.
 3. **Sin idiomas además del español.**
 4. **Sin markdown en el título** de las tareas.
 5. **Sin recordatorios por email.** Solo push.

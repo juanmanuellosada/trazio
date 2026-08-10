@@ -2047,3 +2047,76 @@ columna nueva. Cualquier propuesta futura que quiera "medir el progreso" de
 un hábito tiene que pasar por la misma pregunta que esta decisión ya
 resolvió: ¿es un número que informa, o un puntaje que evalúa a la persona?
 Insignias, niveles y comparación entre personas siguen fuera de alcance.
+
+## D63 — "Sin exportar ni importar" se acota otra vez: un servidor MCP no es exportar, es acceso programático revocable
+
+**Fecha.** 2026-08-10
+
+**Contexto.** D60 ya acotó D3 una vez para "copiar como markdown": un texto en
+el portapapeles, sin archivo ni formato versionado, no es exportar. Ahora
+`servidor-mcp` pide algo de naturaleza distinta y bastante más grande: que un
+asistente de IA (Claude, ChatGPT) se conecte a una cuenta de Trazio y pueda
+leer **todo** su contenido —tareas, hábitos, proyectos, secciones, etiquetas y
+filtros— y escribir buena parte de él. Leer la cuenta entera desde afuera se
+parece más a exportar que a copiar un proyecto como markdown, y merece la
+misma pregunta explícita que D60 ya le hizo a D3, no una extensión tácita.
+
+Esto se apoya en el servidor OAuth 2.1 de Supabase (`[auth.oauth_server]`,
+hoy **en beta**), verificado de forma empírica contra el stack local: emite
+un access token que sirve contra PostgREST con las mismas políticas de RLS
+que la sesión del usuario, con registro dinámico de clientes (un cliente MCP
+se da de alta solo, sin que el usuario cree nada a mano) y con refresh token.
+También se verificó una limitación dura: los scopes que el servidor soporta
+son exactamente `openid`, `profile`, `email` y `phone` — no existe un scope
+de solo lectura. Pedir uno personalizado (`trazio:read`) hace fallar la
+autorización. El token que resulta puede hacer, contra PostgREST, todo lo que puede hacer
+el usuario en lectura y escritura, sin pasar por ninguna herramienta del
+MCP — con una excepción: borrar, que una política de RLS bloquea
+discriminando por el claim `client_id` que trae un token OAuth y que una
+sesión de la app no trae (ver Decisión).
+
+**Decisión.** No la viola: se acota, con un límite más angosto que el de D60
+porque el acceso es más grande. Exportar, en el sentido que D3 prohíbe, sigue
+siendo un ciclo de portabilidad: un archivo de respaldo, un formato
+versionado propio y un importador que reconstruye la cuenta desde ese
+archivo. Un servidor MCP no es eso — no hay archivo, no hay formato de
+intercambio, no hay reconstrucción — pero tampoco es tan chico como copiar un
+proyecto al portapapeles, así que la acotación lleva condiciones explícitas,
+no solo una analogía:
+
+- Es acceso **que el usuario habilita**, con una pantalla de consentimiento
+  propia que nombra qué cliente pide acceso.
+- Es acceso **que el usuario revoca cuando quiere**, desde una pantalla de
+  "aplicaciones conectadas" en Configuración (`listGrants`/`revokeGrant` del
+  servidor OAuth) — conectar sin poder desconectar quedó descartado por
+  inaceptable antes de proponer nada más.
+- Está sujeto a **las mismas políticas de RLS que la propia sesión del
+  usuario**, ni más ni menos: ninguna fila de otra cuenta es alcanzable, y
+  cualquier restricción que el esquema ya le impone al usuario (prioridad
+  entre 1 y 4, `due_date`/`due_at` excluyentes) le aplica igual al MCP.
+- **El MCP no expone borrar, y la base tampoco lo permite para un token
+  OAuth.** No es solo una propiedad de la superficie de herramientas que se
+  construye: una política de RLS exige que el `DELETE` venga sin el claim
+  `client_id`, así que un token que vino por OAuth no puede borrar aunque
+  vaya directo contra PostgREST salteándose las herramientas del MCP. Esto
+  queda documentado, con el mismo mecanismo, en `design.md` de
+  `servidor-mcp` (D-C) y en la política de privacidad, no solo acá.
+
+Con esas cuatro condiciones puestas, la diferencia con "exportar" se sostiene:
+sigue sin haber un archivo que alguien se lleve y pueda volver a cargar en
+otro lado: hay una sesión programática, revocable, con el mismo aislamiento
+por RLS que ya protege el resto de la cuenta.
+
+**Consecuencia.** `docs/product-spec.md` §5 y §13 quedan explícitos: conectar
+un asistente de IA no es exportar, siempre que sea habilitado por el usuario,
+revocable, acotado por RLS y sin borrado expuesto. Si alguna de esas cuatro
+condiciones dejara de cumplirse —por ejemplo, un scope de solo lectura que
+algún día Supabase habilite y que el MCP no adopte, o una herramienta de
+borrado que se agregue sin pasar por acá— la acotación deja de sostenerse y
+hay que volver a esta pregunta. La limitación de que el token completo (sin
+scope de permisos) puede leer y escribir cualquier cosa que puede hacer el
+usuario no se resuelve con esta decisión: se acepta, se documenta sin
+suavizarla, y queda registrada como el costo real de este acceso, no como un
+detalle técnico menor. Borrar es la excepción: una política de RLS lo
+bloquea para cualquier token que traiga el claim `client_id` de una conexión
+OAuth.
