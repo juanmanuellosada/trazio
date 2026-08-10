@@ -159,7 +159,7 @@ que la versión instalada ya expone `auth.oauth.getAuthorizationDetails`,
 error original vino de buscar en `node_modules/@supabase/auth-js`, ruta que
 con pnpm no existe. Ver D-B corregida en `design.md`.)*
 
-## 4. Políticas de RLS que discriminan acceso OAuth (NUEVA — hallazgo de la Ola 1)
+## 4. Políticas de RLS que discriminan acceso OAuth — OLA COMPLETADA (2026-08-10)
 
 La Ola 1 corrigió una afirmación de este diseño: "el MCP no borra" **no** es
 solo una propiedad de la superficie de herramientas — se puede enforcear en
@@ -171,10 +171,51 @@ prueba). Tratar con el mismo cuidado que el commit `b2d78b8` ("ocho funciones
 eran ejecutables por roles que no debían") — revisar cada política
 modificada de forma individual, no en bloque.
 
-- [ ] 4.1 Enumerar las políticas de `DELETE` existentes en todas las tablas alcanzables por el MCP (`tasks`, `projects`, `sections`, `habits`, `labels`, `filters`, y cualquier otra bajo RLS por `user_id`).
-- [ ] 4.2 Migración: agregar a cada política de `DELETE` relevante la condición `(auth.jwt() ->> 'client_id') is null` (sesión de la app) — o la condición inversa donde corresponda — de forma que ninguna conexión que traiga `client_id` (vino por OAuth) pueda borrar, sin cambiar el comportamiento de la sesión normal de la app.
-- [ ] 4.3 Tests de RLS (`pnpm test:rls`): sesión de la app sigue pudiendo borrar igual que hoy; un JWT con `client_id` no puede borrar en ninguna de las tablas tocadas, para las mismas filas donde la sesión de la app sí puede.
-- [ ] 4.4 Actualizar D-C de `design.md` (ya corregida en esta revisión) si la implementación real difiere en algo del mecanismo descrito.
+- [x] 4.1 **Resultado:** diecinueve tablas con política de `DELETE`, todas
+      `(select auth.uid()) = user_id` (o `= id` en `profiles`) — ver
+      `supabase/migrations/20260810010000_oauth_client_delete_restrictions.sql`
+      para la lista completa con el porqué de cada una. Dieciocho se
+      bloquean para OAuth; **`task_labels` queda sin tocar a propósito**:
+      es la tabla puente tarea↔etiqueta, y quitarle una etiqueta a una
+      tarea (`useReplaceTaskLabels`, `lib/tasks/mutations.ts`: borra todas
+      las filas de `task_labels` de la tarea e inserta las nuevas) es, para
+      el usuario, editar la tarea — `editar` sí es una herramienta del MCP.
+      Bloquearla habría roto esa capacidad.
+- [x] 4.2 **Resultado:** `supabase/migrations/20260810010000_oauth_client_delete_restrictions.sql`,
+      con `alter policy` sobre cada política ya existente (no
+      `drop`/`create`): mismo nombre, misma condición de siempre, se le
+      agrega `and (select auth.jwt() ->> 'client_id') is null`. El claim
+      se verificó de forma empírica contra el stack local antes de escribir
+      la migración (no solo leído en la documentación de Supabase): un
+      login por contraseña no lo trae, el mismo usuario completando el
+      flujo OAuth 2.1 + PKCE sí, con valor igual al id del cliente OAuth
+      registrado. También se verificó de forma empírica —tabla descartable
+      en el stack local— que un borrado en cascada (`on delete cascade`) no
+      pasa por la política de RLS de la tabla hija: una hija con
+      `using (false)` igual pierde sus filas cuando se borra el padre. Por
+      eso alcanza con bloquear la tabla padre; no hizo falta blindar por
+      esta vía ninguna tabla que cuelgue de un `on delete cascade`.
+- [x] 4.3 **Resultado:** `supabase/tests/oauth-delete-restrictions.test.ts`
+      (21 tests) + `supabase/tests/oauth.ts` (helper: registro dinámico de
+      cliente + `/oauth/authorize` con PKCE + consentimiento + canje de
+      código, para conseguir un access token OAuth real de prueba —
+      requiere un `GET` a `/oauth/authorizations/:id` antes del `POST` de
+      consentimiento, verificado a mano: sin ese paso el consentimiento
+      devuelve 404 `authorization_not_found` aunque el `authorization_id`
+      sea el correcto). Cubre, para las 18 tablas bloqueadas: el token
+      OAuth no borra (0 filas, sin error explícito — así responde
+      PostgREST cuando RLS filtra la fila antes de la sentencia) y la
+      sesión de la app sí borra la misma fila; para `task_labels`, que el
+      token OAuth sí puede borrar; y que SELECT/INSERT/UPDATE con el token
+      OAuth siguen funcionando sin cambios. `pnpm test:rls` en verde (21
+      archivos, 154 tests) y el resto del gate
+      (`pnpm lint && pnpm typecheck && pnpm test`) también.
+- [x] 4.4 **Resultado:** la implementación coincide con lo que D-C ya
+      describía — no hizo falta corregir nada en `design.md`. El único
+      hallazgo nuevo respecto al texto existente es el del cascade (ver
+      4.2), que ya estaba anotado como pendiente de verificar en el
+      encabezado de esta ola y ahora queda confirmado en el comentario de
+      cabecera de la migración.
 
 ## 5. Pantalla de consentimiento y aplicaciones conectadas
 
