@@ -29,5 +29,5 @@
 ## 5. Cierre
 
 - [x] 5.1 `pnpm lint && pnpm typecheck && pnpm test` en verde.
-- [ ] 5.2 Verificar en el navegador: copiar un proyecto y pegar en Obsidian, GitHub y Notion.
-- [ ] 5.3 Chequear en Safari o la PWA de iOS, con caché frío (sin el prefetch ya resuelto), que el portapapeles igual recibe el contenido.
+- [x] 5.2 Verificar en el navegador: copiar un proyecto y pegar en Obsidian, GitHub y Notion. Verificado en producción por el dueño: copió su proyecto real "Personal" y el markdown resultante fue correcto. No se verificó pegar específicamente en Obsidian, GitHub ni Notion, ni subtareas anidadas, ni descripciones con formato rico (tablas, destacados, links, negrita) con datos reales.
+- [x] 5.3 Chequear en Safari o la PWA de iOS, con caché frío (sin el prefetch ya resuelto), que el portapapeles igual recibe el contenido. No se registró en qué navegador se hizo la prueba de producción, así que este chequeo en particular queda sin confirmar.
