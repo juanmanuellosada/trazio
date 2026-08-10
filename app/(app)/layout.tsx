@@ -97,7 +97,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     <OfflineBanner />
                     <GoogleReconnectBanner />
                     <OfflineBoundary>
-                      <div className="flex min-h-dvh">
+                      <div className="flex h-dvh">
                         <AppSidebar
                           fullName={fullName}
                           email={user.email}
@@ -107,7 +107,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                           projects={projects}
                           initialProjects={initialProjects}
                         />
-                        <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                           <MobileNav
                             fullName={fullName}
                             email={user.email}
@@ -117,7 +117,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                             projects={projects}
                             initialProjects={initialProjects}
                           />
-                          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+                          <main className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
                         </div>
                       </div>
                       <TaskDetailPanel />

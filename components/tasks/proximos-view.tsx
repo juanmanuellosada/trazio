@@ -254,7 +254,7 @@ export function ProximosView({
           />
         </div>
       ) : options.viewShape === "calendario" ? (
-        <div className={`flex ${contentWidthClass(options.viewShape)} flex-1 flex-col overflow-hidden p-4 sm:p-6`}>
+        <div className={`flex ${contentWidthClass(options.viewShape)} min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6`}>
           <ScreenCalendar
             timezone={timezone}
             weekStartsOn={weekStartsOn}
