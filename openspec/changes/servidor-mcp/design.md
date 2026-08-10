@@ -597,6 +597,46 @@ trivial. El diseño actual pide el scope `openid email` (ver D-A); queda
 abierto si conviene pedir solo `email` para no depender de esa condición —
 no se resuelve acá, ver Open Questions.
 
+### D-K — `revokeGrant` corta la renovación al instante, pero el access token ya emitido vive hasta que expira solo (hallazgo del cierre, bloque 8)
+
+Medido contra el stack local (mismo grant de 5.6): revocar con `revokeGrant`
+borra la sesión y el refresh token asociados — confirmado en `auth.sessions`
+— pero el access token JWT que el cliente ya tenía emitido sigue sirviendo
+contra PostgREST hasta que vence solo. Verificado: un `GET
+/rest/v1/projects` con el token recién revocado siguió devolviendo 200. Es
+comportamiento documentado de `revokeGrant` ("deletes active sessions...
+invalidates associated refresh tokens" — no menciona el access token) y
+estándar de un JWT sin estado: PostgREST no consulta `auth.sessions` por
+request, así que no tiene forma de enterarse de que el grant se revocó hasta
+que el token mismo expira. Esa expiración natural es de una hora (D-A, "Dura
+3600 s"). No es un bug de esta sección ni del proyecto: es cómo funciona un
+JWT stateless de Supabase.
+
+**Por qué se acepta tal cual, sin intentar cerrar la ventana al instante.**
+Dos alternativas evaluadas, las dos descartadas para esta ola:
+
+1. **Acortar el TTL del access token de forma global.** Reduciría la ventana
+   para todos, pero el TTL es una propiedad del proyecto de Supabase, no de
+   la conexión OAuth: también acortaría la sesión normal de la app (login
+   por cookie), sin scope que distinga una cosa de la otra. Afecta algo que
+   no tiene nada que ver con el problema para resolver un caso puntual.
+2. **Lista de `client_id` revocados, consultada desde las políticas de
+   RLS.** Cortaría el acceso al instante — apenas se revoca, cualquier
+   request con ese `client_id` se rechaza en la base, sin esperar el TTL. Se
+   descarta para esta ola (queda como opción futura, no como tarea
+   pendiente) porque agrega una subconsulta contra esa lista en cada
+   política de cada tabla que el MCP toca — costo por fila en cada acceso,
+   para cubrir un caso que no es el más frecuente (revocar y que el token ya
+   filtrado siga usándose en la próxima hora).
+
+**Consecuencia sobre el texto del producto.** Ni la política de privacidad
+ni la tarea 8.2 de `tasks.md` pueden prometer que revocar corta el acceso
+"al instante" sin matices: lo que se corta al instante es la posibilidad de
+**renovar** el acceso (revokeGrant invalida el refresh token ya emitido); lo
+que ya estaba emitido se apaga solo, como máximo, en una hora. Ajustado en
+`app/(marketing)/privacidad/page.tsx` y en la tarea 8.2, fuera de este
+archivo.
+
 ## Open Questions
 
 - **`description` con formato rico perdido al escribir por MCP:** como

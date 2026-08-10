@@ -219,12 +219,42 @@ modificada de forma individual, no en bloque.
 
 ## 5. Pantalla de consentimiento y aplicaciones conectadas
 
-- [ ] 5.1 Ruta `/oauth/consent`: leer `authorization_id` de la query, pedir detalles con `getAuthorizationDetails`, mostrar qué aplicación pide acceso. Confirmar que el Site URL del proyecto y el path de autorización comparten origen (requisito del servidor OAuth hospedado, ver 1.4).
-- [ ] 5.2 Advertencia visible de la limitación del acceso (spec `consentimiento-oauth`, requirement "La pantalla de consentimiento advierte la limitación del acceso") — mismo criterio de "que se lea, no que esté" que ya usa el enlace de lectura de un proyecto.
-- [ ] 5.3 Aprobar (`approveAuthorization`) y rechazar (`denyAuthorization`), con sus estados de carga y error.
-- [ ] 5.4 Estado para `authorization_id` inválido o vencido, sin revelar más de lo necesario.
-- [ ] 5.5 Definir el tratamiento visual con la skill `ui-ux-pro-max` antes de escribir el CSS (regla del proyecto para pantallas nuevas).
-- [ ] 5.6 Sección "Aplicaciones conectadas" en Configuración: listar con `listGrants`, revocar con `revokeGrant`, estado vacío cuando no hay ninguna.
+- [x] 5.1 Ruta `/oauth/consent`: leer `authorization_id` de la query, pedir detalles con `getAuthorizationDetails`, mostrar qué aplicación pide acceso. Confirmar que el Site URL del proyecto y el path de autorización comparten origen (requisito del servidor OAuth hospedado, ver 1.4).
+- [x] 5.2 Advertencia visible de la limitación del acceso (spec `consentimiento-oauth`, requirement "La pantalla de consentimiento advierte la limitación del acceso") — mismo criterio de "que se lea, no que esté" que ya usa el enlace de lectura de un proyecto.
+- [x] 5.3 Aprobar (`approveAuthorization`) y rechazar (`denyAuthorization`), con sus estados de carga y error.
+- [x] 5.4 Estado para `authorization_id` inválido o vencido, sin revelar más de lo necesario.
+- [x] 5.5 Definir el tratamiento visual con la skill `ui-ux-pro-max` antes de escribir el CSS (regla del proyecto para pantallas nuevas).
+- [x] 5.6 Sección "Aplicaciones conectadas" en Configuración: listar con `listGrants`, revocar con `revokeGrant`, estado vacío cuando no hay ninguna.
+      **Resultado (2026-08-10):** `listGrants()` se probó contra el stack local
+      con un grant real (registro dinámico + `/oauth/authorize` + consentimiento,
+      mismo camino que `supabase/tests/oauth.ts`) antes de diseñar la interfaz:
+      la forma real es `{ client: { id, name }, scopes: string[], granted_at:
+      string }` — el `.d.ts` de `auth-js` declara además `client.uri` y
+      `client.logo_uri`, pero el servidor no los manda; la interfaz no los usa.
+      `lib/oauth/use-connected-apps.ts` (TanStack Query, mismo patrón que
+      `lib/calendar/`) y `components/settings/connected-apps-section.tsx`
+      (mismo gesto de lista + acción inline que `calendars-section.tsx`, sin
+      diálogo de confirmación porque revocar no borra datos, con
+      `toastSuccess`/`toastError`). Sección nueva en `settings-modal.tsx` y
+      `SectionId` (`settings-context.tsx`). Verificado en el navegador contra
+      el stack local: el grant aparece con nombre y fecha, "Cortar acceso" lo
+      saca de la lista al instante con el toast de confirmación, y el estado
+      vacío es el texto que ve cualquiera hoy (sin servidor MCP todavía).
+      **Hallazgo importante para el cierre (bloque 8):** revocar borra la
+      sesión y el refresh token (confirmado en `auth.sessions` del stack
+      local), pero el access token JWT ya emitido **sigue sirviendo contra
+      PostgREST hasta que expira solo** (verificado: un `GET
+      /rest/v1/projects` con el token revocado siguió devolviendo 200). Es
+      comportamiento documentado de `revokeGrant` ("deletes active sessions...
+      invalidates associated refresh tokens" — no menciona el access token), no
+      un bug de esta sección: los JWT son sin estado y PostgREST no consulta
+      `auth.sessions` por request. La frase de la política de privacidad
+      "podés cortarle el acceso en el momento" y la tarea 8.0/8.2 de este
+      documento ("confirmar que el token dejó de servir") no son ciertas de
+      forma inmediata con este mecanismo — quedan ciertas recién cuando el
+      access token expira solo (1 hora en este stack). No se resuelve acá:
+      queda para quien cierre el bloque 8 decidir si hace falta acortar el TTL
+      del access token o ajustar el texto.
 - [ ] 5.7 Tests de componente para consentimiento y aplicaciones conectadas.
 
 ## 6. Servidor MCP: lectura
@@ -281,7 +311,7 @@ ola.
       presente, que cada una es cierta en producción — no solo la del borrado bloqueado (mismo criterio que
       el `DELETE` real rechazado de 8.3, extendido al resto del texto).
 - [ ] 8.1 `pnpm lint && pnpm typecheck && pnpm test && pnpm test:rls` en verde (se agrega `test:rls` por la Ola 4).
-- [ ] 8.2 Verificar en el navegador: aprobar una conexión real desde `/oauth/consent`, ver la aplicación listada en "Aplicaciones conectadas", revocarla y confirmar que el token dejó de servir.
+- [ ] 8.2 Verificar en el navegador: aprobar una conexión real desde `/oauth/consent`, ver la aplicación listada en "Aplicaciones conectadas" y revocarla. Confirmar tres cosas por separado, no una sola "el token dejó de servir" (D-K de `design.md`: el access token ya emitido no se corta al revocar, vive hasta que expira solo): que la sesión y el refresh token desaparecen de `auth.sessions`, que el cliente ya no puede renovar el access token con ese refresh token, y que el access token emitido antes de revocar sigue sirviendo contra PostgREST hasta que vence solo — a la hora, no antes — y recién ahí deja de servir sin intervención adicional.
 - [ ] 8.3 Verificar con un cliente MCP real (Claude u otro compatible) conectado al deploy: ejecutar cada una de las nueve herramientas al menos una vez, incluida completar una tarea recurrente y confirmar que crea la siguiente ocurrencia. Además, con el access token obtenido, intentar un `DELETE` directo contra PostgREST (fuera de las herramientas del MCP) y confirmar que la política de RLS de la Ola 4 lo rechaza.
 - [ ] 8.4 Revisar que ninguna herramienta, ni el código del servidor MCP, referencia la `service_role` key en ningún punto.
 - [ ] 8.5 Correr el test binario de 1.4/3.2 contra producción (`GET .well-known/oauth-authorization-server/auth/v1`) como parte del cierre, para confirmar que el servidor OAuth quedó habilitado antes de dar el cambio por terminado.

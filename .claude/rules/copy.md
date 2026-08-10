@@ -59,6 +59,29 @@ Formato según la preferencia del usuario. En texto corrido usar lenguaje natura
 ("hoy", "mañana", "el martes") antes que la fecha numérica cuando está a menos de
 una semana.
 
+## Precisión sobre plazos técnicos
+
+Cuando un texto describe algo que tiene una demora real, no prometas algo
+instantáneo si no lo es del todo. Decí el plazo real en lenguaje simple en vez
+de redondearlo a "al instante" o a "poco tiempo". Es matiz de honestidad, no
+alarma: no se trata de advertir un riesgo de seguridad, sino de describir bien
+lo que efectivamente pasa.
+
+- Sí (revocar el acceso de un asistente de IA conectado): "pierde al instante
+  la posibilidad de renovarlo, y lo que ya tenía autorizado se apaga solo,
+  como máximo, en una hora."
+- No: "podés cortarle el acceso en el momento" (cuando lo ya emitido puede
+  seguir funcionando hasta una hora más).
+
+**Registro:** 2026-08-10 — política de privacidad, sección "Cómo funciona
+conectar un asistente de IA". El texto original decía que revocar cortaba el
+acceso "en el momento", pero medido contra el stack (`docs` de
+`openspec/changes/servidor-mcp/design.md`, decisión D-K) el access token ya
+emitido sigue sirviendo contra la base hasta que vence solo, una hora
+después. Se corrigió el texto para separar lo que sí es inmediato (dejar de
+poder renovar el acceso) de lo que tarda hasta una hora en apagarse solo, en
+vez de elegir entre mentir por omisión o sonar alarmista.
+
 ## Palabras del producto
 
 Vocabulario fijo. Usar siempre el mismo término:

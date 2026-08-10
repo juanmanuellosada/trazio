@@ -2,8 +2,15 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-/** Las seis secciones del modal (bloque 9, sexta sección "Calendarios" en el bloque 7.4). Vive acá, no en `settings-modal.tsx`, para que quien abre el modal (p. ej. el banner de reconexión, bloque 7.7) pueda pedir una sección puntual sin importar el módulo del modal entero. */
-export type SectionId = "cuenta" | "general" | "notificaciones" | "tema" | "instalacion" | "calendarios";
+/** Las secciones del modal (bloque 9, sexta sección "Calendarios" en el bloque 7.4, séptima "Aplicaciones conectadas" en `servidor-mcp` 5.6). Vive acá, no en `settings-modal.tsx`, para que quien abre el modal (p. ej. el banner de reconexión, bloque 7.7) pueda pedir una sección puntual sin importar el módulo del modal entero. */
+export type SectionId =
+  | "cuenta"
+  | "general"
+  | "notificaciones"
+  | "tema"
+  | "instalacion"
+  | "calendarios"
+  | "aplicaciones-conectadas";
 
 type SettingsContextValue = {
   isOpen: boolean;

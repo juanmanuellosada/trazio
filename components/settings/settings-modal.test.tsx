@@ -30,9 +30,13 @@ vi.mock("next/navigation", () => ({
  * resuelve el usuario con `auth.getUser()` (necesita `identities`, que no
  * viaja en el JWT) y después lee `profiles`/`user_preferences` por id —
  * acá alcanza con devolver una fila fija por tabla, sin encadenar filtros.
+ * `auth.oauth.listGrants` también está mockeado: la sección "Aplicaciones
+ * conectadas" (`servidor-mcp` 5.6) se monta siempre, igual que Calendarios,
+ * así que llama a `listGrants` apenas se abre el modal.
  */
 vi.mock("@/lib/supabase/client", () => {
   const getUser = vi.fn();
+  const listGrants = vi.fn(() => Promise.resolve({ data: [], error: null }));
   const from = vi.fn((table: string) => ({
     select: () => ({
       eq: () => ({
@@ -58,7 +62,7 @@ vi.mock("@/lib/supabase/client", () => {
   return {
     createClient: () => ({
       from,
-      auth: { getUser, signInWithPassword: vi.fn(), updateUser: vi.fn(), unlinkIdentity: vi.fn() },
+      auth: { getUser, signInWithPassword: vi.fn(), updateUser: vi.fn(), unlinkIdentity: vi.fn(), oauth: { listGrants, revokeGrant: vi.fn() } },
     }),
     __mock: { getUser },
   };
@@ -140,7 +144,7 @@ describe("SettingsModal (bloque 9)", () => {
     expect(screen.getByRole("dialog", { name: "Configuración" })).toBeInTheDocument();
   });
 
-  it("muestra las seis secciones de fase 4, con Calendarios (bloque 7.4)", async () => {
+  it("muestra las siete secciones, con Calendarios (bloque 7.4) y Aplicaciones conectadas (servidor-mcp 5.6)", async () => {
     await openModal();
 
     const nav = screen.getByRole("navigation", { name: "Secciones de configuración" });
@@ -150,7 +154,8 @@ describe("SettingsModal (bloque 9)", () => {
     expect(within(nav).getByRole("button", { name: "Tema" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Instalación" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Calendarios" })).toBeInTheDocument();
-    expect(within(nav).getAllByRole("button")).toHaveLength(6);
+    expect(within(nav).getByRole("button", { name: "Aplicaciones conectadas" })).toBeInTheDocument();
+    expect(within(nav).getAllByRole("button")).toHaveLength(7);
   });
 
   it("open(\"calendarios\") abre el modal directo en esa sección (bloque 7.7)", async () => {

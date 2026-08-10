@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
-import { Bell, CalendarDays, ChevronLeft, Download, Palette, SlidersHorizontal, User } from "lucide-react";
+import { Bell, CalendarDays, ChevronLeft, Download, Palette, Plug, SlidersHorizontal, User } from "lucide-react";
 import { AppDialog } from "@/components/primitives/dialog";
 import { useSettings, type SectionId } from "./settings-context";
 import { useSettingsData } from "@/lib/preferences/use-settings-data";
@@ -11,6 +11,7 @@ import { ThemeSection } from "./theme-section";
 import { InstallSection } from "./install-section";
 import { NotificationsSection } from "./notifications-section";
 import { CalendarsSection } from "./calendars-section";
+import { ConnectedAppsSection } from "./connected-apps-section";
 import { AppBadgeSync } from "./app-badge-sync";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?
   { id: "tema", label: "Tema", icon: Palette },
   { id: "instalacion", label: "Instalación", icon: Download },
   { id: "calendarios", label: "Calendarios", icon: CalendarDays },
+  { id: "aplicaciones-conectadas", label: "Aplicaciones conectadas", icon: Plug },
 ];
 
 /**
@@ -29,6 +31,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?
  * "Secciones del modal de configuración en fase 1"). Notificaciones se
  * suma en fase 2 (bloque 4.9, recordatorios push); Calendarios en fase 4
  * (bloque 7.4, D7 resuelto): `CalendarsSection` ya no queda sin montar.
+ * Aplicaciones conectadas se suma en `servidor-mcp` 5.6.
  *
  * Vive una sola vez en `app/(app)/layout.tsx`, junto a `TaskDetailPanel`:
  * cualquier punto de entrada la abre a través de `useSettings()` sin
@@ -39,7 +42,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?
  *
  * En mobile, la lista de secciones y el contenido de la elegida ocupan el
  * modal por turnos (con un botón "Volver") en vez de mostrarse lado a
- * lado: no entran los dos a la vez en un ancho de teléfono. Los seis
+ * lado: no entran los dos a la vez en un ancho de teléfono. Los siete
  * paneles de contenido quedan siempre montados —solo se ocultan con
  * `hidden`— para no perder lo que la persona esté escribiendo si navega
  * entre secciones dentro de la misma apertura del modal.
@@ -145,6 +148,12 @@ export function SettingsModal() {
             </div>
             <div data-testid="panel-calendarios" className={effectiveSection === "calendarios" ? "block" : "hidden"}>
               <CalendarsSection />
+            </div>
+            <div
+              data-testid="panel-aplicaciones-conectadas"
+              className={effectiveSection === "aplicaciones-conectadas" ? "block" : "hidden"}
+            >
+              <ConnectedAppsSection />
             </div>
           </div>
         </div>
