@@ -1,6 +1,11 @@
 import type { CallToolResult, McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { createMcpSupabaseClient } from "./client";
+import { archivar, archivarInputSchema } from "./tools/archivar";
+import { completarTarea, completarTareaInputSchema } from "./tools/completar-tarea";
 import { consultarTareas, consultarTareasInputSchema } from "./tools/consultar-tareas";
+import { crear, crearInputSchema } from "./tools/crear";
+import { crearTarea, crearTareaInputSchema } from "./tools/crear-tarea";
+import { editar, editarInputSchema } from "./tools/editar";
 import { listarEstructura, listarEstructuraInputSchema } from "./tools/listar-estructura";
 import { listarHabitos, listarHabitosInputSchema } from "./tools/listar-habitos";
 import { obtenerTarea, obtenerTareaInputSchema } from "./tools/obtener-tarea";
@@ -22,11 +27,13 @@ function requireAccessToken(ctx: ServerContext): string | null {
 
 /**
  * Arma el servidor MCP de Trazio: registra las cuatro herramientas de
- * lectura de la Ola 6 (spec `mcp`, D-G/D-H de `design.md`). Cada
- * herramienta arma su propio cliente de Supabase con el token del pedido
- * — nunca la `service_role` — para que RLS aplique igual que en la app
- * (D-A de `design.md`, requirement "Toda herramienta del MCP opera bajo el
- * token OAuth del usuario conectado").
+ * lectura de la Ola 6 y las cinco de escritura de la Ola 7 (spec `mcp`,
+ * D-G/D-H de `design.md`) — nueve en total, ninguna de borrado (requirement
+ * "El servidor MCP nunca ofrece borrar"). Cada herramienta arma su propio
+ * cliente de Supabase con el token del pedido — nunca la `service_role` —
+ * para que RLS aplique igual que en la app (D-A de `design.md`, requirement
+ * "Toda herramienta del MCP opera bajo el token OAuth del usuario
+ * conectado").
  */
 export function initializeMcpServer(server: McpServer): void {
   server.registerTool(
@@ -109,6 +116,108 @@ export function initializeMcpServer(server: McpServer): void {
 
       const result = await listarHabitos(createMcpSupabaseClient(token), args);
       return textResult(result);
+    },
+  );
+
+  server.registerTool(
+    "crear_tarea",
+    {
+      title: "Crear tarea",
+      description:
+        "Crea una tarea a partir de un texto en lenguaje natural (ver texto): reconoce fecha, hora, " +
+        "prioridad, etiquetas y proyecto igual que el alta rápida de la app. Para lo que el texto no " +
+        "exprese, usar project_id/section_id/parent_id. Nunca acepta position: la base la asigna sola. Es " +
+        "la única herramienta de escritura que recibe lenguaje natural — para crear proyectos, hábitos, " +
+        "etiquetas o filtros usar crear.",
+      inputSchema: crearTareaInputSchema,
+    },
+    async (args, ctx) => {
+      const token = requireAccessToken(ctx);
+      if (!token) return textResult("No autenticado: falta el access token.", true);
+
+      const result = await crearTarea(createMcpSupabaseClient(token), args);
+      if (!result.ok) return textResult(result.error, true);
+      return textResult(result.task);
+    },
+  );
+
+  server.registerTool(
+    "crear",
+    {
+      title: "Crear",
+      description:
+        "Crea un proyecto, hábito, etiqueta o filtro (ver tipo). Nunca tipo: tarea — usar crear_tarea en su " +
+        'lugar. En proyecto, la base asigna position sola (nunca mandarla). Un filtro con "query" inválida ' +
+        "en el lenguaje de consulta se rechaza antes de guardar.",
+      inputSchema: crearInputSchema,
+    },
+    async (args, ctx) => {
+      const token = requireAccessToken(ctx);
+      if (!token) return textResult("No autenticado: falta el access token.", true);
+
+      const result = await crear(createMcpSupabaseClient(token), args);
+      if (!result.ok) return textResult(result.error, true);
+      return textResult({ id: result.id, tipo: result.tipo, name: result.name });
+    },
+  );
+
+  server.registerTool(
+    "editar",
+    {
+      title: "Editar",
+      description:
+        "Edita una tarea, proyecto, hábito, etiqueta o filtro ya existente (tipo + id, de una lectura " +
+        "previa) cambiando solo los campos que se manden. Nunca acepta completed_at (usar completar_tarea) " +
+        "ni position (la asigna la base) — cualquiera de los dos rechaza la llamada entera. En tarea, " +
+        "labels reemplaza el conjunto completo de etiquetas, no lo suma.",
+      inputSchema: editarInputSchema,
+    },
+    async (args, ctx) => {
+      const token = requireAccessToken(ctx);
+      if (!token) return textResult("No autenticado: falta el access token.", true);
+
+      const result = await editar(createMcpSupabaseClient(token), args);
+      if (!result.ok) return textResult(result.error, true);
+      return textResult("Editado.");
+    },
+  );
+
+  server.registerTool(
+    "completar_tarea",
+    {
+      title: "Completar tarea",
+      description:
+        "Completa o descompleta una tarea (id, de una lectura previa) con completado. Al completar una " +
+        "tarea con recurrence_rule, crea automáticamente la siguiente ocurrencia de la serie — nunca usar " +
+        "editar para completar, pierde ese efecto. Al descompletar, ningún efecto lateral.",
+      inputSchema: completarTareaInputSchema,
+    },
+    async (args, ctx) => {
+      const token = requireAccessToken(ctx);
+      if (!token) return textResult("No autenticado: falta el access token.", true);
+
+      const result = await completarTarea(createMcpSupabaseClient(token), args);
+      if (!result.ok) return textResult(result.error, true);
+      return textResult({ completado: args.completado, next_occurrence_id: result.next_occurrence_id });
+    },
+  );
+
+  server.registerTool(
+    "archivar",
+    {
+      title: "Archivar",
+      description:
+        "Archiva un proyecto o hábito (tipo + id, de una lectura previa). Es la única forma de baja que " +
+        "ofrece el MCP: nunca borra, y no existe un tipo para desarchivar.",
+      inputSchema: archivarInputSchema,
+    },
+    async (args, ctx) => {
+      const token = requireAccessToken(ctx);
+      if (!token) return textResult("No autenticado: falta el access token.", true);
+
+      const result = await archivar(createMcpSupabaseClient(token), args);
+      if (!result.ok) return textResult(result.error, true);
+      return textResult("Archivado.");
     },
   );
 }

@@ -2,27 +2,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { colorForLabelName } from "@/lib/labels/color-for-name";
 import { labelsQueryKey } from "@/lib/labels/use-labels";
 import type { Json } from "@/lib/supabase/database.types";
 import { reportTaskError } from "@/lib/tasks/errors";
 import { nextSiblingPositionInContext } from "@/lib/tasks/tree";
 import { tasksQueryKey, type TaskRow } from "@/lib/tasks/use-tasks";
-import { PROJECT_COLOR_IDS } from "@/lib/validation/colors";
 import type { DraftReminder } from "@/lib/reminders/use-reminders";
 import type { ParseResult } from "./types";
-
-/**
- * `labels.color` no admite `null` (B4/OQ1) y acá no hay selector de color:
- * la etiqueta nace del `@` del alta rápida, sin que el usuario elija nada.
- * Determinístico por nombre (no random) para que crear "@compras" dos
- * veces en momentos distintos —si por lo que sea no encontró la existente—
- * caiga siempre en el mismo color, en vez de uno distinto cada vez.
- */
-function colorForLabelName(name: string): (typeof PROJECT_COLOR_IDS)[number] {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return PROJECT_COLOR_IDS[hash % PROJECT_COLOR_IDS.length];
-}
 
 // Mismo prefijo que usa `lib/tasks/mutations.ts` para Hoy y Completado — no
 // están exportados desde ahí (cada mutación define su copia), así que esto

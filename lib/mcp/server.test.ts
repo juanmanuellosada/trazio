@@ -2,18 +2,28 @@ import { describe, expect, it, vi } from "vitest";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { initializeMcpServer } from "./server";
 
-const EXPECTED_TOOLS = ["consultar_tareas", "obtener_tarea", "listar_estructura", "listar_habitos"];
+const EXPECTED_TOOLS = [
+  "consultar_tareas",
+  "obtener_tarea",
+  "listar_estructura",
+  "listar_habitos",
+  "crear_tarea",
+  "crear",
+  "editar",
+  "completar_tarea",
+  "archivar",
+];
 
 function fakeServerContext(token?: string): ServerContext {
   return { http: token ? { authInfo: { token, clientId: "c1", scopes: [] } } : undefined } as unknown as ServerContext;
 }
 
 describe("initializeMcpServer", () => {
-  it("registra exactamente las cuatro herramientas de lectura de la Ola 6, cada una con su inputSchema", () => {
+  it("registra las cuatro herramientas de lectura de la Ola 6 y las cinco de escritura de la Ola 7, cada una con su inputSchema", () => {
     const registerTool = vi.fn();
     initializeMcpServer({ registerTool } as unknown as McpServer);
 
-    expect(registerTool).toHaveBeenCalledTimes(4);
+    expect(registerTool).toHaveBeenCalledTimes(9);
     const registeredNames = registerTool.mock.calls.map((call) => call[0]);
     expect(registeredNames.sort()).toEqual([...EXPECTED_TOOLS].sort());
 

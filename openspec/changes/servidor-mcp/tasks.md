@@ -379,23 +379,126 @@ modificada de forma individual, no en bloque.
       punta a punta — eso es la tarea 8.3 del cierre, contra el deploy, no
       contra el stack local.
 
-## 7. Servidor MCP: escritura protegida
+## 7. Servidor MCP: escritura protegida — OLA COMPLETADA (2026-08-10)
 
-- [ ] 7.1 **Validador de forma para `description` antes de escribir** (reemplaza el conversor `lib/tiptap/text-to-tiptap.ts` que este diseño pedía originalmente — ver D-E caso 2 corregido en `design.md`, hallazgo de la Ola 1): si `description` no es `null` y no es un string, debe cumplir la forma `{type: "doc", content: [...]}` o la escritura se rechaza. Cuando llega como string, se guarda tal cual — Tiptap la interpreta como HTML al leer, sin conversión previa. Test para el caso de rechazo (objeto que no es un doc válido) y el caso de string aceptado tal cual.
-- [ ] 7.2 `crear_tarea`: recibe `texto` en lenguaje natural y lo pasa por el parser de `lib/parser/` (mismo camino que `lib/parser/create-task-from-parse.ts` usa para el alta rápida de la app), con `project_id`/`section_id`/`parent_id` opcionales como contexto estructurado. `position` siempre omitida (D-F). `description`, si viene, pasa por el validador de 7.1 — un string se guarda tal cual, no se convierte. Herramienta propia, no pasa por el discriminador `tipo` de 7.3 (D-G).
-- [ ] 7.3 `crear`: discriminador `tipo` (`proyecto`, `habito`, `etiqueta`, `filtro` — nunca `tarea`, que tiene su propia herramienta en 7.2), `position` siempre omitida en `proyecto`, `query` de un `filtro` validada con el parser antes de guardar.
-- [ ] 7.4 `editar`: discriminador `tipo` (`tarea`, `proyecto`, `habito`, `etiqueta`, `filtro`) + `id`, valida explícitamente que el payload NUNCA incluya `completed_at` ni `position` — rechazo explícito, no solo omisión silenciosa. Cuando `tipo: tarea` y viene `description`, pasa por el validador de 7.1 (mismo criterio que 7.2).
-- [ ] 7.5 `completar_tarea`: `UPDATE tasks SET completed_at` directo, y si `completado: true` sobre una tarea recurrente, llama a `createNextRecurringOccurrence` (`lib/recurrence/create-next-occurrence.ts`) reutilizada tal cual con el cliente autenticado del usuario.
-- [ ] 7.6 `archivar`: discriminador `tipo` (`proyecto`, `habito`) únicamente.
-- [ ] 7.7 Tests de cada herramienta de escritura: los casos de rechazo (`completed_at`/`position` en `editar`, `tipo: tarea` en `crear`, `tipo: seccion` en `crear`/`editar`), el caso de recurrencia, y el caso de filtro inválido.
+- [x] 7.1 **Resultado:** `lib/mcp/tools/description.ts`, función
+      `validateDescription`. `null` se acepta tal cual; un string se acepta
+      tal cual, **sin ninguna conversión** — ni siquiera partir por saltos
+      de línea (ver el cierre de esta sección: la "decisión pendiente" ya
+      estaba resuelta por el spec delta, no quedaba abierta). Un objeto se
+      acepta solo si cumple `{type: "doc", content: [...]}` (chequeo de
+      forma únicamente — Tiptap valida cada nodo interno al leer, no hace
+      falta duplicarlo); cualquier otra cosa se rechaza antes de escribir.
+      Tests en `description.test.ts`: string tal cual, `null`, doc válido,
+      objeto sin forma de doc rechazado, número y array rechazados.
+- [x] 7.2 **Resultado:** `lib/mcp/tools/crear-tarea.ts`. `parse()`
+      (`lib/parser/parse.ts`) reutilizado tal cual, con el mismo contexto
+      que `use-parser-context.ts` arma para el cliente (proyectos con su
+      ruta de ancestros — extraída a `lib/parser/project-path.ts`, reusada
+      por los dos lados — secciones, etiquetas), leído acá directo de
+      Supabase en vez de la caché de TanStack Query. Etiquetas `@` nuevas
+      se crean con el mismo color determinístico que el alta rápida
+      (extraído a `lib/labels/color-for-name.ts`, reusado por los dos
+      lados). El destino sigue el mismo orden de prioridad que
+      `mergeDestination` en `task-quick-add-row.tsx`: `#proyecto`
+      reconocido en el texto gana sobre `project_id`/`section_id`
+      explícitos, que ganan sobre la Bandeja de entrada por defecto.
+      `position` nunca se manda. `description` pasa por 7.1.
+- [x] 7.3 **Resultado:** `lib/mcp/tools/crear.ts`. `tipo: tarea` rechazado
+      con mensaje que apunta a `crear_tarea`. `position` rechazado
+      explícitamente (declarado en el schema, chequeado en el handler) para
+      cualquier `tipo`, no solo `proyecto`. Un `filtro` con `query` inválida
+      se valida con `parseQuery` (`lib/query-language/parse.ts`, la misma
+      función de `consultar_tareas`) antes de guardar.
+- [x] 7.4 **Resultado:** `lib/mcp/tools/editar.ts`. `completed_at` y
+      `position` declarados en el `inputSchema` como campos prohibidos
+      (para que el modelo los vea) y rechazados en el handler antes de
+      tocar la base — nunca stripeados en silencio por Zod. `labels`
+      reemplaza el conjunto completo de `task_labels` de una tarea (borrar
+      + insertar, mismo criterio que `useReplaceTaskLabels`); permitido a
+      propósito para un token OAuth, es la única tabla que la migración de
+      RLS de la Ola 4 dejó sin bloquear. Antes de escribir, confirma que la
+      entidad existe bajo RLS (`entityExists`, `shared.ts`) — sin esto, un
+      id ajeno o inexistente contestaba "éxito" sin haber tocado ninguna
+      fila.
+- [x] 7.5 **Resultado:** `lib/mcp/tools/completar-tarea.ts`. `UPDATE tasks
+      SET completed_at` directo, y si `completado: true` queda puesto,
+      llama a `createNextRecurringOccurrence`
+      (`lib/recurrence/create-next-occurrence.ts`) **reutilizada tal
+      cual**, sin ningún cambio, con el cliente autenticado del usuario —
+      confirmado que es pura (no depende de React ni de contexto de
+      navegador) tanto leyendo el código como corriéndola contra el stack
+      local (ver 7.7 más abajo). D53 (completar antes de vencer corta en el
+      vencimiento, no en hoy) se resuelve adentro de esa función; nada
+      especial que hacer acá.
+- [x] 7.6 **Resultado:** `lib/mcp/tools/archivar.ts`. Discriminador `tipo`
+      (`proyecto`, `habito`) únicamente, `UPDATE is_archived = true`
+      directo — el esquema ya protege este campo (columna booleana simple,
+      sin invariante que romper), así que no hace falta envolverlo (D-E).
+      La Bandeja de entrada, protegida a nivel de esquema, sigue
+      rechazando el archivado también por esta vía (verificado contra el
+      stack local, 7.7).
+- [x] 7.7 **Resultado:** unitarios (58 tests nuevos, 6 archivos) en
+      `lib/mcp/tools/{description,crear-tarea,crear,editar,completar-tarea,
+      archivar}.test.ts`, mismo patrón de fake de Supabase por tabla que la
+      Ola 6. Cubren los casos de rechazo (`completed_at`/`position` en
+      `editar`, `tipo: tarea` en `crear`, `tipo: seccion` en
+      `crear`/`editar`, id con formato inválido, id inexistente/de otra
+      cuenta), el caso de recurrencia (con y sin `recurrence_rule`,
+      descompletar no dispara nada) y el caso de filtro inválido. Las
+      cuatro herramientas de lectura de la Ola 6 se registran junto a las
+      cinco nuevas en `lib/mcp/server.ts` (nueve en total,
+      `server.test.ts` actualizado a 9). `pnpm lint && pnpm typecheck &&
+      pnpm test` en verde (240 archivos, 2012 tests).
+      **Contra el stack local** (Docker + `supabase start`, token OAuth
+      real vía `getOAuthAccessToken` de `supabase/tests/oauth.ts`, mismo
+      patrón que `oauth-delete-restrictions.test.ts` de la Ola 4): nuevo
+      `supabase/tests/mcp-write.test.ts` (7 tests, `pnpm test:rls` en
+      verde, 22 archivos / 161 tests):
+      1. **El invariante de recurrencia, contra Postgres real:** una tarea
+         con `recurrence_rule: "FREQ=DAILY"` y `due_date` de hoy,
+         completada por `completar_tarea`, generó una fila nueva con el
+         mismo título y la misma regla, `completed_at: null`, y
+         `due_date` **distinto** del original (D53: avanzó al día
+         siguiente, no se duplicó en la misma fecha) — el escenario más
+         grave de esta ola confirmado de punta a punta, no solo en el
+         fake.
+      2. `crear_tarea` con "Llamar al contador mañana a las 10 p2" produjo
+         título "Llamar al contador", `priority: 2`, `due_at` seteado y
+         `due_date: null` en la fila real; `position` la asignó el trigger
+         de la Ola 2 (> 0), nunca se mandó.
+      3. Un objeto `{text: "forma inválida"}` en `description` vía `editar`
+         se rechazó, y la descripción original ("Notas originales") siguió
+         intacta en la base — el segundo invariante confirmado sin fake de
+         por medio.
+      4. `crear` con `tipo: filtro` y `query: "priority:"` se rechazó antes
+         de guardar: mismo conteo de filas en `filters` antes y después.
+      5. `archivar` sobre un proyecto propio lo marcó `is_archived: true`
+         sin borrar su tarea; sobre la Bandeja de entrada (confirmado que
+         `crear_tarea` sin `project_id` cae ahí, igual que en la app) el
+         trigger de esquema que la protege (`.claude/rules/database.md`)
+         siguió rechazando el archivado también por esta vía nueva.
+      6. Una tarea creada por `crear_tarea` con el token OAuth, borrada con
+         ese mismo token directo contra PostgREST (`.delete()`), no perdió
+         ninguna fila — la garantía de la Ola 4 sigue en pie para datos que
+         crean las herramientas nuevas.
+      **Presupuesto de contexto** (medido serializando `name` + `title` +
+      `description` + `inputSchema` de cada herramienta, tal como viaja en
+      `tools/list` — mismo método que reproduce los 3876 caracteres ya
+      reportados de las cuatro de lectura): las cinco de escritura suman
+      **9025 caracteres**, total de las nueve **12901**. `editar` es la más
+      pesada (3871: cubre 24 campos de cinco entidades) — se acortaron los
+      prefijos `'Solo tipo "X":'` a `"[X]"` en `crear`/`editar` antes de
+      cerrar la ola (ahorró ~560 caracteres) sin sacar ningún campo.
 
-**Decisión pendiente chica, no resuelta en esta ola (Ola 1, hallazgo sobre
-Tiptap):** como Tiptap interpreta un string como HTML, los saltos de línea de
-una descripción de varios párrafos escrita en texto plano se colapsan en un
-solo párrafo. Partir el texto por saltos de línea antes de guardar (mucho
-menos trabajo que un conversor completo) resolvería esto, pero queda como
-decisión abierta — ver Open Questions de `design.md` — no como tarea de esta
-ola.
+**Decisión de la "decisión pendiente" de la Ola 1 (saltos de línea en
+`description`): no se parte.** El spec delta de esta ola (`specs/mcp/
+spec.md`) ya no la deja abierta — fija como requirement literal que un
+string "SHALL guardarse tal cual, sin conversión". Partir por saltos de
+línea sería una conversión, y ni el alta rápida de la app lo hace hoy para
+el mismo caso (un string tal cual, interpretado como HTML). Implementarlo
+acá habría sido un comportamiento nuevo no pedido por el spec ni consistente
+con la app — así que `validateDescription` (7.1) no lo hace.
 
 ## 8. Cierre
 

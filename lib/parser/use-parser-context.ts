@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useLabels } from "@/lib/labels/use-labels";
-import { useProjects, type ProjectRow } from "@/lib/projects/use-projects";
+import { useProjects } from "@/lib/projects/use-projects";
+import { projectPath } from "./project-path";
 import type { ParserLabel, ParserProject } from "./types";
 
 type AllSectionRow = { id: string; project_id: string; name: string };
@@ -26,19 +27,6 @@ async function fetchAllSections(): Promise<AllSectionRow[]> {
 
 function useAllSections() {
   return useQuery({ queryKey: ALL_SECTIONS_QUERY_KEY, queryFn: fetchAllSections });
-}
-
-/** Ruta de ancestros de un proyecto ("Trabajo" o "Trabajo/Personal", hasta los 3 niveles del bloque 6.3), la que espera `ParserProject.path`. */
-function projectPath(projects: ProjectRow[], project: ProjectRow): string {
-  const names = [project.name];
-  let current = project;
-  while (current.parent_id) {
-    const parent = projects.find((p) => p.id === current.parent_id);
-    if (!parent) break;
-    names.unshift(parent.name);
-    current = parent;
-  }
-  return names.join("/");
 }
 
 /**

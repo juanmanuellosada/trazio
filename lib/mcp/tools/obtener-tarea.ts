@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import { MCP_TASK_COLUMNS, toMcpTaskItem, type McpTaskItem, type RawTaskRow } from "./shared";
+import { MCP_TASK_COLUMNS, invalidUuidError, isValidUuid, toMcpTaskItem, type McpTaskItem, type RawTaskRow } from "./shared";
 
 /**
  * `id` va como `z.string()` a secas, sin `.uuid()` acá: el formato se valida
@@ -37,9 +37,6 @@ type RawTaskDetailRow = RawTaskRow & {
 
 const TASK_DETAIL_COLUMNS = `${MCP_TASK_COLUMNS}, created_at, recurrence_rule, recurrence_ends_at, recurrence_count, recurrence_anchor`;
 
-/** Forma genérica de un UUID (cualquier versión/variante): lo que Postgres acepta para la columna `id` de `tasks`, sin tocar la base para saberlo. */
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export type ObtenerTareaResult = { ok: true; task: McpTaskDetail } | { ok: false; error: string };
 
 /**
@@ -60,11 +57,8 @@ export async function obtenerTarea(
   supabase: SupabaseClient<Database>,
   input: ObtenerTareaInput,
 ): Promise<ObtenerTareaResult> {
-  if (!UUID_PATTERN.test(input.id)) {
-    return {
-      ok: false,
-      error: `El id "${input.id}" no tiene el formato de un UUID válido, por ejemplo "3fa85f64-5717-4562-b3fc-2c963f66afa6".`,
-    };
+  if (!isValidUuid(input.id)) {
+    return { ok: false, error: invalidUuidError(input.id) };
   }
 
   const { data: task, error } = await supabase
