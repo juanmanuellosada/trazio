@@ -390,3 +390,30 @@ como markdown al portapapeles (D60).
 - **WHEN** se audita cualquier respuesta de "Preguntas directas"
 - **THEN** SHALL poder rastrearse a una restricción o excepción documentada
   en `docs/product-spec.md` §13 o `docs/decisions.md`
+
+### Requirement: Metadata y tarjeta de compartir con el diferencial, no la categoría
+
+La landing SHALL exponer, en su metadata (`<title>`, `description` y sus
+equivalentes de `openGraph`), el diferencial de Trazio —tareas, hábitos y
+calendario juntos— en vez de describir solo la categoría ("gestor de
+tareas"). El `<title>` SHALL conservar el término de categoría como anzuelo
+de búsqueda, pero SHALL sumarle las tres cosas que junta Trazio. La imagen
+de compartir (`opengraph-image.tsx`) SHALL usar la misma promesa en su
+bajada y en su texto alternativo, y SHALL verificarse generada (no solo
+leída en el código) para confirmar que el texto entra en el lienzo de
+1200×630 sin desbordarse ni cortarse.
+
+#### Scenario: El título nombra las tres cosas, no solo la categoría
+
+- **WHEN** se revisa el `<title>` de la landing
+- **THEN** SHALL incluir el término "gestor de tareas" o equivalente de
+  categoría
+- **AND** SHALL incluir también las tres cosas que junta Trazio (tareas,
+  hábitos, calendario) o una síntesis equivalente
+
+#### Scenario: La tarjeta de compartir entra sin desbordarse
+
+- **WHEN** se genera `/opengraph-image` y se inspecciona el PNG resultante
+  de 1200×630
+- **THEN** el texto de la bajada SHALL verse completo, sin cortarse ni
+  desbordar el lienzo
