@@ -257,15 +257,127 @@ modificada de forma individual, no en bloque.
       del access token o ajustar el texto.
 - [ ] 5.7 Tests de componente para consentimiento y aplicaciones conectadas.
 
-## 6. Servidor MCP: lectura
+## 6. Servidor MCP: lectura — OLA COMPLETADA (2026-08-10)
 
-- [ ] 6.1 `app/api/mcp/`: esqueleto del servidor MCP con `mcp-handler` v2 (no `@vercel/mcp-adapter`; API `server.registerTool` con `inputSchema`, ver trampa de 1.1), autenticado por el `Authorization: Bearer` del access token OAuth, sin `service_role` en ningún punto.
-- [ ] 6.2 **Paginación de las herramientas de lectura que devuelven colecciones (`consultar_tareas`, `listar_estructura`, `listar_habitos`): requisito de diseño, no mejora futura (límite de 4,5 MB de cuerpo de respuesta en Vercel, confirmado en 1.1).** Definir el mecanismo de paginación (cursor u offset+límite) antes de implementar cada herramienta.
-- [ ] 6.3 `consultar_tareas`: reutiliza `lib/query-language/parse.ts` para convertir la consulta a AST, llama al RPC `buscar_tareas(ast, at)` de forma paginada (6.2), convierte cada `description` con `lib/markdown/tiptap-to-markdown.ts`. Nombre distinto al del RPC a propósito (D-G de `design.md`): no son la misma capa.
-- [ ] 6.4 `obtener_tarea`: consulta directa por id (tarea, subtareas, etiquetas), sin comentarios ni recordatorios, descripción convertida.
-- [ ] 6.5 `listar_estructura`: proyectos en árbol con secciones, etiquetas, filtros guardados, paginado (6.2) si la cuenta tiene un árbol grande.
-- [ ] 6.6 `listar_habitos`: hábitos con estado del día, racha, constancia y repeticiones (mismos cálculos que `pantalla-habitos`), paginado (6.2) si hace falta.
-- [ ] 6.7 Tests de cada herramienta de lectura, incluidos los casos de aislamiento por RLS (una cuenta no ve datos de otra a través del MCP) y de paginación (una colección que excede una página).
+- [x] 6.1 **Resultado:** `app/api/mcp/route.ts` (esqueleto, `mcp-handler` v2 —
+      confirmado `server.registerTool` con `inputSchema`, sin `basePath`,
+      trampa de 1.1 evitada) + `app/.well-known/oauth-protected-resource/
+      route.ts` (metadata RFC 9728, `protectedResourceHandler`). Autenticado
+      por `withMcpAuth` con `lib/mcp/auth.ts` (D-J: valida `iss` contra el
+      emisor de Supabase y presencia del claim `client_id`, no la letra de
+      RFC 8707 — ver el comentario de cabecera del archivo). Cada
+      herramienta arma su propio cliente (`lib/mcp/client.ts`) con el access
+      token del pedido; la `service_role` key nunca se usa en `lib/mcp/` ni
+      en `app/api/mcp/` (`grep -r "service_role" lib/mcp app/api/mcp` solo
+      encuentra dos comentarios que explican, en prosa, por qué no se usa —
+      ninguna línea de código la referencia).
+      **Trampa nueva, no anotada en `design.md`:** `withMcpAuth` y
+      `protectedResourceHandler` aceptan las dos un parámetro llamado
+      `resourceUrl`, pero con significado distinto — verificado leyendo
+      `mcp-handler/dist/index.mjs`, no solo la doc. El de
+      `protectedResourceHandler` es el identificador del recurso (con
+      `/api/mcp`). El de `withMcpAuth` es el **origen** que la librería
+      concatena con `resourceMetadataPath` para armar la URL del desafío
+      (`origin + resourceMetadataPath`) — pasarle la URL con `/api/mcp`
+      incluido arma `.../api/mcp/.well-known/oauth-protected-resource`, que
+      no existe. Se separó en `lib/mcp/config.ts` en dos funciones
+      (`getMcpResourceUrl` / `getMcpResourceOrigin`), verificado con un
+      `curl` sin token contra el stack local antes y después del fix (ver
+      6.7 más abajo).
+- [x] 6.2 **Resultado:** `lib/mcp/pagination.ts`. Offset + límite: el cursor
+      es el offset como string, `limite` por defecto 50 (`DEFAULT_PAGE_SIZE`)
+      y tope duro 200 (`MAX_PAGE_SIZE`) — conservador a propósito. Cada
+      consulta pide una fila de más (`.range(offset, offset + pageSize)`) y
+      `buildPage` recorta e informa `truncated`/`next_cursor` sin una
+      segunda consulta de conteo. Aplicado a las tres herramientas que
+      pide el diseño (`consultar_tareas`, `listar_estructura` sobre
+      `projects`) y a `listar_habitos` (no pedía paginación explícita en el
+      texto de esta tarea, pero "toda herramienta que devuelve una
+      colección pagina" es un requisito parejo, así que se aplicó el mismo
+      mecanismo ahí también). `listar_estructura` pagina `projects` (la
+      colección sin techo) con cursor de continuación; `labels` y `filters`
+      llevan un tope propio del mismo tamaño máximo sin cursor (no crecen al
+      ritmo de tareas/proyectos, pero nunca se cortan en silencio:
+      `labels_truncated`/`filters_truncated` avisan si igual pasa).
+- [x] 6.3 **Resultado:** `lib/mcp/tools/consultar-tareas.ts`. El parser
+      (`lib/query-language/parse.ts`) se pudo reusar **tal cual, sin ningún
+      cambio**: la Ola 1 ya lo había verificado puro (ningún import fuera de
+      `zod` y de sí mismo) y correr `pnpm exec vitest run
+      lib/query-language` desde un route handler de servidor no reveló
+      ninguna dependencia oculta de navegador. `buscar_tareas` no recibe
+      `tz` como parámetro propio — lo resuelve internamente de
+      `user_preferences` vía `auth.uid()` (visto en el cuerpo de la
+      migración, no solo en la firma) — así que la herramienta solo pasa
+      `{ ast }`. `description` convertida con `tiptapDocToMarkdown`
+      (`lib/markdown/tiptap-to-markdown.ts`), reusado sin tocar.
+- [x] 6.4 **Resultado:** `lib/mcp/tools/obtener-tarea.ts`. Detalle completo
+      por id (tarea + subtareas + etiquetas), sin `comments` ni `reminders`
+      en ninguna consulta. Sin `.eq("user_id", ...)` explícito en ninguna
+      de las dos queries: RLS ya acota a la cuenta del token, mismo criterio
+      que `lib/tasks/use-task.ts` — verificado contra el stack local que un
+      id de otra cuenta no devuelve nada (ver 6.7).
+- [x] 6.5 **Resultado:** `lib/mcp/tools/listar-estructura.ts`. Árbol
+      representado como lista plana de proyectos con `parent_id` (no
+      anidado en el JSON): conserva la relación padre-hijo sin acoplar la
+      paginación a la profundidad del árbol — una página puede cortar entre
+      un padre y su hijo sin perder el vínculo, porque el hijo sigue
+      trayendo su `parent_id`. Cada proyecto trae sus secciones anidadas
+      (no pagina aparte: acotado por naturaleza). Etiquetas y filtros
+      guardados en el mismo pedido, ver 6.2 para su tope.
+- [x] 6.6 **Resultado:** `lib/mcp/tools/listar-habitos.ts`. Estado del día
+      con `resolveHabitDayStatus` (`lib/habits/day-status.ts`, reusada sin
+      cambios) y racha con `getHabitStreak` (`lib/habits/streak.ts`, RPC
+      `calcular_racha_habito`, reusada sin cambios — nunca reimplementada
+      acá). **Sin `constancia` ni `repeticiones`, a propósito:** esos dos
+      cálculos son del change `metricas-de-habitos` (propuesto, sin
+      implementar) — devolver solo lo que existe hoy (racha actual y mejor
+      racha) evita duplicar el cálculo y que las dos versiones se
+      desincronicen. **Pendiente para quien implemente
+      `metricas-de-habitos`:** sumar `consistency` y `repetitions` a
+      `McpHabit` (`lib/mcp/tools/listar-habitos.ts`) y a la `description`
+      de la herramienta `listar_habitos` en `lib/mcp/server.ts`, y quitar
+      esta nota.
+- [x] 6.7 **Resultado:** unitarios (42 tests, 8 archivos) en
+      `lib/mcp/*.test.ts` y `lib/mcp/tools/*.test.ts` — cada handler
+      testeado como función con un cliente de Supabase fake inyectado (sin
+      precedente de mockear la cadena de PostgREST en el repo; se armó un
+      fake mínimo por archivo, sin abstracción compartida, coherente con
+      simplicidad ante cuatro archivos chicos), más `lib/mcp/server.test.ts`
+      para el armado del servidor (registra las cuatro herramientas, cada
+      una con `inputSchema`, y rechaza sin tocar la base cuando falta el
+      access token). `pnpm lint && pnpm typecheck && pnpm test` en verde
+      (234 archivos, 1957 tests).
+      **Contra el stack local, de punta a punta** (Docker + `supabase
+      start`, dev server aparte en el puerto 3005 —nunca el 3000, ocupado
+      por otra tarea— sobre una copia de trabajo separada del repo con
+      `node_modules` hardlinkeado, para no chocar con el lock de
+      `next dev` del 3000 ni con el `.env.local` que apunta a producción;
+      variables exportadas por shell, que Next.js no deja pisar por
+      `.env.local`): token OAuth real por el helper de
+      `supabase/tests/oauth.ts` para dos cuentas —
+      1. Las cuatro herramientas responden con datos reales: tarea creada
+         por `consultar_tareas` y por `obtener_tarea`, proyecto e Bandeja
+         por `listar_estructura`, hábito con `status: "done"` y racha 1/1
+         por `listar_habitos` tras marcarlo completado hoy.
+      2. Sin token: `401` con `WWW-Authenticate` y `resource_metadata`
+         apuntando a `http://localhost:3005/.well-known/oauth-protected-resource`
+         (encontró y corrigió el bug de `resourceUrl` de 6.1 en el camino).
+      3. Un token de sesión normal de la app (login por contraseña, sin
+         `client_id`) también rechaza con `401` — confirma D-J contra el
+         stack real, no solo en el test unitario de `auth.test.ts`.
+      4. Con el token de la cuenta B: `consultar_tareas` no devuelve la
+         tarea de A, `obtener_tarea` con el id de la tarea de A responde
+         "no se encontró", `listar_estructura` no lista el proyecto de A —
+         RLS aísla igual que en la app.
+      5. Paginación real: seis tareas `priority:2`, `limite:3` — primera
+         página `truncated:true`, `next_cursor:"3"`; segunda página con
+         `cursor:"3"` trae las tres restantes sin superposición,
+         `truncated:false`.
+      6. La metadata de recurso protegido responde con `resource` y
+         `authorization_servers` apuntando al emisor local.
+      **Sin verificar:** un cliente MCP real (Claude u otro) conectado de
+      punta a punta — eso es la tarea 8.3 del cierre, contra el deploy, no
+      contra el stack local.
 
 ## 7. Servidor MCP: escritura protegida
 
