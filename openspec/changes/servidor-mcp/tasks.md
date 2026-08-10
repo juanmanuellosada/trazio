@@ -257,13 +257,29 @@ ola.
 
 ## 8. Cierre
 
-- [ ] 8.0 **BLOQUEANTE — no publicar la política de privacidad antes de la migración.** El texto de
-      `app/(marketing)/privacidad/page.tsx` sobre "Trazio bloquea el borrado a nivel de base de datos"
-      afirma algo que hoy **no es cierto**: la política de RLS que lo hace real es la de la Ola 4 (4.2),
-      todavía no aplicada. Ese texto no se publica (no se mergea a producción) hasta que la migración de
-      la Ola 4 esté aplicada en producción y verificada con un `DELETE` real rechazado (mismo criterio
-      que 8.3). Es la misma clase de trampa que ya tuvimos con el subtítulo de la landing prometiendo una
-      función que no existía — no repetirla acá.
+- [ ] 8.0 **BLOQUEANTE — no publicar la política de privacidad hasta que la función exista de punta a punta.**
+      El texto de `app/(marketing)/privacidad/page.tsx` no describe solo el borrado bloqueado: dice, en
+      presente, "Trazio permite conectar un asistente de IA (por ejemplo Claude o ChatGPT) para leer y
+      modificar tu cuenta por conversación" y "Desde Configuración → Aplicaciones conectadas ves cada
+      asistente que autorizaste y podés cortarle el acceso en el momento". Ese texto no se publica (no se
+      mergea a producción) hasta que las cinco condiciones siguientes sean ciertas en producción, no solo
+      la primera que este documento pedía originalmente:
+      - El servidor OAuth habilitado en el proyecto hospedado, confirmado con el test binario de 1.4/3.2 (**pendiente** — depende de 3.2).
+      - La migración de RLS de la Ola 4 (4.2) aplicada en producción — **cumplido**.
+      - La pantalla de consentimiento (Ola 5, 5.1–5.5) funcionando en producción.
+      - "Aplicaciones conectadas" (5.6) funcionando en producción, con la revocación andando de verdad — el texto promete que se puede cortar el acceso "en el momento".
+      - El servidor MCP (Olas 6 y 7) respondiendo en producción — el texto dice que se puede leer y modificar la cuenta por conversación.
+
+      **Por qué se amplió esta tarea:** el texto original solo condicionaba la publicación a la migración
+      de la Ola 4. Guiarse por eso habría dejado publicar, hoy, un texto que además describe tres funciones
+      que todavía no existen (pantalla de consentimiento, aplicaciones conectadas con revocación real,
+      servidor MCP) — es la misma clase de trampa que el change de la landing ya cometió, pero al revés:
+      ahí se anunciaba como futuro algo que ya funcionaba, acá se habría anunciado como presente algo que
+      todavía no funciona.
+
+      **Verificación antes de publicar:** abrir `/privacidad` y comprobar, afirmación por afirmación en
+      presente, que cada una es cierta en producción — no solo la del borrado bloqueado (mismo criterio que
+      el `DELETE` real rechazado de 8.3, extendido al resto del texto).
 - [ ] 8.1 `pnpm lint && pnpm typecheck && pnpm test && pnpm test:rls` en verde (se agrega `test:rls` por la Ola 4).
 - [ ] 8.2 Verificar en el navegador: aprobar una conexión real desde `/oauth/consent`, ver la aplicación listada en "Aplicaciones conectadas", revocarla y confirmar que el token dejó de servir.
 - [ ] 8.3 Verificar con un cliente MCP real (Claude u otro compatible) conectado al deploy: ejecutar cada una de las nueve herramientas al menos una vez, incluida completar una tarea recurrente y confirmar que crea la siguiente ocurrencia. Además, con el access token obtenido, intentar un `DELETE` directo contra PostgREST (fuera de las herramientas del MCP) y confirmar que la política de RLS de la Ola 4 lo rechaza.
