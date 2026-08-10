@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
+import { toastSuccess } from "@/lib/toast";
 import { ConnectedAppsSection } from "./connected-apps-section";
 
 // Tarea 5.6 de `servidor-mcp`: tests de la sección "Aplicaciones
@@ -21,11 +22,23 @@ vi.mock("@/lib/supabase/client", () => {
   };
 });
 
+vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+
 const { listGrants, revokeGrant } = (
   supabaseClientModule as unknown as {
     __mock: { listGrants: ReturnType<typeof vi.fn>; revokeGrant: ReturnType<typeof vi.fn> };
   }
 ).__mock;
+
+function stubClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText },
+    configurable: true,
+    writable: true,
+  });
+  return writeText;
+}
 
 function renderSection() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -81,5 +94,29 @@ describe("ConnectedAppsSection (servidor-mcp 5.6)", () => {
     renderSection();
 
     expect(await screen.findByText(/no pudimos cargar tus aplicaciones conectadas/i)).toBeInTheDocument();
+  });
+
+  it("la URL del servidor MCP se ve siempre, incluso sin ninguna aplicación conectada", async () => {
+    listGrants.mockResolvedValue({ data: [], error: null });
+    renderSection();
+
+    await screen.findByText(/todavía no autorizaste ningún asistente de ia/i);
+    const input = screen.getByDisplayValue(/\/api\/mcp$/) as HTMLInputElement;
+    expect(input).toHaveAttribute("readOnly");
+  });
+
+  it("copiar la URL del servidor MCP la manda al portapapeles y confirma con un toast", async () => {
+    listGrants.mockResolvedValue({ data: [], error: null });
+    // `userEvent.setup()` instala su propio stub de `navigator.clipboard`
+    // (`Clipboard.attachClipboardStubToView`), así que `stubClipboard()` va
+    // después de `setup()`, no antes, o `setup()` lo vuelve a tapar.
+    const user = userEvent.setup();
+    const writeText = stubClipboard();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Copiar URL del servidor MCP" }));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/\/api\/mcp$/));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("URL copiada."));
   });
 });
