@@ -498,13 +498,24 @@ describe("HoyView — reordenar dentro de una columna nunca persiste (D25, Hoy c
   });
 });
 
-describe("HoyView — tiempo planificado del día (capacidad carga-del-dia, D-B/D-C)", () => {
-  it("todo con duración: solo el total, en el encabezado", () => {
-    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 90 })], eventsOk([]));
-    expect(screen.getByText("1h 30m planificadas")).toBeInTheDocument();
+describe("HoyView — tiempo libre y pedido sin lugar (capacidad carga-del-dia, el-dia-que-entra D-A/D-B)", () => {
+  // `nowIso` de `renderHoy` es 2026-08-05T15:00:00.000Z == 12:00 en
+  // America/Argentina/Buenos_Aires; sin hora de fin del día configurada, se
+  // usa el default de la columna (22:00) — 10 horas de tiempo libre cuando
+  // nada tiene hora asignada.
+
+  it("día sin ningún elemento: tiempo libre solo, sin pedido sin lugar", () => {
+    renderHoy([], { status: "not_connected" });
+    expect(screen.getByText("Te quedan 10h libres.")).toBeInTheDocument();
+    expect(screen.queryByText(/sin agendar/)).not.toBeInTheDocument();
   });
 
-  it("algo sin duración: el total lo dice aparte, nunca en silencio", () => {
+  it("una tarea pendiente sin hora suma al pedido sin lugar, el tiempo libre no se toca", () => {
+    renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 90 })], eventsOk([]));
+    expect(screen.getByText("Te quedan 10h libres y 1h 30m de tareas sin agendar.")).toBeInTheDocument();
+  });
+
+  it("algo sin duración: se cuenta aparte, nunca en silencio", () => {
     renderHoy(
       [
         task({ id: "t1", title: "Con duración", due_date: "2026-08-05", duration_minutes: 60 }),
@@ -512,16 +523,16 @@ describe("HoyView — tiempo planificado del día (capacidad carga-del-dia, D-B/
       ],
       eventsOk([]),
     );
-    expect(screen.getByText("1h planificadas · 1 sin duración")).toBeInTheDocument();
+    expect(screen.getByText("Te quedan 10h libres y 1h de tareas sin agendar (y 1 sin duración).")).toBeInTheDocument();
   });
 
-  it("nada tiene duración: solo el conteo, nunca '0m planificadas'", () => {
+  it("nada tiene duración: solo el conteo, nunca '0m' de pedido sin lugar", () => {
     renderHoy([task({ id: "t1", title: "Sin duración", due_date: "2026-08-05", duration_minutes: null })], eventsOk([]));
-    expect(screen.getByText("1 sin duración")).toBeInTheDocument();
-    expect(screen.queryByText(/0m planificadas/)).not.toBeInTheDocument();
+    expect(screen.getByText("Te quedan 10h libres y 1 tarea sin duración estimada.")).toBeInTheDocument();
+    expect(screen.queryByText(/0m/)).not.toBeInTheDocument();
   });
 
-  it("las atrasadas suman en Hoy y el texto lo indica", () => {
+  it("las atrasadas suman al pedido sin lugar igual que las de hoy", () => {
     renderHoy(
       [
         task({ id: "overdue", title: "Atrasada", due_date: "2026-08-01", duration_minutes: 30 }),
@@ -529,28 +540,66 @@ describe("HoyView — tiempo planificado del día (capacidad carga-del-dia, D-B/
       ],
       eventsOk([]),
     );
-    expect(screen.getByText("1h planificadas (incluye atrasadas)")).toBeInTheDocument();
+    expect(screen.getByText("Te quedan 10h libres y 1h de tareas sin agendar.")).toBeInTheDocument();
   });
 
-  it("sin calendario conectado, el total se muestra igual con tareas y hábitos", () => {
+  it("una tarea con hora resta tiempo libre en vez de sumar al pedido sin lugar", () => {
+    renderHoy(
+      [task({ id: "t1", title: "Tarea", due_date: null, due_at: "2026-08-05T18:00:00.000Z", duration_minutes: 60 })],
+      eventsOk([]),
+    );
+    // 10h - 1h de la tarea con hora (18:00 a 19:00) = 9h.
+    expect(screen.getByText("Te quedan 9h libres.")).toBeInTheDocument();
+  });
+
+  it("sin calendario conectado, el cálculo se muestra igual con tareas y hábitos", () => {
     currentHabits = [habit({ duration_minutes: 15 })];
     renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 45 })], {
       status: "not_connected",
     });
-    expect(screen.getByText("1h planificadas")).toBeInTheDocument();
+    expect(screen.getByText("Te quedan 10h libres y 1h de tareas sin agendar.")).toBeInTheDocument();
   });
 
-  it("un hábito salteado no suma al total", () => {
+  it("un hábito salteado no suma al pedido sin lugar", () => {
     currentHabits = [habit({ id: "h-skip", duration_minutes: 20 })];
     currentSkips = { "h-skip": true };
     renderHoy([task({ id: "t1", title: "Tarea", due_date: "2026-08-05", duration_minutes: 40 })], eventsOk([]));
-    expect(screen.getByText("40m planificadas")).toBeInTheDocument();
+    expect(screen.getByText("Te quedan 10h libres y 40m de tareas sin agendar.")).toBeInTheDocument();
   });
 
-  it("día sin ningún elemento: no muestra ningún total", () => {
-    renderHoy([], { status: "not_connected" });
-    expect(screen.queryByText(/planificad/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/sin duración/)).not.toBeInTheDocument();
+  it("avisa cuando lo pedido sin lugar no entra en el tiempo libre que queda", () => {
+    renderHoy(
+      [task({ id: "t1", title: "Mucho", due_date: "2026-08-05", duration_minutes: 700 })],
+      eventsOk([]),
+    );
+    expect(
+      screen.getByText("Te quedan 10h libres y 11h 40m de tareas sin agendar. No te entra todo en lo que queda."),
+    ).toBeInTheDocument();
+  });
+
+  it("el día ya terminó: el encabezado lo dice en vez de mostrar tiempo libre en cero", () => {
+    currentTasks = [];
+    hoyEventsResult = { status: "not_connected" };
+    currentOptions = { ...defaultOptionsForViewKey("hoy") };
+    render(
+      <PreferencesProvider preferences={TEST_PREFERENCES}>
+        <TaskDetailProvider>
+          <ComposeContextProvider>
+            <HoyView
+              userId="user-1"
+              timezone="America/Argentina/Buenos_Aires"
+              inboxProjectId={null}
+              initialTasks={[]}
+              initialHabits={[]}
+              nowIso="2026-08-06T01:30:00.000Z" /* 22:30 local, después de las 22:00 */
+              todayDate="2026-08-05"
+              initialOptions={currentOptions}
+            />
+          </ComposeContextProvider>
+        </TaskDetailProvider>
+      </PreferencesProvider>,
+    );
+    expect(screen.getByText("El día ya terminó.")).toBeInTheDocument();
   });
 });
 

@@ -39,6 +39,7 @@ function renderSection(overrides: Partial<{ soundOnComplete: boolean }> = {}) {
         weekStartsOn={1}
         defaultView="bandeja"
         soundOnComplete={overrides.soundOnComplete ?? true}
+        dayEndTime="22:00:00"
       />
     </QueryClientProvider>,
   );
@@ -134,6 +135,18 @@ describe("GeneralSection", () => {
     await user.click(toggle);
 
     await waitFor(() => expect(update).toHaveBeenCalledWith({ sound_on_complete: false }));
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+
+  it("cambiar la hora de fin del día guarda day_end_time y refresca", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(screen.getByRole("combobox", { name: "Elegir hora de una lista" }));
+    await user.click(await screen.findByRole("option", { name: "23:00" }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ day_end_time: "23:00" }));
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });

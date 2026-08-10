@@ -32,7 +32,8 @@ import { ScreenCalendar } from "@/components/calendar/screen-calendar";
 import { HoyEventRow } from "@/components/calendar/hoy-event-row";
 import { useHoyEvents } from "@/components/calendar/use-hoy-events";
 import { useDayLoad } from "@/components/calendar/use-day-load";
-import { formatDayLoad } from "@/lib/planning/day-load";
+import { QueHagoAhoraButton } from "@/components/calendar/que-hago-ahora-button";
+import { formatCargaDelDia } from "@/lib/planning/day-load";
 import { usePublishComposeContext } from "./compose-context";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
@@ -215,7 +216,7 @@ export function HoyView({
 }) {
   const { data } = useHoyTasks(userId, timezone, initialTasks);
   const { options } = useViewOptions(VIEW_KEY, initialOptions);
-  const { weekStartsOn, timeFormat } = useUserPreferences();
+  const { weekStartsOn, timeFormat, dayEndTime } = useUserPreferences();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const tomorrowDate = todayInTimeZone(addDays(now, 1), timezone);
   const tasks = data ?? [];
@@ -242,18 +243,23 @@ export function HoyView({
     ? orderTasks(applyQuickFilters(completedTodayRaw, options.quickFilters, true), options.order, timezone)
     : [];
 
-  // Tiempo planificado del día (capacidad `carga-del-dia`, D-B): en Hoy las
-  // atrasadas suman, porque están en la pantalla y son trabajo del día —
-  // `formatDayLoad` lo aclara en el texto cuando corresponde.
+  // Tiempo libre y pedido sin lugar (capacidad `carga-del-dia`,
+  // `el-dia-que-entra` D-A/D-B): en Hoy las atrasadas cuentan como trabajo
+  // del día, mismo criterio que ya regía para el total planificado.
+  // `dayEndTime` es opcional en `UserPreferences` (fixtures de test que no
+  // la declaran, D-C del design): `undefined` vale como el default de la
+  // columna, "22:00:00".
+  const effectiveDayEndTime = dayEndTime ?? "22:00:00";
   const dayLoad = useDayLoad({
     todayDate,
     timezone,
     now,
+    dayEndTime: effectiveDayEndTime,
     tasks: [...overdue, ...today],
     initialHabits,
     eventsState,
   });
-  const dayLoadText = formatDayLoad(dayLoad, overdue.length > 0);
+  const dayLoadText = formatCargaDelDia(dayLoad);
 
   // Ver "El orden (D-A, tarea 2.6)" en el comentario de arriba. El agrupador
   // ya no entra en esta cuenta (D-E): la lista de Hoy nunca agrupa, así que
@@ -366,10 +372,20 @@ export function HoyView({
       <div className="flex h-full flex-col">
         <header className="border-b border-border px-4 py-4 sm:px-6">
           <div className="flex w-full max-w-content mx-auto items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Sun aria-hidden className="size-5 text-primary" />
               <h1 className="text-2xl font-semibold text-foreground">Hoy</h1>
-              {dayLoadText && <span className="text-sm font-normal text-text-secondary">{dayLoadText}</span>}
+              <span className="text-sm font-normal text-text-secondary">{dayLoadText}</span>
+              <QueHagoAhoraButton
+                todayDate={todayDate}
+                timezone={timezone}
+                timeFormat={timeFormat}
+                now={now}
+                dayEndTime={effectiveDayEndTime}
+                tasks={[...overdue, ...today]}
+                initialHabits={initialHabits}
+                eventsState={eventsState}
+              />
             </div>
             <ViewOptionsBar
               viewKey={VIEW_KEY}

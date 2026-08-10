@@ -631,6 +631,7 @@ export type Database = {
       user_preferences: {
         Row: {
           date_format: string
+          day_end_time: string
           default_project_id: string | null
           default_view: string
           reference_time: string
@@ -644,6 +645,7 @@ export type Database = {
         }
         Insert: {
           date_format?: string
+          day_end_time?: string
           default_project_id?: string | null
           default_view?: string
           reference_time?: string
@@ -657,6 +659,7 @@ export type Database = {
         }
         Update: {
           date_format?: string
+          day_end_time?: string
           default_project_id?: string | null
           default_view?: string
           reference_time?: string

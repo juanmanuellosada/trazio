@@ -26,6 +26,8 @@ export type SettingsData = {
   soundOnComplete: boolean;
   /** Hora de referencia (Notificaciones y recordatorios, `recordatorios-con-hora-de-referencia` D-A). Hora de reloj `"HH:mm:ss"`. */
   referenceTime: string;
+  /** Hora de fin del día (General, `el-dia-que-entra` D-C). Hora de reloj `"HH:mm:ss"`. */
+  dayEndTime: string;
 };
 
 export function settingsDataQueryKey() {
@@ -54,7 +56,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).single(),
     supabase
       .from("user_preferences")
-      .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete, reference_time")
+      .select("timezone, date_format, time_format, week_starts_on, default_view, sound_on_complete, reference_time, day_end_time")
       .eq("user_id", userId)
       .single(),
   ]);
@@ -75,6 +77,7 @@ async function fetchSettingsData(): Promise<SettingsData> {
     defaultView: (preferences?.default_view as "bandeja" | "hoy" | "proximos" | undefined) ?? "bandeja",
     soundOnComplete: preferences?.sound_on_complete ?? true,
     referenceTime: preferences?.reference_time ?? "09:00:00",
+    dayEndTime: preferences?.day_end_time ?? "22:00:00",
   };
 }
 

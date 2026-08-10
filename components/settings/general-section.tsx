@@ -8,6 +8,7 @@ import type { DateFormatPreference, TimeFormatPreference } from "@/lib/dates/for
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TimeField, parseHHMM, toHHMM } from "@/components/selectors/time-field";
 import { TimezoneCombobox } from "./timezone-combobox";
 
 /**
@@ -64,16 +65,20 @@ type LocalPreferences = {
   weekStartsOn: 0 | 1 | 6;
   defaultView: "bandeja" | "hoy" | "proximos";
   soundOnComplete: boolean;
+  /** `"HH:mm"`, mismo recorte de segundos que ya hace `NotificationsSection` con `referenceTime`. */
+  dayEndTime: string;
 };
 
 /**
- * Sección General (tarea 11.4/11.5): zona horaria, formato de fecha,
- * formato de hora, día de inicio de semana y pantalla por defecto. Cada
+ * Sección General (tarea 11.4/11.5, más la hora de fin del día de
+ * `el-dia-que-entra` D-C): zona horaria, formato de fecha, formato de hora,
+ * día de inicio de semana, pantalla por defecto y hora de fin del día. Cada
  * campo se guarda solo al elegir una opción — no hay botón de "Guardar"
  * aparte, mismo patrón instantáneo que el tema — con revert local si el
  * servidor rechaza y `router.refresh()` si acepta, para que el resto de la
  * app (sembrada una sola vez por `PreferencesProvider`) vea el valor nuevo
- * sin recargar a mano (tarea 11.7).
+ * sin recargar a mano (tarea 11.7): así es como el tiempo libre de Hoy se
+ * recalcula sin recargar cuando se cambia esta hora.
  */
 export function GeneralSection({
   userId,
@@ -83,6 +88,7 @@ export function GeneralSection({
   weekStartsOn,
   defaultView,
   soundOnComplete,
+  dayEndTime,
 }: {
   userId: string;
   timezone: string;
@@ -91,6 +97,8 @@ export function GeneralSection({
   weekStartsOn: 0 | 1 | 6;
   defaultView: "bandeja" | "hoy" | "proximos";
   soundOnComplete: boolean;
+  /** `"HH:mm:ss"`, el formato que guarda `user_preferences.day_end_time`. */
+  dayEndTime: string;
 }) {
   const router = useRouter();
   const updatePreferences = useUpdatePreferences();
@@ -101,6 +109,7 @@ export function GeneralSection({
     weekStartsOn,
     defaultView,
     soundOnComplete,
+    dayEndTime: dayEndTime.slice(0, 5),
   });
 
   const timezoneLabelId = useId();
@@ -109,6 +118,7 @@ export function GeneralSection({
   const weekStartsOnId = useId();
   const defaultViewId = useId();
   const soundOnCompleteId = useId();
+  const dayEndTimeId = useId();
 
   function save<K extends keyof LocalPreferences>(key: K, value: LocalPreferences[K], patch: PreferencesPatch) {
     const previous = local[key];
@@ -222,6 +232,20 @@ export function GeneralSection({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={dayEndTimeId}>Hora en que termina el día</Label>
+        <p className="text-xs text-text-secondary">Hasta esta hora se calcula el tiempo libre que te queda en Hoy.</p>
+        <TimeField
+          id={dayEndTimeId}
+          value={parseHHMM(local.dayEndTime)}
+          onChange={(next) => {
+            const value = toHHMM(next);
+            save("dayEndTime", value, { day_end_time: value });
+          }}
+          timeFormat={local.timeFormat}
+        />
       </div>
 
       <div className="flex items-center justify-between gap-3">

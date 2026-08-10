@@ -12,6 +12,8 @@ export type UserPreferences = {
   soundOnComplete?: boolean;
   /** Hora de referencia (`recordatorios-con-hora-de-referencia`, D-A): a qué hora se considera que vence una tarea con día pero sin hora. Hora de reloj (`"HH:mm:ss"`), no instante. Opcional por el mismo motivo que `soundOnComplete`: no forzar a los fixtures de test a declararla. `undefined` se trata igual que `"09:00:00"`, el default de la columna. */
   referenceTime?: string;
+  /** Hora de fin del día (`el-dia-que-entra`, D-C): hasta qué hora se considera que dura la jornada, para el tiempo libre de Hoy (`carga-del-dia`). Distinta de `referenceTime` (esa es sobre vencimientos, no sobre el resto del día). Hora de reloj (`"HH:mm:ss"`). Opcional por el mismo motivo que `soundOnComplete`: `undefined` se trata igual que `"22:00:00"`, el default de la columna. */
+  dayEndTime?: string;
 };
 
 /** Mismos defaults que B4 del design de fase 1, para el caso sin fila todavía (no debería pasar tras el aprovisionamiento, pero evita reventar la vista). */
@@ -23,6 +25,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultProjectId: null,
   soundOnComplete: true,
   referenceTime: "09:00:00",
+  dayEndTime: "22:00:00",
 };
 
 /**
@@ -35,7 +38,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
   const supabase = await createClient();
   const { data } = await supabase
     .from("user_preferences")
-    .select("timezone, date_format, time_format, week_starts_on, default_project_id, sound_on_complete, reference_time")
+    .select("timezone, date_format, time_format, week_starts_on, default_project_id, sound_on_complete, reference_time, day_end_time")
     .eq("user_id", userId)
     .single();
 
@@ -49,5 +52,6 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     defaultProjectId: data.default_project_id,
     soundOnComplete: data.sound_on_complete,
     referenceTime: data.reference_time,
+    dayEndTime: data.day_end_time,
   };
 }

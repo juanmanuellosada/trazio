@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeDayLoad, formatDayLoad } from "./day-load";
+import { computeDayLoad, formatCargaDelDia, formatDayLoad, type DayLoad } from "./day-load";
 
 describe("computeDayLoad", () => {
   it("lista vacía: todo en cero", () => {
@@ -32,7 +32,7 @@ describe("computeDayLoad", () => {
   });
 });
 
-describe("formatDayLoad", () => {
+describe("formatDayLoad (Próximos, sin tocar por el-dia-que-entra)", () => {
   it("nada que informar (día sin ningún elemento): null", () => {
     expect(formatDayLoad({ totalMinutes: 0, withoutDuration: 0 })).toBeNull();
   });
@@ -64,6 +64,70 @@ describe("formatDayLoad", () => {
   it("incluye atrasadas y sin duración a la vez", () => {
     expect(formatDayLoad({ totalMinutes: 90, withoutDuration: 2 }, true)).toBe(
       "1h 30m planificadas (incluye atrasadas) · 2 sin duración",
+    );
+  });
+});
+
+const NOTHING_UNASSIGNED: DayLoad = { totalMinutes: 0, withoutDuration: 0 };
+
+describe("formatCargaDelDia", () => {
+  it("tiempo libre solo, sin nada pedido sin lugar", () => {
+    expect(formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: NOTHING_UNASSIGNED })).toBe(
+      "Te quedan 3h 40m libres.",
+    );
+  });
+
+  it("tiempo libre y pedido sin lugar, el ejemplo de la propuesta", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: { totalMinutes: 135, withoutDuration: 0 } }),
+    ).toBe("Te quedan 3h 40m libres y 2h 15m de tareas sin agendar.");
+  });
+
+  it("avisa cuando lo pedido no entra en el tiempo libre que queda", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: { totalMinutes: 300, withoutDuration: 0 } }),
+    ).toBe("Te quedan 3h 40m libres y 5h de tareas sin agendar. No te entra todo en lo que queda.");
+  });
+
+  it("no avisa cuando lo pedido entra justo", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: { totalMinutes: 220, withoutDuration: 0 } }),
+    ).toBe("Te quedan 3h 40m libres y 3h 40m de tareas sin agendar.");
+  });
+
+  it("pedido sin lugar con algo sin duración aparte", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: { totalMinutes: 135, withoutDuration: 4 } }),
+    ).toBe("Te quedan 3h 40m libres y 2h 15m de tareas sin agendar (y 4 sin duración).");
+  });
+
+  it("nada tiene duración: nunca '0m' de pedido sin lugar", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 220, dayEnded: false, unassigned: { totalMinutes: 0, withoutDuration: 5 } }),
+    ).toBe("Te quedan 3h 40m libres y 5 tareas sin duración estimada.");
+  });
+
+  it("día terminado, sin nada pedido sin lugar", () => {
+    expect(formatCargaDelDia({ freeMinutes: 0, dayEnded: true, unassigned: NOTHING_UNASSIGNED })).toBe(
+      "El día ya terminó.",
+    );
+  });
+
+  it("día terminado, con pedido sin lugar", () => {
+    expect(
+      formatCargaDelDia({ freeMinutes: 0, dayEnded: true, unassigned: { totalMinutes: 135, withoutDuration: 0 } }),
+    ).toBe("El día ya terminó, pero te quedan 2h 15m de tareas sin agendar.");
+  });
+
+  it("tiempo libre en cero sin que el día haya terminado: se muestra igual, sin negativos", () => {
+    expect(formatCargaDelDia({ freeMinutes: 0, dayEnded: false, unassigned: NOTHING_UNASSIGNED })).toBe(
+      "Te quedan 0m libres.",
+    );
+  });
+
+  it("minutos fraccionarios (now trae segundos) se redondean al mostrar, nunca en crudo", () => {
+    expect(formatCargaDelDia({ freeMinutes: 111.12438333333333, dayEnded: false, unassigned: NOTHING_UNASSIGNED })).toBe(
+      "Te quedan 1h 51m libres.",
     );
   });
 });

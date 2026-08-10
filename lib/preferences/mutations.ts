@@ -34,6 +34,7 @@ export type PreferencesPatch = Partial<{
   default_view: "bandeja" | "hoy" | "proximos";
   sound_on_complete: boolean;
   reference_time: string;
+  day_end_time: string;
 }>;
 
 /**
