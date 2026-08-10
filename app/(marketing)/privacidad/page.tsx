@@ -17,6 +17,11 @@ export const metadata: Metadata = {
  * conexión con Google Calendar (fases 2 a 4), verificado contra el esquema
  * y el código real. `docs/legales.md` todavía tiene la versión anterior de
  * este texto y hay que sincronizarlo aparte.
+ *
+ * Actualizado además por `openspec/changes/servidor-mcp/` (decisión D63) con
+ * la sección de conectar un asistente de IA por MCP: texto escrito junto con
+ * la propuesta, antes de que el servidor exista, para que la política nunca
+ * quede corriendo detrás de la función una vez que se active.
  */
 export default function PrivacidadPage() {
   return (
@@ -204,6 +209,14 @@ export default function PrivacidadPage() {
               cuenta.
             </td>
           </tr>
+          <tr>
+            <td>El asistente de IA que vos elijas conectar (por ejemplo Claude o ChatGPT)</td>
+            <td>
+              Este tercero no lo elegimos nosotros: lo elegís vos, y solo interviene si vos autorizás la
+              conexión. Una vez conectado, puede leer y escribir tu cuenta de Trazio por conversación. Más
+              abajo explicamos exactamente qué puede hacer y qué limitación tiene ese acceso.
+            </td>
+          </tr>
         </tbody>
       </table>
       <p>
@@ -219,7 +232,7 @@ export default function PrivacidadPage() {
         <li>
           <strong>Los eventos de tu Google Calendar no se guardan en ningún lado.</strong> Cada vez que
           abrís el calendario en Trazio, le pedimos tus eventos a la API de Google en ese momento, los
-          mostramos, y quedan en la memoria del servidor unos segundos nada más. No existe ninguna tabla
+          mostramos, y quedan en la memoria del servidor hasta un minuto nada más. No existe ninguna tabla
           con tus eventos.
         </li>
         <li>
@@ -245,6 +258,47 @@ export default function PrivacidadPage() {
         <li>
           <strong>Desconectar borra la conexión, y nada más.</strong> Se elimina el registro con tu
           refresh token cifrado y no toca ninguna tarea, hábito ni ningún otro dato tuyo en Trazio.
+        </li>
+      </ul>
+
+      <h2>Cómo funciona conectar un asistente de IA</h2>
+      <p>
+        Trazio permite conectar un asistente de IA (por ejemplo Claude o ChatGPT) para leer y modificar tu
+        cuenta por conversación. Es distinto a todo lo demás de esta lista porque el tercero que recibe
+        acceso no lo elegimos nosotros: lo elegís vos, y solo pasa si vos lo autorizás.
+      </p>
+      <ul>
+        <li>
+          <strong>Vos autorizás la conexión, con una pantalla propia de Trazio.</strong> Antes de darle
+          acceso a un asistente, te mostramos qué aplicación lo está pidiendo, para que apruebes o
+          rechaces con esa información a la vista.
+        </li>
+        <li>
+          <strong>Podés revocarlo cuando quieras.</strong> Desde Configuración → Aplicaciones conectadas
+          ves cada asistente que autorizaste y podés cortarle el acceso en el momento: deja de poder usar
+          tu cuenta de inmediato, no en un rato. No hace falta cambiar tu contraseña ni hacer nada más.
+        </li>
+        <li>
+          <strong>El asistente ve exactamente lo mismo que ves vos, ni más ni menos.</strong> El acceso
+          está sujeto a las mismas reglas de seguridad que ya aíslan tu cuenta del resto (la misma fila por
+          fila de la sección anterior): un asistente conectado a tu cuenta no puede ver ni tocar los datos
+          de otra cuenta.
+        </li>
+        <li>
+          <strong>Trazio no le ofrece al asistente ninguna forma de borrar.</strong> Crear, editar,
+          completar tareas y archivar sí están disponibles por esta vía; borrar no — eso se hace
+          exclusivamente desde la app, donde hay confirmación y la posibilidad de deshacer.
+        </li>
+        <li>
+          <strong>Punto importante que tenés que conocer antes de conectar uno.</strong> No existe hoy una
+          forma de darle a un asistente un acceso limitado a &quot;solo leer&quot;: es una limitación de la
+          tecnología en la que se apoya esta función, no una elección nuestra. En términos prácticos, el
+          acceso que autorizás le permite a quien lo tenga leer y modificar tu cuenta igual que vos
+          podrías hacerlo. La excepción es borrar: Trazio bloquea el borrado a nivel de base de datos
+          para cualquier acceso que llegue por esta conexión, así que ni el asistente ni quien tuviera
+          ese token puede borrar nada tuyo por acá, aunque sí puede leer y modificar el resto igual que
+          vos. Conectá solamente asistentes en los que confiés, de la misma forma en que
+          confiarías tu contraseña.
         </li>
       </ul>
 

@@ -67,20 +67,23 @@ de redondearlo a "al instante" o a "poco tiempo". Es matiz de honestidad, no
 alarma: no se trata de advertir un riesgo de seguridad, sino de describir bien
 lo que efectivamente pasa.
 
-- Sí (revocar el acceso de un asistente de IA conectado): "pierde al instante
-  la posibilidad de renovarlo, y lo que ya tenía autorizado se apaga solo,
-  como máximo, en una hora."
-- No: "podés cortarle el acceso en el momento" (cuando lo ya emitido puede
-  seguir funcionando hasta una hora más).
+- Sí (cómo funciona la conexión con Google Calendar): "los mostramos, y
+  quedan en la memoria del servidor hasta un minuto nada más. No existe
+  ninguna tabla con tus eventos." (política de privacidad, respaldado por
+  `openspec/specs/eventos-de-calendario/spec.md`: caché en memoria del
+  servidor de 60 segundos por combinación de usuario, calendario y rango
+  consultado).
+- No: "tus eventos no se guardan en ningún lado, ni un instante" (cuando en
+  la práctica quedan en memoria del servidor unos segundos antes de
+  descartarse).
 
-**Registro:** 2026-08-10 — política de privacidad, sección "Cómo funciona
-conectar un asistente de IA". El texto original decía que revocar cortaba el
-acceso "en el momento", pero medido contra el stack (`docs` de
-`openspec/changes/servidor-mcp/design.md`, decisión D-K) el access token ya
-emitido sigue sirviendo contra la base hasta que vence solo, una hora
-después. Se corrigió el texto para separar lo que sí es inmediato (dejar de
-poder renovar el acceso) de lo que tarda hasta una hora en apagarse solo, en
-vez de elegir entre mentir por omisión o sonar alarmista.
+**Registro:** el ejemplo original de esta sección era revocar el acceso de
+un asistente de IA conectado: el access token ya emitido seguía sirviendo
+contra la base hasta que vencía solo, hasta una hora después de revocar. Esa
+demora real se resolvió (2026-08-10): revocar ahora corta el acceso de
+inmediato, verificado de punta a punta. La política de privacidad ya dice
+"deja de poder usar tu cuenta de inmediato, no en un rato". El ejemplo se
+reemplazó porque el original enseñaba una demora que ya no existe.
 
 ## Palabras del producto
 
