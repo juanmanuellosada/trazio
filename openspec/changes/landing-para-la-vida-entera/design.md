@@ -73,14 +73,7 @@ demo: el subtítulo ya presenta las tres cosas que junta Trazio, y la demo se
 explica sola (label + placeholder ya existentes en `ParserDemo`). Agregar un
 tercer texto ahí competiría con el subtítulo en vez de reforzarlo.
 
-### 2. CTA (banda, sin titular)
-
-Sin cambios de copy: mismo botón `Crear mi cuenta gratis`, sin encabezado
-propio (`CtaBand` ya no lleva título — no competir con lo que la rodea, regla
-existente). Cambia la posición: pasa a ser la sección 2, inmediatamente
-después del hero.
-
-### 3. El problema
+### 2. El problema
 
 **H2:** `Tu día, repartido en tres lugares`
 
@@ -97,7 +90,7 @@ patrón de Sunsama es "el estado viejo arriba, el nuevo abajo": acá "abajo"
 son las tres secciones siguientes, no un cierre dentro de esta misma
 sección. Nada de "caos", nada de bronca: describe, no dramatiza.
 
-### 4. Lo que tenés que hacer
+### 3. Lo que tenés que hacer
 
 **H2:** `Lo que tenés que hacer, ordenado como vos quieras`
 
@@ -131,7 +124,7 @@ derecha — sin inventar sintaxis, tomado de `docs/product-spec.md` §7):
 | `project:Trabajo & !label:espera` | Todo lo de Trabajo, menos lo que está en espera |
 | `due:overdue` | Todo lo atrasado |
 
-### 5. Lo que querés sostener
+### 4. Lo que querés sostener
 
 **H2:** `Lo que querés sostener, no solo lo que tenés que hacer`
 
@@ -146,7 +139,7 @@ derecha — sin inventar sintaxis, tomado de `docs/product-spec.md` §7):
 Cuatro oraciones. Sin "no rompas la racha" ni ningún llamado a la
 motivación — la racha se informa, no se arenga (`.claude/rules/copy.md`).
 
-### 6. Lo que ya está agendado (fondo oscuro)
+### 5. Lo que ya está agendado (fondo oscuro)
 
 **H2:** `Lo que ya está agendado, al lado de todo lo demás`
 
@@ -165,7 +158,7 @@ del calendario (ver D-CAL) — sin leyenda aparte: los tres tipos de bloque
 (tarea, hábito, evento) se distinguen por forma, como en la app real, y eso
 no necesita explicación textual.
 
-### 7. El día que entra
+### 6. El día que entra
 
 **H2:** `Y te dice si entra`
 
@@ -179,6 +172,15 @@ no necesita explicación textual.
 Cuatro oraciones, coherentes con D61 (`docs/decisions.md`): el número no
 juzga. **Esta sección es la que bloquea el deploy** — ver Impact en
 `proposal.md` y D-GATE más abajo.
+
+### 7. CTA (banda, sin titular)
+
+Sin cambios de copy: mismo botón `Crear mi cuenta gratis`, sin encabezado
+propio (`CtaBand` ya no lleva título — no competir con lo que la rodea, regla
+existente). Cambia la posición: pasa a ser la sección 7, después de "El día
+que entra" — el visitante ya recorrió el problema, las tres cosas que Trazio
+junta, y acaba de leer que además le dice si el día entra; ese es el momento
+de ofrecer la cuenta, no dos centímetros después del hero.
 
 ### 8. Por qué es gratis
 
@@ -235,7 +237,7 @@ reales del parser) no está en esa lista de diez ni en la lista de lo que se
 va.
 
 **Decisión:** se reubica como demostración dentro de "Lo que tenés que
-hacer" (sección 4), sin encabezado propio, en vez de seguir siendo una
+hacer" (sección 3), sin encabezado propio, en vez de seguir siendo una
 sección al mismo nivel que "El problema" o "Lo que querés sostener".
 Razones: (1) el diagnóstico original dice explícitamente "cuatro de las
 nueve secciones son sobre el parser" como problema a resolver, y dejarla
@@ -249,7 +251,7 @@ undécimo encabezado sin desbalancear la página.
 **Esto es una interpretación, no una instrucción explícita del pedido** —
 queda marcado así en el reporte final para que el dueño lo confirme o lo
 corrija antes de implementar. Alternativa si se prefiere mantenerla aparte:
-insertarla como sección 4-bis, entre "El problema" y "Lo que tenés que
+insertarla como sección 3-bis, entre "El problema" y "Lo que tenés que
 hacer", sin tocar el resto del orden.
 
 ### D-CAL — El preview del calendario es un componente nuevo, no una reutilización de `components/calendar/`
@@ -332,7 +334,7 @@ compartido sin `"use client"` — no es parte de este change.
 **El problema.** La landing hereda el tema del sistema completo
 (`ThemeProvider attribute="class" defaultTheme="system"` en
 `app/layout.tsx`): un visitante en tema claro navega toda la landing en
-claro. La sección 6 tiene que verse oscura **siempre**, sea cual sea el
+claro. La sección 5 tiene que verse oscura **siempre**, sea cual sea el
 tema del visitante — es una decisión de contenido (mostrar cómo se ve la
 app de verdad), no una preferencia de tema.
 
@@ -453,7 +455,7 @@ landing (G1).
 **Ola 4 — cierre, secuencial:**
 
 - `pnpm lint && pnpm typecheck && pnpm test`.
-- Verificar en el navegador: tema claro y oscuro (la sección 6 se ve oscura
+- Verificar en el navegador: tema claro y oscuro (la sección 5 se ve oscura
   en los dos), viewport de teléfono (CTA fijo alcanzable, sin tapar
   contenido), Lighthouse ≥ 90 en rendimiento y accesibilidad.
 - **Gate de publicación:** confirmar que `el-dia-que-entra` ya está en

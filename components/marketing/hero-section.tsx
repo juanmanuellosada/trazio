@@ -27,7 +27,12 @@ export function HeroSection() {
           </p>
         </div>
         <ParserDemo />
-        <div className="flex flex-col items-center gap-2">
+        {/* Todo el bloque (botón + "Gratis. Sin tarjeta.") se oculta en
+            teléfono (`hidden sm:flex`): ahí ya está `MobileStickyCta`, fijo
+            abajo. No alcanza con esconder solo el botón — la leyenda, sin
+            su botón, queda igual de expuesta a que la barra fija la tape
+            al pasar por su misma franja de pantalla durante el scroll. */}
+        <div className="hidden flex-col items-center gap-2 sm:flex">
           <CtaLink size="lg" location="hero" />
           <p className="text-sm text-text-secondary">Gratis. Sin tarjeta.</p>
         </div>

@@ -145,7 +145,7 @@ en una sola. Tres elementos, en este orden:
 - **Subtítulo** — nombra las tres cosas que junta Trazio: *"Trazio junta lo
   que tenés que hacer, lo que querés sostener y lo que ya está agendado. Y
   te dice si entra en las horas que te quedan."* Es la estructura de las
-  seis secciones que siguen: 4, 5, 6 y 7 son, en orden, esas tres cosas más
+  seis secciones que siguen: 3, 4, 5 y 6 son, en orden, esas tres cosas más
   la resta final.
 - **La demo del parser, interactiva** — mismo componente que antes vivía en
   la sección 2, ahora arriba de todo. Su estado inicial ya viene parseado
@@ -157,17 +157,7 @@ debajo. Sin menú de navegación con links que se lleven al visitante afuera.
 Como mucho, el logo a la izquierda y un "Iniciar sesión" discreto a la
 derecha.
 
-### 2. CTA (banda)
-
-El mismo botón, sin titular propio, inmediatamente después del hero — justo
-después de que la persona jugó con la demo, el pico de intención. Antes esta
-repetición estaba dos secciones más abajo, después de la galería de
-transformaciones; se adelanta acá. El CTA principal se repite en total en
-tres puntos del flujo de scroll (hero, esta banda, cierre) más el CTA fijo
-de móvil, fuera del flujo — ver "Un solo CTA principal" más abajo: sigue
-siendo un único CTA distinto, no varios compitiendo.
-
-### 3. El problema
+### 2. El problema
 
 Nueva. Describe, sin dramatismo, el estado sin sistema único: las tareas en
 una lista, los hábitos en otro lado si acaso, el calendario que casi nunca
@@ -175,7 +165,7 @@ se abre cuando se arma el día — ninguna de las tres partes sabe de las
 otras dos. No nombra la solución todavía: la muestran las tres secciones que
 siguen.
 
-### 4. Lo que tenés que hacer
+### 3. Lo que tenés que hacer
 
 Fecha, hora, duración, prioridad y etiqueta salen solas de lo que se
 escribió; las tareas se agrupan en proyectos con secciones (hasta tres
@@ -216,7 +206,7 @@ sección aparte, entre la demo y la galería) también se borró: decía "ocho
 tipos de dato" cuando eran siete (fecha relativa y puntual comparten color),
 y el color de cada tipo ya se explica solo interactuando con la demo.
 
-### 5. Lo que querés sostener
+### 4. Lo que querés sostener
 
 Nueva. Un hábito no es una tarea que se repite: no vence, no se completa una
 vez y desaparece. Se repite todos los días, cierta cantidad de veces por
@@ -224,7 +214,7 @@ semana, o en días puntuales, y Trazio lleva la cuenta de racha actual, mejor
 racha y constancia del último mes. Sin lenguaje motivacional ni "no rompas
 la racha" — se informa, no se arenga.
 
-### 6. Lo que ya está agendado
+### 5. Lo que ya está agendado
 
 Nueva, con **fondo oscuro fijo**: se ve oscura sea cual sea el tema del
 sistema del visitante, porque es una decisión de contenido (mostrar cómo se
@@ -236,7 +226,7 @@ igual que en la app real — ver "Sistema gráfico" más abajo para el detalle
 técnico de por qué es un componente nuevo y no una reutilización del
 calendario real.
 
-### 7. El día que entra
+### 6. El día que entra
 
 Nueva. La resta entre lo pedido y las horas que quedan: si sobra tiempo se
 ve, si no entra avisa sin números en rojo ni culpa, y "¿Qué hago ahora?"
@@ -245,6 +235,18 @@ función que se construyó en paralelo a este rediseño (`el-dia-que-entra`):
 el texto es estático y puede mergearse a `main` sin que esa función esté en
 producción, pero **el deploy a producción de la landing completa espera** a
 que sí lo esté — ver D-GATE en `design.md`.
+
+### 7. CTA (banda)
+
+El mismo botón, sin titular propio, después de "El día que entra" — no
+inmediatamente después del hero, donde repetía el mismo CTA a dos
+centímetros de distancia. En este punto el visitante ya recorrió el
+problema, las tres cosas que Trazio junta, y acaba de leer que además le
+dice si el día entra: recién ahí se ofrece la cuenta, cerrando el arco del
+titular. El CTA principal se repite en total en tres puntos del flujo de
+scroll (hero, esta banda, cierre) más el CTA fijo de móvil, fuera del flujo
+— ver "Un solo CTA principal" más abajo: sigue siendo un único CTA
+distinto, no varios compitiendo.
 
 ### 8. Por qué es gratis
 
@@ -308,7 +310,7 @@ principal de esta landing. Recursos, todos en CSS:
   mismo tipo de dato (`docs/design-system.md` §2.1).
 - **Malla de fondo del hero** (`landing-hero-mesh` en `app/globals.css`):
   radiales en el azul de marca, sin ninguna imagen de fondo.
-- **El preview de calendario** (sección 6, `CalendarDayPreview`): un
+- **El preview de calendario** (sección 5, `CalendarDayPreview`): un
   componente nuevo y autocontenido bajo `components/marketing/`, Server
   Component puro, con datos de ejemplo fijos
   (`lib/landing/calendar-preview-data.ts`) — deliberadamente **no** reutiliza
@@ -318,7 +320,7 @@ principal de esta landing. Recursos, todos en CSS:
   distinguen por forma, sin leyenda de texto — ver D-CAL en
   `openspec/changes/landing-para-la-vida-entera/design.md` para el detalle
   completo de la decisión.
-- **La sección de fondo oscuro fijo** (sección 6, D-DARK): se ve oscura sea
+- **La sección de fondo oscuro fijo** (sección 5, D-DARK): se ve oscura sea
   cual sea el tema del sistema del visitante, con colores arbitrarios
   tomados literalmente de la paleta `.dark` de `app/globals.css` en vez de
   las utilidades semánticas que sí cambian con el tema — el desacople de la

@@ -54,9 +54,12 @@ que se re-litigue acá.
   hero. Titular nuevo: *"Tu día no entra en una lista."* Subtítulo nuevo:
   *"Trazio junta lo que tenés que hacer, lo que querés sostener y lo que ya
   está agendado. Y te dice si entra en las horas que te quedan."`
-- **CTA se adelanta.** La banda de CTA pasa a estar inmediatamente después
-  del hero (hoy está dos secciones más abajo), justo después de que la
-  persona jugó con la demo — el pico de intención.
+- **CTA se reubica.** La banda de CTA pasa a estar después de "El día que
+  entra" (hoy está inmediatamente después del hero), en vez de repetir el
+  CTA del hero a dos centímetros de distancia: cierra el arco narrativo del
+  titular, en el punto en que el visitante ya recorrió el problema, las tres
+  cosas que Trazio junta, y acaba de leer que además le dice si el día
+  entra.
 - **Tres secciones nuevas que son la estructura del subtítulo:** "Lo que
   querés sostener" (hábitos con racha y constancia) y "Lo que ya está
   agendado" (calendario con bloques reales y Google Calendar, en fondo

@@ -36,11 +36,11 @@ export const metadata: Metadata = {
  * Server Components enteros salvo la demo del parser (`ParserDemo`, embebida
  * directo en `HeroSection`), la única isla cliente. Diez secciones, en el
  * orden en que responden lo que se pregunta un visitante: hero con la demo
- * interactiva desde el primer scroll → CTA (pico de intención, justo
- * después de jugar con la demo) → el problema sin sistema único → lo que
- * tenés que hacer (parser, galería de transformaciones y lenguaje de
+ * interactiva desde el primer scroll → el problema sin sistema único → lo
+ * que tenés que hacer (parser, galería de transformaciones y lenguaje de
  * consulta) → lo que querés sostener (hábitos) → lo que ya está agendado
- * (calendario, fondo oscuro fijo) → el día que entra → por qué es gratis →
+ * (calendario, fondo oscuro fijo) → el día que entra → CTA (recorrido el
+ * arco completo del argumento, ofrece la cuenta) → por qué es gratis →
  * preguntas directas → cierre.
  *
  * Header y footer viven en el layout del grupo, compartidos con
@@ -48,21 +48,21 @@ export const metadata: Metadata = {
  * (visible solo en teléfono).
  *
  * El CTA principal (`CtaLink`, texto único) se repite en tres puntos del
- * flujo — hero, banda (`CtaBand`, sin titular propio, justo después del
- * hero) y cierre — más el CTA fijo de móvil, fuera del flujo. Es un solo
- * CTA distinto repetido, no varios CTA compitiendo — ver "Un solo CTA
+ * flujo — hero, banda (`CtaBand`, sin titular propio, después de "el día
+ * que entra") y cierre — más el CTA fijo de móvil, fuera del flujo. Es un
+ * solo CTA distinto repetido, no varios CTA compitiendo — ver "Un solo CTA
  * principal" en `docs/landing.md`.
  */
 export default function LandingPage() {
   return (
     <>
       <HeroSection />
-      <CtaBand />
       <ProblemSection />
       <ProductNarrativeSection />
       <HabitsSection />
       <CalendarSection />
       <DayFitsSection />
+      <CtaBand />
       <FreeSection />
       <FaqSection />
       <ClosingSection />

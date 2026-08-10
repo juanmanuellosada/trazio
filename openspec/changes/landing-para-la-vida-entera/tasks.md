@@ -116,10 +116,10 @@
 
 ## 10. Reensamblado de la página
 
-- [x] 10.1 `app/(marketing)/page.tsx`: orden final — Hero, CtaBand, El
-      problema, Lo que tenés que hacer, Lo que querés sostener, Lo que ya
-      está agendado, El día que entra, Por qué es gratis, Preguntas
-      directas, Cierre.
+- [x] 10.1 `app/(marketing)/page.tsx`: orden final — Hero, El problema, Lo
+      que tenés que hacer, Lo que querés sostener, Lo que ya está agendado,
+      El día que entra, CtaBand, Por qué es gratis, Preguntas directas,
+      Cierre.
 - [x] 10.2 Actualizar el comentario de cabecera del archivo (describe hoy
       el esqueleto "El editor" viejo) para reflejar la estructura nueva.
 
