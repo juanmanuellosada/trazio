@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHoySequence, type HoySequenceEvent } from "./hoy-sequence";
+import { buildHoySequence, findNowMarkerIndex, type HoySequenceEvent } from "./hoy-sequence";
 
 const BA = "America/Argentina/Buenos_Aires";
 
@@ -85,5 +85,59 @@ describe("buildHoySequence — tres tramos (D-A)", () => {
     const undated = task("call-accountant", { due_date: "2026-08-03" });
     const sequence = buildHoySequence([payRent, undated], [morningMeeting, allDay, yesterday], NOW, BA);
     expect(ids(sequence)).toEqual(["holiday", "carried-over", "pay-rent", "morning-meeting", "call-accountant"]);
+  });
+});
+
+// Marca de "ahora" en la vista Hoy modo lista (pedido "no sé qué hora es
+// actualmente. Para tener referencia"): dónde cae dentro de la secuencia ya
+// armada por `buildHoySequence`, sin volver a decidir qué es tier1/2/3.
+describe("findNowMarkerIndex — dónde insertar la marca de \"ahora\"", () => {
+  it("ahora cae entre dos ítems con hora: apunta al primero posterior", () => {
+    const before = task("before", { due_at: "2026-08-03T12:00:00.000Z" }); // antes de NOW (15:00Z)
+    const after = task("after", { due_at: "2026-08-03T18:00:00.000Z" }); // después de NOW
+    const sequence = buildHoySequence([before, after], [], NOW, BA);
+    const index = findNowMarkerIndex(sequence, NOW);
+    expect(index).toBe(1);
+    expect(sequence[index!]).toEqual({ kind: "task", task: after });
+  });
+
+  it("ningún ítem con hora (tramo con hora vacío): null, aunque haya todo el día y sin hora", () => {
+    const allDay = event("holiday", { allDay: true, start: "2026-08-03" });
+    const undated = task("undated", { due_date: "2026-08-03" });
+    const sequence = buildHoySequence([undated], [allDay], NOW, BA);
+    expect(findNowMarkerIndex(sequence, NOW)).toBeNull();
+  });
+
+  it("ahora antes del primer ítem con hora: la marca va al principio del tramo con hora, después del de todo el día", () => {
+    const allDay = event("holiday", { allDay: true, start: "2026-08-03" });
+    const later = task("later", { due_at: "2026-08-03T18:00:00.000Z" });
+    const sequence = buildHoySequence([later], [allDay], NOW, BA);
+    const index = findNowMarkerIndex(sequence, NOW);
+    expect(index).toBe(1); // 0: holiday (todo el día), 1: later (con hora) — la marca cae justo acá.
+    expect(sequence[index!]).toEqual({ kind: "task", task: later });
+  });
+
+  it("ahora después del último ítem con hora: la marca va justo antes del tramo sin hora", () => {
+    const earlier = task("earlier", { due_at: "2026-08-03T12:00:00.000Z" });
+    const undated = task("undated", { due_date: "2026-08-03" });
+    const sequence = buildHoySequence([earlier, undated], [], NOW, BA);
+    const index = findNowMarkerIndex(sequence, NOW);
+    expect(index).toBe(1); // 0: earlier (con hora), 1: undated (sin hora) — la marca cae justo acá.
+    expect(sequence[index!]).toEqual({ kind: "task", task: undated });
+  });
+
+  it("secuencia vacía: null, sin asumir que siempre hay al menos un ítem", () => {
+    expect(findNowMarkerIndex(buildHoySequence([], [], NOW, BA), NOW)).toBeNull();
+  });
+
+  it("un evento arrastrado de ayer no rompe la posición aunque tenga instante comparable", () => {
+    const yesterday = event("carried-over", { start: "2026-08-02T23:30:00-03:00" });
+    const earlier = task("earlier", { due_at: "2026-08-03T09:00:00.000Z" });
+    const later = task("later", { due_at: "2026-08-03T18:00:00.000Z" });
+    const sequence = buildHoySequence([earlier, later], [yesterday], NOW, BA);
+    expect(ids(sequence)).toEqual(["carried-over", "earlier", "later"]);
+    const index = findNowMarkerIndex(sequence, NOW);
+    expect(index).toBe(2); // justo antes de "later" — el arrastrado (tier1) no interfiere.
+    expect(sequence[index!]).toEqual({ kind: "task", task: later });
   });
 });

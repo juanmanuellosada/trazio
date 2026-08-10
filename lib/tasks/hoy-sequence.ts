@@ -95,3 +95,45 @@ export function buildHoySequence<TTask extends TaskDueFields, TEvent extends Hoy
 
   return [...tier1, ...tier2, ...tier3];
 }
+
+/**
+ * Índice donde insertar la marca de "ahora" en una secuencia ya armada por
+ * `buildHoySequence` (pedido del dueño, "en la vista Hoy en modo lista no sé
+ * qué hora es actualmente"): recorre buscando el primer ítem cuyo instante
+ * (`due_at` de una tarea, o `start` de un evento sin `allDay`) sea posterior
+ * o igual a `now`, y devuelve ese índice — ahí va la marca, antes de ese
+ * ítem. Si ninguno es posterior (todo lo del tramo con hora ya pasó), la
+ * marca va justo después del último ítem con instante, es decir, antes del
+ * tramo 3 (sin hora) si existe. `null` si ningún ítem de la secuencia tiene
+ * instante comparable — sin eje temporal, no hay contra qué posicionarla.
+ *
+ * No hace falta distinguir acá el tramo 1 (todo el día / arrastrado de
+ * ayer) del tramo 2 (con hora real hoy): un evento arrastrado, aunque
+ * técnicamente tenga un instante de inicio, siempre es anterior a `now`
+ * (empezó antes de hoy) — nunca es "el primer posterior", así que
+ * participar del barrido no cambia el resultado.
+ */
+export function findNowMarkerIndex<TTask extends TaskDueFields, TEvent extends HoySequenceEvent>(
+  sequence: readonly HoySequenceEntry<TTask, TEvent>[],
+  now: Date,
+): number | null {
+  const nowMs = now.getTime();
+  let lastComparableIndex = -1;
+
+  for (let index = 0; index < sequence.length; index++) {
+    const entry = sequence[index]!;
+    const instant =
+      entry.kind === "task"
+        ? entry.task.due_at
+          ? new Date(entry.task.due_at).getTime()
+          : null
+        : entry.event.allDay
+          ? null
+          : new Date(entry.event.start).getTime();
+    if (instant === null) continue;
+    if (instant >= nowMs) return index;
+    lastComparableIndex = index;
+  }
+
+  return lastComparableIndex === -1 ? null : lastComparableIndex + 1;
+}

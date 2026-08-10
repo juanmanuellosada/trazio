@@ -66,3 +66,15 @@ export function formatTaskDueLabel(task: TaskDueFields, preferences: DateFormatP
   });
   return `${datePart} · ${timePart}`;
 }
+
+/**
+ * Hora sola en la zona y el formato (12/24h) de preferencia del usuario —
+ * mismo patrón que `formatEventTimeLabel` de `components/calendar/event-row.tsx`,
+ * acá compartido porque la marca de "ahora" de la vista Hoy (modo lista) lo
+ * necesita también. Nunca usa `new Date()`/APIs del navegador: recibe `date`
+ * ya resuelto.
+ */
+export function formatTimeLabel(date: Date, timezone: string, timeFormat: TimeFormatPreference): string {
+  const pattern = timeFormat === 24 ? "HH:mm" : "h:mm aaaa";
+  return formatInTimeZone(date, timezone, pattern, { locale: es });
+}

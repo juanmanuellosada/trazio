@@ -35,10 +35,10 @@ import { useDayLoad } from "@/components/calendar/use-day-load";
 import { QueHagoAhoraButton } from "@/components/calendar/que-hago-ahora-button";
 import { formatCargaDelDia } from "@/lib/planning/day-load";
 import { usePublishComposeContext } from "./compose-context";
+import { HoyTodaySequence } from "./hoy-today-sequence";
 import { TaskGroupList } from "./task-group-list";
 import { TaskListEmptyState } from "./task-list-empty-state";
 import { TaskQuickAddRow } from "./task-quick-add-row";
-import { TaskRow } from "./task-row";
 
 const VIEW_KEY = "hoy";
 
@@ -473,24 +473,16 @@ export function HoyView({
                   <section>
                     <h2 className="mb-2 text-sm font-semibold tracking-wide text-text-secondary uppercase">Hoy</h2>
                     {useDefaultSequence ? (
-                      <ul className="flex flex-col divide-y divide-border/60">
-                        {mixedSequence.map((entry) =>
-                          entry.kind === "event" ? (
-                            renderEventRow(entry.event)
-                          ) : (
-                            <TaskRow
-                              key={entry.task.id}
-                              task={entry.task}
-                              allTasks={tasks}
-                              siblings={[]}
-                              depth={0}
-                              variant="flat"
-                              selectionOrderIds={todaySequenceTaskIds}
-                              showProject
-                            />
-                          ),
-                        )}
-                      </ul>
+                      <HoyTodaySequence
+                        mixedSequence={mixedSequence}
+                        renderEventRow={renderEventRow}
+                        tasks={tasks}
+                        todaySequenceTaskIds={todaySequenceTaskIds}
+                        timezone={timezone}
+                        timeFormat={timeFormat}
+                        todayDate={todayDate}
+                        now={now}
+                      />
                     ) : (
                       <>
                         {hasEventsToday && (
