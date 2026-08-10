@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generado por `supabase start`/`supabase branches` al levantar el stack
+    // local, nunca se commitea (ver .gitignore). Incluye código minificado
+    // del runtime de edge functions que dispara cientos de falsos positivos.
+    "supabase/.branches/**",
+    "supabase/.temp/**",
   ]),
 ]);
 
