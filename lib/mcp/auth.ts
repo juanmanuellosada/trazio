@@ -1,4 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/server";
+import { createMcpSupabaseClient } from "@/lib/mcp/client";
 
 /**
  * Verificación del access token del servidor MCP (Ola 6, D-A/D-J de
@@ -25,6 +26,21 @@ import type { AuthInfo } from "@modelcontextprotocol/server";
  * Cumple el espíritu de la validación (el token vino de nuestro servidor de
  * autorización, en un flujo OAuth) sin cumplir la letra exacta de RFC
  * 8707 — riesgo aceptado, no resuelto, documentado en D-J.
+ *
+ * **D-K — el permiso revocado se rechaza en el mismo pedido, no en la
+ * próxima hora.** Los chequeos de arriba son locales (sin red) y no
+ * alcanzan para esto: el access token sigue siendo un JWT sin estado
+ * válido hasta que vence, revocar el consentimiento no lo invalida por sí
+ * solo. Se probó la vía barata antes de agregar esta consulta —
+ * `/auth/v1/oauth/userinfo` y PostgREST, contra el stack local, con el
+ * consentimiento recién revocado y el mismo token: los dos siguieron
+ * devolviendo 200 — así que no alcanzaba con consultar un endpoint
+ * existente. Por eso `checkOAuthConsent` (por defecto,
+ * `isOAuthConsentActive` acá abajo) llama a `oauth_consent_is_active()`
+ * (`supabase/migrations/20260810020000_oauth_consent_is_active.sql`), que
+ * sí mira `auth.oauth_consents.revoked_at`. Es una consulta más por pedido
+ * al MCP — costo aceptado, sin caché: una caché reintroduce la ventana que
+ * esto cierra.
  */
 type SupabaseAccessTokenClaims = {
   iss?: unknown;
@@ -45,14 +61,25 @@ function decodeAccessToken(token: string): SupabaseAccessTokenClaims | null {
   }
 }
 
+export type CheckOAuthConsent = (accessToken: string) => Promise<boolean>;
+
+/** Implementación real de `CheckOAuthConsent` — ver D-K arriba. */
+async function isOAuthConsentActive(accessToken: string): Promise<boolean> {
+  const { data, error } = await createMcpSupabaseClient(accessToken).rpc("oauth_consent_is_active");
+  if (error) return false;
+  return data === true;
+}
+
 /**
  * Fábrica en vez de una función suelta: `supabaseIssuer` viene de una
  * variable de entorno (`app/api/mcp/route.ts`), y pasarlo como parámetro
  * (en vez de leer `process.env` acá adentro) es lo que permite testear la
- * validación sin depender del entorno del proceso.
+ * validación sin depender del entorno del proceso. `checkOAuthConsent`
+ * tiene el mismo motivo, con default a la implementación real: los tests
+ * que no ejercitan D-K pasan un stub y no dependen de una base corriendo.
  */
-export function createVerifyMcpToken(supabaseIssuer: string) {
-  return function verifyMcpToken(_req: Request, bearerToken?: string): AuthInfo | undefined {
+export function createVerifyMcpToken(supabaseIssuer: string, checkOAuthConsent: CheckOAuthConsent = isOAuthConsentActive) {
+  return async function verifyMcpToken(_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> {
     if (!bearerToken) return undefined;
 
     const claims = decodeAccessToken(bearerToken);
@@ -60,6 +87,7 @@ export function createVerifyMcpToken(supabaseIssuer: string) {
     if (claims.iss !== supabaseIssuer) return undefined;
     if (typeof claims.client_id !== "string" || claims.client_id.length === 0) return undefined;
     if (typeof claims.exp === "number" && claims.exp * 1000 <= Date.now()) return undefined;
+    if (!(await checkOAuthConsent(bearerToken))) return undefined;
 
     return {
       token: bearerToken,

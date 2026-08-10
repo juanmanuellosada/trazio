@@ -597,7 +597,75 @@ trivial. El diseño actual pide el scope `openid email` (ver D-A); queda
 abierto si conviene pedir solo `email` para no depender de esa condición —
 no se resuelve acá, ver Open Questions.
 
-### D-K — `revokeGrant` corta la renovación al instante, pero el access token ya emitido vive hasta que expira solo (hallazgo del cierre, bloque 8)
+### D-K — resuelta: el permiso revocado se rechaza en el mismo pedido (bloque 9; decisión original del bloque 8 más abajo, sin borrar)
+
+**Por qué se reabrió.** El bloque 8 (más abajo) aceptó la ventana de hasta
+una hora como riesgo conocido. Se probó con un cliente real contra
+producción: revocar desde Configuración → Aplicaciones conectadas, y el
+asistente siguió funcionando después. Con el MCP siendo la única superficie
+que ese token puede usar en la práctica, y con acceso de lectura y
+escritura sobre la cuenta entera, una hora de gracia dejó de ser aceptable.
+
+**Vía barata probada primero, y descartada.** Antes de escribir código
+nuevo se probó si Supabase ya invalida el token para sus propios endpoints
+al revocar el consentimiento — contra el stack local, con el mismo access
+token antes y después de revocar: ni `GET /auth/v1/oauth/userinfo` ni
+PostgREST (`GET /rest/v1/tasks`) lo rechazan, los dos siguen devolviendo
+`200`. No hay atajo: hace falta una consulta propia.
+
+**Qué se construyó.** `oauth_consent_is_active()`
+(`supabase/migrations/20260810020000_oauth_consent_is_active.sql`), una
+función `security definer` sin parámetros — la identidad sale de
+`auth.uid()` y el cliente de `auth.jwt() ->> 'client_id'`, nunca de un
+argumento, por el mismo motivo que `get_shared_project` (D-B) no acepta un
+id: un parámetro dejaría preguntar por el consentimiento de otro usuario.
+Consulta `auth.oauth_consents.revoked_at` y devuelve un booleano, nada más.
+`lib/mcp/auth.ts` la llama (`checkOAuthConsent`, inyectable para tests) en
+cada verificación de token, después de los chequeos locales (emisor,
+`client_id`, vencimiento) y antes de aceptarlo — un permiso revocado
+rechaza en el mismo pedido, con el mismo `401` y la misma cabecera
+`WWW-Authenticate` que ya usaba cualquier otro token inválido.
+
+**Por qué esto sí, cuando la alternativa 2 del bloque 8 se había
+descartado por costo.** La alternativa evaluada en su momento — una lista
+de `client_id` revocados consultada desde la política de RLS de cada tabla
+que el MCP toca — se descartó por agregar una subconsulta por fila en cada
+tabla. Lo que se construyó acá es distinto y más barato: una sola consulta
+por pedido al servidor MCP, en el perímetro de autenticación, no una
+subconsulta por política de RLS. Medido contra el stack local: ~1-2 ms por
+llamada a `oauth_consent_is_active()`, el mismo orden que cualquier otra
+consulta que ya hace cada herramienta del MCP contra PostgREST. Sin caché a
+propósito: una caché reintroduce una ventana de tolerancia, que es
+exactamente lo que esto cierra.
+
+**Verificado de punta a punta contra el stack local, con el código real (no
+solo la función en SQL):** un token OAuth recién emitido autentica y las
+herramientas responden; se revoca con `auth.oauth.revokeGrant` — el mismo
+método que usa `lib/oauth/use-connected-apps.ts` en la interfaz real, no un
+`UPDATE` a mano — y el MISMO token deja de autenticar en la siguiente
+llamada a `createVerifyMcpToken`, sin esperar a que expire. Un segundo
+token no revocado siguió autenticando sin cambios. Un detalle que quedó
+claro en esta verificación: la función de la herramienta llamada
+directamente con un `authInfo` armado a mano (saltando `verifyMcpToken`)
+sigue devolviendo datos con el token revocado — PostgREST y RLS no saben
+nada de consentimientos revocados, ese chequeo vive únicamente en el
+perímetro de autenticación del MCP. Por eso el fix tenía que ir en
+`lib/mcp/auth.ts`, no se podía resolver solo con RLS.
+
+**Consecuencia sobre el texto del producto.** El bloque 8 había ajustado la
+política de privacidad para no prometer un corte "al instante" sin matices.
+Con el corte ahora sí siendo inmediato, ese matiz dejó de ser necesario —
+`app/(marketing)/privacidad/page.tsx` vuelve a decir que revocar corta el
+acceso en el momento, esta vez porque es cierto de punta a punta, no
+porque se haya redondeado.
+
+---
+
+**Decisión original (bloque 8, para el registro — ya no describe el
+comportamiento actual, ver la resolución arriba).**
+
+`revokeGrant` corta la renovación al instante, pero el access token ya
+emitido vive hasta que expira solo.
 
 Medido contra el stack local (mismo grant de 5.6): revocar con `revokeGrant`
 borra la sesión y el refresh token asociados — confirmado en `auth.sessions`
@@ -612,8 +680,8 @@ que el token mismo expira. Esa expiración natural es de una hora (D-A, "Dura
 3600 s"). No es un bug de esta sección ni del proyecto: es cómo funciona un
 JWT stateless de Supabase.
 
-**Por qué se acepta tal cual, sin intentar cerrar la ventana al instante.**
-Dos alternativas evaluadas, las dos descartadas para esta ola:
+**Por qué se aceptaba tal cual, sin intentar cerrar la ventana al
+instante.** Dos alternativas evaluadas, las dos descartadas para esa ola:
 
 1. **Acortar el TTL del access token de forma global.** Reduciría la ventana
    para todos, pero el TTL es una propiedad del proyecto de Supabase, no de
@@ -623,19 +691,11 @@ Dos alternativas evaluadas, las dos descartadas para esta ola:
 2. **Lista de `client_id` revocados, consultada desde las políticas de
    RLS.** Cortaría el acceso al instante — apenas se revoca, cualquier
    request con ese `client_id` se rechaza en la base, sin esperar el TTL. Se
-   descarta para esta ola (queda como opción futura, no como tarea
-   pendiente) porque agrega una subconsulta contra esa lista en cada
-   política de cada tabla que el MCP toca — costo por fila en cada acceso,
-   para cubrir un caso que no es el más frecuente (revocar y que el token ya
-   filtrado siga usándose en la próxima hora).
-
-**Consecuencia sobre el texto del producto.** Ni la política de privacidad
-ni la tarea 8.2 de `tasks.md` pueden prometer que revocar corta el acceso
-"al instante" sin matices: lo que se corta al instante es la posibilidad de
-**renovar** el acceso (revokeGrant invalida el refresh token ya emitido); lo
-que ya estaba emitido se apaga solo, como máximo, en una hora. Ajustado en
-`app/(marketing)/privacidad/page.tsx` y en la tarea 8.2, fuera de este
-archivo.
+   descartó en ese momento porque agregaba una subconsulta contra esa lista
+   en cada política de cada tabla que el MCP toca — costo por fila en cada
+   acceso. La resolución del bloque 9 (arriba) toma una forma distinta de
+   esta misma idea, sin ese costo: una consulta por pedido en el perímetro
+   de autenticación, no una subconsulta por política de RLS.
 
 ## Open Questions
 

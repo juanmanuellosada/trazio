@@ -767,6 +767,7 @@ export type Database = {
         }[]
       }
       get_shared_project: { Args: { p_token: string }; Returns: Json }
+      oauth_consent_is_active: { Args: never; Returns: boolean }
       rebalance_project_positions: {
         Args: { p_parent_id?: string }
         Returns: undefined
