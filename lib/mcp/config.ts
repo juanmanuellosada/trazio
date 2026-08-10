@@ -1,10 +1,11 @@
+import { getSiteUrl } from "@/lib/site-url";
+
 /**
- * URLs del servidor MCP (Ola 6, D-I de `design.md`), derivadas de las
- * variables de entorno ya existentes. Funciones, no constantes de módulo:
- * evaluarlas recién al manejar un pedido evita que falte una variable de
- * entorno rompa el build de Next.js (que sí puede evaluar un route handler
- * al recolectar datos de la página) — mismo criterio que
- * `lib/supabase/server.ts`.
+ * URLs del servidor MCP (Ola 6, D-I de `design.md`), derivadas de
+ * `getSiteUrl` (mismo criterio que el resto de la app, `lib/site-url.ts`):
+ * el host del pedido gana por sobre el fijo de `NEXT_PUBLIC_SITE_URL`
+ * cuando se lo pasa, para que anuncien el dominio (`www` o no) por el que
+ * el cliente MCP realmente se conectó.
  *
  * `getMcpResourceUrl()` es el identificador RFC 9728 del recurso protegido
  * (con el path `/api/mcp` incluido): tiene que coincidir al carácter con el
@@ -22,12 +23,12 @@
  * existe — se verificó a mano contra el stack local antes de separar las
  * dos funciones.
  */
-export function getMcpResourceUrl(): string {
-  return `${process.env.NEXT_PUBLIC_SITE_URL}/api/mcp`;
+export function getMcpResourceUrl(requestHost?: string | null): string {
+  return `${getSiteUrl(requestHost)}/api/mcp`;
 }
 
-export function getMcpResourceOrigin(): string {
-  return `${process.env.NEXT_PUBLIC_SITE_URL}`;
+export function getMcpResourceOrigin(requestHost?: string | null): string {
+  return getSiteUrl(requestHost);
 }
 
 /** Emisor del servidor OAuth 2.1 de Supabase (D-A de `design.md`). */

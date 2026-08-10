@@ -2,6 +2,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { createVerifyMcpToken } from "@/lib/mcp/auth";
 import { getMcpResourceOrigin, getSupabaseIssuerUrl } from "@/lib/mcp/config";
 import { initializeMcpServer } from "@/lib/mcp/server";
+import { getRequestHost } from "@/lib/site-url";
 
 /**
  * Servidor MCP de Trazio (Ola 6 de `servidor-mcp`, D-I de `design.md`): un
@@ -22,15 +23,31 @@ import { initializeMcpServer } from "@/lib/mcp/server";
  * stack local, ver el comentario de `lib/mcp/config.ts`). El identificador
  * del recurso en sí (con `/api/mcp`) vive solo en
  * `app/.well-known/oauth-protected-resource/route.ts`.
+ *
+ * `withMcpAuth` fija `resourceUrl` por clausura en el momento en que se lo
+ * llama — no admite recalcularlo por pedido. Por eso el handler se arma de
+ * nuevo en cada `GET`/`POST` con el host de ese pedido puntual
+ * (`getRequestHost`), para anunciar siempre el mismo dominio (`www` o no)
+ * por el que el cliente MCP se conectó — el mismo que
+ * `app/.well-known/oauth-protected-resource/route.ts` anuncia para ese
+ * pedido.
  */
 const handler = createMcpHandler(initializeMcpServer, {
   serverInfo: { name: "trazio", version: "0.1.0" },
 });
 
-const authHandler = withMcpAuth(handler, createVerifyMcpToken(getSupabaseIssuerUrl()), {
-  required: true,
-  resourceMetadataPath: "/.well-known/oauth-protected-resource",
-  resourceUrl: getMcpResourceOrigin(),
-});
+function buildAuthHandler(request: Request) {
+  return withMcpAuth(handler, createVerifyMcpToken(getSupabaseIssuerUrl()), {
+    required: true,
+    resourceMetadataPath: "/.well-known/oauth-protected-resource",
+    resourceUrl: getMcpResourceOrigin(getRequestHost(request.headers)),
+  });
+}
 
-export { authHandler as GET, authHandler as POST };
+export function GET(request: Request) {
+  return buildAuthHandler(request)(request);
+}
+
+export function POST(request: Request) {
+  return buildAuthHandler(request)(request);
+}

@@ -255,7 +255,15 @@ modificada de forma individual, no en bloque.
       access token expira solo (1 hora en este stack). No se resuelve acá:
       queda para quien cierre el bloque 8 decidir si hace falta acortar el TTL
       del access token o ajustar el texto.
-- [ ] 5.7 Tests de componente para consentimiento y aplicaciones conectadas.
+- [x] 5.7 Tests de componente para consentimiento y aplicaciones conectadas.
+      **Resultado (2026-08-10):** `app/oauth/consent/consent-actions.test.tsx` y
+      `components/settings/connected-apps-section.test.tsx` cubren las acciones
+      de aprobar/rechazar/revocar. **Precisión honesta, no cobertura total:** no
+      hay test de `app/oauth/consent/page.tsx` (Server Component con
+      `redirect()`) — sigue la convención del repo, que tampoco tiene tests de
+      `page.tsx` para login, registro ni restablecer contraseña; su lógica de
+      ramas se verificó en el navegador contra el stack local, no con un test
+      automatizado.
 
 ## 6. Servidor MCP: lectura — OLA COMPLETADA (2026-08-10)
 
@@ -525,8 +533,17 @@ con la app — así que `validateDescription` (7.1) no lo hace.
       **Verificación antes de publicar:** abrir `/privacidad` y comprobar, afirmación por afirmación en
       presente, que cada una es cierta en producción — no solo la del borrado bloqueado (mismo criterio que
       el `DELETE` real rechazado de 8.3, extendido al resto del texto).
-- [ ] 8.1 `pnpm lint && pnpm typecheck && pnpm test && pnpm test:rls` en verde (se agrega `test:rls` por la Ola 4).
+- [x] 8.1 `pnpm lint && pnpm typecheck && pnpm test && pnpm test:rls` en verde (se agrega `test:rls` por la Ola 4).
+      **Resultado (2026-08-10):** corridos los cuatro comandos recién.
+      `pnpm lint` limpio, `pnpm typecheck` limpio, `pnpm test` con 2012 tests
+      en 240 archivos, `pnpm test:rls` con 161 tests en 22 archivos —
+      coincide con los números ya reportados en 7.7.
 - [ ] 8.2 Verificar en el navegador: aprobar una conexión real desde `/oauth/consent`, ver la aplicación listada en "Aplicaciones conectadas" y revocarla. Confirmar tres cosas por separado, no una sola "el token dejó de servir" (D-K de `design.md`: el access token ya emitido no se corta al revocar, vive hasta que expira solo): que la sesión y el refresh token desaparecen de `auth.sessions`, que el cliente ya no puede renovar el access token con ese refresh token, y que el access token emitido antes de revocar sigue sirviendo contra PostgREST hasta que vence solo — a la hora, no antes — y recién ahí deja de servir sin intervención adicional.
 - [ ] 8.3 Verificar con un cliente MCP real (Claude u otro compatible) conectado al deploy: ejecutar cada una de las nueve herramientas al menos una vez, incluida completar una tarea recurrente y confirmar que crea la siguiente ocurrencia. Además, con el access token obtenido, intentar un `DELETE` directo contra PostgREST (fuera de las herramientas del MCP) y confirmar que la política de RLS de la Ola 4 lo rechaza.
-- [ ] 8.4 Revisar que ninguna herramienta, ni el código del servidor MCP, referencia la `service_role` key en ningún punto.
+- [x] 8.4 Revisar que ninguna herramienta, ni el código del servidor MCP, referencia la `service_role` key en ningún punto.
+      **Resultado (2026-08-10):** verificado por grep sobre `lib/mcp/`,
+      `app/api/mcp/` y `app/.well-known/`: las únicas apariciones de
+      `service_role` son comentarios que dicen explícitamente que nunca se
+      usa (mismo hallazgo ya anotado en 6.1) — ninguna línea de código la
+      referencia.
 - [ ] 8.5 Correr el test binario de 1.4/3.2 contra producción (`GET .well-known/oauth-authorization-server/auth/v1`) como parte del cierre, para confirmar que el servidor OAuth quedó habilitado antes de dar el cambio por terminado.
