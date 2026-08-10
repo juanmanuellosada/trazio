@@ -163,6 +163,14 @@ Cada hábito lleva su **racha actual** y su **mejor racha histórica**. Reglas:
   de gracia hasta que termina antes de darlo por perdido.
 - *Veces por semana:* se cuentan semanas consecutivas en las que se llegó a la meta.
 
+Además de la racha, cada hábito muestra su **constancia** —la proporción de
+días cumplidos sobre los días que le tocaban en los últimos 30 días, o menos
+si es más joven, sin contar los días salteados— y su **contador de
+repeticiones** —el total histórico de veces que se marcó, que nunca baja—.
+Las dos se calculan al leer, igual que la racha (D10). Al pie de la pantalla
+de Hábitos hay una única línea con la referencia a la investigación que
+motiva estas métricas (D62).
+
 Un hábito solo aparece a partir del día en que se creó, nunca antes. Se puede
 reprogramar su horario para un día puntual sin cambiar el horario habitual.
 
@@ -206,13 +214,27 @@ está vacía."
 
 ### Hoy
 
-En el encabezado, junto al título, cuánto tiempo suma lo planificado del día
-("5h 20m planificadas"): tareas pendientes con duración, hábitos pendientes de
-hoy y eventos con horario, atrasadas incluidas (lo dice el texto). Lo que no
-tiene duración no suma, pero se informa aparte ("· 4 sin duración") — nunca en
-silencio, y nunca "0m planificadas" cuando nada tiene duración. El número no
-juzga: sin color de alerta ni comparación contra el tiempo disponible. Sin
-calendario conectado, o con Google caído, el total sale igual con lo que hay.
+En el encabezado, junto al título, el estado del día: cuánto tiempo libre
+queda y cuánto de lo pendiente todavía no tiene un lugar en el calendario
+("Te quedan 3h 40m libres y 2h 15m de tareas sin agendar"). El tiempo libre
+sale de restar, entre ahora y la hora en que termina el día (preferencia de
+Configuración, D61), lo que ya está agendado: eventos con horario, y tareas
+y hábitos que tienen hora asignada. Lo que tiene duración estimada pero no
+hora es "sin agendar" y no descuenta tiempo libre, aunque avisa cuando lo
+pedido no entra en lo que queda del día. Lo que no tiene duración estimada
+tampoco entra en ninguna de las dos sumas, pero se informa aparte ("· 4 sin
+duración") — nunca en silencio. El número no juzga a la persona: no hay
+color de alerta ni tratamiento visual distinto según cuánto quede, aunque sí
+compara contra el tiempo disponible y avisa si no entra — es aritmética
+sobre datos que la persona cargó, no una opinión sobre ella (D61). Sin
+calendario conectado, o con Google caído, el estado sale igual con lo que
+hay.
+
+Desde el mismo encabezado, "¿Qué hago ahora?" mira el hueco entre ahora y el
+próximo bloque agendado y propone una sola tarea que entre ahí, por
+duración, cercanía de la fecha límite y prioridad. Si no hay hueco, lo dice
+("Estás ocupado hasta las 15:00"); si hay hueco pero ninguna tarea entra,
+también.
 
 Bloques en este orden: atrasadas (destacadas en rojo, la más vencida primero),
 **una sola secuencia con las tareas de hoy y los eventos de hoy intercalados**,
@@ -335,7 +357,9 @@ precargada en el alta.
 Arriba, tres números: hábitos activos, mejor racha alcanzada, y cuántos de hoy se
 hicieron. Los hábitos se agrupan por forma de repetirse. Cada uno muestra nombre,
 ícono, casillero para marcar (si toca hoy), frecuencia con horario y duración,
-mini-mapa de los últimos 14 días, racha actual o progreso semanal, y mejor marca.
+mini-mapa de los últimos 14 días, racha actual o progreso semanal, mejor marca,
+constancia de los últimos 30 días y contador de repeticiones totales. Al pie de la
+pantalla, una sola línea con la referencia científica sobre formación de hábitos.
 Sección desplegable con los archivados.
 
 ### Detalle de tarea
@@ -719,7 +743,8 @@ Un atajo de tecla suelta, sin `Ctrl` ni `Cmd` —incluida una combinación con
 - **Instalación** — instalar como app, instrucciones para iPhone.
 - **General** — zona horaria (lista IANA completa), formato de fecha, formato de
   hora (12 o 24), día en que empieza la semana (lunes, domingo o sábado), pantalla
-  por defecto al entrar, proyecto por defecto para el alta rápida.
+  por defecto al entrar, proyecto por defecto para el alta rápida, hora en que
+  termina el día (default 22:00, usada para calcular el tiempo libre de Hoy).
 - **Notificaciones y recordatorios** — activar o desactivar push, y la hora de
   referencia para los recordatorios relativos sobre tareas sin hora.
 - **Calendarios** — conexión con Google Calendar y qué calendarios se muestran.
@@ -776,3 +801,6 @@ Decisiones tomadas. No son omisiones ni cosas pendientes:
 8. **Sin aplicación en tiendas.** Solo web instalable.
 9. **Sin proveedores de calendario además de Google.**
 10. **Sin versión de escritorio empaquetada.**
+11. **Sin horario laboral ni franjas de disponibilidad.** El calendario es
+    la única fuente de verdad sobre qué ocupa el día; no hay una regla
+    aparte sobre qué horas "cuentan" como trabajables (D61).

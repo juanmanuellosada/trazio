@@ -1948,3 +1948,102 @@ precisión, la respuesta sigue siendo no. Esto tampoco es la revisión que la
 nota de D3 dejó pendiente "para poder revisarlo más adelante con la
 información a la vista": el derecho de acceso de la Ley 25.326 y la
 migración desde otra herramienta siguen sin estar cubiertos.
+
+## D61 — La carga del día deja de ser un número mudo: compara contra el tiempo libre real
+
+**Fecha.** 2026-08-09
+
+**Contexto.** `openspec/specs/carga-del-dia/spec.md` ("El total no juzga") y
+`docs/product-spec.md` §3 "Hoy" dicen, sin matices, que el total planificado
+"no juzga: sin color de alerta ni comparación contra el tiempo disponible".
+Esa decisión nació para que Trazio no se convirtiera en un capataz —
+`.claude/rules/copy.md` es explícito: "la app organiza, no arenga". Pero
+"5h 20m planificadas" es un número que no dice nada por sí solo: nadie sabe,
+mirándolo, si le sobra el día o si ya lo tiene lleno. Para saberlo hay que
+restar contra algo, y esa resta es exactamente el dato que la decisión
+original prohibía mostrar.
+
+**Decisión.** Se revisa, de forma acotada: el total pasa a compararse contra
+el tiempo libre real del día — "te quedan 3h 40m libres y 2h 15m de tareas
+sin agendar" — y a avisar cuando lo pedido no entra en lo disponible. Lo que
+no se revisa es lo que sostenía la decisión original: **la app sigue sin
+juzgar**. No hay opinión sobre la persona, hay aritmética sobre datos que
+ella misma cargó. Decir "pediste más horas de las que tenés" no evalúa una
+decisión suya — evalúa una resta. Siguen sin existir puntajes, rachas de
+productividad, felicitaciones ni ningún tratamiento visual de alarma
+("¡Cuidado! Tu día está sobrecargado" queda tan afuera como antes). Y sigue
+sin bloquear ni impedir nada: si algo no entra, se agenda igual, porque el
+número describe, no vigila.
+
+Junto con esto se agrega "¿Qué hago ahora?", una acción que mira el hueco
+hasta el próximo bloque agendado y propone una sola tarea que entre ahí. Usa
+la misma primitiva de tiempo que el total: sin ella, no hay con qué medir el
+hueco.
+
+El modelo de tiempo que hace posible esta resta queda fijado así, y no se
+vuelve a proponer nada distinto sin pasar por esta misma decisión:
+
+- **El calendario es la única fuente de verdad sobre ocupación.** Lo que
+  está agendado ocupa; lo que no, no.
+- **Tiempo comprometido** = eventos de Google Calendar + tareas y hábitos
+  que tienen hora asignada (todo lo que es un bloque en el calendario).
+- **Pedido sin lugar** = tareas y hábitos con duración estimada pero sin
+  hora.
+- **Tiempo libre** = lo que queda del día menos lo comprometido.
+- **Una sola preferencia nueva:** a qué hora termina el día, en
+  Configuración, con 22:00 de default.
+- **No se modela horario laboral ni franjas de disponibilidad.** Se
+  evaluaron y se rechazaron explícitamente: el dueño usa Trazio para todo
+  —personal y laboral mezclado, con tareas agendadas a las 12:15 y a las
+  13:00, adentro de su propia jornada— y una franja de "horario laboral"
+  no describiría su día, lo falsearía. La única fuente de ocupación sigue
+  siendo lo que el calendario dice que está ocupado, nunca una regla
+  aparte sobre qué horas "cuentan".
+
+**Consecuencia.** El número vale lo que valga el calendario del usuario: si
+copia algunas reuniones a Google Calendar y otras no, el tiempo libre se va
+a sobrestimar. Se acepta porque el error es visible y se autocorrige — la
+persona ve "3h libres" un día que sabe que está tapado, agrega el bloque que
+faltaba, y la próxima vez el número acierta. No es un costo que se pague en
+silencio: es el mismo trato que ya existía entre "el dato es tan bueno como
+lo que cargaste" y "el dato es exacto porque lo medimos nosotros", y Trazio
+elige lo primero en todos lados, no solo acá. Cualquier propuesta futura que
+se acerque a "horario laboral", "franja de disponibilidad" o "capacidad
+configurable por persona" tiene que volver a esta pregunta — y, mientras el
+uso real siga siendo el mismo (todo mezclado, sin franjas), la respuesta
+sigue siendo no.
+
+## D62 — La racha deja de ser la única métrica de un hábito; se suman constancia y repeticiones
+
+**Fecha.** 2026-08-09
+
+**Contexto.** El pedido original fue agregar contenido explicativo sobre "los
+21 días para formar un hábito" — una cifra que viene de *Psycho-Cybernetics*
+(1960) de Maxwell Maltz, una observación clínica sobre pacientes de cirugía
+plástica, no investigación sobre hábitos. Agregar un párrafo motivacional
+además violaría `.claude/rules/copy.md` ("la app organiza, no arenga"). Por
+otro lado, la única métrica que hoy tiene un hábito —la racha— es dura de una
+forma que no refleja la evidencia real: Lally, van Jaarsveld, Potts & Wardle
+(2010), siguiendo 96 personas formando un hábito diario real, encontraron una
+mediana de 66 días hasta la automaticidad (rango de 18 a 254) y que fallar un
+día no afecta materialmente el proceso. Una racha diaria, en cambio, vuelve a
+0 con el primer día sin marcar.
+
+**Decisión.** Se usa la evidencia para cambiar la mecánica, no para agregar
+texto. La racha se mantiene sin cambios (sigue rigiendo D50). Se suman dos
+métricas nuevas, calculadas al leer y nunca guardadas —mismo criterio que D10
+ya exige para la racha—: **constancia**, la proporción de días cumplidos
+sobre los días que tocaban en una ventana de 30 días (o menos si el hábito es
+más joven), donde un día salteado sale del denominador sin contar ni a favor
+ni en contra; y un **contador de repeticiones**, el total histórico de
+`habit_completions`, sin ventana ni tope. Se suma además una única línea de
+texto, al pie de `/habitos`, con la referencia a Lally et al. (2010) y su
+rango real — nunca repetida por tarjeta, nunca acompañada de un gráfico,
+puntaje, insignia o nivel.
+
+**Consecuencia.** `pantalla-habitos` queda con dos requirements nuevos y uno
+modificado (`openspec/changes/metricas-de-habitos/`). Ninguna tabla ni
+columna nueva. Cualquier propuesta futura que quiera "medir el progreso" de
+un hábito tiene que pasar por la misma pregunta que esta decisión ya
+resolvió: ¿es un número que informa, o un puntaje que evalúa a la persona?
+Insignias, niveles y comparación entre personas siguen fuera de alcance.
