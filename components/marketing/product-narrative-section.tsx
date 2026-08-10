@@ -1,82 +1,62 @@
-import { TOKEN_DOT_CLASS } from "@/lib/landing/token-visuals";
-import { cn } from "@/lib/utils";
+import { TransformationsSection } from "./transformations-section";
 
 /**
- * "Todo se ordena solo" (bloque 12.5, rediseño "El editor"): un solo bloque
- * en vez de dos que se pisaban (un recorrido en pasos y un árbol debajo,
- * repitiendo los mismos conceptos con distinta forma). El árbol es el activo
- * fuerte —muestra la estructura de un vistazo— así que lleva todo el peso:
- * un árbol real de HTML anidado (`<ul>`/`<li>`) con la Bandeja de entrada, un
- * proyecto con sus secciones, un proyecto anidado hasta el tercer nivel y una
- * tarea con subtareas sin límite de profundidad. La indentación y las líneas
- * de `border-l` son el recurso gráfico; el punto de proyecto reutiliza el
- * mismo color que `#Proyecto` en el parser (`TOKEN_DOT_CLASS.project`), ya
- * enseñado en la leyenda y la demo. Sin anotar cada nodo con su tipo — la
- * jerarquía ya se ve en la indentación, y "proyecto", "sección" y "subtarea"
- * quedan dichos una sola vez en el párrafo de arriba. Debajo del árbol, un
- * único renglón cubre lo que el árbol no puede mostrar: cuándo aparece una
- * tarea en Hoy, y que es la misma en la compu y en el teléfono.
+ * "Lo que tenés que hacer" (`landing-para-la-vida-entera`, reescritura de
+ * "Todo se ordena solo"): sin el árbol de jerarquía HTML anidado que tenía
+ * antes — cualquier competidor lo tiene, no es un diferencial (ver
+ * `proposal.md`). En su lugar, la galería de transformaciones del parser
+ * (`TransformationsSection`, D-HERO en `design.md`) se reubica acá como
+ * demostración de la primera frase, sin `<section>` ni encabezado propio, y
+ * se suma una galería de ejemplos del lenguaje de consulta —el mismo
+ * tratamiento visual, consulta a la izquierda y su significado a la
+ * derecha, sintaxis real de `docs/product-spec.md` §7.
  */
+const QUERY_EXAMPLES = [
+  { query: "priority:1,2 & due:next7days", meaning: "Prioridad urgente o alta, que vence esta semana" },
+  { query: "project:Trabajo & !label:espera", meaning: "Todo lo de Trabajo, menos lo que está en espera" },
+  { query: "due:overdue", meaning: "Todo lo atrasado" },
+] as const;
+
 export function ProductNarrativeSection() {
   return (
-    <section className="px-4 py-12 sm:px-6 sm:py-16" aria-labelledby="narrative-heading">
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 id="narrative-heading" className="text-landing-section font-semibold text-foreground">
-          Todo se ordena solo
-        </h2>
-        <p className="mt-4 text-lg text-text-secondary">
-          Las tareas se agrupan en proyectos con secciones, anidados hasta tres niveles, y se parten en
-          subtareas sin límite.
-        </p>
-      </div>
-
-      <div className="mx-auto mt-8 max-w-2xl">
-        <div className="landing-reveal rounded-xl border border-border bg-surface p-5 text-sm sm:p-6">
-          <ul className="space-y-2">
-            <li className="text-foreground">Bandeja de entrada</li>
-            <li>
-              <p className="flex items-start gap-1.5 text-foreground">
-                <span className={cn("mt-1 size-2 shrink-0 rounded-full", TOKEN_DOT_CLASS.project)} aria-hidden />
-                Trabajo
-              </p>
-              <ul className="mt-2 space-y-2 border-l border-border pl-3">
-                <li>
-                  <p className="flex items-start gap-1.5 text-foreground">
-                    <span className={cn("mt-1 size-2 shrink-0 rounded-full", TOKEN_DOT_CLASS.project)} aria-hidden />
-                    Cliente Acme
-                  </p>
-                  <ul className="mt-2 space-y-2 border-l border-border pl-3">
-                    <li className="flex items-start gap-1.5 text-foreground">
-                      <span className={cn("mt-1 size-2 shrink-0 rounded-full", TOKEN_DOT_CLASS.project)} aria-hidden />
-                      Rediseño web
-                    </li>
-                  </ul>
-                </li>
-                <li>
-                  <p className="text-foreground">Sprint actual</p>
-                  <ul className="mt-2 space-y-2 border-l border-border pl-3">
-                    <li>
-                      <p className="text-foreground">Escribir propuesta</p>
-                      <ul className="mt-2 space-y-2 border-l border-border pl-3">
-                        <li>
-                          <p className="text-foreground">Investigar competencia</p>
-                          <ul className="mt-2 space-y-2 border-l border-border pl-3">
-                            <li className="text-foreground">Armar lista de referencias</li>
-                          </ul>
-                        </li>
-                        <li className="text-foreground">Redactar borrador</li>
-                      </ul>
-                    </li>
-                  </ul>
-                </li>
-              </ul>
-            </li>
-          </ul>
+    <section className="bg-surface px-4 py-12 sm:px-6 sm:py-16" aria-labelledby="narrative-heading">
+      <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 id="narrative-heading" className="text-landing-section font-semibold text-foreground">
+            Lo que tenés que hacer, ordenado como vos quieras
+          </h2>
+          <p className="mt-4 text-lg text-text-secondary">
+            Fecha, hora, duración, prioridad y etiqueta salen solas de lo que escribiste — es lo mismo
+            que acabás de ver arriba. Lo demás lo ordenás vos: las tareas se agrupan en proyectos con
+            secciones, anidadas hasta tres niveles, y una tarea se parte en subtareas sin límite.
+          </p>
         </div>
-        <p className="mt-4 text-sm text-text-secondary">
-          Si le pusiste fecha, aparece en Hoy apenas llega el día. Y es exactamente la misma en la compu
-          y en el teléfono.
-        </p>
+
+        <div className="mt-10">
+          <TransformationsSection />
+        </div>
+
+        <div className="mx-auto mt-14 max-w-2xl text-center">
+          <h3 className="text-xl font-semibold text-foreground">
+            Y cuando la lista crece, la filtrás igual que escribís una tarea
+          </h3>
+          <p className="mt-3 text-text-secondary">
+            Un filtro se escribe, no se arma clickeando casilleros. Combinás prioridad, fecha, proyecto,
+            etiqueta y estado con <code className="font-mono text-foreground">&amp;</code>,{" "}
+            <code className="font-mono text-foreground">|</code> y{" "}
+            <code className="font-mono text-foreground">!</code>, y lo guardás para volver a usarlo
+            cuando quieras.
+          </p>
+        </div>
+
+        <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+          {QUERY_EXAMPLES.map((example) => (
+            <li key={example.query} className="rounded-xl border border-border bg-background p-4">
+              <code className="block font-mono text-sm break-words text-foreground">{example.query}</code>
+              <p className="mt-2 text-sm text-text-secondary">{example.meaning}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

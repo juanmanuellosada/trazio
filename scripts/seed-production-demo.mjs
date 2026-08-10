@@ -1,8 +1,7 @@
 // ⚠️⚠️⚠️ ESTE SCRIPT ESCRIBE EN LA BASE DE DATOS DE PRODUCCIÓN ⚠️⚠️⚠️
 //
-// NO es el seed local (ver scripts/seed-landing-demo.mjs, que solo corre
-// contra localhost/127.0.0.1). Este apunta al proyecto de Supabase de
-// producción (aqijvhoesjozstzojlzr) y siembra datos de prueba realistas
+// Este script apunta al proyecto de Supabase de producción
+// (aqijvhoesjozstzojlzr) y siembra datos de prueba realistas
 // en la cuenta YA EXISTENTE de juanmalosada01@gmail.com, para poder
 // evaluar la interfaz con contenido real.
 //

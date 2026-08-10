@@ -9,10 +9,11 @@ export const CTA_TEXT = "Crear mi cuenta gratis";
  * evento de analítica sin sumar una isla cliente — ver `analytics-bridge.tsx`,
  * que delega clics de `data-analytics-event` con un `<script>` plano.
  *
- * `location` identifica qué repetición del CTA es (hero, banda intermedia o
- * cierre) componiendo el nombre del evento (`cta_click_<location>`) en vez de
- * agregar una propiedad nueva — así `analytics-bridge.tsx` no necesita saber
- * nada de ubicaciones, solo sigue reenviando `data-analytics-event` tal cual.
+ * `location` identifica qué repetición del CTA es (hero, banda intermedia,
+ * cierre o el CTA fijo de móvil) componiendo el nombre del evento
+ * (`cta_click_<location>`) en vez de agregar una propiedad nueva — así
+ * `analytics-bridge.tsx` no necesita saber nada de ubicaciones, solo sigue
+ * reenviando `data-analytics-event` tal cual.
  */
 export function CtaLink({
   size = "default",
@@ -21,7 +22,7 @@ export function CtaLink({
 }: {
   size?: "default" | "lg";
   className?: string;
-  location: "hero" | "banda" | "cierre";
+  location: "hero" | "banda" | "cierre" | "fijo";
 }) {
   return (
     <Link

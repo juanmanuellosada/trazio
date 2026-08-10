@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { AnalyticsBridge } from "@/components/marketing/analytics-bridge";
+import { MobileStickyCta } from "@/components/marketing/mobile-sticky-cta";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
@@ -24,6 +25,10 @@ export const metadata: Metadata = {
  * un `<script>` plano (sin `'use client'`) que traduce clics con
  * `data-analytics-event` en eventos personalizados — la demo del parser
  * sigue siendo la única isla cliente real de la landing (G1).
+ *
+ * `MobileStickyCta` se monta acá (no en `page.tsx`) para que el espacio que
+ * reserva `SiteFooter` en su padding inferior de móvil valga en las tres
+ * rutas del grupo, sin duplicar el cálculo por página.
  */
 export default function MarketingLayout({
   children,
@@ -36,6 +41,7 @@ export default function MarketingLayout({
       <SiteHeader />
       <main>{children}</main>
       <SiteFooter />
+      <MobileStickyCta />
       <AnalyticsBridge />
       <Analytics />
     </>

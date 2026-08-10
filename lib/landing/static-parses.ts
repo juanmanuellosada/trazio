@@ -31,16 +31,6 @@ export const DEMO_EXAMPLES = [
 ] as const;
 
 /**
- * Frase congelada del hero (bloque 12.1), caso #27 de
- * `docs/parser-test-cases.md`. Deliberadamente distinta de `DEMO_EXAMPLES`:
- * el hero es la invitación (el campo con la frase, sin resultado) y la demo
- * es donde se despliega el resultado completo — mostrar la misma frase en
- * las dos secciones haría parecer que la página se repite.
- */
-export const HERO_TEXT = "Llamar mañana a las 10";
-export const HERO_PARSE_RESULT = parseForLanding(HERO_TEXT);
-
-/**
  * Galería de transformaciones (bloque 12.4): seis oraciones de
  * `docs/parser-test-cases.md`, una por capacidad — fecha, hora, duración,
  * prioridad, etiqueta, repetición. El resultado se calcula con el parser de

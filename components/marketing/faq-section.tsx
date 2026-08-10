@@ -15,7 +15,7 @@ const FAQS: Faq[] = [
   },
   {
     question: "¿Puedo compartir un proyecto con alguien?",
-    answer: "No. Trazio es personal: una cuenta, una persona. No hay equipos, invitaciones ni tareas asignadas a otro.",
+    answer: "No en el sentido de invitar a alguien a editar: Trazio es personal, una cuenta, una persona, sin equipos ni tareas asignadas a otro. Pero sí podés generar un enlace de lectura para un proyecto — quien lo abra lo ve, sin cuenta y sin poder cambiar nada.",
   },
   {
     question: "¿Hay una app en Google Play o el App Store?",
@@ -23,7 +23,7 @@ const FAQS: Faq[] = [
   },
   {
     question: "¿Puedo exportar mis tareas?",
-    answer: "No, en ninguna versión. Lo que cargás en Trazio se queda en Trazio.",
+    answer: "No como exportación — no hay un archivo de respaldo ni un importador —, pero sí podés copiar un proyecto entero como markdown al portapapeles, listo para pegar en una nota o un documento.",
   },
   {
     question: "¿Trazio tiene versión en inglés?",

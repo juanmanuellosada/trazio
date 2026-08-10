@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { buildSegments } from "@/lib/landing/build-segments";
 import { LANDING_DEMO_PROJECTS, LANDING_WEEK_START, LANDING_ZONE } from "@/lib/landing/demo-context";
 import { DEMO_EXAMPLES } from "@/lib/landing/static-parses";
@@ -12,13 +12,12 @@ import { cn } from "@/lib/utils";
 import { ParseResultChips } from "./parse-result-chips";
 
 /**
- * Única isla cliente de la landing (G1/G2, bloque 12.2): importa `parse`
- * directo, sin API. Visualmente es el mismo campo del hero
- * (`HeroParserPreview`), que se vuelve interactivo al hidratar — mismo
- * resaltado por tipo de token, mismos chips de resultado
- * (`ParseResultChips`). El estado inicial ya viene parseado
- * (`DEMO_EXAMPLES[0]`, calculado en el primer render), así que se entiende
- * incluso antes de que el JavaScript termine de cargar.
+ * Única isla cliente de la landing (G1/G2): se embebe directo en
+ * `HeroSection` (`landing-para-la-vida-entera` — antes vivía en una sección
+ * aparte, más abajo, con un campo congelado repetido arriba en el hero;
+ * las dos se fusionaron acá). El estado inicial ya viene parseado
+ * (`DEMO_EXAMPLES[0]`, calculado en el primer render), así que se lee
+ * incluso antes de que el JavaScript termine de hidratar.
  */
 export function ParserDemo() {
   const [text, setText] = useState<string>(DEMO_EXAMPLES[0]);
@@ -69,7 +68,7 @@ export function ParserDemo() {
         <div className="relative">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-10 flex items-center overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-base whitespace-pre-wrap text-foreground"
+            className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-lg border border-transparent px-3 py-2.5 text-base whitespace-pre-wrap text-foreground"
           >
             {segments.map((segment, index) =>
               segment.match ? (
@@ -81,15 +80,32 @@ export function ParserDemo() {
               ),
             )}
           </div>
-          <Input
+          {/*
+            Textarea, no Input (bloque "el resaltado se rompe en teléfono"):
+            el overlay de arriba envuelve (`whitespace-pre-wrap`) porque una
+            frase de la demo puede ser más larga que el ancho del campo — un
+            `<input>` de una sola línea scrollea horizontalmente en vez de
+            envolver, así que el resaltado y el texto real se desalineaban en
+            pantallas angostas. `field-sizing-content` (clase base de
+            `Textarea`, mismo mecanismo que ya usa el resto de la app —
+            `task-quick-add-row`, `comment-composer`) hace crecer el campo
+            solo, sin JS. `rows={1}` es el alto de arranque; el `onKeyDown`
+            evita el salto de línea porque acá no hay nada que enviar y una
+            tarea real es una sola línea.
+          */}
+          <Textarea
             id="parser-demo-input"
             value={text}
             onChange={(event) => {
               setText(event.target.value);
               trackInteractionOnce();
             }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault();
+            }}
+            rows={1}
             placeholder="Ej.: reunión con Ana el martes a las 15 p2 #trabajo"
-            className="h-auto min-h-11 w-full caret-foreground py-2.5 text-base text-transparent selection:bg-transparent"
+            className="min-h-11 w-full resize-none caret-foreground px-3 py-2.5 text-base text-transparent selection:bg-transparent"
           />
         </div>
       </div>

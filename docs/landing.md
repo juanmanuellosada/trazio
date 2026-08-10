@@ -107,182 +107,192 @@ Los dos diferenciales que se comunican:
 2. **Tareas, hábitos y calendario en la misma línea de tiempo.** No tres apps
    pegadas con cinta.
 
-> Nota interna: el segundo diferencial recién existe en la fase 3-4. En la landing
-> de la fase 1, comunicarlo como lo que viene, no como lo que hay. No prometer lo
-> que la app todavía no hace.
+> Nota interna (corregida en `landing-para-la-vida-entera`): esta nota decía
+> que el segundo diferencial "recién existe en la fase 3-4" y que había que
+> comunicarlo "como lo que viene, no como lo que hay". Las cuatro fases están
+> en producción desde antes de este change — la nota había quedado al revés:
+> hoy diría que hay que subvender un producto que ya existe, en vez de
+> protegerlo de sobrevenderlo. Comunicar los dos diferenciales como lo que
+> la app hace, sin condicional ni "próximamente".
 
 ---
 
 ## Estructura
 
-Una sola página, con estas secciones en este orden. El parser es el
-esqueleto: aparece congelado en la sección 1, interactivo en la 2, explicado
-en la 3 y demostrado seis veces en la 4, antes de hablar de cualquier otra
-cosa.
+Reescrita entera en `landing-para-la-vida-entera`: la versión anterior tenía
+ocho secciones y cuatro de ellas eran sobre el parser (hero congelado, demo,
+leyenda de sintaxis, galería), sin mencionar el calendario con bloques de
+tiempo, los hábitos con racha, el lenguaje de consulta ni la resta entre lo
+pedido y las horas que quedan — un tercio del producto. La estructura nueva
+tiene diez secciones, en el orden en que el subtítulo del hero promete las
+tres cosas que junta Trazio y después las entrega, una por una, antes de
+hablar de precio o de preguntas. Detalle completo de cada texto y cada
+decisión técnica en `openspec/changes/landing-para-la-vida-entera/design.md`
+("Todos los textos" y las decisiones `D-*`); acá va el resumen de qué es cada
+sección y por qué está en ese lugar.
 
 ### 1. Hero
 
-Sin captura de producto. Tres elementos:
+La demo interactiva del parser (`ParserDemo`) es el elemento visual
+principal **desde el primer render** — ya no hay un campo congelado arriba
+(existía como `HeroParserPreview`, borrado) y la demo interactiva repetida
+una sección más abajo (`ParserDemoSection`, borrada): las dos se fusionaron
+en una sola. Tres elementos, en este orden:
 
-- **Titular** — el resultado, no la funcionalidad, y lo primero que hay que
-  entender: qué es Trazio antes que qué tiene de distinto. *"Tu gestor de
-  tareas personal, para el día entero."* En la escala tipográfica exclusiva
-  de la landing (`text-landing-hero`, `docs/design-system.md` §4.1): 44px a
-  76px según el viewport, relación de 2,75× a 4,75× contra el cuerpo — antes
-  topaba a 40px y 2,5×.
-- **Subtítulo** — recién acá entra el diferencial: *"Escribí lo que tenés
-  que hacer como se lo dirías a alguien. Trazio entiende la fecha, la hora y
-  la prioridad solo, y todo queda junto en una sola pantalla."*
-- **El campo del parser, congelado, sin resultado** — el elemento visual
-  principal, reemplaza a la captura de pantalla. Es texto renderizado en el
-  servidor (`HeroParserPreview`, sin JavaScript): una sola oración de
-  ejemplo con sus tokens ya resaltados por tipo, más un cursor decorativo
-  que parpadea con CSS (`.landing-caret`, apagado con
-  `prefers-reduced-motion`). A propósito **no** muestra los chips del
-  resultado — eso es lo que diferencia al hero de la demo (sección 2): acá
-  es la invitación (el campo con la frase), ahí es donde se despliega el
-  resultado completo y se puede escribir. Mostrar las dos cosas en el hero
-  haría que el visitante viera el mismo bloque resuelto dos veces seguidas
-  al bajar. La frase del hero (caso #27, `Llamar mañana a las 10`) es
-  además **distinta** de la que arranca la demo (caso #53): ningún ejemplo
-  se repite entre secciones. Consecuencia técnica buscada: el LCP es texto,
-  no una imagen — se sacaron los 79 KB de captura que cargaban arriba del
-  pliegue en la versión anterior.
+- **Titular** — el resultado, no la funcionalidad: *"Tu día no entra en una
+  lista."* En la escala tipográfica exclusiva de la landing
+  (`text-landing-hero`, `docs/design-system.md` §4.1).
+- **Subtítulo** — nombra las tres cosas que junta Trazio: *"Trazio junta lo
+  que tenés que hacer, lo que querés sostener y lo que ya está agendado. Y
+  te dice si entra en las horas que te quedan."* Es la estructura de las
+  seis secciones que siguen: 4, 5, 6 y 7 son, en orden, esas tres cosas más
+  la resta final.
+- **La demo del parser, interactiva** — mismo componente que antes vivía en
+  la sección 2, ahora arriba de todo. Su estado inicial ya viene parseado
+  (calculado en el primer render), así que se lee incluso antes de que el
+  JavaScript termine de hidratar.
 
-**CTA principal** — "Crear mi cuenta gratis", un solo botón, con *"Gratis.
-Sin tarjeta."* debajo. Este es el primero de **tres** puntos donde aparece el
-mismo botón, con el mismo texto y el mismo destino (`/registro`): hero,
-después de la galería de transformaciones (sección 4) y en el cierre
-(sección 7). La repetición intermedia no lleva titular propio — solo el
-botón, para no competir con la sección que la rodea.
+**CTA principal** — "Crear mi cuenta gratis", con *"Gratis. Sin tarjeta."*
+debajo. Sin menú de navegación con links que se lleven al visitante afuera.
+Como mucho, el logo a la izquierda y un "Iniciar sesión" discreto a la
+derecha.
 
-Antes había cinco: se sumaron dos de más copiando la landing de Todoist, sin
-tener en cuenta que la de Todoist es bastante más larga que esta. En una
-página de siete secciones, tres CTA alcanzan para que el botón esté siempre
-a un scroll corto de distancia sin volverse empapelado. Se sacaron el de
-después de la demo (sección 2) y el de después de las preguntas directas
-(sección 6) — esta sección termina justo antes del cierre, así que ese botón
-intermedio quedaría pegado al del cierre, y la pregunta de precio, dentro de
-la misma sección 6, queda sin botón: el cierre llega enseguida. La galería de
-transformaciones (sección 4) es el punto más
-alto de la página —el visitante ya vio el diferencial demostrado seis
-veces— así que es donde más rinde repetir el botón. Ver "Un solo CTA
-principal — pero puede repetirse" más arriba: sigue siendo un único CTA
-distinto, no varios compitiendo; lo que cambia es la cantidad de veces que
-se repite, ajustada al largo real de esta página y no copiada de otra.
+### 2. CTA (banda)
 
-Sin menú de navegación con links que se lleven al visitante afuera. Como mucho, el
-logo a la izquierda y un "Iniciar sesión" discreto a la derecha.
+El mismo botón, sin titular propio, inmediatamente después del hero — justo
+después de que la persona jugó con la demo, el pico de intención. Antes esta
+repetición estaba dos secciones más abajo, después de la galería de
+transformaciones; se adelanta acá. El CTA principal se repite en total en
+tres puntos del flujo de scroll (hero, esta banda, cierre) más el CTA fijo
+de móvil, fuera del flujo — ver "Un solo CTA principal" más abajo: sigue
+siendo un único CTA distinto, no varios compitiendo.
 
-### 2. La demo
+### 3. El problema
 
-Un campo interactivo con el mismo marcado visual que el hero (mismos
-colores de token), pero acá sí con el resultado completo: al hidratar,
-`ParserDemo` toma el control y despliega los chips (`ParseResultChips`)
-debajo. Es la **única isla cliente de toda la página** — su estado inicial
-ya viene parseado (el primer ejemplo, calculado en el primer render), así
-que se entiende incluso antes de que el JavaScript termine de cargar.
+Nueva. Describe, sin dramatismo, el estado sin sistema único: las tareas en
+una lista, los hábitos en otro lado si acaso, el calendario que casi nunca
+se abre cuando se arma el día — ninguna de las tres partes sabe de las
+otras dos. No nombra la solución todavía: la muestran las tres secciones que
+siguen.
 
-Cuatro ejemplos tocables, ninguno igual al del hero:
+### 4. Lo que tenés que hacer
 
-- `Reunión con Ana el próximo martes a las 3pm por 45min p2 #trabajo @Trabajo`
-  (caso #53, el ejemplo inicial — el más completo de los cuatro)
-- `Llamar al contador mañana a las 10`
-- `Pagar el alquiler cada mes p1`
-- `Gimnasio cada lunes, miércoles y viernes por 1h`
+Fecha, hora, duración, prioridad y etiqueta salen solas de lo que se
+escribió; las tareas se agrupan en proyectos con secciones (hasta tres
+niveles) y se parten en subtareas sin límite. Dos demostraciones adentro,
+sin encabezado propio para ninguna de las dos — el H2 de la sección ya las
+presenta:
 
-### 3. Lo que entiende
+- **La galería de transformaciones** (`TransformationsSection`): seis
+  oraciones reales, sacadas de `docs/parser-test-cases.md`, calculadas con
+  el parser de verdad (`lib/landing/static-parses.ts`), cada una
+  demostrando una capacidad distinta. Antes era su propia sección, al mismo
+  nivel que "El problema" — se reubicó acá porque sus seis ejemplos son
+  literalmente los atributos de una tarea (ver D-HERO en `design.md`).
 
-Leyenda de sintaxis, puro CSS, cero imágenes: ocho filas (fecha relativa,
-fecha puntual, hora, duración, repetición, prioridad de p1 a p4, etiqueta con
-`#`, proyecto con `@`), cada una con un ejemplo real de
-`docs/parser-test-cases.md` y el mismo color de token que ya vio resaltado en
-el hero y la demo. El color identifica la categoría en toda la página, no la
-fila — fecha relativa y fecha puntual comparten color porque comparten tipo
-de token.
+  | Capacidad | Oración | Caso |
+  | --- | --- | --- |
+  | Fecha | `Cumpleaños de Ana 15 de marzo` | #12 |
+  | Hora | `Reunión a las 3` | #25 |
+  | Duración | `Correr 1h30m` | #28 |
+  | Prioridad | `Llamar al contador p1` | #38 |
+  | Etiqueta | `Comprar leche #compras` | #40 |
+  | Repetición | `Gimnasio cada lunes, miércoles y viernes por 1h` | #57 |
 
-### 4. Galería de transformaciones
+- **El lenguaje de consulta**: tres ejemplos de filtro reales (sintaxis de
+  `docs/product-spec.md` §7), cada uno con su significado en lenguaje
+  natural al lado — mismo tratamiento visual que la galería de arriba.
 
-Reemplaza a la grilla de seis funcionalidades de la versión anterior. Seis
-oraciones reales — sacadas de `docs/parser-test-cases.md`, casos que el
-parser efectivamente pasa, calculadas con el parser de verdad
-(`lib/landing/static-parses.ts`) y no inventadas a mano — cada una
-demostrando una capacidad distinta: fecha, hora, duración, prioridad,
-etiqueta, repetición. Estática, renderizada en el servidor.
+  | Consulta | Qué devuelve |
+  | --- | --- |
+  | `priority:1,2 & due:next7days` | Prioridad urgente o alta, que vence esta semana |
+  | `project:Trabajo & !label:espera` | Todo lo de Trabajo, menos lo que está en espera |
+  | `due:overdue` | Todo lo atrasado |
 
-| Capacidad | Oración | Caso |
-| --- | --- | --- |
-| Fecha | `Cumpleaños de Ana 15 de marzo` | #12 |
-| Hora | `Reunión a las 3` | #25 |
-| Duración | `Correr 1h30m` | #28 |
-| Prioridad | `Llamar al contador p1` | #38 |
-| Etiqueta | `Comprar leche #compras` | #40 |
-| Repetición | `Gimnasio cada lunes, miércoles y viernes por 1h` | #57 |
+El árbol de jerarquía de proyectos anidados que tenía esta sección antes se
+borró: cualquier competidor lo tiene, no es un diferencial, y la estructura
+ya se explica en prosa arriba. La leyenda de sintaxis de ocho filas (una
+sección aparte, entre la demo y la galería) también se borró: decía "ocho
+tipos de dato" cuando eran siete (fecha relativa y puntual comparten color),
+y el color de cada tipo ya se explica solo interactuando con la demo.
 
-### 5. Y después de escribirla
+### 5. Lo que querés sostener
 
-La mitad del producto que la landing no explicaba: las tareas se agrupan en
-proyectos, los proyectos tienen secciones, se anidan hasta tres niveles, y
-una tarea se parte en subtareas sin límite. Todo lo que no es el parser, en
-un solo bloque de texto y CSS y no en grilla ni en captura de pantalla — el
-dueño del producto la sacó explícitamente de esta sección porque un recorte
-de pantalla completa no se lee metido en medio de una narrativa, sobre todo
-en el teléfono.
+Nueva. Un hábito no es una tarea que se repite: no vence, no se completa una
+vez y desaparece. Se repite todos los días, cierta cantidad de veces por
+semana, o en días puntuales, y Trazio lleva la cuenta de racha actual, mejor
+racha y constancia del último mes. Sin lenguaje motivacional ni "no rompas
+la racha" — se informa, no se arenga.
 
-Antes eran dos bloques seguidos que decían lo mismo con distinta forma: un
-recorrido en pasos ("si no le pusiste nada más, cae en la Bandeja de
-entrada", "si tiene proyecto, vive ahí", etc.) y, justo debajo, el árbol de
-la jerarquía repitiendo Bandeja, proyecto y subtareas. El visitante leía lo
-mismo dos veces. Ahora es un solo bloque:
+### 6. Lo que ya está agendado
 
-- **El árbol de la jerarquía** es el activo fuerte y lleva todo el peso —
-  muestra la estructura de un vistazo, algo que ninguna captura logra. Un
-  árbol se dibuja con HTML anidado (`<ul>`/`<li>`) e indentación — cero
-  imágenes, cero peso, coherente con que el resaltado de tokens ya es el
-  sistema gráfico de la página. El nodo de proyecto reutiliza el mismo
-  color que `@Proyecto` en el parser: es el mismo concepto en los dos lados.
-  Sin anotar cada nodo con su tipo ("· proyecto", "· sección", "· subtarea"
-  en cada uno) — la jerarquía ya se ve en la indentación, y los términos
-  quedan dichos una sola vez en el párrafo que antecede al árbol.
-- Dos cosas que el árbol **no** puede mostrar —que una tarea con fecha
-  aparece en Hoy cuando llega el día, y que es la misma en la compu y en el
-  teléfono— van como apoyo breve en un renglón después del árbol, no como
-  lista paralela.
+Nueva, con **fondo oscuro fijo**: se ve oscura sea cual sea el tema del
+sistema del visitante, porque es una decisión de contenido (mostrar cómo se
+ve la app de verdad), no una preferencia de tema — ver D-DARK en
+`design.md`. Los eventos de Google Calendar aparecen junto a las tareas y
+los hábitos en la misma grilla de horas. Muestra un preview de calendario
+con al menos tres bloques (tarea, hábito, evento), distinguibles por forma
+igual que en la app real — ver "Sistema gráfico" más abajo para el detalle
+técnico de por qué es un componente nuevo y no una reutilización del
+calendario real.
 
-### 6. Preguntas directas
+### 7. El día que entra
 
-Nueva en este rediseño, estilo Basecamp: la landing anterior no abordaba las
-limitaciones del producto en ningún lado. Alguien evaluando una app sin
-usuarios va a querer preguntar igual, así que se contesta de frente. Cada
-respuesta sale de `docs/product-spec.md` §13 o `docs/decisions.md` — no son
-concesiones de copy, son restricciones reales:
+Nueva. La resta entre lo pedido y las horas que quedan: si sobra tiempo se
+ve, si no entra avisa sin números en rojo ni culpa, y "¿Qué hago ahora?"
+propone una tarea que entra en el próximo hueco libre. Depende de una
+función que se construyó en paralelo a este rediseño (`el-dia-que-entra`):
+el texto es estático y puede mergearse a `main` sin que esa función esté en
+producción, pero **el deploy a producción de la landing completa espera** a
+que sí lo esté — ver D-GATE en `design.md`.
+
+### 8. Por qué es gratis
+
+Nueva. Un motivo real, no una repetición de "gratis": sin anuncios, sin
+venta de datos, la app completa desde hoy sin tarjeta. Ver "Precio" más
+abajo para la restricción de qué puede y no puede decir sobre el futuro.
+
+### 9. Preguntas directas
+
+Estilo Basecamp, sin cambios de fondo desde la versión anterior: seis
+preguntas, cada respuesta trazable a `docs/product-spec.md` §13 o
+`docs/decisions.md` — no son concesiones de copy. Dos respuestas se
+corrigieron en este rediseño porque habían quedado más restrictivas que el
+producto real:
 
 - ¿Funciona sin internet? — No.
-- ¿Puedo compartir un proyecto con alguien? — No, Trazio es personal.
+- ¿Puedo compartir un proyecto con alguien? — No en el sentido de invitar a
+  alguien a editar, pero sí con un enlace de lectura (D59).
 - ¿Hay una app en Google Play o el App Store? — Todavía no. Se instala desde
   el navegador.
-- ¿Puedo exportar mis tareas? — No, en ninguna versión.
+- ¿Puedo exportar mis tareas? — No como exportación con archivo, pero sí se
+  puede copiar un proyecto entero como markdown al portapapeles (D60).
 - ¿Trazio tiene versión en inglés? — No.
 - ¿Cuánto cuesta usar Trazio? — Nada.
 
-### 7. Cierre y pie
+### 10. Cierre y pie
 
-Repetición del CTA con el mismo texto del hero, titular corto, nada más.
-Pie mínimo: logo, año, y links a términos y privacidad. Sin mapa del sitio,
-sin redes sociales que todavía no existen.
+Sin cambios: repetición del CTA con el mismo texto del hero, titular corto,
+nada más. Pie mínimo: logo, año, y links a términos y privacidad. Sin mapa
+del sitio, sin redes sociales que todavía no existen.
 
 ---
 
 ## Precio
 
-**Gratis, sin plan pago, en toda la fase 1.** No hay sección de precios en la
-landing. Cuando exista un modelo, se agrega entre la galería de
-transformaciones y el cierre.
+**Gratis, sin plan pago, en toda la fase 1 a 4.** No hay sección de precios en
+la landing. Si algún día existe un plan pago, el lugar natural es **entre "Por
+qué es gratis" (sección 8) y "Preguntas directas" (sección 9)** — no antes:
+las secciones 1 a 7 son la demostración del producto, y el precio se presenta
+después de haber mostrado todo, nunca antes (D-GRATIS en
+`openspec/changes/landing-para-la-vida-entera/design.md`). En ese momento la
+sección 8 se reemplaza por una sección de precios real (o conviven las dos, si
+sigue habiendo un plan gratuito) — el resto del orden no cambia.
 
-No poner "gratis durante el beta" ni nada que insinúe un cobro futuro sin tenerlo
-definido: genera preguntas que no podés responder. La pregunta directa "¿Cuánto
-cuesta usar Trazio?" en la sección 6 se contesta igual: "Nada. Es gratis, sin
-tarjeta." — sin ninguna cláusula sobre el futuro.
+No poner "gratis durante el beta" ni nada que insinúe un cobro futuro sin
+tenerlo definido: genera preguntas que no podés responder. La pregunta directa
+"¿Cuánto cuesta usar Trazio?" en la sección 9 se contesta igual: "Nada. Es
+gratis, sin tarjeta." — sin ninguna cláusula sobre el futuro.
 
 ---
 
@@ -290,16 +300,29 @@ tarjeta." — sin ninguna cláusula sobre el futuro.
 
 Sin imágenes. Ni una sola captura de producto en toda la página — es una
 dirección elegida, no una limitación: las capturas no son el recurso
-principal de esta landing. Cuatro recursos, los cuatro en CSS:
+principal de esta landing. Recursos, todos en CSS:
 
 - **El resaltado de tokens es el sistema gráfico de la página.** Colores
   sobre texto: pesa cero, escala infinito, y es el producto en sí. Se usa en
-  el hero, la demo, la leyenda y la galería — siempre el mismo color para el
+  el hero y la galería de transformaciones — siempre el mismo color para el
   mismo tipo de dato (`docs/design-system.md` §2.1).
 - **Malla de fondo del hero** (`landing-hero-mesh` en `app/globals.css`):
   radiales en el azul de marca, sin ninguna imagen de fondo.
-- **El árbol de la jerarquía** (sección 5): HTML anidado con indentación y
-  líneas de `border-l`, sin una sola imagen — ver sección 5 para el detalle.
+- **El preview de calendario** (sección 6, `CalendarDayPreview`): un
+  componente nuevo y autocontenido bajo `components/marketing/`, Server
+  Component puro, con datos de ejemplo fijos
+  (`lib/landing/calendar-preview-data.ts`) — deliberadamente **no** reutiliza
+  `components/calendar/` (~30 archivos, todos `"use client"`, con
+  `@dnd-kit`, `ResizeObserver` y `next-themes`), para no sumar ese bundle a
+  una página pública. Los tres tipos de bloque (tarea, hábito, evento) se
+  distinguen por forma, sin leyenda de texto — ver D-CAL en
+  `openspec/changes/landing-para-la-vida-entera/design.md` para el detalle
+  completo de la decisión.
+- **La sección de fondo oscuro fijo** (sección 6, D-DARK): se ve oscura sea
+  cual sea el tema del sistema del visitante, con colores arbitrarios
+  tomados literalmente de la paleta `.dark` de `app/globals.css` en vez de
+  las utilidades semánticas que sí cambian con el tema — el desacople de la
+  clase `.dark` del `<html>` es intencional, no un olvido.
 - **Animación al scroll con CSS puro**: la galería de transformaciones
   aparece con una animación ligada a `animation-timeline: view()`, envuelta
   en `@supports` (degrada sola en navegadores sin soporte) y en
@@ -315,14 +338,17 @@ tipografía de marca — versionada en el repo, no una captura de pantalla.
 ## Requisitos técnicos
 
 - **Server Components enteramente.** La única isla cliente es la demo del parser
-  (`ParserDemo`, hidratada desde `ParserDemoSection`).
-- **`/` estática.** Ni el hero ni la galería leen nada en tiempo de request:
-  se calculan con `parse()` contra un instante de referencia fijo
+  (`ParserDemo`, embebida directo en `HeroSection`).
+- **`/` estática.** La galería de transformaciones no lee nada en tiempo de
+  request: se calcula con `parse()` contra un instante de referencia fijo
   (`lib/landing/demo-context.ts`), en build time.
 - **LCP por debajo de 2,5 segundos.** El elemento de LCP es texto (el hero),
   no una imagen.
-- **Móvil primero.** Diseñar la versión de teléfono antes que la de escritorio.
-  El CTA tiene que ser alcanzable con el pulgar y quedar visible al hacer scroll.
+- **Móvil primero.** Diseñar la versión de teléfono antes que la de
+  escritorio. El CTA principal tiene que ser alcanzable con el pulgar y
+  quedar visible al hacer scroll — además del CTA repetido en el flujo,
+  `MobileStickyCta` es un CTA fijo (`position: fixed`, `sm:hidden`), visible
+  únicamente en teléfono, implementado sin JavaScript.
 - **Metadatos completos**: título, descripción, Open Graph con imagen generada,
   y `lang="es-AR"`.
 - **Sin animaciones que compitan** con el CTA. Micro-transiciones al hacer scroll,
@@ -347,6 +373,6 @@ tracciona. No instalar un stack de analítica pesado para cuatro métricas.
 - Un segundo CTA distinto compitiendo con el principal (otro texto, otro destino
   — "ver demo", "hablar con ventas"). El CTA principal sí se repite, con el mismo
   texto y el mismo destino, en varios puntos del scroll: ver "Un solo CTA
-  principal — pero puede repetirse" más arriba y la sección 1 (Hero) para las
+  principal — pero puede repetirse" más arriba y "Estructura" para las
   ubicaciones actuales.
 - Video.
