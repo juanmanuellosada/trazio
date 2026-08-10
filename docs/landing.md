@@ -153,17 +153,18 @@ Sin captura de producto. Tres elementos:
 Sin tarjeta."* debajo. Este es el primero de **tres** puntos donde aparece el
 mismo botón, con el mismo texto y el mismo destino (`/registro`): hero,
 después de la galería de transformaciones (sección 4) y en el cierre
-(sección 8). La repetición intermedia no lleva titular propio — solo el
+(sección 7). La repetición intermedia no lleva titular propio — solo el
 botón, para no competir con la sección que la rodea.
 
 Antes había cinco: se sumaron dos de más copiando la landing de Todoist, sin
 tener en cuenta que la de Todoist es bastante más larga que esta. En una
-página de ocho secciones, tres CTA alcanzan para que el botón esté siempre
+página de siete secciones, tres CTA alcanzan para que el botón esté siempre
 a un scroll corto de distancia sin volverse empapelado. Se sacaron el de
 después de la demo (sección 2) y el de después de las preguntas directas
-(sección 6) — este último quedaba pegado al cierre, separado solo por la
-hoja de ruta, y la pregunta de precio (sección 6) queda sin botón: el cierre
-llega enseguida. La galería de transformaciones (sección 4) es el punto más
+(sección 6) — esta sección termina justo antes del cierre, así que ese botón
+intermedio quedaría pegado al del cierre, y la pregunta de precio, dentro de
+la misma sección 6, queda sin botón: el cierre llega enseguida. La galería de
+transformaciones (sección 4) es el punto más
 alto de la página —el visitante ya vio el diferencial demostrado seis
 veces— así que es donde más rinde repetir el botón. Ver "Un solo CTA
 principal — pero puede repetirse" más arriba: sigue siendo un único CTA
@@ -264,16 +265,7 @@ concesiones de copy, son restricciones reales:
 - ¿Trazio tiene versión en inglés? — No.
 - ¿Cuánto cuesta usar Trazio? — Nada.
 
-### 7. Hoja de ruta
-
-Sección honesta y breve: hábitos con rachas, filtros guardados, recordatorios,
-Google Calendar y atajos de teclado. Presentado como hoja de ruta, no como si ya
-existiera.
-
-Esto genera confianza en vez de romperla, y le da al visitante una razón para
-volver.
-
-### 8. Cierre y pie
+### 7. Cierre y pie
 
 Repetición del CTA con el mismo texto del hero, titular corto, nada más.
 Pie mínimo: logo, año, y links a términos y privacidad. Sin mapa del sitio,

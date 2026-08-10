@@ -9,7 +9,7 @@ export function ClosingSection() {
           Empezá a organizar tu día en dos minutos.
         </h2>
         <div className="flex justify-center">
-          <CtaLink size="lg" />
+          <CtaLink size="lg" location="cierre" />
         </div>
       </div>
     </section>

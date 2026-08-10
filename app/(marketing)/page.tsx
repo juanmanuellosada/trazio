@@ -6,7 +6,6 @@ import { HeroSection } from "@/components/marketing/hero-section";
 import { LegendSection } from "@/components/marketing/legend-section";
 import { ParserDemoSection } from "@/components/marketing/parser-demo-section";
 import { ProductNarrativeSection } from "@/components/marketing/product-narrative-section";
-import { RoadmapSection } from "@/components/marketing/roadmap-section";
 import { TransformationsSection } from "@/components/marketing/transformations-section";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
  * más y pasa a ser el esqueleto de la página: hero congelado → demo
  * interactiva → leyenda de sintaxis → galería de transformaciones (que
  * reemplaza a la vieja grilla de seis funcionalidades) → el resto del
- * producto en una narrativa → preguntas directas → hoja de ruta → cierre.
+ * producto en una narrativa → preguntas directas → cierre.
  * Header y footer viven en el layout del grupo, compartidos con
  * `/terminos` y `/privacidad`.
  *
@@ -57,7 +56,6 @@ export default function LandingPage() {
       <CtaBand />
       <ProductNarrativeSection />
       <FaqSection />
-      <RoadmapSection />
       <ClosingSection />
     </>
   );

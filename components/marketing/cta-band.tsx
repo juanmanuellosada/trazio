@@ -10,7 +10,7 @@ import { CtaLink } from "./cta-link";
 export function CtaBand() {
   return (
     <div className="flex justify-center px-4 py-8 sm:px-6 sm:py-10">
-      <CtaLink size="lg" />
+      <CtaLink size="lg" location="banda" />
     </div>
   );
 }

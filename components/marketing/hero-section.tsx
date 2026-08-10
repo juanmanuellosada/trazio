@@ -25,7 +25,7 @@ export function HeroSection() {
         </div>
         <HeroParserPreview />
         <div className="flex flex-col items-center gap-2">
-          <CtaLink size="lg" />
+          <CtaLink size="lg" location="hero" />
           <p className="text-sm text-text-secondary">Gratis. Sin tarjeta.</p>
         </div>
       </div>

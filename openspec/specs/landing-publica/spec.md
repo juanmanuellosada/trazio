@@ -74,20 +74,6 @@ esta grilla, porque los atajos son de fase 2.
   Sincronización al instante
 - **AND** "Atajos de teclado" NO SHALL aparecer entre ellos
 
-### Requirement: "Lo que viene" como hoja de ruta, no como funcionalidad existente
-
-La sección "Lo que viene" SHALL presentar, como hoja de ruta y no como algo
-que ya existe: hábitos con rachas, filtros guardados, recordatorios, Google
-Calendar, y atajos de teclado.
-
-#### Scenario: Roadmap explícito, no funcionalidad presente
-
-- **WHEN** se revisa la sección "Lo que viene"
-- **THEN** SHALL mencionar hábitos con rachas, filtros guardados,
-  recordatorios, Google Calendar y atajos de teclado
-- **AND** SHALL presentarlos como hoja de ruta futura, sin dar a entender que
-  ya están disponibles
-
 ### Requirement: Cierre con el mismo CTA del hero
 
 La sección de cierre SHALL repetir el CTA con el mismo texto usado en el
