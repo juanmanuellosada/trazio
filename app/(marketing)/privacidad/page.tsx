@@ -22,6 +22,15 @@ export const metadata: Metadata = {
  * la sección de conectar un asistente de IA por MCP: texto escrito junto con
  * la propuesta, antes de que el servidor exista, para que la política nunca
  * quede corriendo detrás de la función una vez que se active.
+ *
+ * Sumadas dos declaraciones exigidas por la política de verificación de
+ * Google Workspace APIs para el scope de Calendar
+ * (https://support.google.com/cloud/answer/13806988): que no se usan las
+ * APIs para entrenar modelos de IA/ML, y la declaración de Limited Use. No
+ * están copiadas de ningún molde de terceros — describen lo que Trazio hace
+ * hoy con la conexión de Calendar, que ya estaba documentado más abajo.
+ * `docs/legales.md` no tiene esta sección (ni la de Calendar en general)
+ * para sincronizar: sigue desactualizado como ya señala el párrafo anterior.
  */
 export default function PrivacidadPage() {
   return (
@@ -258,6 +267,20 @@ export default function PrivacidadPage() {
         <li>
           <strong>Desconectar borra la conexión, y nada más.</strong> Se elimina el registro con tu
           refresh token cifrado y no toca ninguna tarea, hábito ni ningún otro dato tuyo en Trazio.
+        </li>
+        <li>
+          <strong>No usamos tus datos de Google para entrenar inteligencia artificial.</strong> La
+          información que obtenemos de las APIs de Google Workspace no se usa para desarrollar, mejorar ni
+          entrenar modelos de inteligencia artificial ni de aprendizaje automático, sean personalizados o
+          no.
+        </li>
+        <li>
+          <strong>Este uso cumple con la política de datos de usuario de Google.</strong> El uso que hace
+          Trazio de la información que recibe de los scopes de Google Workspace respeta la Política de
+          datos de usuario de los servicios de API de Google (Google API Services User Data Policy),
+          incluidos sus requisitos de uso limitado (Limited Use requirements). En los términos exactos que
+          exige Google: «The use of information received from Google Workspace scopes will adhere to the
+          Google User Data Policy, including the Limited Use requirements.»
         </li>
       </ul>
 
