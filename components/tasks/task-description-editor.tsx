@@ -41,7 +41,20 @@ export const EDITOR_CONTENT_TYPOGRAPHY_CLASS = cn(
   "[&_ul[data-type=taskList]_li[data-checked=true]>div>p]:text-text-secondary [&_ul[data-type=taskList]_li[data-checked=true]>div>p]:line-through",
 );
 
-const EDITOR_CONTENT_CLASS = cn("min-h-32 text-base leading-relaxed outline-none", EDITOR_CONTENT_TYPOGRAPHY_CLASS);
+/**
+ * Cursor de mano sobre un enlace mientras Ctrl (Cmd en Mac) está apretado
+ * (`abrir-un-enlace-de-la-descripcion`, D7 de `design.md`): la única pista
+ * de que Ctrl+clic abre el enlace en vez de solo colocar el cursor. Va acá,
+ * en `EDITOR_CONTENT_CLASS`, y no en `EDITOR_CONTENT_TYPOGRAPHY_CLASS`, que
+ * es la constante que comparte `ReadOnlyDescription`: esa vista no necesita
+ * el atributo `data-modifier-held` porque ahí el enlace ya se abre con un
+ * clic simple.
+ */
+const EDITOR_CONTENT_CLASS = cn(
+  "min-h-32 text-base leading-relaxed outline-none",
+  "[&[data-modifier-held]_a]:cursor-pointer",
+  EDITOR_CONTENT_TYPOGRAPHY_CLASS,
+);
 
 /**
  * Descripción de una tarea (bloque 7): Tiptap, guardada como jsonb, con
@@ -82,6 +95,40 @@ export function TaskDescriptionEditor({
 
   useEffect(() => {
     editor?.setEditable(!disabled);
+  }, [editor, disabled]);
+
+  // Cursor de mano mientras Ctrl/Cmd está apretado (D7 de `design.md`): no
+  // existe selector de CSS para "modificador apretado", así que hace falta
+  // escuchar el teclado en `window`. Imperativo sobre el DOM del editor con
+  // `toggleAttribute`, sin `useState` — un re-render del detalle de tarea
+  // por cada pulsación de Ctrl sería absurdo. `blur` de `window` evita
+  // quedar con el cursor de mano pegado si se cambia de ventana con la
+  // tecla apretada. Solo mientras el editor es editable: en la vista
+  // pública no hay pista que mostrar.
+  useEffect(() => {
+    if (!editor || disabled) return;
+    const dom = editor.view.dom;
+    function setModifierHeld(held: boolean) {
+      dom.toggleAttribute("data-modifier-held", held);
+    }
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey) setModifierHeld(true);
+    }
+    function handleKeyup(event: KeyboardEvent) {
+      if (!event.ctrlKey && !event.metaKey) setModifierHeld(false);
+    }
+    function handleBlur() {
+      setModifierHeld(false);
+    }
+    window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("keyup", handleKeyup);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("keydown", handleKeydown);
+      window.removeEventListener("keyup", handleKeyup);
+      window.removeEventListener("blur", handleBlur);
+      setModifierHeld(false);
+    };
   }, [editor, disabled]);
 
   if (!editor) return null;
