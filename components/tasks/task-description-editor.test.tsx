@@ -22,6 +22,19 @@ function docWithText(text: string): Json {
   } as unknown as Json;
 }
 
+/**
+ * Todo el párrafo es el enlace (sin texto plano antes): así la selección
+ * inicial del editor, en la posición 0 del documento, ya cae dentro de la
+ * marca `link` y `editor.isActive("link")` da `true` sin necesidad de mover
+ * el cursor a mano.
+ */
+function docWithLink(text: string, href: string): Json {
+  return {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text, marks: [{ type: "link", attrs: { href } }] }] }],
+  } as unknown as Json;
+}
+
 describe("TaskDescriptionEditor (bloque 7)", () => {
   beforeEach(() => {
     mockClipboard();
@@ -115,6 +128,28 @@ describe("TaskDescriptionEditor (bloque 7)", () => {
     expect(lastDoc).toContain('"href":"https://trazio.com.ar"');
 
     promptSpy.mockRestore();
+  });
+
+  it('con un enlace en la descripción el menú contextual ofrece "Abrir enlace" y al elegirla abre la pestaña (abrir-un-enlace-de-la-descripcion)', async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(<TaskDescriptionEditor content={docWithLink("Visitá", "https://trazio.com.ar")} onChange={vi.fn()} />);
+
+    fireEvent.contextMenu(screen.getByTestId("task-description-editor"));
+    await user.click(await screen.findByRole("menuitem", { name: "Abrir enlace" }));
+
+    expect(openSpy).toHaveBeenCalledWith("https://trazio.com.ar", "_blank", "noopener,noreferrer");
+    openSpy.mockRestore();
+  });
+
+  it('sin un enlace en el cursor, el menú contextual no ofrece "Abrir enlace" (abrir-un-enlace-de-la-descripcion)', async () => {
+    render(<TaskDescriptionEditor content={docWithText("Sin enlace")} onChange={vi.fn()} />);
+
+    fireEvent.contextMenu(screen.getByTestId("task-description-editor"));
+    await screen.findByRole("menu");
+
+    expect(screen.queryByRole("menuitem", { name: "Abrir enlace" })).not.toBeInTheDocument();
   });
 
   it("cambiar la prop `content` después de montado no pisa lo ya renderizado (invariante del autoguardado, bloque 7.10)", () => {

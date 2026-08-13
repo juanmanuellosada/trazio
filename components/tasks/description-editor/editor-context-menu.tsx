@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
+import { useEditorState } from "@tiptap/react";
 import {
   Bold,
   Check,
@@ -10,6 +11,7 @@ import {
   Code,
   Code2,
   Copy,
+  ExternalLink,
   Heading1,
   Heading2,
   Heading3,
@@ -31,6 +33,7 @@ import {
 import { AppContextMenu, type AppContextMenuEntry } from "@/components/primitives/context-menu";
 import { runInsertAction } from "./insert-actions";
 import { copySelection, cutSelection, pasteAsPlainText, pasteFromClipboard } from "./clipboard-actions";
+import { openableHref, openLinkInNewTab } from "./link-click";
 
 function checkIcon(active: boolean) {
   return active ? <Check className="size-3.5" /> : <span className="size-3.5" />;
@@ -55,7 +58,37 @@ export function EditorContextMenu({
 }) {
   const activeHeading = ([1, 2, 3] as const).find((level) => editor.isActive("heading", { level }));
 
+  // "Abrir enlace" (`abrir-un-enlace-de-la-descripcion`, D6 de `design.md`):
+  // el camino sin modificador, usable con pantalla táctil y con teclado —
+  // en un teléfono no hay Ctrl. Solo aparece con el cursor dentro de un
+  // enlace cuyo href es abrible; si no corresponde, no se agrega al array
+  // (no hay campo para ocultar una entrada de `AppContextMenuEntry`).
+  //
+  // `useEditorState` en vez de calcular esto en el cuerpo del render: en
+  // Tiptap 3, `useEditor` ya no re-renderiza el componente en cada
+  // transacción, así que `editor.isActive("link")` leído directo acá
+  // quedaría congelado en el valor del primer render y nunca reflejaría
+  // dónde está el cursor ahora. `useEditorState` se suscribe a las
+  // transacciones y solo re-renderiza cuando el resultado del selector
+  // cambia.
+  const openableLinkHref = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current.isActive("link") ? openableHref(current.getAttributes("link").href as string) : null,
+  });
+  const openLinkEntries: AppContextMenuEntry[] = openableLinkHref
+    ? [
+        {
+          label: "Abrir enlace",
+          icon: <ExternalLink className="size-3.5" />,
+          onSelect: () => openLinkInNewTab(openableLinkHref),
+        },
+        { type: "separator" },
+      ]
+    : [];
+
   const entries: AppContextMenuEntry[] = [
+    ...openLinkEntries,
     {
       type: "submenu",
       label: "Formato",
