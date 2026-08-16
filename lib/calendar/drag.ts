@@ -1,4 +1,4 @@
-import { addDays, differenceInMinutes, format, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, differenceInMinutes, format, parseISO } from "date-fns";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
 /**
@@ -90,6 +90,49 @@ export function moveBlockToPosition(rawStartMinutes: number, durationMinutes: nu
 }
 
 /**
+ * Rango de un bloque de todo el día: dos fechas `yyyy-MM-dd`, con `end`
+ * exclusivo (el día siguiente al último día cubierto), la misma convención
+ * de Google Calendar que ya documenta `CalendarBlock`.
+ */
+export type AllDayDragResult = { startDate: string; endDate: string };
+
+/**
+ * Cuántos días de calendario ocupa un bloque, para conservarlos al pasarlo
+ * a todo el día. Un bloque que ya es de todo el día trae ese dato en sus
+ * dos fechas; uno con horario se mide por los días locales que toca, sin
+ * contar el día en el que cae un fin exactamente a medianoche (ese día no
+ * está ocupado por nada).
+ */
+function calendarDaySpan(block: { allDay: boolean; start: string; end: string }, timezone: string): number {
+  if (block.allDay) return Math.max(1, differenceInCalendarDays(parseISO(block.end), parseISO(block.start)));
+  const end = parseISO(block.end);
+  const startKey = formatInTimeZone(parseISO(block.start), timezone, "yyyy-MM-dd");
+  const endKey = formatInTimeZone(end, timezone, "yyyy-MM-dd");
+  const daysBetween = differenceInCalendarDays(parseISO(endKey), parseISO(startKey));
+  return Math.max(1, daysBetween + (localMinutesOfDay(end, timezone) === 0 ? 0 : 1));
+}
+
+/**
+ * Resultado de soltar un bloque en la fila de todo el día de
+ * `targetDateKey` (reporte "una tarea de todo el día no se puede arrastrar
+ * a otro día"): el bloque arranca ese día y conserva cuántos días de
+ * calendario ocupaba — mover un evento de tres días no lo achica a uno, y
+ * un bloque con horario que pierde la hora queda ocupando los mismos días
+ * que ocupaba.
+ *
+ * El espejo exacto de `moveBlockToPosition`: aquella le da horario a un
+ * bloque de todo el día, esta se lo saca a uno con horario. Ninguna de las
+ * dos sabe de tareas, hábitos ni eventos (D-F) — solo de fechas.
+ */
+export function moveBlockToAllDay(
+  block: { allDay: boolean; start: string; end: string },
+  targetDateKey: string,
+  timezone: string,
+): AllDayDragResult {
+  return { startDate: targetDateKey, endDate: addDaysToDateKey(targetDateKey, calendarDaySpan(block, timezone)) };
+}
+
+/**
  * Resultado de estirar el borde inferior de un bloque (tarea 6.2): el
  * inicio no se toca, el fin se ajusta a 15 minutos y nunca baja de
  * `MIN_BLOCK_MINUTES` de duración ni cruza la medianoche del día en que
@@ -123,4 +166,14 @@ export function durationMinutesBetween(startIso: string, endIso: string): number
  */
 export function isSameRange(blockStart: string, blockEnd: string, range: DragResult): boolean {
   return parseISO(blockStart).getTime() === range.start.getTime() && parseISO(blockEnd).getTime() === range.end.getTime();
+}
+
+/**
+ * El mismo guard, para el destino de todo el día: un bloque que ya era de
+ * todo el día y se suelta en la misma fila del mismo día no tiene nada que
+ * editar. Comparación por string, no por instante, porque acá los dos
+ * lados son fechas `yyyy-MM-dd` — nunca instantes.
+ */
+export function isSameAllDayRange(block: { allDay: boolean; start: string; end: string }, result: AllDayDragResult): boolean {
+  return block.allDay && block.start === result.startDate && block.end === result.endDate;
 }

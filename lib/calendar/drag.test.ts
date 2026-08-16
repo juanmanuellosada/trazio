@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   clampMinutes,
   instantFromDayMinutes,
+  isSameAllDayRange,
   isSameRange,
   localMinutesOfDay,
+  moveBlockToAllDay,
   minutesToTimeString,
   moveBlockToPosition,
   pixelsToMinutes,
@@ -183,5 +185,61 @@ describe("pixelsToMinutes / minutesToTimeString / clampMinutes", () => {
     expect(clampMinutes(-10, 0, 100)).toBe(0);
     expect(clampMinutes(200, 0, 100)).toBe(100);
     expect(clampMinutes(50, 0, 100)).toBe(50);
+  });
+});
+
+
+// Reporte del dueño: "una tarea de todo el día en modo calendario no se
+// puede arrastrar a otro día. Se puede, pero dándole un horario" — la fila
+// de todo el día no era destino de arrastre. `moveBlockToAllDay` es la
+// aritmética de ese destino: el espejo de `moveBlockToPosition`.
+describe("moveBlockToAllDay", () => {
+  it("un bloque de todo el día de un solo día se mueve entero al día destino", () => {
+    const block = { allDay: true, start: "2026-08-05", end: "2026-08-06" };
+    expect(moveBlockToAllDay(block, "2026-08-09", TZ)).toEqual({ startDate: "2026-08-09", endDate: "2026-08-10" });
+  });
+
+  it("conserva cuántos días ocupaba: un bloque de tres días sigue siendo de tres días", () => {
+    const block = { allDay: true, start: "2026-08-05", end: "2026-08-08" };
+    expect(moveBlockToAllDay(block, "2026-08-20", TZ)).toEqual({ startDate: "2026-08-20", endDate: "2026-08-23" });
+  });
+
+  it("un bloque con horario pierde la hora y ocupa un solo día", () => {
+    const block = { allDay: false, start: "2026-08-05T10:00:00-03:00", end: "2026-08-05T11:30:00-03:00" };
+    expect(moveBlockToAllDay(block, "2026-08-06", TZ)).toEqual({ startDate: "2026-08-06", endDate: "2026-08-07" });
+  });
+
+  it("un bloque con horario que termina exactamente a medianoche no se lleva puesto el día siguiente", () => {
+    const block = { allDay: false, start: "2026-08-05T22:00:00-03:00", end: "2026-08-06T00:00:00-03:00" };
+    expect(moveBlockToAllDay(block, "2026-08-10", TZ)).toEqual({ startDate: "2026-08-10", endDate: "2026-08-11" });
+  });
+
+  it("un bloque con horario que cruza la medianoche ocupa los dos días que tocaba", () => {
+    const block = { allDay: false, start: "2026-08-05T22:00:00-03:00", end: "2026-08-06T01:00:00-03:00" };
+    expect(moveBlockToAllDay(block, "2026-08-10", TZ)).toEqual({ startDate: "2026-08-10", endDate: "2026-08-12" });
+  });
+
+  it("mide los días en la zona horaria del usuario, no en UTC", () => {
+    // 2026-08-05T22:00-03:00 es 2026-08-06T01:00Z: contra UTC, este bloque
+    // parecería empezar (y ocupar) el día siguiente.
+    const block = { allDay: false, start: "2026-08-05T22:00:00-03:00", end: "2026-08-05T23:00:00-03:00" };
+    expect(moveBlockToAllDay(block, "2026-08-10", TZ)).toEqual({ startDate: "2026-08-10", endDate: "2026-08-11" });
+  });
+});
+
+describe("isSameAllDayRange (guard contra soltar donde ya estaba)", () => {
+  it("es verdadero cuando el bloque de todo el día cae en su mismo rango", () => {
+    const block = { allDay: true, start: "2026-08-05", end: "2026-08-06" };
+    expect(isSameAllDayRange(block, moveBlockToAllDay(block, "2026-08-05", TZ))).toBe(true);
+  });
+
+  it("es falso al caer en otro día", () => {
+    const block = { allDay: true, start: "2026-08-05", end: "2026-08-06" };
+    expect(isSameAllDayRange(block, moveBlockToAllDay(block, "2026-08-06", TZ))).toBe(false);
+  });
+
+  it("un bloque con horario nunca coincide: soltarlo en la fila siempre lo cambia de forma", () => {
+    const block = { allDay: false, start: "2026-08-05T10:00:00-03:00", end: "2026-08-05T11:00:00-03:00" };
+    expect(isSameAllDayRange(block, moveBlockToAllDay(block, "2026-08-05", TZ))).toBe(false);
   });
 });

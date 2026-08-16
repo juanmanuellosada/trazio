@@ -8,8 +8,10 @@ import {
   DragOverlay,
   MeasuringStrategy,
   PointerSensor,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragMoveEvent,
   type DragStartEvent,
@@ -23,9 +25,11 @@ import {
   instantFromDayMinutes,
   localMinutesOfDay,
   minutesToTimeString,
+  moveBlockToAllDay,
   moveBlockToPosition,
   pixelsToMinutes,
   snapToQuarterHour,
+  type AllDayDragResult,
   type DragResult,
 } from "@/lib/calendar/drag";
 import type { CalendarBlock, CalendarFormat, UnscheduledHabitChip } from "@/lib/calendar/block";
@@ -39,8 +43,52 @@ import { UnscheduledHabitsRow } from "./unscheduled-habits-row";
 
 type DragActiveData = { kind: "move-block"; block: CalendarBlock } | { kind: "schedule-chip"; chip: UnscheduledHabitChip };
 
+/** Los dos destinos posibles de un arrastre: una columna de día de la grilla horaria (`time-grid.tsx`) o una celda de la fila de todo el día (`all-day-row.tsx`), que se distingue por `allDay`. */
+type DragOverData = { dateKey: string; allDay?: boolean };
+
 /** `dragPreviewRange` con el día de destino sumado (reporte "falta la sombra del destino"): el rango ya ajustado a la grilla más la columna donde cayó, que puede ser distinta de la de origen. */
 type DragPreviewRange = DragResult & { dateKey: string };
+
+/**
+ * La fila de todo el día necesita dos cosas que la detección por área
+ * (`rectIntersection`, la de siempre) no da:
+ *
+ * 1. **Que gane el puntero, no la superficie.** La fila mide 26px de alto
+ *    contra las 96px que mide una hora de la grilla: un bloque de una hora
+ *    arrastrado hasta ahí solapa más con la columna horaria de abajo que
+ *    con la celda de arriba, así que por área ganaría la columna y el
+ *    bloque volvería a tener horario justo cuando se lo estaban sacando.
+ * 2. **Un rectángulo medido en el momento.** La fila es `position: sticky`
+ *    adentro del contenedor que se desplaza, y dnd-kit corrige los
+ *    rectángulos que midió sumándoles cuánto se desplazó el contenedor
+ *    desde entonces (`Rect`, `@dnd-kit/core`) — una corrección correcta
+ *    para las columnas horarias, que sí se van con el desplazamiento, y
+ *    equivocada para una fila pegada arriba, que no se mueve. Verificado en
+ *    Chromium con el e2e de esta tanda: con la grilla desplazada 539px, la
+ *    celda que en pantalla estaba en `top: 201` figuraba en `top: 712` para
+ *    dnd-kit, y el arrastre terminaba siempre en la columna horaria.
+ *
+ * Por eso las celdas de todo el día se resuelven acá contra su rectángulo
+ * vivo (`getBoundingClientRect`) y no contra `droppableRects`. Para todo lo
+ * demás no cambia nada: sigue decidiendo `rectIntersection`.
+ */
+const calendarCollisionDetection: CollisionDetection = (args) => {
+  const point = args.pointerCoordinates;
+  if (point) {
+    const hit = args.droppableContainers.find((container) => {
+      if (!(container.data.current as DragOverData | undefined)?.allDay) return false;
+      const node = container.node.current;
+      if (!node) return false;
+      const rect = node.getBoundingClientRect();
+      return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+    });
+    // `value` es la distancia con la que dnd-kit ordena varias colisiones:
+    // acá nunca hay más de una (un punto cae en una sola celda), así que da
+    // igual qué número lleve.
+    if (hit) return [{ id: hit.id, data: { droppableContainer: hit, value: 0 } }];
+  }
+  return rectIntersection(args);
+};
 
 /** Duración de arranque para un bloque que no tenía horario (tarea 6.4): 30 minutos, una de las opciones rápidas del campo de duración estimada (`components/selectors/duration-input.ts`) — el usuario la ajusta después desde ahí si no le sirve. */
 const DEFAULT_UNTIMED_DURATION_MINUTES = 30;
@@ -93,6 +141,7 @@ export function CalendarView({
   onSelectBlock,
   onToggleComplete,
   onMoveBlock,
+  onMoveBlockToAllDay,
   onResizeBlock,
   getContextMenuEntries,
   onScheduleHabitChip,
@@ -116,6 +165,8 @@ export function CalendarView({
   onToggleComplete?: (block: CalendarBlock) => void;
   /** Un bloque se movió (arrastrado o redimensionado con el mismo evento) a un nuevo rango (tarea 6.1/6.3, D-F): traducirlo a la mutación del dominio es responsabilidad de quien la reciba. */
   onMoveBlock?: (block: CalendarBlock, range: DragResult) => void;
+  /** Un bloque se soltó en la fila de todo el día de `result.startDate` (reporte "una tarea de todo el día no se puede arrastrar a otro día"): pasa a no tener horario, ocupando los mismos días de calendario que ocupaba. Traducirlo a la mutación del dominio es responsabilidad de quien la reciba, igual que `onMoveBlock`. */
+  onMoveBlockToAllDay?: (block: CalendarBlock, result: AllDayDragResult) => void;
   /** Se estiró el borde de un bloque (tarea 6.2/6.3, D-F). */
   onResizeBlock?: (block: CalendarBlock, range: DragResult) => void;
   /** Clic derecho en un bloque (grupo 7, D-E): esta vista sigue sin saber qué ofrece cada tipo (D-F), quien monta la pantalla resuelve las entradas según `block.type`. */
@@ -187,9 +238,12 @@ export function CalendarView({
       setDragPreviewRange(null);
       return;
     }
-    const overData = over.data.current as { dateKey: string } | undefined;
+    const overData = over.data.current as DragOverData | undefined;
     const translatedTop = active.rect.current.translated?.top ?? active.rect.current.initial?.top;
-    if (!overData || translatedTop == null) {
+    // La fila de todo el día no tiene sombra de horario que dibujar: el
+    // resaltado del destino lo pinta la propia celda con su `isOver`
+    // (`all-day-row.tsx`), y el bloque no va a quedar en ninguna hora.
+    if (!overData || overData.allDay || translatedTop == null) {
       setDragPreviewRange(null);
       return;
     }
@@ -213,15 +267,25 @@ export function CalendarView({
     resetDragState();
     const { active, over } = event;
     if (!over) return;
-    const overData = over.data.current as { dateKey: string } | undefined;
+    const overData = over.data.current as DragOverData | undefined;
     if (!overData) return;
+    const activeData = active.data.current as DragActiveData | undefined;
+    if (!activeData) return;
+
+    // Soltado en la fila de todo el día: no hay posición vertical que leer
+    // —el destino es un día entero, no una hora—, así que este camino sale
+    // antes de mirar los píxeles. Un chip de hábito sin horario no entra
+    // acá: "todo el día" no es una forma que un hábito pueda tener (D-H, su
+    // programación es siempre una hora puntual).
+    if (overData.allDay) {
+      if (activeData.kind !== "move-block") return;
+      onMoveBlockToAllDay?.(activeData.block, moveBlockToAllDay(activeData.block, overData.dateKey, timezone));
+      return;
+    }
 
     const translatedTop = active.rect.current.translated?.top ?? active.rect.current.initial?.top;
     if (translatedTop == null) return;
     const rawStartMinutes = pixelsToMinutes(translatedTop - over.rect.top, HOUR_ROW_HEIGHT_PX);
-
-    const activeData = active.data.current as DragActiveData | undefined;
-    if (!activeData) return;
 
     if (activeData.kind === "move-block") {
       const { block } = activeData;
@@ -311,6 +375,7 @@ export function CalendarView({
     <DndContext
       id="calendar-drag"
       sensors={sensors}
+      collisionDetection={calendarCollisionDetection}
       // Los droppables (columnas de día) se vuelven a medir en cada frame
       // mientras dura el arrastre (tarea 7.1, `design.md` decisión 6): sin
       // esto, dnd-kit solo mide una vez al arrancar el gesto, así que el

@@ -123,3 +123,33 @@ Arrastrar o programar con un horario concreto una tarea que hasta ese momento so
 - **THEN** exactamente una de las dos columnas, `due_date` o `due_at`, tiene
   valor, y la otra es `null`
 
+### Requirement: Arrastrar a la fila de todo el día mueve de día sin dar horario
+
+La fila de todo el día SHALL ser un destino de arrastre, una celda por día visible. Soltar ahí un bloque que ya era de todo el día SHALL moverlo a ese día conservando cuántos días de calendario ocupaba, sin darle horario; soltar ahí un bloque con horario SHALL quitarle el horario y dejarlo como bloque de todo el día de ese día. Para una tarea eso significa vaciar `due_at` y escribir `due_date`, el camino inverso del requirement anterior y con el mismo constraint de D9. Un hábito no SHALL cambiar por este gesto: su programación es siempre una hora puntual.
+
+#### Scenario: Una tarea de todo el día se mueve a otro día
+
+- **WHEN** se arrastra una tarea de todo el día del martes hasta la fila de
+  todo el día del jueves
+- **THEN** la tarea queda con `due_date` el jueves, `due_at` en `null`, y
+  sigue apareciendo en la fila de todo el día, no en la grilla horaria
+
+#### Scenario: Un bloque con horario soltado en la fila pierde la hora
+
+- **WHEN** se arrastra una tarea programada a las 10:00 hasta la fila de todo
+  el día de otro día
+- **THEN** la tarea pasa a ser de todo el día de ese día, sin horario
+
+#### Scenario: La fila está disponible aunque ese día no tenga nada de todo el día
+
+- **WHEN** se arrastra un bloque hacia arriba y el día destino todavía no
+  tiene ningún bloque de todo el día
+- **THEN** la fila igual aparece durante el gesto y muestra el día destino
+  resaltado
+
+#### Scenario: Manda dónde quedó el puntero, no cuánto solapa el bloque
+
+- **WHEN** se arrastra un bloque de una hora, más alto que la fila de todo el
+  día, y se lo suelta con el puntero adentro de esa fila
+- **THEN** el bloque pasa a ser de todo el día, aunque su rectángulo solape
+  más superficie con la columna horaria de abajo

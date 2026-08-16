@@ -22,8 +22,8 @@ import { useHabitStreaks } from "@/lib/habits/use-habit-streaks";
 import { formatHabitFrequency, formatStreak } from "@/lib/habits/format";
 import { HabitFormDialog } from "@/components/habits/habit-form-dialog";
 import { visibleDaysForFormat } from "@/lib/calendar/layout";
-import { eventDragChanges, eventUpdateInput, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
-import { durationMinutesBetween, isSameRange, type DragResult } from "@/lib/calendar/drag";
+import { eventAllDayChanges, eventDragChanges, eventUpdateInput, taskAllDayPatch, taskDragPatch, habitDragOverride } from "@/lib/calendar/block-drag-translate";
+import { durationMinutesBetween, isSameAllDayRange, isSameRange, type AllDayDragResult, type DragResult } from "@/lib/calendar/drag";
 import type { CalendarBlock, UnscheduledHabitChip } from "@/lib/calendar/block";
 import type { CalendarEventInstance, EventInput, RecurrenceEditScope } from "@/lib/calendar/events";
 import {
@@ -528,6 +528,39 @@ export function ScreenCalendar({
   }
 
   /**
+   * Soltar un bloque en la fila de todo el día (reporte "una tarea de todo
+   * el día no se puede arrastrar a otro día"): el espejo de
+   * `handleMoveBlock`. Para una tarea vacía `due_at` y llena `due_date`
+   * (D9: excluyentes); para un evento de Google reescribe el rango como dos
+   * fechas de todo el día, que es tanto "moverlo de día" si ya lo era como
+   * "sacarle la hora" si no.
+   *
+   * Un hábito no pasa por acá: "todo el día" no es una forma que pueda
+   * tener (D-H, su programación es siempre una hora puntual, sea el horario
+   * habitual o el override de un día), así que el bloque vuelve a su lugar
+   * sin mutar nada — cambiarle el horario a todos los días desde un
+   * arrastre hacia arriba sería mucho más de lo que ese gesto promete.
+   */
+  function handleMoveBlockToAllDay(block: CalendarBlock, result: AllDayDragResult) {
+    if (isSameAllDayRange(block, result)) return;
+    if (block.type === "task") {
+      const task = tasksById.get(block.id);
+      if (!task) return;
+      updateTask.mutate({ id: task.id, projectId: task.project_id, patch: taskAllDayPatch(result) });
+      return;
+    }
+    if (block.type !== "event") return;
+    const event = eventsById.get(block.id);
+    if (!event) return;
+    const changes = eventUpdateInput(eventAllDayChanges(event, result), timezone);
+    if (event.recurringEventId !== null) {
+      setPendingEventUpdate({ event, changes });
+      return;
+    }
+    applyEventUpdate(event, changes);
+  }
+
+  /**
    * Redimensionar (estirar la manija — `onResizeBlock` de `CalendarView`,
    * el seguimiento nativo de puntero de `draggable-timed-block.tsx`: un
    * gesto propio, con su propio callback, así que no hace falta adivinarlo
@@ -612,6 +645,7 @@ export function ScreenCalendar({
           onSelectBlock={handleSelectBlock}
           onToggleComplete={handleToggleComplete}
           onMoveBlock={handleMoveBlock}
+          onMoveBlockToAllDay={handleMoveBlockToAllDay}
           onResizeBlock={handleResizeBlock}
           getContextMenuEntries={buildContextMenuEntries}
           onScheduleHabitChip={handleScheduleHabitChip}

@@ -1,5 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { durationMinutesBetween, minutesToTimeString, localMinutesOfDay, type DragResult } from "./drag";
+import { durationMinutesBetween, minutesToTimeString, localMinutesOfDay, type AllDayDragResult, type DragResult } from "./drag";
 import type { EventInput } from "./events";
 
 /**
@@ -34,6 +34,23 @@ export function taskDragPatch(result: DragResult): TaskDragPatch {
   };
 }
 
+export type TaskAllDayPatch = { due_at: null; due_date: string };
+
+/**
+ * Tarea soltada en la fila de todo el día (reporte "una tarea de todo el
+ * día no se puede arrastrar a otro día"): el espejo de `taskDragPatch` —
+ * ahí `due_date` se vacía para que la tarea pase a tener hora, acá se
+ * vacía `due_at` para que la pierda. Las dos columnas siguen siendo
+ * excluyentes (D9), que es lo que el constraint de la base exige.
+ *
+ * `duration_minutes` no se toca: una tarea de todo el día no la muestra en
+ * ningún lado, y borrarla haría perder la duración estimada que el usuario
+ * ya había puesto si después vuelve a darle horario.
+ */
+export function taskAllDayPatch(result: AllDayDragResult): TaskAllDayPatch {
+  return { due_at: null, due_date: result.startDate };
+}
+
 export type HabitDragOverride = { date: string; scheduledTime: string };
 
 /**
@@ -66,6 +83,18 @@ export function habitDragOverride(start: Date, timezone: string): HabitDragOverr
 export function eventDragChanges<T extends { allDay: boolean; start: string; end: string }>(current: T, result: DragResult): T {
   if (current.allDay) return current;
   return { ...current, start: result.start.toISOString(), end: result.end.toISOString() };
+}
+
+/**
+ * Evento de Google soltado en la fila de todo el día: conserva todos sus
+ * campos (igual que `eventDragChanges`) y solo reemplaza el rango por las
+ * dos fechas `yyyy-MM-dd` que pide Google para un evento de todo el día,
+ * marcándolo como tal. A diferencia de `eventDragChanges`, acá sí tiene
+ * sentido para un evento que ya era de todo el día: eso es justamente
+ * moverlo de fecha.
+ */
+export function eventAllDayChanges<T extends { allDay: boolean; start: string; end: string }>(current: T, result: AllDayDragResult): T {
+  return { ...current, allDay: true, start: result.startDate, end: result.endDate };
 }
 
 export type EventChangeSource = {
