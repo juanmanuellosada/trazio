@@ -21,7 +21,7 @@ import { useUserPreferences } from "@/components/providers/preferences-provider"
 import { CalendarGrid } from "@/components/selectors/calendar-grid";
 import { TimeField, DEFAULT_TIME, parseHHMM, toHHMM, type TimeValue } from "@/components/selectors/time-field";
 import { resolveProjectColorHex } from "@/lib/validation/colors";
-import { cn } from "@/lib/utils";
+import { CompletionCircle } from "@/components/ui/completion-circle";
 import type { Habit } from "@/lib/habits/habit-columns";
 import type { HabitStreak } from "@/lib/habits/streak";
 import { buildMiniMapCells, currentWeekProgress } from "@/lib/habits/habit-history";
@@ -217,20 +217,17 @@ export function HabitCard({
               calendario. */}
           <RescheduleHabitControl habit={habit} todayDate={todayDate} timezone={timezone} />
 
+          {/* `focus-visible:ring-3`: mismo criterio que `task-row.tsx` — ya
+              cumplía el piso de 24×24, así que acá lo único que cambia es que
+              el control deja de estar escrito a mano. */}
           {dueToday && (
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={habit.completed_today}
+            <CompletionCircle
+              size="lg"
+              checked={habit.completed_today}
               aria-label={habit.completed_today ? `Desmarcar ${habit.name} de hoy` : `Marcar ${habit.name} como hecho hoy`}
               onClick={toggleDone}
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                habit.completed_today ? "border-primary bg-primary" : "border-input",
-              )}
-            >
-              {habit.completed_today && <span aria-hidden className="size-2 rounded-full bg-primary-foreground" />}
-            </button>
+              className="focus-visible:ring-3"
+            />
           )}
 
           <DropdownMenu>

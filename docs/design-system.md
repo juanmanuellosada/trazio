@@ -448,7 +448,45 @@ Radios, sobre la variable `--radius` que consume shadcn/ui:
 | `--radius-sm` | 4px | Checkbox, inputs chicos |
 | `--radius` | 8px | Botones, inputs, tarjetas chicas — el default de shadcn |
 | `--radius-lg` | 12px | Tarjetas, diálogos, panel de detalle |
-| `--radius-full` | 9999px | Chips de prioridad/etiqueta, avatar |
+| `--radius-full` | 9999px | Chips de prioridad/etiqueta, avatar. No se usa en superficies cuyo alto es variable (ver más abajo) |
+
+**El radio de píldora no se usa en superficies cuyo alto es variable.**
+`rounded-full` no fija un radio: resuelve siempre a la mitad de lo que mida el
+elemento. En un bloque cuya altura sale de una duración —como los de la grilla
+del calendario, donde el alto es `(minutos / 60) × HOUR_ROW_HEIGHT_PX`— eso
+convierte la duración en forma, sin que nadie lo haya elegido. Medido antes de
+la corrección: un hábito de 10 minutos quedaba con 7px de radio, uno de 45
+minutos con 35px, uno de 2 horas con 96px. Por eso los tres tipos de bloque de
+la grilla usan `rounded-md` (6px), fijo, y se distinguen entre sí por el borde
+y por un marcador propio (emoji o ícono de evento) — nunca por la forma.
+
+**Ese `rounded-md` no está en la tabla de arriba, y no es un error de esta
+sección: es una deriva real entre la tabla y el código.** Tailwind define
+`rounded-md` como 0.375rem/6px por default cuando no existe un token
+`--radius-md` que lo pise — y en este proyecto no existe (`app/globals.css`
+solo define `--radius-sm`, `--radius`, `--radius-lg` y `--radius-full`). La
+tarea ya usaba `rounded-md` antes de este cambio, así que su aspecto no
+cambió; lo único nuevo es que el hábito y el evento se le suman. El resultado
+es que los tres tipos de bloque —y las tareas, desde antes— vienen dibujando
+un radio que el sistema de diseño no declara. No se resuelve acá: es decisión
+del dueño del producto, con dos salidas posibles y ninguna aplicada todavía:
+declarar `--radius-md: 0.375rem` para que el token exista, o mover los tres
+bloques a `--radius-sm` y aceptar que la tarea pase de 6px a 4px.
+
+El control de completar —el círculo a la izquierda del título, presente en
+bloques del calendario, filas de tarea y de hábito, tarjetas de hábito y el
+detalle de tarea— es una primitiva compartida,
+`components/ui/completion-circle.tsx`, con cuatro tamaños (12/16/20/24px,
+según la superficie) y un piso de área tocable de 24×24 en los cuatro, aunque
+el círculo visible sea más chico. El color del borde sin marcar es una
+propiedad, no un valor fijo: en el calendario toma el color del bloque, en
+listas y tarjetas usa el borde neutro.
+
+Quedan afuera de este ajuste, a propósito, y anotadas acá para no perderlas: la
+manija de redimensionar de los bloques del calendario, hoy siempre visible al
+40% de opacidad en el borde inferior, debería mostrarse solo al pasar el mouse;
+y cuando el emoji elegido para un hábito es un ✅, se lee como un segundo
+control junto al círculo de completar.
 
 ---
 

@@ -50,6 +50,7 @@ import { DEFAULT_TASK_PRIORITY, TASK_PRIORITIES } from "@/lib/validation/tasks";
 import { getQuickDateOptions } from "@/components/selectors/quick-dates";
 import { SelectionCheckbox } from "@/components/selection/selection-checkbox";
 import { useSelection } from "@/components/selection/selection-context";
+import { CompletionCircle } from "@/components/ui/completion-circle";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { MoveTaskDialog } from "./move-task-dialog";
 import { PriorityDot } from "@/components/selectors/priority-select";
@@ -735,20 +736,18 @@ export function TaskRow({
         <span aria-hidden className="size-5 shrink-0" />
       )}
 
-      <button
-        type="button"
-        role="checkbox"
+      {/* `focus-visible:ring-3` por `className` (no el `ring-2` por defecto de la
+          primitiva): las demás filas de este mismo componente (grip de
+          arrastre, chevron, botón "…") ya usan `ring-3`, y un anillo distinto
+          acá se leería como un descuido dentro de la misma fila. */}
+      <CompletionCircle
+        size="sm"
+        checked={isCompleted}
         tabIndex={cursor ? -1 : undefined}
-        aria-checked={isCompleted}
         aria-label={isCompleted ? `Descompletar ${task.title}` : `Completar ${task.title}`}
         onClick={toggleComplete}
-        className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          isCompleted ? "border-primary bg-primary" : "border-input",
-        )}
-      >
-        {isCompleted && <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" />}
-      </button>
+        className="focus-visible:ring-3"
+      />
 
       {/* `opacity-70` (reporte del dueño: "los bordes siguen del mismo color... eso también debería apagarse"):
           mismo tratamiento que ya usa el chip de etiqueta completada (`LabelChipView`, más arriba) — el punto de

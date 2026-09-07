@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { differenceInCalendarDays, parseISO } from "date-fns";
@@ -19,7 +19,11 @@ const SAME_COLOR = "#0284C7";
 function sameColorBlocks(): CalendarBlock[] {
   return [
     { id: "task-1", type: "task", title: "Escribir el informe", color: SAME_COLOR, allDay: false, start: "2026-08-05T09:00:00-03:00", end: "2026-08-05T10:00:00-03:00" },
-    { id: "habit-1", type: "habit", title: "Meditar", color: SAME_COLOR, allDay: false, start: "2026-08-05T11:00:00-03:00", end: "2026-08-05T11:15:00-03:00" },
+    // El emoji es obligatorio en el dominio del hábito (spec: "cada tipo
+    // conserva además al menos un marcador propio"): se lo agrega acá para
+    // que el test de más abajo pueda verificarlo como el marcador real, en
+    // vez de un radio que ya no distingue nada.
+    { id: "habit-1", type: "habit", title: "Meditar", color: SAME_COLOR, allDay: false, start: "2026-08-05T11:00:00-03:00", end: "2026-08-05T11:15:00-03:00", icon: "🧘" },
     { id: "event-1", type: "event", title: "Reunión de equipo", color: SAME_COLOR, allDay: false, start: "2026-08-05T13:00:00-03:00", end: "2026-08-05T14:00:00-03:00" },
   ];
 }
@@ -33,20 +37,35 @@ describe("CalendarView", () => {
     expect(screen.getByRole("button", { name: "Reunión de equipo" })).toBeInTheDocument();
   });
 
-  it("con el mismo color, tarea/hábito/evento igual se distinguen por forma (clases de borde distintas)", () => {
+  // `bloques-de-calendario-consistentes`: el radio dejó de ser el canal de
+  // distinción (antes el hábito usaba `rounded-full`, que se resolvía a la
+  // mitad del alto según la duración). Ahora los tres tipos comparten el
+  // mismo radio, y lo que sostiene la distinción es el grosor del borde más
+  // el marcador propio de cada tipo — nunca el color ni el radio.
+  it("con el mismo color, tarea/hábito/evento comparten el mismo radio y se distinguen por el borde y su marcador propio", () => {
     render(<CalendarView format="dia" anchorDate="2026-08-05" timezone={TZ} weekStartsOn={1} blocks={sameColorBlocks()} now={NOW} />);
 
     const task = screen.getByRole("button", { name: "Escribir el informe" });
     const habit = screen.getByRole("button", { name: "Meditar" });
     const event = screen.getByRole("button", { name: "Reunión de equipo" });
 
+    // El radio es el mismo para los tres, sea cual sea el tipo.
+    expect(task.className).toContain("rounded-md");
+    expect(habit.className).toContain("rounded-md");
+    expect(event.className).toContain("rounded-md");
+
+    // El borde distingue tarea (2px) de hábito (1px), y el evento se aparta
+    // de los dos con su barra lateral en vez de un borde parejo.
     expect(task.className).toContain("border-2");
-    expect(habit.className).toContain("rounded-full");
+    expect(habit.className).toContain("border");
+    expect(habit.className).not.toContain("border-2");
     expect(event.className).toContain("border-l-4");
 
-    // Ninguna de las tres formas es igual a otra: no hay dos tipos que compartan la misma clase de forma completa.
-    const shapes = [task.className, habit.className, event.className];
-    expect(new Set(shapes).size).toBe(3);
+    // El marcador propio de cada tipo, ni color ni borde: la tarea tiene su
+    // control de completar, el hábito su emoji, y el evento ni uno ni otro.
+    expect(within(task).getByRole("checkbox")).toBeInTheDocument();
+    expect(within(habit).getByText("🧘")).toBeInTheDocument();
+    expect(within(event).queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("un bloque de vista previa se dibuja pero no responde a ningún clic", async () => {

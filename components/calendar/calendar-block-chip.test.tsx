@@ -345,6 +345,68 @@ describe("CalendarBlockChip — formato mes, fuera de alcance (Non-Goal)", () =>
   });
 });
 
+// Requirement "La forma de un bloque no depende de su duración"
+// (`bloques-de-calendario-consistentes`, tareas 3.1/3.2/4.2): antes el hábito
+// usaba `rounded-full`, que se resuelve a la mitad del alto — una píldora a
+// 10 minutos, un óvalo a 2 horas. Ahora todos los bloques usan el mismo
+// radio (`rounded-md`) sea cual sea su tipo o su duración, y la distinción
+// tarea/hábito corre por el grosor del borde.
+describe("CalendarBlockChip — el radio no depende de la duración (tarea 3.1)", () => {
+  it("un hábito de diez minutos y uno de dos horas tienen el mismo radio de esquinas", () => {
+    const shortHabit = block({ type: "habit", end: "2026-08-05T10:10:00-03:00" });
+    const longHabit = block({ type: "habit", end: "2026-08-05T12:00:00-03:00" });
+    const { container: shortContainer } = render(<CalendarBlockChip block={shortHabit} variant="timed" timezone={TZ} />);
+    const shortRoot = shortContainer.querySelector('[role="button"]') as HTMLElement;
+    expect(shortRoot.className).toContain("rounded-md");
+    expect(shortRoot.className).not.toContain("rounded-full");
+
+    const { container: longContainer } = render(<CalendarBlockChip block={longHabit} variant="timed" timezone={TZ} />);
+    const longRoot = longContainer.querySelector('[role="button"]') as HTMLElement;
+    expect(longRoot.className).toContain("rounded-md");
+    expect(longRoot.className).not.toContain("rounded-full");
+  });
+
+  it("una tarea y un hábito del mismo color y la misma duración comparten el radio, y se distinguen por el grosor del borde", () => {
+    const { container: taskContainer } = render(<CalendarBlockChip block={block({ type: "task" })} variant="timed" timezone={TZ} />);
+    const taskRoot = taskContainer.querySelector('[role="button"]') as HTMLElement;
+    const { container: habitContainer } = render(<CalendarBlockChip block={block({ type: "habit" })} variant="timed" timezone={TZ} />);
+    const habitRoot = habitContainer.querySelector('[role="button"]') as HTMLElement;
+
+    expect(taskRoot.className).toContain("rounded-md");
+    expect(habitRoot.className).toContain("rounded-md");
+    expect(taskRoot.className).toContain("border-2");
+    expect(habitRoot.className).not.toContain("border-2");
+  });
+});
+
+// Tarea 3.2: el mismo radio único tiene que llegar a las cuatro variantes
+// (`timed`, `bar`, `compact`, `overlay`), no solo a la que se probó arriba —
+// las cuatro comparten `sharedClassName`, que es donde vive `TYPE_SHAPE_CLASS`.
+describe("CalendarBlockChip — el radio único llega a las cuatro variantes (tarea 3.2)", () => {
+  it.each(["timed", "bar"] as const)("variante %s: un hábito usa rounded-md, nunca rounded-full", (variant) => {
+    render(<CalendarBlockChip block={block({ type: "habit" })} variant={variant} timezone={TZ} />);
+    const root = screen.getByRole("button", { name: "Escribir el informe" });
+    expect(root.className).toContain("rounded-md");
+    expect(root.className).not.toContain("rounded-full");
+  });
+
+  it("variante overlay (bloque arrastrado): el hábito también usa rounded-md", () => {
+    const { container } = render(<CalendarBlockChip block={block({ type: "habit" })} variant="overlay" timezone={TZ} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("rounded-md");
+    expect(root.className).not.toContain("rounded-full");
+  });
+
+  it("variante compact (formato mes): el hábito también usa rounded-md", () => {
+    const { container } = render(
+      <CalendarBlockChip block={block({ type: "habit", end: "2026-08-05T12:00:00-03:00" })} variant="compact" timezone={TZ} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("rounded-md");
+    expect(root.className).not.toContain("rounded-full");
+  });
+});
+
 // Defecto encontrado (no en la lista original de tareas): un bloque muy
 // corto mide menos que lo que pide el primer peldaño de la escalera (relleno
 // vertical + una línea de texto normal, 24px) — el contenido se recortaba en

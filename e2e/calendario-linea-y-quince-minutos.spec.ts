@@ -86,10 +86,13 @@ test("la línea de la hora actual avanza sola y es roja; quince/treinta/sesenta/
   const fifteenBlock = page.getByRole("button", { name: "Quince minutos" });
   const checkbox = fifteenBlock.getByRole("checkbox");
   await expect(checkbox).toBeVisible();
+  // 24×24: el piso de área tocable de `sistema-de-componentes/spec.md`
+  // (WCAG 2.5.8), no un umbral arbitrario — un umbral de 10 dejaba pasar la
+  // caja rota de 12×12 que este mismo test medía sin fallar.
   const box = await checkbox.boundingBox();
   if (!box) throw new Error("no se pudo medir el control de completar");
-  expect(box.width).toBeGreaterThanOrEqual(10);
-  expect(box.height).toBeGreaterThanOrEqual(10);
+  expect(box.width).toBeGreaterThanOrEqual(24);
+  expect(box.height).toBeGreaterThanOrEqual(24);
   await checkbox.click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(checkbox).toHaveAttribute("aria-checked", "true");

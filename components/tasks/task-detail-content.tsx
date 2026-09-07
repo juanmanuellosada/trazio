@@ -39,6 +39,7 @@ import { tasksQueryKey, useTasks, type TaskRow } from "@/lib/tasks/use-tasks";
 import { taskTitleSchema } from "@/lib/validation/tasks";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { ReminderPicker } from "@/components/reminders/reminder-picker";
+import { CompletionCircle } from "@/components/ui/completion-circle";
 import { LabelPicker } from "./label-picker";
 import { RecurrenceEditor, type RecurrenceValue } from "./recurrence-editor";
 import { TaskDescriptionEditor } from "./task-description-editor";
@@ -336,19 +337,22 @@ function TaskDetailForm({ task, onClose }: { task: TaskDetail; onClose?: () => v
         )}
 
         <div className="flex items-start gap-2 p-4">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isCompleted}
-            aria-label={isCompleted ? "Descompletar tarea" : "Completar tarea"}
-            onClick={() => patch({ completed_at: isCompleted ? null : new Date().toISOString() })}
-            className={cn(
-              "mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              isCompleted ? "border-primary bg-primary" : "border-input",
-            )}
-          >
-            {isCompleted && <span aria-hidden className="size-2 rounded-full bg-primary-foreground" />}
-          </button>
+          {/* `mt-1` sobre el ancla (el `div`), no sobre el botón de la
+              primitiva: alinea el círculo con la primera línea del título de
+              al lado, que es `text-lg` — la primitiva no expone className
+              para su envoltorio, así que la alineación del contenedor tiene
+              que vivir un nivel afuera. `focus-visible:ring-3`: mismo
+              criterio que `task-row.tsx`, para que el anillo se vea igual
+              que el resto de los controles de este encabezado. */}
+          <div className="mt-1">
+            <CompletionCircle
+              size="md"
+              checked={isCompleted}
+              aria-label={isCompleted ? "Descompletar tarea" : "Completar tarea"}
+              onClick={() => patch({ completed_at: isCompleted ? null : new Date().toISOString() })}
+              className="focus-visible:ring-3"
+            />
+          </div>
 
           <Input
             ref={titleInputRef}

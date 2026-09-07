@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import type { CalendarBlock, CalendarBlockType } from "@/lib/calendar/block";
 import { eventColorForTheme } from "@/lib/calendar/screen-blocks";
 import { PriorityDot } from "@/components/selectors/priority-select";
+import { CompletionCircle } from "@/components/ui/completion-circle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HOUR_ROW_HEIGHT_PX } from "./grid-metrics";
 
@@ -157,14 +158,21 @@ const TYPE_ICON: Record<CalendarBlockType, typeof CalendarDays> = {
  * Forma por tipo (tarea 5.5, requirement "se distinguen por forma, no
  * solo por color"): el color de un bloque ya está tomado por el proyecto,
  * la etiqueta o el calendario de origen, así que la distinción de tipo
- * viene del borde y del ícono, no del color. Tarea: caja con borde
- * completo. Hábito: píldora. Evento: barra lateral gruesa, como en Google
- * Calendar. **No se toca** (tarea 3.4, D-B): hay una prueba que exige que
- * dos bloques del mismo color se sigan distinguiendo por esta forma.
+ * viene del borde y del ícono, no del color. Evento: barra lateral gruesa,
+ * como en Google Calendar.
+ *
+ * El radio (`rounded-md`) es el mismo para los tres tipos y NUNCA depende
+ * de la duración del bloque (`bloques-de-calendario-consistentes`, tarea
+ * 3.1): antes el hábito usaba `rounded-full`, una píldora prolija a 10
+ * minutos pero una cápsula deformada a 45 y un óvalo a 2 horas, porque el
+ * radio se resolvía a la mitad del alto y el alto sale de la duración. La
+ * distinción tarea/hábito ahora corre por el grosor del borde (2px contra
+ * 1px) más el emoji del hábito, nunca por la forma — ver el requirement
+ * "La forma de un bloque no depende de su duración" del spec.
  */
 const TYPE_SHAPE_CLASS: Record<CalendarBlockType, string> = {
   task: "rounded-md border-2",
-  habit: "rounded-full border",
+  habit: "rounded-md border",
   event: "rounded-md border-y border-r border-l-4",
 };
 
@@ -190,6 +198,20 @@ type CalendarBlockChipVariant = "timed" | "bar" | "compact" | "overlay";
  * ninguna fila propia para ese primer renglón. Ahora la dirección vive acá
  * (por variante) y el primer renglón arma su propia fila (`items-center`)
  * más abajo, sin pisarse.
+ *
+ * **Tamaño del control de completar en `bar`** (tarea 3.3, pregunta abierta
+ * de `design.md`): `bar` mide `h-6` (24px), y la pregunta era si el control
+ * le entra en `md` (20px en la primitiva compartida — el borrador original
+ * de `design.md` decía 20px sin saber que había cuatro tamaños, no dos) o
+ * si le conviene el `sm` de los bloques apretados de la grilla. Resuelto:
+ * ninguno de los dos — el control de `titleRow`, compartido por las cuatro
+ * variantes sin distinción, usa `xs` (12px) en todas, igual que siempre usó
+ * el calendario. Un `md` de 20px con su área tocable de 24×24 cabe justo en
+ * los 24px de `bar` pero sin ningún margen para el resto de la fila (ícono,
+ * título); `xs` dibuja el mismo círculo de 12px que ya se veía acá y deja
+ * lugar de sobra. No se encontró una razón concreta para que la grilla
+ * horaria y la fila de todo el día usen un tamaño de control distinto entre
+ * sí — son el mismo bloque, solo cambia el layout.
  */
 const VARIANT_CLASS: Record<CalendarBlockChipVariant, string> = {
   timed: "h-full w-full flex-col items-stretch justify-start gap-0.5 px-1.5 py-1 text-left",
@@ -488,72 +510,42 @@ export function CalendarBlockChip({
   const titleRow = (
     <div className="flex min-w-0 w-full items-center gap-1">
       {canComplete && (
-        // Defecto de accesibilidad medido, no supuesto: el casillero se
-        // dibuja en 12×12 (`size-3`), la mitad del mínimo de la norma
-        // (24×24, WCAG 2.5.8 — 44/48 son guías de Apple/Google, no la
-        // norma). La decisión ya tomada es agrandar el área tocable sin
-        // agrandar el punto: el `<button>` real (el que tiene el rol, el
-        // estado y los manejadores) mide 24×24 vía `-inset-1.5` sobre un
-        // ancla de 12×12 que no participa del layout (está fuera de flujo,
-        // así que no empuja ni la fila ni la escalera de abajo); el círculo
-        // que se ve sigue siendo el `span` interno de 12×12, sin cambios.
-        // En un bloque chico (modo apretado, por debajo de los 15 minutos —
-        // ver el comentario de `TIGHT_HEIGHT_THRESHOLD_PX`) esto excede la
-        // caja del bloque — a propósito: se prefirió desbordar sin dibujar
-        // nada ahí antes que sacar el control (el diseño dice que nunca se
-        // cae por falta de espacio). El único límite real es que los
-        // bloques vecinos son elementos separados y absolutamente
-        // posicionados (`draggable-timed-block.tsx`): el desborde hacia
-        // arriba gana el clic (por orden de DOM), hacia abajo puede quedar
-        // tapado por el bloque siguiente si están pegados sin separación —
-        // no se resuelve acá, ver el reporte de la tanda.
+        // Primitiva compartida (`bloques-de-calendario-consistentes`, tarea
+        // 2.1): el círculo, el punto interno, el área tocable de 24×24 y el
+        // rol/estado viven en `components/ui/completion-circle.tsx` — ver
+        // `completion-circle.test.tsx` para la matriz completa de los
+        // cuatro tamaños. Acá solo se resuelve lo que le toca a esta
+        // superficie: tamaño `xs` (12px/punto 4px, el mismo que ya usaba el
+        // calendario — decisión de la tarea 3.3, ver el comentario de
+        // `VARIANT_CLASS` sobre por qué todas las variantes usan `xs`), el
+        // color del borde sin marcar es el `displayColor` del bloque (a
+        // diferencia de las listas, que usan el token neutro — decisión
+        // explícita del componente, no una divergencia accidental), y el
+        // freno del `pointerdown` para que el arrastre del bloque
+        // (`@dnd-kit`) no se lleve el clic.
         //
         // `z-10` (grupo 4/5, defecto reportado por otra tanda): en un
-        // bloque chico, este desborde se solapa con la manija de
-        // redimensionar (`draggable-timed-block.tsx`, zona de toque de
-        // 18px creciendo hacia abajo desde el borde inferior). Las dos son
-        // absolutas con z-index automático, así que sin esto ganaba la
-        // manija por venir después en el árbol — un control que se ve y no
-        // responde, peor que uno ausente (D-A: el control de completar
+        // bloque chico, el área tocable agrandada del control (fuera de
+        // flujo, puede exceder la caja del bloque — a propósito, el diseño
+        // dice que nunca se cae por falta de espacio) se solapa con la
+        // manija de redimensionar (`draggable-timed-block.tsx`, zona de
+        // toque de 18px creciendo hacia abajo desde el borde inferior). Las
+        // dos son absolutas con z-index automático, así que sin esto ganaba
+        // la manija por venir después en el árbol — un control que se ve y
+        // no responde, peor que uno ausente (D-A: el control de completar
         // nunca se cae). El mismo `z-10` también resuelve el caso de dos
         // bloques chicos pegados: el casillero del bloque de abajo le gana
         // a la manija del bloque de arriba aunque se solapen, sin depender
         // de en qué orden se dibujaron.
-        <span className="relative z-10 size-3 shrink-0">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={completed}
+        <span className="relative z-10">
+          <CompletionCircle
+            size="xs"
+            checked={completed}
+            uncheckedColor={displayColor}
             aria-label={completeLabel}
             onPointerDown={handleTogglePointerDown}
             onClick={handleToggleClick}
-            className="absolute -inset-1.5 flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "flex size-3 items-center justify-center rounded-full border-2",
-                completed && "border-primary bg-primary",
-              )}
-              // Sin marcar (reporte del dueño: "que resalte un poco más, que
-              // tenga el mismo borde que el recuadro"): mismo `displayColor`
-              // que ya usa el borde del bloque, a color pleno — nunca el
-              // `b3` de un bloque completado (ver el comentario de
-              // `sharedStyle` más abajo), porque ese caso nunca se da acá:
-              // marcado implica `completed`, que muestra el relleno
-              // `border-primary bg-primary` en vez de esto. `border-2` (antes
-              // `border`, 1px) es el resaltado: mismo grosor marcado y sin
-              // marcar, para que tildar no le cambie el tamaño al círculo.
-              // El estado marcado se queda con `--primary` a propósito: es
-              // la misma señal de "hecho" que ya usa `task-row.tsx` y
-              // `habit-today-row.tsx` en toda la app — cambiarla acá por
-              // `displayColor` la volvería inconsistente con el resto sin
-              // necesidad, cuando lo pedido era resaltar el sin marcar.
-              style={completed ? undefined : { borderColor: displayColor }}
-            >
-              {completed && <span aria-hidden className="size-1 rounded-full bg-primary-foreground" />}
-            </span>
-          </button>
+          />
         </span>
       )}
       {block.type === "event" && <Icon aria-hidden className="size-3 shrink-0" style={{ color: displayColor }} />}

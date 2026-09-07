@@ -258,18 +258,28 @@ describe("TaskList — punto de prioridad (ruido en la prioridad por defecto)", 
     mock.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
   });
 
+  // `.rounded-full[aria-hidden]` a secas también matchea el círculo
+  // decorativo de `CompletionCircle` (`components/ui/completion-circle.tsx`),
+  // presente en toda fila con o sin prioridad no default — de ahí el filtro
+  // que excluye lo que cuelga de `[data-slot="completion-circle"]`.
+  function priorityDots() {
+    return Array.from(document.querySelectorAll(".rounded-full[aria-hidden]")).filter(
+      (el) => !el.closest('[data-slot="completion-circle"]'),
+    );
+  }
+
   it("no muestra el punto en la prioridad por defecto (4)", async () => {
     renderList([task({ id: "t1", title: "Pagar el alquiler", priority: 4 })]);
 
     await screen.findByRole("button", { name: "Pagar el alquiler" });
-    expect(document.querySelector(".rounded-full[aria-hidden]")).toBeNull();
+    expect(priorityDots()).toHaveLength(0);
   });
 
   it("muestra el punto cuando la prioridad no es la de por defecto", async () => {
     renderList([task({ id: "t1", title: "Pagar el alquiler", priority: 1 })]);
 
     await screen.findByRole("button", { name: "Pagar el alquiler" });
-    expect(document.querySelector(".rounded-full[aria-hidden]")).not.toBeNull();
+    expect(priorityDots()).toHaveLength(1);
   });
 });
 

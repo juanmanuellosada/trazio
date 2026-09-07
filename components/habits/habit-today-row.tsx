@@ -7,6 +7,7 @@ import { resolveProjectColorHex } from "@/lib/validation/colors";
 import { formatHabitTime } from "@/lib/habits/format";
 import { useMarkHabitDone, useUnmarkHabitDone } from "@/lib/habits/mutations";
 import type { Habit } from "@/lib/habits/habit-columns";
+import { CompletionCircle } from "@/components/ui/completion-circle";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,19 +52,16 @@ export function HabitTodayRow({
 
   return (
     <li className="flex items-center gap-1.5 rounded-md px-1 py-1.5 hover:bg-surface">
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={habit.completed_today}
+      {/* `focus-visible:ring-3`: mismo criterio que `task-row.tsx` — la fila de
+          hábito convive con la de tarea en el mismo bloque de Hoy, así que el
+          anillo de foco tiene que verse igual en las dos. */}
+      <CompletionCircle
+        size="sm"
+        checked={habit.completed_today}
         aria-label={habit.completed_today ? `Desmarcar ${habit.name} de hoy` : `Marcar ${habit.name} como hecho hoy`}
         onClick={toggleDone}
-        className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          habit.completed_today ? "border-primary bg-primary" : "border-input",
-        )}
-      >
-        {habit.completed_today && <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" />}
-      </button>
+        className="focus-visible:ring-3"
+      />
 
       <span aria-hidden className="text-base leading-none">
         {habit.icon}
