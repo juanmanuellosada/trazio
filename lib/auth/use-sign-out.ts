@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { unsubscribeFromPush } from "@/lib/reminders/subscribe";
 
 /**
  * Cierra sesión: termina la sesión en Supabase (server-side, no solo borra
@@ -12,6 +13,11 @@ import { createClient } from "@/lib/supabase/client";
  * anterior servidos desde la caché— y vuelve a la landing. Compartido por
  * `logout-button.tsx` (botón suelto del panel lateral) y `account-menu.tsx`
  * (ítem del menú desplegable), que antes duplicaban esta secuencia.
+ *
+ * Antes de cerrar la sesión da de baja la suscripción push de este
+ * navegador (el borrado de la fila necesita la sesión): si no, los
+ * recordatorios de la cuenta que salió seguirían llegando acá. Es de mejor
+ * esfuerzo: un navegador sin push o una falla nunca impiden cerrar sesión.
  */
 export function useSignOut() {
   const router = useRouter();
@@ -20,6 +26,11 @@ export function useSignOut() {
 
   async function signOut() {
     setLoading(true);
+    try {
+      await unsubscribeFromPush();
+    } catch {
+      // Mejor esfuerzo: no bloquea el cierre de sesión.
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     queryClient.clear();

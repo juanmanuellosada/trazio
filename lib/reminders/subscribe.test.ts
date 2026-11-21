@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { subscribeToPush } from "./subscribe";
+import { subscribeToPush, unsubscribeFromPush } from "./subscribe";
 
 describe("subscribeToPush", () => {
   const originalKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -27,5 +27,17 @@ describe("subscribeToPush", () => {
     });
 
     await expect(subscribeToPush()).rejects.toThrow("service-worker-no-registrado");
+  });
+});
+
+describe("unsubscribeFromPush", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("no se queda colgado cuando nunca hubo una registración del service worker", async () => {
+    vi.stubGlobal("navigator", {
+      serviceWorker: { getRegistration: vi.fn().mockResolvedValue(undefined), ready: new Promise(() => {}) },
+    });
+
+    await expect(unsubscribeFromPush()).resolves.toBeUndefined();
   });
 });
