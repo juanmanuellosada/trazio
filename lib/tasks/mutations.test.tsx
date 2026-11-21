@@ -615,3 +615,32 @@ describe("useReplaceTaskLabels — reemplazar por diferencia (requirement \"Reem
     expect(toastError).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("useUpdateTask — vistas transversales de etiqueta y filtro", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.updateCalls.length = 0;
+    (supabaseClientModule.createClient as ReturnType<typeof vi.fn>).mockImplementation(() => ({ from: mock.from }));
+  });
+
+  it("al terminar una mutación invalida la vista de etiqueta y los resultados de filtros guardados", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["tasks", "label", "l1"], []);
+    queryClient.setQueryData(["filters", "resultados", "f1", null], []);
+    const { result } = renderHook(() => useUpdateTask(), { wrapper: wrapperWithUndo(queryClient) });
+
+    act(() => {
+      result.current.mutate({
+        id: baseTask.id,
+        projectId: baseTask.project_id,
+        patch: { completed_at: "2026-08-02T12:00:00.000Z" },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => {
+      expect(queryClient.getQueryState(["tasks", "label", "l1"])?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(["filters", "resultados", "f1", null])?.isInvalidated).toBe(true);
+    });
+  });
+});

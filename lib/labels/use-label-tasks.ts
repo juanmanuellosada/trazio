@@ -5,8 +5,11 @@ import { createClient } from "@/lib/supabase/client";
 import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "@/lib/tasks/use-tasks";
 import { compareLabelTasks } from "./label-tasks-order";
 
+/** Prefijo de todas las vistas de etiqueta: lo usan las mutaciones de tareas para invalidarlas. */
+export const LABEL_TASKS_QUERY_PREFIX = ["tasks", "label"] as const;
+
 export function labelTasksQueryKey(labelId: string) {
-  return ["tasks", "label", labelId] as const;
+  return [...LABEL_TASKS_QUERY_PREFIX, labelId] as const;
 }
 
 /** Mismas dos consultas y mismo orden que `get-label-tasks.ts`, ver ese módulo. */

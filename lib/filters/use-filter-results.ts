@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { parseQuery } from "@/lib/query-language/parse";
 import { TASK_LIST_COLUMNS, toTaskRow, type TaskListRawRow, type TaskRow } from "@/lib/tasks/use-tasks";
 
+/** Prefijo de los resultados de todos los filtros guardados: lo usan las mutaciones de tareas para invalidarlos. */
+export const FILTER_RESULTS_QUERY_PREFIX = ["filters", "resultados"] as const;
+
 export type FilterResults =
   | { status: "error"; message: string }
   | { status: "cargando" }
@@ -21,7 +24,7 @@ export function useFilterResults(filterId: string, query: string): FilterResults
   const parsed = parseQuery(query);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["filters", "resultados", filterId, parsed.ok ? JSON.stringify(parsed.ast) : null],
+    queryKey: [...FILTER_RESULTS_QUERY_PREFIX, filterId, parsed.ok ? JSON.stringify(parsed.ast) : null],
     queryFn: async () => {
       if (!parsed.ok) return [];
       const supabase = createClient();

@@ -5,6 +5,8 @@ import { useUndoStack } from "@/components/providers/undo-provider";
 import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
 import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
+import { FILTER_RESULTS_QUERY_PREFIX } from "@/lib/filters/use-filter-results";
+import { LABEL_TASKS_QUERY_PREFIX } from "@/lib/labels/use-label-tasks";
 import { createClient } from "@/lib/supabase/client";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Json } from "@/lib/supabase/database.types";
@@ -81,6 +83,9 @@ function invalidateCrossViewCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: COMPLETADO_QUERY_KEY });
   queryClient.invalidateQueries({ queryKey: PROXIMOS_QUERY_KEY });
   queryClient.invalidateQueries({ queryKey: SIN_FECHA_QUERY_KEY });
+  // Vista de etiqueta y resultados de filtros guardados: también leen a través de proyectos.
+  queryClient.invalidateQueries({ queryKey: LABEL_TASKS_QUERY_PREFIX });
+  queryClient.invalidateQueries({ queryKey: FILTER_RESULTS_QUERY_PREFIX });
 }
 
 /**
