@@ -43,6 +43,13 @@ el proyecto nuevo y sin sección cuando cambia su `project_id`.
   que tiene 2 subtareas
 - **THEN** la tarea y sus 2 subtareas SHALL quedar en el proyecto nuevo
 
+#### Scenario: Reintento tras una falla del arrastre
+
+- **WHEN** una llamada anterior movió la tarea pero no sus subtareas, y se
+  invoca otra vez `editar` con el mismo `project_id`
+- **THEN** las subtareas que quedaron atrás SHALL quedar en ese proyecto
+- **AND** las subtareas que ya estaban en él NUNCA SHALL perder su sección
+
 ### Requirement: `crear_tarea` con padre hereda el proyecto del padre
 
 Cuando `crear_tarea` recibe `parent_id`, la tarea SHALL crearse en el proyecto
@@ -72,7 +79,9 @@ indique una, que SHALL pertenecer al proyecto del padre.
 ### Requirement: `completar_tarea` es idempotente
 
 Invocar `completar_tarea` con el estado que la tarea ya tiene NUNCA SHALL
-modificarla ni crear una ocurrencia siguiente.
+modificarla ni duplicar su ocurrencia siguiente. Si la tarea es recurrente,
+ya estaba completada y su ocurrencia siguiente no existe, la llamada SHALL
+crearla, calculada desde la fecha del completado original.
 
 #### Scenario: Completar dos veces una tarea recurrente
 
@@ -81,6 +90,19 @@ modificarla ni crear una ocurrencia siguiente.
 - **THEN** SHALL existir una sola ocurrencia siguiente
 - **AND** la fecha de completado de la tarea SHALL ser la de la primera
   llamada
+
+#### Scenario: Reintento tras una falla parcial
+
+- **WHEN** una tarea recurrente quedó completada sin que se creara su
+  ocurrencia siguiente, y se invoca otra vez `completar_tarea` con
+  `completado: true`
+- **THEN** SHALL crearse la ocurrencia siguiente
+
+#### Scenario: La ocurrencia siguiente ya se completó
+
+- **WHEN** se invoca otra vez `completar_tarea` con `completado: true` sobre
+  una tarea recurrente cuya ocurrencia siguiente ya existe y está completada
+- **THEN** NUNCA SHALL crearse otra ocurrencia para esa fecha
 
 ### Requirement: El MCP reemplaza las etiquetas sin dejar a la tarea sin ninguna
 

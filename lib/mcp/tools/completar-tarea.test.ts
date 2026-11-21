@@ -135,6 +135,28 @@ describe("completarTarea", () => {
     expect(tables.tasks[0].completed_at).toBe(firstCompletion);
   });
 
+  it("reintentar tras una falla que dejó la tarea completada sin ocurrencia siguiente la crea", async () => {
+    const tables = tablesWith({ ...RECURRING, completed_at: "2026-08-10T12:00:00.000Z" });
+    const result = await completarTarea(memoryDb(tables), { id: ID, completado: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok result");
+    expect(tables.tasks).toHaveLength(2);
+    expect(result.next_occurrence_id).toBe(tables.tasks[1].id);
+    expect(tables.tasks[0].completed_at).toBe("2026-08-10T12:00:00.000Z");
+  });
+
+  it("reintentar no duplica una ocurrencia siguiente que ya se completó", async () => {
+    const tables = tablesWith(RECURRING);
+    const db = memoryDb(tables);
+    await completarTarea(db, { id: ID, completado: true });
+    tables.tasks[1].completed_at = "2026-08-10T13:00:00.000Z";
+
+    const again = await completarTarea(db, { id: ID, completado: true });
+
+    expect(again).toEqual({ ok: true, next_occurrence_id: null });
+    expect(tables.tasks).toHaveLength(2);
+  });
+
   it("descompletar una tarea ya pendiente no la modifica", async () => {
     const onUpdate = vi.fn();
     const result = await completarTarea(memoryDb(tablesWith(RECURRING), { onUpdate }), { id: ID, completado: false });

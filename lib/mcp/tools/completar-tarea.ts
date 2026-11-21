@@ -56,11 +56,25 @@ export async function completarTarea(
     .eq("id", input.id);
   const { data: changed, error } = await (input.completado ? update.is("completed_at", null) : update.not("completed_at", "is", null)).select("id");
   if (error) throw error;
-  if (!changed || changed.length === 0) return { ok: true, next_occurrence_id: null };
-
   if (!input.completado) return { ok: true, next_occurrence_id: null };
 
-  const next = await createNextRecurringOccurrence(supabase, input.id);
+  // Si no cambió ninguna fila, la tarea ya estaba completada: puede ser el
+  // reintento de una llamada que falló antes de crear la ocurrencia siguiente,
+  // así que se la busca igual y se la crea solo si no existe. La fecha se
+  // calcula desde el completado original, no desde ahora: un reintento tardío
+  // tiene que planificar la misma ocurrencia que la primera llamada.
+  const alreadyCompleted = !changed || changed.length === 0;
+  let completedAt = new Date();
+  if (alreadyCompleted) {
+    const { data: current, error: currentError } = await supabase
+      .from("tasks")
+      .select("completed_at")
+      .eq("id", input.id)
+      .maybeSingle();
+    if (currentError) throw currentError;
+    if (current?.completed_at) completedAt = new Date(current.completed_at);
+  }
+  const next = await createNextRecurringOccurrence(supabase, input.id, completedAt, { matchCompleted: alreadyCompleted });
   const result = { ok: true as const, next_occurrence_id: next?.id ?? null };
   return next?.labelsFailed
     ? { ...result, aviso: "Se creó la siguiente ocurrencia, pero sin sus etiquetas. Asignarlas con editar." }

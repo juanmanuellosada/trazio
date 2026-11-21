@@ -72,6 +72,7 @@ export async function createNextRecurringOccurrence(
   supabase: SupabaseClient,
   taskId: string,
   now: Date = new Date(),
+  options: { matchCompleted?: boolean } = {},
 ): Promise<NextOccurrence | null> {
   const { data, error } = await supabase.from("tasks").select(RECURRING_TASK_COLUMNS).eq("id", taskId).single();
   if (error) throw error;
@@ -108,8 +109,10 @@ export async function createNextRecurringOccurrence(
     .eq("project_id", task.project_id)
     .eq("title", task.title)
     .eq("recurrence_rule", task.recurrence_rule)
-    .is("completed_at", null)
     .neq("id", task.id);
+  // Un reintento (`matchCompleted`) tampoco crea si la ocurrencia de esa fecha
+  // ya existe y se completó: en el camino normal una completada no bloquea.
+  if (!options.matchCompleted) duplicates = duplicates.is("completed_at", null);
   duplicates = task.parent_id === null ? duplicates.is("parent_id", null) : duplicates.eq("parent_id", task.parent_id);
   duplicates = plan.due_at !== null ? duplicates.eq("due_at", plan.due_at) : duplicates.eq("due_date", plan.due_date);
   const { data: existing, error: existingError } = await duplicates.limit(1);

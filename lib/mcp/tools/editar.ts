@@ -153,11 +153,14 @@ export async function editar(supabase: SupabaseClient<Database>, rawInput: Edita
         const { error } = await supabase.from("tasks").update(patch as TablesUpdate<"tasks">).eq("id", rawInput.id);
         if (error) throw error;
       }
-      if (projectChanged) {
+      // Con `project_id` en el parche se arrastran las subtareas que no estén
+      // ya en ese proyecto, aunque la tarea no cambie: así reintentar una
+      // llamada que falló a mitad del arrastre termina de moverlas.
+      if ("project_id" in patch) {
         const descendants = await fetchDescendants(supabase, rawInput.id);
         await cascadeProjectToDescendants(
           supabase,
-          descendants.map((d) => d.id),
+          descendants.filter((d) => d.project_id !== patch.project_id).map((d) => d.id),
           patch.project_id as string,
         );
       }

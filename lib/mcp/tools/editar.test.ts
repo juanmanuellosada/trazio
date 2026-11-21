@@ -190,6 +190,24 @@ describe("editar", () => {
       expect(taskRow(tables, OTHER_TASK).project_id).toBe(P2);
     });
 
+    it("reintentar tras una falla del arrastre mueve las subtareas que quedaron atrás", async () => {
+      const tables = baseTables();
+      // Estado que deja una llamada anterior que movió la tarea y falló antes del arrastre.
+      Object.assign(taskRow(tables, ID), { project_id: P2, section_id: null });
+      const result = await editar(memoryDb(tables), { tipo: "tarea", id: ID, project_id: P2 });
+      expect(result.ok).toBe(true);
+      for (const id of [CHILD, GRANDCHILD]) expect(taskRow(tables, id).project_id).toBe(P2);
+    });
+
+    it("indicar el mismo proyecto no toca la sección de las subtareas que ya están en él", async () => {
+      const tables = baseTables();
+      const currentProject = taskRow(tables, ID).project_id;
+      taskRow(tables, CHILD).section_id = "seccion-de-la-subtarea";
+      const result = await editar(memoryDb(tables), { tipo: "tarea", id: ID, project_id: currentProject as string });
+      expect(result.ok).toBe(true);
+      expect(taskRow(tables, CHILD).section_id).toBe("seccion-de-la-subtarea");
+    });
+
     it("un padre válido del mismo proyecto se acepta y se guarda", async () => {
       const tables = baseTables();
       const result = await editar(memoryDb(tables), { tipo: "tarea", id: GRANDCHILD, parent_id: ID });
