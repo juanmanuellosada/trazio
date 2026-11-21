@@ -7,6 +7,7 @@ import { AccountAvatar } from "./account-avatar";
 import { FavoritesSection, ProjectsSection } from "./project-tree";
 import { FiltersCollapsibleList } from "./label-filter-lists";
 import { Separator } from "@/components/ui/separator";
+import { usePendingTodayCount } from "@/lib/pending-count/pending-today-count";
 import { CHORD_KEY_BY_DESTINATION, CHORD_TRIGGER_KEY } from "@/lib/shortcuts/chord";
 import { GENERAL_SHORTCUTS } from "@/lib/shortcuts/general";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,6 @@ export type SidebarContentProps = {
   fullName: string | null;
   email: string | null;
   avatarUrl: string | null;
-  todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
@@ -49,7 +49,6 @@ export function SidebarContent({
   fullName,
   email,
   avatarUrl,
-  todayCount,
   inboxTaskCount,
   projects,
   initialProjects,
@@ -58,6 +57,16 @@ export function SidebarContent({
   // del Server Component (`getSidebarProjects`): el bloque 6 no toca
   // `tasks`, así que ese número se actualiza recién con el bloque 7.
   const taskCounts = new Map(projects.map((p) => [p.id, p.taskCount]));
+  // Hoy ya no llega como prop congelada del layout (bug
+  // `hoy-congelado-en-el-sidebar`, D-A: un layout de App Router no se
+  // vuelve a renderizar en navegación de cliente, así que un valor pasado
+  // por prop desde ahí nunca se recalculaba). `usePendingTodayCount` es el
+  // mismo hook vivo que ya sincroniza el badge del ícono y el título del
+  // documento (`use-pending-today-sync.ts`): panel lateral y título dicen
+  // siempre el mismo número porque leen la misma fuente. Arranca con el
+  // valor del servidor sin parpadeo gracias a `TodayCountSeed`
+  // (`app/(app)/layout.tsx`), montado antes que este componente.
+  const todayCount = usePendingTodayCount();
   // Destino del acceso rápido de alta del bloque 10.2: la Bandeja de
   // entrada ya viene en `initialProjects` (D27, siempre existe una por
   // usuario), así que no hace falta un fetch aparte para resolverla.

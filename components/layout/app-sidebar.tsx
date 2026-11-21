@@ -20,7 +20,6 @@ export function AppSidebar({
   fullName,
   email,
   avatarUrl,
-  todayCount,
   inboxTaskCount,
   projects,
   initialProjects,
@@ -28,7 +27,6 @@ export function AppSidebar({
   fullName: string | null;
   email: string | null;
   avatarUrl: string | null;
-  todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
@@ -84,7 +82,6 @@ export function AppSidebar({
         fullName={fullName}
         email={email}
         avatarUrl={avatarUrl}
-        todayCount={todayCount}
         inboxTaskCount={inboxTaskCount}
         projects={projects}
         initialProjects={initialProjects}

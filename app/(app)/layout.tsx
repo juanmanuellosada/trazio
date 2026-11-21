@@ -12,7 +12,8 @@ import { getAllSections } from "@/lib/sections/get-all-sections";
 import { AllSectionsSeed } from "@/components/providers/all-sections-seed";
 import { HoyEventsSeed } from "@/components/calendar/hoy-events-seed";
 import { todayInTimeZone } from "@/lib/dates/today";
-import { getTodayTaskCount } from "@/lib/tasks/today-count";
+import { getTodayCountSeed } from "@/lib/tasks/today-count";
+import { TodayCountSeed } from "@/components/providers/today-count-seed";
 import { getThemePreference } from "@/lib/preferences/get-theme-preference";
 import { getUserPreferences } from "@/lib/preferences/get-user-preferences";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -64,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ]);
   const { projects, inboxTaskCount } = sidebarProjects;
 
-  const todayCount = await getTodayTaskCount(user.id, preferences.timezone);
+  const todayCountSeed = await getTodayCountSeed(user.id, preferences.timezone);
   const fullName = profile?.full_name ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
   const todayDate = todayInTimeZone(new Date(), preferences.timezone);
@@ -83,6 +84,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <HoyEventsSeed todayDate={todayDate} timezone={preferences.timezone} />
       <ThemeSync serverTheme={theme} />
       <PreferencesProvider preferences={preferences}>
+        {/* Tiene que montarse antes que `AppSidebar`/`MobileNav`/`AppBadgeSync`
+            (ver el comentario del propio componente): siembra el badge de
+            "Hoy" con el mismo número que el servidor ya calculó, para que no
+            arranque vacío y salte. */}
+        <TodayCountSeed initialTaskCount={todayCountSeed.taskCount} initialHabits={todayCountSeed.habits} />
         <UndoProvider>
           <RealtimeProvider userId={user.id}>
             <TaskDetailProvider>
@@ -102,7 +108,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                           fullName={fullName}
                           email={user.email}
                           avatarUrl={avatarUrl}
-                          todayCount={todayCount}
                           inboxTaskCount={inboxTaskCount}
                           projects={projects}
                           initialProjects={initialProjects}
@@ -112,7 +117,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                             fullName={fullName}
                             email={user.email}
                             avatarUrl={avatarUrl}
-                            todayCount={todayCount}
                             inboxTaskCount={inboxTaskCount}
                             projects={projects}
                             initialProjects={initialProjects}

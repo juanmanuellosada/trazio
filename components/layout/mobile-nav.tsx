@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Inbox, Sun, CalendarDays, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "./sidebar-content";
+import { usePendingTodayCount } from "@/lib/pending-count/pending-today-count";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
 import type { ProjectRow } from "@/lib/projects/use-projects";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,6 @@ export function MobileNav({
   fullName,
   email,
   avatarUrl,
-  todayCount,
   inboxTaskCount,
   projects,
   initialProjects,
@@ -30,13 +30,13 @@ export function MobileNav({
   fullName: string | null;
   email: string | null;
   avatarUrl: string | null;
-  todayCount: number;
   inboxTaskCount: number;
   projects: SidebarProject[];
   initialProjects: ProjectRow[];
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const todayCount = usePendingTodayCount();
 
   // Cierra la hoja al navegar: el layout no se remonta entre rutas de
   // `app/(app)/**`, así que sin esto quedaría abierta tapando la pantalla
@@ -61,7 +61,6 @@ export function MobileNav({
               fullName={fullName}
               email={email}
               avatarUrl={avatarUrl}
-              todayCount={todayCount}
               inboxTaskCount={inboxTaskCount}
               projects={projects}
               initialProjects={initialProjects}

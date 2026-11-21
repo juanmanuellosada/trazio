@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { dueTodayOrOverdueFilter } from "@/lib/tasks/hoy-filter";
-import { fetchHabits, habitsQueryKey } from "@/lib/habits/use-habits";
+import { fetchHabits, habitsQueryKey, type Habit } from "@/lib/habits/use-habits";
 import { countHabitsPendingToday } from "@/lib/habits/pending-today";
 import { useUserPreferences } from "@/components/providers/preferences-provider";
 
@@ -41,18 +41,27 @@ export async function fetchPendingTodayTaskCount(timezone: string): Promise<numb
  * defecto que este módulo vino a arreglar. La query de hábitos usa
  * `habitsQueryKey()`, la misma clave que `useHabits`, para compartir caché
  * con el resto de la app en vez de duplicar el fetch.
+ *
+ * `initialTaskCount`/`initialHabits` son la siembra del servidor
+ * (`TodayCountSeed`, montado apenas empieza `PreferencesProvider` en el
+ * layout privado): sin ellas, quien monta primero estas dos queries en la
+ * sesión —hoy, el propio panel lateral (bug `hoy-congelado-en-el-sidebar`)—
+ * arranca sin dato y el badge parpadea vacío antes de completarse la
+ * primera consulta.
  */
-export function usePendingTodayCount(): number | undefined {
+export function usePendingTodayCount(initialTaskCount?: number, initialHabits?: Habit[]): number | undefined {
   const { timezone } = useUserPreferences();
   const { data: taskCount } = useQuery({
     queryKey: pendingTodayTaskCountQueryKey(),
     queryFn: () => fetchPendingTodayTaskCount(timezone),
     refetchInterval: 60_000,
+    initialData: initialTaskCount,
   });
   const { data: habits } = useQuery({
     queryKey: habitsQueryKey(),
     queryFn: () => fetchHabits(timezone),
     refetchInterval: 60_000,
+    initialData: initialHabits,
   });
 
   if (taskCount === undefined || habits === undefined) return undefined;

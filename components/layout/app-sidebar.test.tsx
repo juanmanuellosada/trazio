@@ -56,7 +56,6 @@ function renderSidebar(inboxTaskCount = 0, avatarUrl: string | null = null) {
               fullName="Ana"
               email="ana@example.com"
               avatarUrl={avatarUrl}
-              todayCount={0}
               inboxTaskCount={inboxTaskCount}
               projects={[]}
               initialProjects={[]}
