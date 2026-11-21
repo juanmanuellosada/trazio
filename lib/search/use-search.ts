@@ -66,6 +66,8 @@ export type SearchState =
   | { status: "corto" }
   | { status: "buscando" }
   | { status: "error"; error: QueryParseError }
+  /** La consulta al servidor falló (distinto de `error`, que es un error de sintaxis del lenguaje de consulta). */
+  | { status: "fallo" }
   | { status: "listo"; tasks: TaskRow[]; mode: "texto" }
   | { status: "listo"; tasks: TaskRow[]; mode: "consulta"; query: string };
 
@@ -117,7 +119,7 @@ export function useSearch(term: string): SearchState {
   const enabled = trimmed.length >= MIN_CHARS;
   const classification = enabled ? classifySearchTerm(trimmed) : { mode: "texto" as const };
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError } = useQuery({
     queryKey:
       classification.mode === "consulta"
         ? ["search", "consulta", JSON.stringify(classification.ast)]
@@ -128,6 +130,8 @@ export function useSearch(term: string): SearchState {
 
   if (!enabled) return { status: "corto" };
   if (classification.mode === "error") return { status: "error", error: classification.error };
+  // Sin esto, una consulta fallida deja `data` en `undefined` y quedaba en "buscando" para siempre.
+  if (isError && !isFetching) return { status: "fallo" };
   if (isFetching || data === undefined) return { status: "buscando" };
   if (classification.mode === "consulta") return { status: "listo", tasks: data, mode: "consulta", query: trimmed };
   return { status: "listo", tasks: data, mode: "texto" };

@@ -91,6 +91,11 @@ export function SearchCommand({
                 <p role="alert" className="px-2 py-3 text-sm text-error">
                   {search.error.message}
                 </p>
+              ) : search.status === "fallo" ? (
+                <p role="alert" className="px-2 py-3 text-sm text-error">
+                  No pudimos completar la búsqueda porque falló la conexión con el servidor. Revisá tu internet y volvé a
+                  intentar.
+                </p>
               ) : search.status === "buscando" ? (
                 <p className="px-2 py-3 text-sm text-text-secondary">Buscando…</p>
               ) : search.tasks.length === 0 ? (
