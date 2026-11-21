@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TablesUpdate } from "@/lib/supabase/database.types";
 import { parseQuery } from "@/lib/query-language/parse";
 import { DESCRIPTION_PARAM_DESCRIPTION, validateDescription } from "./description";
+import { cascadeProjectToDescendants, fetchDescendants } from "@/lib/tasks/move-subtree";
+import { replaceTaskLabels } from "@/lib/tasks/replace-labels";
 import { entityExists, invalidUuidError, isValidUuid } from "./shared";
+import { validateTaskPlacement } from "./task-placement";
 
 // Prefijos de tipo cortos a propósito ("[tarea]" en vez de 'Solo tipo "tarea":'):
 // nueve herramientas viajan en cada pedido y `editar` sola cubre cinco entidades,
@@ -19,9 +22,9 @@ export const editarInputSchema = z.object({
   due_at: z.string().nullable().optional().describe("[tarea] Fecha y hora, instante ISO 8601. Excluyente con due_date."),
   duration_minutes: z.number().nullable().optional().describe("[tarea/habito] Duración estimada en minutos."),
   deadline: z.string().nullable().optional().describe("[tarea] Fecha límite, yyyy-MM-dd."),
-  project_id: z.string().optional().describe("[tarea] Mueve la tarea a otro proyecto."),
-  section_id: z.string().nullable().optional().describe("[tarea] Mueve la tarea a otra sección (null: ninguna)."),
-  parent_id: z.string().nullable().optional().describe("[tarea] Cambia la tarea padre (null: la saca de una subtarea)."),
+  project_id: z.string().optional().describe("[tarea] Mueve la tarea y sus subtareas a otro proyecto."),
+  section_id: z.string().nullable().optional().describe("[tarea] Sección del proyecto resultante (null: ninguna)."),
+  parent_id: z.string().nullable().optional().describe("[tarea] Tarea padre, del mismo proyecto y nunca una subtarea propia (null: la saca de una subtarea)."),
   recurrence_rule: z.string().nullable().optional().describe("[tarea] Regla RRULE, o null para quitar la recurrencia."),
   recurrence_ends_at: z.string().nullable().optional().describe("[tarea] Fin de la serie recurrente."),
   recurrence_count: z.number().nullable().optional().describe("[tarea] Ocurrencias restantes de la serie."),
@@ -87,9 +90,15 @@ function pick(input: Record<string, unknown>, keys: readonly string[]): Record<s
  * acá antes de tocar la base) — completar es `completar_tarea`, y `position`
  * la asigna la base (D-F).
  *
+ * Ubicación de una tarea (`project_id`, `section_id`, `parent_id`): si el
+ * parche toca alguno, se valida la ubicación resultante antes de escribir
+ * (`task-placement.ts`) y, si cambia el proyecto, las subtareas lo siguen. Al
+ * cambiar de proyecto sin indicar `section_id`, la sección queda en null: la
+ * actual es del proyecto anterior.
+ *
  * Etiquetas de una tarea: reemplaza todo el conjunto (`task_labels`), nunca
  * incremental — mismo criterio que `useReplaceTaskLabels`
- * (`lib/tasks/mutations.ts`). Borrar filas de `task_labels` está permitido a
+ * (`lib/tasks/mutations.ts`), con `replaceTaskLabels`. Borrar filas de `task_labels` está permitido a
  * propósito para un token OAuth: es la única tabla que la migración de RLS
  * de la Ola 4 (`20260810010000_oauth_client_delete_restrictions.sql`) dejó
  * sin bloquear, porque quitar una etiqueta es editar la tarea, no borrarla.
@@ -110,9 +119,13 @@ export async function editar(supabase: SupabaseClient<Database>, rawInput: Edita
 
   switch (rawInput.tipo) {
     case "tarea": {
-      if (!(await entityExists(supabase, "tasks", rawInput.id))) {
-        return { ok: false, error: "No se encontró una tarea con ese id." };
-      }
+      const { data: current, error: currentError } = await supabase
+        .from("tasks")
+        .select("id, project_id, section_id, parent_id")
+        .eq("id", rawInput.id)
+        .maybeSingle();
+      if (currentError) throw currentError;
+      if (!current) return { ok: false, error: "No se encontró una tarea con ese id." };
 
       const patch = pick(input, TASK_PATCH_KEYS);
       if ("description" in patch) {
@@ -120,23 +133,39 @@ export async function editar(supabase: SupabaseClient<Database>, rawInput: Edita
         if (!validated.ok) return { ok: false, error: validated.error };
         patch.description = validated.value;
       }
+
+      const projectChanged = "project_id" in patch && patch.project_id !== current.project_id;
+      if (projectChanged && !("section_id" in patch)) patch.section_id = null;
+      if ("project_id" in patch || "section_id" in patch || "parent_id" in patch) {
+        const placement = await validateTaskPlacement(
+          supabase,
+          {
+            project_id: ("project_id" in patch ? patch.project_id : current.project_id) as string,
+            section_id: ("section_id" in patch ? patch.section_id : current.section_id) as string | null,
+            parent_id: ("parent_id" in patch ? patch.parent_id : current.parent_id) as string | null,
+          },
+          rawInput.id,
+        );
+        if (!placement.ok) return { ok: false, error: placement.error };
+      }
+
       if (Object.keys(patch).length > 0) {
         const { error } = await supabase.from("tasks").update(patch as TablesUpdate<"tasks">).eq("id", rawInput.id);
         if (error) throw error;
+      }
+      if (projectChanged) {
+        const descendants = await fetchDescendants(supabase, rawInput.id);
+        await cascadeProjectToDescendants(
+          supabase,
+          descendants.map((d) => d.id),
+          patch.project_id as string,
+        );
       }
 
       if (rawInput.labels) {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError || !userData?.user) return { ok: false, error: "No se pudo identificar al usuario del token." };
-
-        const { error: deleteError } = await supabase.from("task_labels").delete().eq("task_id", rawInput.id);
-        if (deleteError) throw deleteError;
-        if (rawInput.labels.length > 0) {
-          const { error: insertError } = await supabase
-            .from("task_labels")
-            .insert(rawInput.labels.map((labelId) => ({ task_id: rawInput.id, label_id: labelId, user_id: userData.user.id })));
-          if (insertError) throw insertError;
-        }
+        await replaceTaskLabels(supabase, rawInput.id, rawInput.labels, userData.user.id);
       }
       return { ok: true };
     }

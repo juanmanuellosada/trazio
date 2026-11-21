@@ -15,7 +15,9 @@ export const completarTareaInputSchema = z.object({
 });
 export type CompletarTareaInput = z.infer<typeof completarTareaInputSchema>;
 
-export type CompletarTareaResult = { ok: true; next_occurrence_id: string | null } | { ok: false; error: string };
+export type CompletarTareaResult =
+  | { ok: true; next_occurrence_id: string | null; aviso?: string }
+  | { ok: false; error: string };
 
 /**
  * `completar_tarea` (spec `mcp`, D-E caso 1 de `design.md` — el invariante
@@ -30,6 +32,12 @@ export type CompletarTareaResult = { ok: true; next_occurrence_id: string | null
  * corta en el vencimiento, no en hoy) puertas adentro — nada especial que
  * hacer acá para eso.
  *
+ * La actualización es condicional (`completed_at is null` al completar, `not
+ * is null` al descompletar): si no cambió ninguna fila, la tarea ya estaba en
+ * ese estado y no se genera nada ni se pisa la fecha de completado original
+ * (D-F de `integridad-del-arbol-de-tareas`). Si la ocurrencia se creó sin sus
+ * etiquetas, la respuesta lo avisa.
+ *
  * Al descompletar (`completado: false`) no se llama a la función de
  * recurrencia: ningún efecto lateral, igual que en la app.
  */
@@ -42,14 +50,19 @@ export async function completarTarea(
     return { ok: false, error: "No se encontró una tarea con ese id." };
   }
 
-  const { error } = await supabase
+  const update = supabase
     .from("tasks")
     .update({ completed_at: input.completado ? new Date().toISOString() : null })
     .eq("id", input.id);
+  const { data: changed, error } = await (input.completado ? update.is("completed_at", null) : update.not("completed_at", "is", null)).select("id");
   if (error) throw error;
+  if (!changed || changed.length === 0) return { ok: true, next_occurrence_id: null };
 
   if (!input.completado) return { ok: true, next_occurrence_id: null };
 
   const next = await createNextRecurringOccurrence(supabase, input.id);
-  return { ok: true, next_occurrence_id: next?.id ?? null };
+  const result = { ok: true as const, next_occurrence_id: next?.id ?? null };
+  return next?.labelsFailed
+    ? { ...result, aviso: "Se creó la siguiente ocurrencia, pero sin sus etiquetas. Asignarlas con editar." }
+    : result;
 }

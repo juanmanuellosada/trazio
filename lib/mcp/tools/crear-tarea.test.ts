@@ -5,8 +5,15 @@ import { crearTarea } from "./crear-tarea";
 
 const NOW = new Date("2026-08-10T12:00:00Z"); // 09:00 en America/Argentina/Buenos_Aires
 
-const INBOX = { id: "inbox", name: "Bandeja de entrada", parent_id: null, icon: null, is_inbox: true, is_archived: false };
-const TRABAJO = { id: "p1", name: "Trabajo", parent_id: null, icon: null, is_inbox: false, is_archived: false };
+const INBOX_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa0";
+const TRABAJO_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1";
+const CASA_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2";
+const PADRE_ID = "cccccccc-cccc-4ccc-8ccc-ccccccccccc1";
+const SECCION_TRABAJO = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1";
+
+const INBOX = { id: INBOX_ID, name: "Bandeja de entrada", parent_id: null, icon: null, is_inbox: true, is_archived: false };
+const CASA = { id: CASA_ID, name: "Casa", parent_id: null, icon: null, is_inbox: false, is_archived: false };
+const TRABAJO = { id: TRABAJO_ID, name: "Trabajo", parent_id: null, icon: null, is_inbox: false, is_archived: false };
 
 type FakeOpts = {
   userId?: string;
@@ -19,7 +26,18 @@ type FakeOpts = {
   taskInsertSpy?: (payload: unknown) => void;
   labelInsertSpy?: (payload: unknown) => void;
   taskLabelsInsertSpy?: (payload: unknown) => void;
+  tasks?: unknown[];
+  taskLabelsInsertFails?: boolean;
 };
+
+/** Lista que también responde `.eq(col, id).maybeSingle()`, como las lecturas de `validateTaskPlacement`. */
+function selectable(list: unknown[]) {
+  return Object.assign(Promise.resolve({ data: list, error: null }), {
+    eq: (_col: string, id: string) => ({
+      maybeSingle: () => Promise.resolve({ data: (list as { id: string }[]).find((x) => x.id === id) ?? null, error: null }),
+    }),
+  });
+}
 
 const DEFAULT_TASK_ROW = {
   id: "t1",
@@ -47,10 +65,10 @@ function fakeSupabase(opts: FakeOpts = {}) {
       return { select: () => ({ maybeSingle: () => Promise.resolve({ data: opts.preferences ?? null, error: null }) }) };
     }
     if (table === "projects") {
-      return { select: () => Promise.resolve({ data: opts.projects ?? [INBOX], error: null }) };
+      return { select: () => selectable(opts.projects ?? [INBOX]) };
     }
     if (table === "sections") {
-      return { select: () => Promise.resolve({ data: opts.sections ?? [], error: null }) };
+      return { select: () => selectable(opts.sections ?? []) };
     }
     if (table === "labels") {
       return {
@@ -68,6 +86,7 @@ function fakeSupabase(opts: FakeOpts = {}) {
     }
     if (table === "tasks") {
       return {
+        select: () => selectable(opts.tasks ?? []),
         insert: (payload: Record<string, unknown>) => {
           opts.taskInsertSpy?.(payload);
           // Simula el round-trip real: los campos que sí vinieron en el insert
@@ -83,7 +102,7 @@ function fakeSupabase(opts: FakeOpts = {}) {
       return {
         insert: (rows: unknown) => {
           opts.taskLabelsInsertSpy?.(rows);
-          return Promise.resolve({ error: null });
+          return Promise.resolve({ error: opts.taskLabelsInsertFails ? { message: "rechazado" } : null });
         },
       };
     }
@@ -200,5 +219,86 @@ describe("crearTarea", () => {
 
     expect(result.ok).toBe(false);
     expect(taskInsertSpy).not.toHaveBeenCalled();
+  });
+
+  describe("ubicación y subtareas", () => {
+    it("una subtarea sin proyecto indicado se crea en el proyecto del padre, sin sección", async () => {
+      const taskInsertSpy = vi.fn();
+      const supabase = fakeSupabase({
+        taskInsertSpy,
+        projects: [INBOX, TRABAJO],
+        tasks: [{ id: PADRE_ID, project_id: TRABAJO_ID }],
+        sections: [{ id: SECCION_TRABAJO, project_id: TRABAJO_ID, name: "Etapa" }],
+      });
+
+      const result = await crearTarea(supabase, { texto: "Revisar", parent_id: PADRE_ID, section_id: SECCION_TRABAJO }, NOW);
+
+      expect(result.ok).toBe(true);
+      const payload = taskInsertSpy.mock.calls[0][0];
+      expect(payload.project_id).toBe(TRABAJO_ID);
+      expect(payload.parent_id).toBe(PADRE_ID);
+      expect(payload.section_id).toBeNull();
+    });
+
+    it("un proyecto en conflicto con el del padre se rechaza y no crea tarea ni etiquetas", async () => {
+      const taskInsertSpy = vi.fn();
+      const labelInsertSpy = vi.fn();
+      const supabase = fakeSupabase({
+        taskInsertSpy,
+        labelInsertSpy,
+        projects: [INBOX, TRABAJO, CASA],
+        tasks: [{ id: PADRE_ID, project_id: CASA_ID }],
+      });
+
+      const byField = await crearTarea(supabase, { texto: "Revisar @nueva", parent_id: PADRE_ID, project_id: TRABAJO_ID }, NOW);
+      const byText = await crearTarea(supabase, { texto: "Revisar @nueva #Trabajo", parent_id: PADRE_ID }, NOW);
+
+      expect(byField.ok).toBe(false);
+      expect(byText.ok).toBe(false);
+      expect(taskInsertSpy).not.toHaveBeenCalled();
+      expect(labelInsertSpy).not.toHaveBeenCalled();
+    });
+
+    it("un padre que no existe se rechaza", async () => {
+      const taskInsertSpy = vi.fn();
+      const result = await crearTarea(fakeSupabase({ taskInsertSpy }), { texto: "Revisar", parent_id: PADRE_ID }, NOW);
+      expect(result.ok).toBe(false);
+      expect(taskInsertSpy).not.toHaveBeenCalled();
+    });
+
+    it("una sección de otro proyecto se rechaza y no crea nada", async () => {
+      const taskInsertSpy = vi.fn();
+      const supabase = fakeSupabase({
+        taskInsertSpy,
+        projects: [INBOX, TRABAJO, CASA],
+        sections: [{ id: SECCION_TRABAJO, project_id: TRABAJO_ID, name: "Etapa" }],
+      });
+
+      const result = await crearTarea(supabase, { texto: "Revisar", project_id: CASA_ID, section_id: SECCION_TRABAJO }, NOW);
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected rejection");
+      expect(result.error).toMatch(/section_id/);
+      expect(taskInsertSpy).not.toHaveBeenCalled();
+    });
+
+    it("si la tarea se creó pero fallaron las etiquetas, devuelve la tarea sin etiquetas y un aviso", async () => {
+      const supabase = fakeSupabase({ createdLabelId: "l-new", taskLabelsInsertFails: true });
+
+      const result = await crearTarea(supabase, { texto: "Comprar pan @compras" }, NOW);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected ok result");
+      expect(result.task.labels).toEqual([]);
+      expect(result.aviso).toMatch(/etiquetas/);
+    });
+
+    it("sin falla de etiquetas no hay aviso", async () => {
+      const result = await crearTarea(fakeSupabase({ createdLabelId: "l-new" }), { texto: "Comprar pan @compras" }, NOW);
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected ok result");
+      expect(result.aviso).toBeUndefined();
+      expect(result.task.labels).toHaveLength(1);
+    });
   });
 });

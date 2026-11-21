@@ -6,7 +6,8 @@ import { parse } from "@/lib/parser/parse";
 import { projectPath } from "@/lib/parser/project-path";
 import type { ParserContext } from "@/lib/parser/types";
 import { DESCRIPTION_PARAM_DESCRIPTION, validateDescription } from "./description";
-import { toMcpTaskItem, type McpLabel, type McpTaskItem, type RawTaskRow } from "./shared";
+import { isValidUuid, toMcpTaskItem, type McpLabel, type McpTaskItem, type RawTaskRow } from "./shared";
+import { validateTaskPlacement } from "./task-placement";
 
 /** Mismo default que `lib/preferences/get-user-preferences.ts` para el caso sin fila todavía (no debería pasar tras el aprovisionamiento). */
 const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -32,12 +33,15 @@ export const crearTareaInputSchema = z.object({
     .string()
     .optional()
     .describe("Sección destino dentro del proyecto, si el texto no la indica con #proyecto/sección."),
-  parent_id: z.string().optional().describe("Id de una tarea existente: crea esta como su subtarea."),
+  parent_id: z
+    .string()
+    .optional()
+    .describe("Id de una tarea existente: crea esta como su subtarea, en el proyecto del padre y sin sección."),
   description: z.unknown().optional().describe(DESCRIPTION_PARAM_DESCRIPTION),
 });
 export type CrearTareaInput = z.infer<typeof crearTareaInputSchema>;
 
-export type CrearTareaResult = { ok: true; task: McpTaskItem } | { ok: false; error: string };
+export type CrearTareaResult = { ok: true; task: McpTaskItem; aviso?: string } | { ok: false; error: string };
 
 type ProjectContextRow = { id: string; name: string; parent_id: string | null; icon: string | null; is_inbox: boolean; is_archived: boolean };
 type SectionContextRow = { id: string; project_id: string; name: string };
@@ -57,6 +61,12 @@ const TASK_COLUMNS_NO_LABELS =
  * reconoce un `#proyecto`, gana sobre esos tres — mismo orden de prioridad
  * que `mergeDestination` en `task-quick-add-row.tsx`. Sin ninguno de los
  * dos, la tarea va a la Bandeja de entrada (`is_inbox`).
+ *
+ * Con `parent_id`, la tarea se crea en el proyecto del padre y sin sección; si el
+ * texto o `project_id` indican otro proyecto se rechaza. Toda ubicación pasa por
+ * `validateTaskPlacement` antes de crear nada, etiquetas incluidas. Si la tarea se
+ * crea pero no se pueden asignar sus etiquetas, no se compensa borrando (un token
+ * OAuth no puede borrar tareas): se devuelve la tarea sin etiquetas y un `aviso`.
  *
  * `position` nunca se manda (D-F de `design.md`): el trigger
  * `tasks_default_position` de la Ola 2 la completa.
@@ -124,6 +134,46 @@ export async function crearTarea(
 
   const parsed = parse(input.texto, parserContext);
 
+  let projectId: string;
+  let sectionId: string | null;
+  if (input.parent_id !== undefined) {
+    if (!isValidUuid(input.parent_id)) return { ok: false, error: 'El campo "parent_id" no es un UUID válido.' };
+    const { data: parent, error: parentError } = await supabase
+      .from("tasks")
+      .select("id, project_id")
+      .eq("id", input.parent_id)
+      .maybeSingle();
+    if (parentError) throw parentError;
+    if (!parent) return { ok: false, error: 'El campo "parent_id" no corresponde a una tarea existente.' };
+    const requested = [parsed.project?.id, input.project_id].find((id) => id !== undefined && id !== parent.project_id);
+    if (requested !== undefined) {
+      return {
+        ok: false,
+        error: 'Una subtarea queda en el proyecto de su padre: quitar #proyecto o "project_id", o usar el mismo proyecto que el padre.',
+      };
+    }
+    projectId = parent.project_id;
+    sectionId = null;
+  } else if (parsed.project) {
+    projectId = parsed.project.id;
+    sectionId = parsed.project.section?.id ?? null;
+  } else if (input.project_id) {
+    projectId = input.project_id;
+    sectionId = input.section_id ?? null;
+  } else {
+    const inbox = projects.find((p) => p.is_inbox);
+    if (!inbox) return { ok: false, error: "No se encontró la Bandeja de entrada de la cuenta." };
+    projectId = inbox.id;
+    sectionId = null;
+  }
+
+  const placement = await validateTaskPlacement(supabase, {
+    project_id: projectId,
+    section_id: sectionId,
+    parent_id: input.parent_id ?? null,
+  });
+  if (!placement.ok) return { ok: false, error: placement.error };
+
   // Resuelve las etiquetas reconocidas: `@etiqueta` crea la que no existe (id null), nunca crea el proyecto de `#`.
   const resolvedLabels: McpLabel[] = [];
   for (const label of parsed.labels) {
@@ -139,21 +189,6 @@ export async function crearTarea(
       .single();
     if (createLabelError) throw createLabelError;
     resolvedLabels.push(created);
-  }
-
-  let projectId: string;
-  let sectionId: string | null;
-  if (parsed.project) {
-    projectId = parsed.project.id;
-    sectionId = parsed.project.section?.id ?? null;
-  } else if (input.project_id) {
-    projectId = input.project_id;
-    sectionId = input.section_id ?? null;
-  } else {
-    const inbox = projects.find((p) => p.is_inbox);
-    if (!inbox) return { ok: false, error: "No se encontró la Bandeja de entrada de la cuenta." };
-    projectId = inbox.id;
-    sectionId = null;
   }
 
   const payload: Omit<TablesInsert<"tasks">, "position"> = {
@@ -177,13 +212,18 @@ export async function crearTarea(
     .single();
   if (insertError) throw insertError;
 
+  let aviso: string | undefined;
+  let assignedLabels = resolvedLabels;
   if (resolvedLabels.length > 0) {
     const { error: taskLabelsError } = await supabase
       .from("task_labels")
       .insert(resolvedLabels.map((l) => ({ task_id: taskRow.id, label_id: l.id, user_id: userId })));
-    if (taskLabelsError) throw taskLabelsError;
+    if (taskLabelsError) {
+      assignedLabels = [];
+      aviso = "La tarea se creó, pero no se pudieron asignar sus etiquetas. Asignarlas con editar.";
+    }
   }
 
-  const row = { ...taskRow, task_labels: resolvedLabels.map((l) => ({ labels: l })) } as unknown as RawTaskRow;
-  return { ok: true, task: toMcpTaskItem(row) };
+  const row = { ...taskRow, task_labels: assignedLabels.map((l) => ({ labels: l })) } as unknown as RawTaskRow;
+  return aviso ? { ok: true, task: toMcpTaskItem(row), aviso } : { ok: true, task: toMcpTaskItem(row) };
 }

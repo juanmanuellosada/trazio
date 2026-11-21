@@ -137,7 +137,7 @@ export function initializeMcpServer(server: McpServer): void {
 
       const result = await crearTarea(createMcpSupabaseClient(token), args);
       if (!result.ok) return textResult(result.error, true);
-      return textResult(result.task);
+      return textResult(result.aviso ? { ...result.task, aviso: result.aviso } : result.task);
     },
   );
 
@@ -198,7 +198,11 @@ export function initializeMcpServer(server: McpServer): void {
 
       const result = await completarTarea(createMcpSupabaseClient(token), args);
       if (!result.ok) return textResult(result.error, true);
-      return textResult({ completado: args.completado, next_occurrence_id: result.next_occurrence_id });
+      return textResult({
+        completado: args.completado,
+        next_occurrence_id: result.next_occurrence_id,
+        ...(result.aviso ? { aviso: result.aviso } : {}),
+      });
     },
   );
 
