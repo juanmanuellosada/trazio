@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { MobileNav } from "./mobile-nav";
+import { ShortcutProvider } from "@/components/shortcuts/shortcut-provider";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import type { UserPreferences } from "@/lib/preferences/get-user-preferences";
 
@@ -23,7 +24,12 @@ const PREFERENCES: UserPreferences = {
  * quedaba vacío a propósito.
  */
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/bandeja" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/bandeja", useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/components/shortcuts/global-quick-add-dialog", () => ({
+  GlobalQuickAddDialog: ({ open }: { open: boolean }) => (open ? <div role="dialog">Nueva tarea</div> : null),
+}));
+vi.mock("@/components/calendar/create-event-dialog", () => ({ CreateEventDialog: () => null }));
+vi.mock("@/components/search/search-palette", () => ({ SearchPalette: () => null }));
 
 function renderNav(inboxTaskCount = 0) {
   const queryClient = new QueryClient();
@@ -57,6 +63,25 @@ describe("MobileNav — barra inferior", () => {
   it("Próximos enlaza a /proximos", () => {
     renderNav();
     expect(screen.getByRole("link", { name: "Próximos" })).toHaveAttribute("href", "/proximos");
+  });
+});
+
+describe("MobileNav — botón Agregar", () => {
+  it("abre el diálogo global de alta rápida", () => {
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider preferences={PREFERENCES}>
+          <ShortcutProvider inboxProjectId="inbox">
+            <MobileNav fullName="Ana" email="ana@example.com" avatarUrl={null} inboxTaskCount={0} projects={[]} initialProjects={[]} />
+          </ShortcutProvider>
+        </PreferencesProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Agregar tarea" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Nueva tarea");
   });
 });
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Inbox, Sun, CalendarDays, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useOpenQuickAdd } from "@/components/shortcuts/shortcut-provider";
 import { SidebarContent } from "./sidebar-content";
 import { usePendingTodayCount } from "@/lib/pending-count/pending-today-count";
 import type { SidebarProject } from "@/lib/projects/get-sidebar-projects";
@@ -37,6 +38,7 @@ export function MobileNav({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const todayCount = usePendingTodayCount();
+  const openQuickAdd = useOpenQuickAdd();
 
   // Cierra la hoja al navegar: el layout no se remonta entre rutas de
   // `app/(app)/**`, así que sin esto quedaría abierta tapando la pantalla
@@ -84,7 +86,7 @@ export function MobileNav({
         <MobileTabLink href="/proximos" label="Próximos" icon={CalendarDays} active={pathname === "/proximos"} />
         <button
           type="button"
-          // TODO(bloque 9): abre el alta rápida con parseo de lenguaje natural.
+          onClick={openQuickAdd}
           className="flex flex-col items-center justify-center gap-0.5 text-text-secondary outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           aria-label="Agregar tarea"
         >

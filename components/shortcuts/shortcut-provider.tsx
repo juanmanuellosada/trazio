@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CHORD_ROUTES, CHORD_TIMEOUT_MS, CHORD_TRIGGER_KEY, chordDestinationFor } from "@/lib/shortcuts/chord";
 import { ShortcutRegistryContext } from "@/lib/shortcuts/context";
@@ -13,6 +13,13 @@ import { defaultEventRange } from "@/lib/calendar/default-event-range";
 import { CreateEventDialog } from "@/components/calendar/create-event-dialog";
 import { SearchPalette } from "@/components/search/search-palette";
 import { GlobalQuickAddDialog } from "./global-quick-add-dialog";
+
+/** Abre el diálogo global de alta rápida (el mismo que `Q`): lo usa el botón "Agregar" de la barra inferior de teléfono. Sin provider, no hace nada. */
+const OpenQuickAddContext = createContext<() => void>(() => {});
+
+export function useOpenQuickAdd(): () => void {
+  return useContext(OpenQuickAddContext);
+}
 
 /**
  * Único listener de atajos de la aplicación (bloque 7.1, D-G): un solo
@@ -96,6 +103,8 @@ export function ShortcutProvider({
     const query = params.toString();
     window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
   }, []);
+
+  const openQuickAdd = useCallback(() => setQuickAddOpen(true), []);
 
   const pushScope = useCallback((scope: ShortcutScope) => {
     scopesRef.current.push(scope);
@@ -183,7 +192,7 @@ export function ShortcutProvider({
 
   return (
     <ShortcutRegistryContext.Provider value={{ pushScope }}>
-      {children}
+      <OpenQuickAddContext.Provider value={openQuickAdd}>{children}</OpenQuickAddContext.Provider>
       <GlobalQuickAddDialog
         open={quickAddOpen}
         onOpenChange={handleQuickAddOpenChange}
