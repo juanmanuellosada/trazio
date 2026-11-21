@@ -231,13 +231,28 @@ describe("crearTarea", () => {
         sections: [{ id: SECCION_TRABAJO, project_id: TRABAJO_ID, name: "Etapa" }],
       });
 
-      const result = await crearTarea(supabase, { texto: "Revisar", parent_id: PADRE_ID, section_id: SECCION_TRABAJO }, NOW);
+      const result = await crearTarea(supabase, { texto: "Revisar", parent_id: PADRE_ID }, NOW);
 
       expect(result.ok).toBe(true);
       const payload = taskInsertSpy.mock.calls[0][0];
       expect(payload.project_id).toBe(TRABAJO_ID);
       expect(payload.parent_id).toBe(PADRE_ID);
       expect(payload.section_id).toBeNull();
+    });
+
+    it("una subtarea conserva la sección pedida si es del proyecto del padre", async () => {
+      const taskInsertSpy = vi.fn();
+      const supabase = fakeSupabase({
+        taskInsertSpy,
+        projects: [INBOX, TRABAJO],
+        tasks: [{ id: PADRE_ID, project_id: TRABAJO_ID }],
+        sections: [{ id: SECCION_TRABAJO, project_id: TRABAJO_ID, name: "Etapa" }],
+      });
+
+      const result = await crearTarea(supabase, { texto: "Revisar", parent_id: PADRE_ID, section_id: SECCION_TRABAJO }, NOW);
+
+      expect(result.ok).toBe(true);
+      expect(taskInsertSpy.mock.calls[0][0].section_id).toBe(SECCION_TRABAJO);
     });
 
     it("un proyecto en conflicto con el del padre se rechaza y no crea tarea ni etiquetas", async () => {

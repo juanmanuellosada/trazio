@@ -36,7 +36,7 @@ export const crearTareaInputSchema = z.object({
   parent_id: z
     .string()
     .optional()
-    .describe("Id de una tarea existente: crea esta como su subtarea, en el proyecto del padre y sin sección."),
+    .describe("Id de una tarea existente: crea esta como su subtarea, en el proyecto del padre."),
   description: z.unknown().optional().describe(DESCRIPTION_PARAM_DESCRIPTION),
 });
 export type CrearTareaInput = z.infer<typeof crearTareaInputSchema>;
@@ -62,7 +62,8 @@ const TASK_COLUMNS_NO_LABELS =
  * que `mergeDestination` en `task-quick-add-row.tsx`. Sin ninguno de los
  * dos, la tarea va a la Bandeja de entrada (`is_inbox`).
  *
- * Con `parent_id`, la tarea se crea en el proyecto del padre y sin sección; si el
+ * Con `parent_id`, la tarea se crea en el proyecto del padre (sin sección, salvo
+ * que se indique una de ese proyecto); si el
  * texto o `project_id` indican otro proyecto se rechaza. Toda ubicación pasa por
  * `validateTaskPlacement` antes de crear nada, etiquetas incluidas. Si la tarea se
  * crea pero no se pueden asignar sus etiquetas, no se compensa borrando (un token
@@ -153,7 +154,8 @@ export async function crearTarea(
       };
     }
     projectId = parent.project_id;
-    sectionId = null;
+    // Sin sección salvo que se pida una: la valida `validateTaskPlacement` contra el proyecto del padre.
+    sectionId = parsed.project?.section?.id ?? input.section_id ?? null;
   } else if (parsed.project) {
     projectId = parsed.project.id;
     sectionId = parsed.project.section?.id ?? null;
