@@ -377,6 +377,21 @@ describe("useBulkMoveTasks — mover en lote con foto de la base (requirements d
     expect(byId(tables, "other")?.project_id).toBe("p1");
   });
 
+  it("arrastra las subtareas aunque la interfaz crea que la tarea ya está en el proyecto destino", async () => {
+    const tables = seed();
+    useDb(tables);
+
+    const { result } = renderHook(() => useBulkMoveTasks(), { wrapper: wrapper(new QueryClient()) });
+    act(() => {
+      // `projectId` viene del caché y está desactualizado: en la base la tarea sigue en p1.
+      result.current.mutate({ tasks: [{ id: "t1", projectId: "p2" }], toProjectId: "p2", toSectionId: null });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(byId(tables, "c1")?.project_id).toBe("p2");
+    expect(byId(tables, "c2")?.project_id).toBe("p2");
+  });
+
   it("si el deshacer falla en varias actualizaciones, muestra un solo error", async () => {
     const tables = seed();
     useDb(tables, {

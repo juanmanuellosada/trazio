@@ -793,7 +793,9 @@ export function useBulkMoveTasks() {
           .single();
         if (error) throw error;
         previous.roots.push(data);
-        if (task.projectId !== toProjectId) {
+        // Contra la fila recién leída, no contra `task.projectId`: ese valor
+        // viene del caché de la interfaz y puede estar desactualizado.
+        if (data.project_id !== toProjectId) {
           const descendants = await fetchDescendants(supabase, task.id);
           descendantIdsByTask.set(
             task.id,

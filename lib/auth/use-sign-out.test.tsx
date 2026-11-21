@@ -40,6 +40,22 @@ describe("useSignOut — suscripción push", () => {
     expect(push).toHaveBeenCalledWith("/");
   });
 
+  it("cierra la sesión igual si dar de baja la suscripción no termina nunca", async () => {
+    unsubscribeFromPush.mockImplementation(() => new Promise(() => {}));
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useSignOut(), { wrapper });
+      await act(async () => {
+        const pending = result.current.signOut();
+        await vi.advanceTimersByTimeAsync(3000);
+        await pending;
+      });
+      expect(signOutMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("cierra la sesión igual si dar de baja la suscripción falla", async () => {
     unsubscribeFromPush.mockRejectedValue(new Error("sin push"));
     const { result } = renderHook(() => useSignOut(), { wrapper });

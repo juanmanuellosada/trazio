@@ -131,7 +131,9 @@ export function useSearch(term: string): SearchState {
   if (!enabled) return { status: "corto" };
   if (classification.mode === "error") return { status: "error", error: classification.error };
   // Sin esto, una consulta fallida deja `data` en `undefined` y quedaba en "buscando" para siempre.
-  if (isError && !isFetching) return { status: "fallo" };
+  // Solo si no hay resultados previos: una recarga en segundo plano que falla
+  // conserva `data`, y esos resultados se siguen mostrando.
+  if (isError && !isFetching && data === undefined) return { status: "fallo" };
   if (isFetching || data === undefined) return { status: "buscando" };
   if (classification.mode === "consulta") return { status: "listo", tasks: data, mode: "consulta", query: trimmed };
   return { status: "listo", tasks: data, mode: "texto" };

@@ -19,6 +19,8 @@ import { unsubscribeFromPush } from "@/lib/reminders/subscribe";
  * recordatorios de la cuenta que salió seguirían llegando acá. Es de mejor
  * esfuerzo: un navegador sin push o una falla nunca impiden cerrar sesión.
  */
+const PUSH_UNSUBSCRIBE_TIMEOUT_MS = 3000;
+
 export function useSignOut() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -27,7 +29,12 @@ export function useSignOut() {
   async function signOut() {
     setLoading(true);
     try {
-      await unsubscribeFromPush();
+      // Con tope de espera: una baja que no termina (mala conexión) no puede
+      // dejar el cierre de sesión colgado.
+      await Promise.race([
+        unsubscribeFromPush(),
+        new Promise((resolve) => setTimeout(resolve, PUSH_UNSUBSCRIBE_TIMEOUT_MS)),
+      ]);
     } catch {
       // Mejor esfuerzo: no bloquea el cierre de sesión.
     }
