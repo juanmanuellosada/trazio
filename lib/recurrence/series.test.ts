@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { recurrenceEndsAtOf } from "./ends-at";
 import { planNextOccurrence, type RecurringTaskFields } from "./series";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -139,5 +140,37 @@ describe("planNextOccurrence — completar antes de vencer no repite la fecha de
     const plan = planNextOccurrence(task, new Date("2026-08-06T12:00:00.000Z"), { y: 2026, m: 8, d: 6 }, TZ);
     expect(plan?.due_date).toBeNull();
     expect(plan?.due_at).toBe(new Date("2026-08-17T12:00:00.000Z").toISOString());
+  });
+});
+
+describe("planNextOccurrence — la ocurrencia nueva contra recurrence_ends_at", () => {
+  const NOW = new Date("2026-07-10T12:00:00.000Z");
+  const TODAY = { y: 2026, m: 7, d: 10 };
+
+  it("la siguiente fecha cae después del fin de la serie, que todavía no pasó: no genera nada", () => {
+    // Siguiente: 2026-07-13. El tope es el 12, todavía futuro respecto de hoy (10).
+    const task = baseTask({ recurrence_ends_at: recurrenceEndsAtOf("2026-07-12", TZ) });
+    expect(planNextOccurrence(task, NOW, TODAY, TZ)).toBeNull();
+  });
+
+  it("la siguiente fecha cae el último día elegido: la ocurrencia se crea", () => {
+    const task = baseTask({ recurrence_ends_at: recurrenceEndsAtOf("2026-07-13", TZ) });
+    expect(planNextOccurrence(task, NOW, TODAY, TZ)?.due_date).toBe("2026-07-13");
+  });
+
+  it("con hora: la ocurrencia posterior al instante tope no se crea, y la anterior sí", () => {
+    // 09:00 en Buenos Aires = 12:00 UTC. Siguiente: 2026-07-13 09:00 (-03).
+    const due = { due_date: null, due_at: "2026-07-08T12:00:00.000Z" };
+    expect(
+      planNextOccurrence(baseTask({ ...due, recurrence_ends_at: "2026-07-13T11:59:59.000Z" }), NOW, TODAY, TZ),
+    ).toBeNull();
+    expect(
+      planNextOccurrence(baseTask({ ...due, recurrence_ends_at: "2026-07-13T12:00:00.000Z" }), NOW, TODAY, TZ)?.due_at,
+    ).toBe("2026-07-13T12:00:00.000Z");
+  });
+
+  it("regla agotada: no genera una ocurrencia vencida", () => {
+    const task = baseTask({ recurrence_rule: "FREQ=DAILY;UNTIL=20260701T000000Z", due_date: "2026-06-29" });
+    expect(planNextOccurrence(task, NOW, TODAY, TZ)).toBeNull();
   });
 });

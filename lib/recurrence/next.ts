@@ -39,14 +39,15 @@ export type NextOccurrenceParams = {
  * tiempo lleve vencida, y una recurrente que se completa **antes** de
  * vencer no se queda pegada a su propia fecha de vencimiento, que también
  * sería "la primera posterior a hoy". Para ancla `"completion"` el corte
- * sigue siendo `now`: no hay vencimiento del que protegerse.
+ * sigue siendo `now`: no hay vencimiento del que protegerse. Devuelve `null`
+ * cuando la regla no tiene más fechas (por ejemplo, `UNTIL` ya pasado).
  */
-export function nextOccurrence({ rrule, dueDate, now, anchor }: NextOccurrenceParams): CalendarDate {
+export function nextOccurrence({ rrule, dueDate, now, anchor }: NextOccurrenceParams): CalendarDate | null {
   const resolvedAnchor = resolveAnchor(anchor, rrule);
   const anchorDate = resolvedAnchor === "due" ? (dueDate ?? now) : now;
   const dtstart = toUTCDate(anchorDate);
   const rule = new RRule({ ...RRule.parseString(rrule), dtstart });
   const cutoff = resolvedAnchor === "due" && toUTCDate(anchorDate) > toUTCDate(now) ? anchorDate : now;
   const next = rule.after(toUTCDate(cutoff), false);
-  return fromUTCDate(next ?? dtstart);
+  return next ? fromUTCDate(next) : null;
 }

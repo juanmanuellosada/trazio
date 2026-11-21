@@ -19,7 +19,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 7, d: 6 },
       now: { y: 2026, m: 7, d: 29 },
     });
-    expect(formatDate(next)).toBe("2026-08-03");
+    expect(formatDate(next!)).toBe("2026-08-03");
   });
 
   it('"cada 3 días" completada tarde: cuenta desde el completado, no desde el vencimiento', () => {
@@ -31,7 +31,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 7, d: 8 },
       now: { y: 2026, m: 7, d: 10 },
     });
-    expect(formatDate(next)).toBe("2026-07-13");
+    expect(formatDate(next!)).toBe("2026-07-13");
   });
 
   it('"cada día laborable" completada un sábado: salta el fin de semana, no cae en domingo', () => {
@@ -43,7 +43,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 7, d: 24 },
       now: { y: 2026, m: 7, d: 25 },
     });
-    expect(formatDate(next)).toBe("2026-07-27");
+    expect(formatDate(next!)).toBe("2026-07-27");
   });
 
   it("borde de fin de mes: un 31 mensual salta febrero y cae en el próximo mes que tiene 31", () => {
@@ -52,7 +52,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 1, d: 31 },
       now: { y: 2026, m: 1, d: 31 },
     });
-    expect(formatDate(next)).toBe("2026-03-31");
+    expect(formatDate(next!)).toBe("2026-03-31");
   });
 
   it('"cada lunes" completada antes de vencer: no repite la fecha de vencimiento, salta al lunes siguiente', () => {
@@ -66,7 +66,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 8, d: 10 },
       now: { y: 2026, m: 8, d: 6 },
     });
-    expect(formatDate(next)).toBe("2026-08-17");
+    expect(formatDate(next!)).toBe("2026-08-17");
   });
 
   it('"cada mes el día 14" completada antes de vencer: salta al mes siguiente, no repite el vencimiento', () => {
@@ -76,7 +76,7 @@ describe("nextOccurrence", () => {
       dueDate: { y: 2026, m: 8, d: 14 },
       now: { y: 2026, m: 8, d: 7 },
     });
-    expect(formatDate(next)).toBe("2026-09-14");
+    expect(formatDate(next!)).toBe("2026-09-14");
   });
 
   it("sin fecha de vencimiento original (intervalo puro sin ancla previa): calcula igual desde el completado", () => {
@@ -85,6 +85,15 @@ describe("nextOccurrence", () => {
       dueDate: null,
       now: { y: 2026, m: 7, d: 10 },
     });
-    expect(formatDate(next)).toBe("2026-07-13");
+    expect(formatDate(next!)).toBe("2026-07-13");
+  });
+
+  it("regla agotada (UNTIL ya pasado): no hay próxima fecha y devuelve null", () => {
+    const next = nextOccurrence({
+      rrule: "FREQ=DAILY;UNTIL=20260701T000000Z",
+      dueDate: { y: 2026, m: 6, d: 29 },
+      now: { y: 2026, m: 7, d: 10 },
+    });
+    expect(next).toBeNull();
   });
 });

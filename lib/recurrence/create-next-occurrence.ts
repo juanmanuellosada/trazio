@@ -17,7 +17,12 @@ const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
  * tocó esa instancia (editarla o completarla también actualiza
  * `updated_at`, gracias al trigger `tasks_set_updated_at_trigger`).
  */
-export type NextOccurrence = { id: string; updatedAt: string };
+export type NextOccurrence = {
+  id: string;
+  updatedAt: string;
+  /** `true` si la tarea se creó pero no se pudieron copiar sus etiquetas. */
+  labelsFailed?: boolean;
+};
 
 type RecurringTaskRow = {
   id: string;
@@ -49,8 +54,13 @@ type RecurringTaskRow = {
  * etiquetas — nunca subtareas, comentarios ni recordatorios, que ni siquiera
  * se leen acá. No hace nada
  * si la tarea no tiene `recurrence_rule` o si la serie ya terminó
- * (`lib/recurrence/series.ts`, D-E). Devuelve el id y el `updated_at` de la
- * tarea creada, o `null` si no correspondía crear ninguna.
+ * (`lib/recurrence/series.ts`, D-E). Tampoco crea nada si ya hay una tarea
+ * pendiente de la misma serie (mismo proyecto, padre, título y regla) para
+ * esa misma fecha: así completar, descompletar y completar de nuevo no
+ * duplica la ocurrencia (D-F). Devuelve el id y el `updated_at` de la tarea
+ * creada, o `null` si no correspondía crear ninguna. Si la tarea se creó
+ * pero fallaron sus etiquetas no lanza: la devuelve con `labelsFailed: true`
+ * para que el llamador pueda deshacer y avisar (D-J).
  *
  * La zona horaria se resuelve acá adentro (una consulta propia a
  * `user_preferences`), en vez de recibirla como parámetro: así esta función
@@ -91,6 +101,21 @@ export async function createNextRecurringOccurrence(
   );
   if (!plan) return null;
 
+  let duplicates = supabase
+    .from("tasks")
+    .select("id")
+    .eq("user_id", task.user_id)
+    .eq("project_id", task.project_id)
+    .eq("title", task.title)
+    .eq("recurrence_rule", task.recurrence_rule)
+    .is("completed_at", null)
+    .neq("id", task.id);
+  duplicates = task.parent_id === null ? duplicates.is("parent_id", null) : duplicates.eq("parent_id", task.parent_id);
+  duplicates = plan.due_at !== null ? duplicates.eq("due_at", plan.due_at) : duplicates.eq("due_date", plan.due_date);
+  const { data: existing, error: existingError } = await duplicates.limit(1);
+  if (existingError) throw existingError;
+  if (existing && existing.length > 0) return null;
+
   const { data: created, error: insertError } = await supabase
     .from("tasks")
     .insert({
@@ -120,7 +145,7 @@ export async function createNextRecurringOccurrence(
     const { error: labelsError } = await supabase
       .from("task_labels")
       .insert(labelIds.map((labelId) => ({ task_id: created.id, label_id: labelId, user_id: task.user_id })));
-    if (labelsError) throw labelsError;
+    if (labelsError) return { id: created.id as string, updatedAt: created.updated_at as string, labelsFailed: true };
   }
 
   return { id: created.id as string, updatedAt: created.updated_at as string };

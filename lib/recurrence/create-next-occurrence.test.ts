@@ -10,7 +10,7 @@ import { createNextRecurringOccurrence } from "./create-next-occurrence";
  */
 type Row = Record<string, unknown>;
 
-function fakeSupabase(tables: Record<string, Row[]>) {
+function fakeSupabase(tables: Record<string, Row[]>, failInsert: string[] = []) {
   let nextId = 0;
   function builder(table: string) {
     const store = tables[table] ?? (tables[table] = []);
@@ -21,11 +21,26 @@ function fakeSupabase(tables: Record<string, Row[]>) {
         filters.push((row) => row[col] === val);
         return api;
       },
+      is: (col: string, val: unknown) => {
+        filters.push((row) => (row[col] ?? null) === val);
+        return api;
+      },
+      neq: (col: string, val: unknown) => {
+        filters.push((row) => row[col] !== val);
+        return api;
+      },
+      limit: () => api,
+      then: (resolve: (v: { data: Row[]; error: null }) => void) =>
+        resolve({ data: store.filter((row) => filters.every((f) => f(row))), error: null }),
       single: async () => {
         const [match] = store.filter((row) => filters.every((f) => f(row)));
         return match ? { data: match, error: null } : { data: null, error: null };
       },
       insert: (payload: Row | Row[]) => {
+        if (failInsert.includes(table)) {
+          const failed = { error: { message: "rechazado" } };
+          return { select: () => ({ single: async () => ({ data: null, ...failed }) }), then: (r: (v: typeof failed) => void) => r(failed) };
+        }
         const rows = Array.isArray(payload) ? payload : [payload];
         const inserted = rows.map((r) => ({ id: `new-${++nextId}`, updated_at: "2026-08-07T00:00:00.000Z", ...r }));
         store.push(...inserted);
@@ -145,5 +160,70 @@ describe('createNextRecurringOccurrence (requirement "Generar la siguiente ocurr
 
     expect(result).toBeNull();
     expect(tables.tasks).toHaveLength(1);
+  });
+
+  it("completar, descompletar y volver a completar no duplica la ocurrencia siguiente", async () => {
+    const tables: Record<string, Row[]> = {
+      tasks: [baseTaskRow()],
+      user_preferences: [{ user_id: "u1", timezone: "America/Argentina/Buenos_Aires" }],
+      task_labels: [],
+    };
+    const supabase = fakeSupabase(tables);
+
+    const first = await createNextRecurringOccurrence(supabase, "t1", NOW);
+    const second = await createNextRecurringOccurrence(supabase, "t1", NOW);
+
+    expect(first).not.toBeNull();
+    expect(second).toBeNull();
+    expect(tables.tasks).toHaveLength(2);
+  });
+
+  it("la ocurrencia siguiente ya completada no bloquea una nueva", async () => {
+    const tables: Record<string, Row[]> = {
+      tasks: [baseTaskRow(), baseTaskRow({ id: "t2", due_date: "2026-08-10", completed_at: "2026-08-10T10:00:00.000Z" })],
+      user_preferences: [{ user_id: "u1", timezone: "America/Argentina/Buenos_Aires" }],
+      task_labels: [],
+    };
+    const supabase = fakeSupabase(tables);
+
+    const result = await createNextRecurringOccurrence(supabase, "t1", NOW);
+
+    expect(result).not.toBeNull();
+    expect(tables.tasks).toHaveLength(3);
+  });
+
+  it("una pendiente con otro padre no cuenta como la misma serie", async () => {
+    const tables: Record<string, Row[]> = {
+      tasks: [baseTaskRow(), baseTaskRow({ id: "t2", due_date: "2026-08-10", parent_id: "otro" })],
+      user_preferences: [{ user_id: "u1", timezone: "America/Argentina/Buenos_Aires" }],
+      task_labels: [],
+    };
+    const result = await createNextRecurringOccurrence(fakeSupabase(tables), "t1", NOW);
+    expect(result).not.toBeNull();
+  });
+
+  it("falla la copia de etiquetas: la ocurrencia se conserva y se informa labelsFailed", async () => {
+    const tables: Record<string, Row[]> = {
+      tasks: [baseTaskRow({ task_labels: [{ label_id: "l1" }] })],
+      user_preferences: [{ user_id: "u1", timezone: "America/Argentina/Buenos_Aires" }],
+      task_labels: [],
+    };
+    const supabase = fakeSupabase(tables, ["task_labels"]);
+
+    const result = await createNextRecurringOccurrence(supabase, "t1", NOW);
+
+    expect(result).toMatchObject({ labelsFailed: true });
+    expect(tables.tasks.find((t) => t.id === result?.id)).toBeDefined();
+    expect(tables.task_labels).toHaveLength(0);
+  });
+
+  it("copia de etiquetas correcta: no marca labelsFailed", async () => {
+    const tables: Record<string, Row[]> = {
+      tasks: [baseTaskRow({ task_labels: [{ label_id: "l1" }] })],
+      user_preferences: [{ user_id: "u1", timezone: "America/Argentina/Buenos_Aires" }],
+      task_labels: [],
+    };
+    const result = await createNextRecurringOccurrence(fakeSupabase(tables), "t1", NOW);
+    expect(result?.labelsFailed).toBeUndefined();
   });
 });

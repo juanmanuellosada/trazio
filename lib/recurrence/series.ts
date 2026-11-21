@@ -1,4 +1,4 @@
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { formatDate, toDueAt, type CalendarDate } from "@/lib/parser/dates";
 import type { RecurrenceAnchor } from "./anchor";
 import { nextOccurrence } from "./next";
@@ -39,8 +39,12 @@ function timeOf(instant: string, timezone: string): { hour: number; minute: numb
  * recurrente"). `recurrence_count` se interpreta como un contador
  * regresivo: cuántas ocurrencias más, contando la que se está por crear
  * ahora, todavía puede generar la serie — `null` es sin límite, `0` es
- * agotada. Devuelve `null` si la serie ya terminó (por fecha tope vencida o
- * cantidad agotada) y no hay que crear nada.
+ * agotada. Devuelve `null` si la serie ya terminó (por fecha tope vencida,
+ * cantidad agotada o regla sin más fechas) y no hay que crear nada, y también
+ * si la ocurrencia nueva caería después de `recurrence_ends_at` (D-G): con
+ * hora se compara su instante; sin hora, el inicio de ese día en la zona del
+ * usuario, porque el tope se guarda como el fin del día elegido y ese último
+ * día queda incluido.
  *
  * `now` es el instante real (para comparar contra `recurrence_ends_at`) y
  * `today` el día calendario en la zona horaria del usuario (para el cálculo
@@ -64,11 +68,17 @@ export function planNextOccurrence(
       : null;
 
   const next = nextOccurrence({ rrule: task.recurrence_rule, dueDate, now: today, anchor: task.recurrence_anchor });
+  if (!next) return null;
   const recurrenceCount = task.recurrence_count !== null ? task.recurrence_count - 1 : null;
+  const endsAt = task.recurrence_ends_at ? new Date(task.recurrence_ends_at).getTime() : null;
 
   if (task.due_at) {
     const { hour, minute } = timeOf(task.due_at, timezone);
-    return { due_date: null, due_at: toDueAt(next, hour, minute, timezone), recurrence_count: recurrenceCount };
+    const dueAt = toDueAt(next, hour, minute, timezone);
+    if (endsAt !== null && new Date(dueAt).getTime() > endsAt) return null;
+    return { due_date: null, due_at: dueAt, recurrence_count: recurrenceCount };
   }
+  const dayStart = fromZonedTime(`${formatDate(next)}T00:00:00`, timezone).getTime();
+  if (endsAt !== null && dayStart > endsAt) return null;
   return { due_date: formatDate(next), due_at: null, recurrence_count: recurrenceCount };
 }
