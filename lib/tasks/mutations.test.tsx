@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { UndoProvider } from "@/components/providers/undo-provider";
 import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
-import { useUpdateTask } from "./mutations";
+import { toastError } from "@/lib/toast";
+import { useMoveTask, useReplaceTaskLabels, useUpdateTask } from "./mutations";
 import { taskDetailQueryKey, type TaskDetail } from "./use-task";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -146,7 +147,7 @@ const NEXT_OCCURRENCE_UPDATED_AT = "2026-07-13T00:00:00.000Z";
  * tocó la instancia nueva: igual al de la creación (nadie la tocó, se
  * borra), distinto (alguien la tocó, no se borra) o `null` (ya no existe).
  */
-function createRecurrenceUndoMock(options: { insertShouldFail?: boolean; checkResult: string | null }) {
+function createRecurrenceUndoMock(options: { insertShouldFail?: boolean; labelsShouldFail?: boolean; checkResult: string | null }) {
   const updateCalls: Array<{ patch: Record<string, unknown>; id: string }> = [];
   const deleteCalls: string[] = [];
 
@@ -159,17 +160,26 @@ function createRecurrenceUndoMock(options: { insertShouldFail?: boolean; checkRe
             return Promise.resolve({ error: null });
           }),
         })),
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn(() => Promise.resolve({ data: RECURRING_TASK_ROW, error: null })),
+        select: vi.fn(() => {
+          // La búsqueda de gemelas pendientes encadena eq/is/neq y termina en limit.
+          const chain: Record<string, unknown> = {
+            single: vi.fn(() =>
+              Promise.resolve({
+                data: options.labelsShouldFail ? { ...RECURRING_TASK_ROW, task_labels: [{ label_id: "l1" }] } : RECURRING_TASK_ROW,
+                error: null,
+              }),
+            ),
             maybeSingle: vi.fn(() =>
               Promise.resolve({
                 data: options.checkResult === null ? null : { updated_at: options.checkResult },
                 error: null,
               }),
             ),
-          })),
-        })),
+            limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          };
+          for (const method of ["eq", "is", "neq"]) chain[method] = vi.fn(() => chain);
+          return chain;
+        }),
         insert: vi.fn(() => ({
           select: vi.fn(() => ({
             single: vi.fn(() =>
@@ -189,6 +199,9 @@ function createRecurrenceUndoMock(options: { insertShouldFail?: boolean; checkRe
           }),
         })),
       };
+    }
+    if (table === "task_labels") {
+      return { insert: vi.fn(() => Promise.resolve({ error: options.labelsShouldFail ? { message: "falló" } : null })) };
     }
     if (table === "user_preferences") {
       return {
@@ -254,6 +267,33 @@ describe("useUpdateTask — deshacer completar una recurrente elimina la instanc
     await waitFor(() => expect(recurrenceMock.deleteCalls).toEqual([NEXT_OCCURRENCE_ID]));
     // La original vuelve a pendiente (parche inverso) además de borrarse la nueva.
     expect(recurrenceMock.updateCalls[1]).toEqual({ patch: { completed_at: null }, id: recurringDetail.id });
+  });
+
+  it("las etiquetas de la siguiente no se copiaron: avisa y la instancia sigue disponible para deshacer", async () => {
+    const recurrenceMock = createRecurrenceUndoMock({ labelsShouldFail: true, checkResult: NEXT_OCCURRENCE_UPDATED_AT });
+    (supabaseClientModule.createClient as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      from: recurrenceMock.from,
+    }));
+    vi.mocked(toastError).mockClear();
+
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(taskDetailQueryKey(recurringDetail.id), recurringDetail);
+    const { result } = renderHook(() => useUpdateTask(), { wrapper: wrapperWithUndo(queryClient) });
+
+    act(() => {
+      result.current.mutate({
+        id: recurringDetail.id,
+        projectId: recurringDetail.project_id,
+        patch: { completed_at: "2026-07-10T12:00:00.000Z" },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(toastError).mock.calls[0][0]).toMatch(/etiquetas/i);
+
+    act(() => pressUndoShortcut());
+    await waitFor(() => expect(recurrenceMock.deleteCalls).toEqual([NEXT_OCCURRENCE_ID]));
   });
 
   it("la creación de la siguiente falló: deshacer no intenta borrar nada", async () => {
@@ -397,5 +437,181 @@ describe("useUpdateTask — sonido al completar", () => {
 
     expect(playCompletionSound).not.toHaveBeenCalled();
     expect(playUncompletionSound).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Base en memoria para probar los efectos persistidos: `select`/`update`/
+ * `delete` con filtros `eq`/`in`, `insert`, `rpc` y sesión. `failUpdate`
+ * decide si una actualización concreta la rechaza la base.
+ */
+type DbRow = Record<string, unknown>;
+type FakeDbOptions = {
+  failUpdate?: (table: string, patch: DbRow, ids: unknown[]) => boolean;
+  failInsert?: (table: string) => boolean;
+};
+
+function fakeDb(tables: Record<string, DbRow[]>, options: FakeDbOptions = {}) {
+  function builder(table: string) {
+    const store = tables[table] ?? (tables[table] = []);
+    const filters: Array<(row: DbRow) => boolean> = [];
+    let mode: "select" | "update" | "delete" = "select";
+    let patch: DbRow = {};
+    const api = {
+      select: () => api,
+      update: (p: DbRow) => {
+        mode = "update";
+        patch = p;
+        return api;
+      },
+      delete: () => {
+        mode = "delete";
+        return api;
+      },
+      eq: (col: string, val: unknown) => {
+        filters.push((row) => row[col] === val);
+        return api;
+      },
+      in: (col: string, vals: unknown[]) => {
+        filters.push((row) => vals.includes(row[col]));
+        return api;
+      },
+      single: async () => {
+        const [match] = store.filter((row) => filters.every((f) => f(row)));
+        return match ? { data: { ...match }, error: null } : { data: null, error: { message: "no encontrado" } };
+      },
+      insert: async (payload: DbRow | DbRow[]) => {
+        if (options.failInsert?.(table)) return { error: { message: "rechazado" } };
+        store.push(...(Array.isArray(payload) ? payload : [payload]).map((r) => ({ ...r })));
+        return { error: null };
+      },
+      then: (resolve: (v: { data: DbRow[] | null; error: { message: string } | null }) => void) => {
+        const matching = store.filter((row) => filters.every((f) => f(row)));
+        if (mode === "update") {
+          if (options.failUpdate?.(table, patch, matching.map((r) => r.id))) {
+            return resolve({ data: null, error: { message: "rechazado" } });
+          }
+          for (const row of matching) Object.assign(row, patch);
+          return resolve({ data: null, error: null });
+        }
+        if (mode === "delete") {
+          for (const row of matching) store.splice(store.indexOf(row), 1);
+          return resolve({ data: null, error: null });
+        }
+        resolve({ data: matching.map((r) => ({ ...r })), error: null });
+      },
+    };
+    return api;
+  }
+
+  return {
+    from: (table: string) => builder(table),
+    rpc: async () => ({ error: null }),
+    auth: { getSession: async () => ({ data: { session: { user: { id: "u1" } } } }) },
+  };
+}
+
+describe("useMoveTask — la cascada de proyecto lee de la base (requirement \"Mover una tarea a otro proyecto arrastra todo su subárbol\")", () => {
+  const createClient = supabaseClientModule.createClient as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    createClient.mockImplementation(() => ({ from: mock.from }));
+  });
+
+  function wrapperFor(queryClient: QueryClient) {
+    return function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <UndoProvider>{children}</UndoProvider>
+        </QueryClientProvider>
+      );
+    };
+  }
+
+  it("mover desde una vista que no cargó el proyecto de origen arrastra las subtareas de todos los niveles, sin sección", async () => {
+    const tables: Record<string, DbRow[]> = {
+      tasks: [
+        { id: "t1", project_id: "p1", section_id: "s1", parent_id: null, position: 1000 },
+        { id: "c1", project_id: "p1", section_id: "s2", parent_id: "t1", position: 1000 },
+        { id: "c2", project_id: "p1", section_id: "s3", parent_id: "c1", position: 1000 },
+        { id: "other", project_id: "p1", section_id: "s1", parent_id: null, position: 2000 },
+      ],
+    };
+    createClient.mockImplementation(() => fakeDb(tables));
+    const queryClient = new QueryClient();
+
+    const { result } = renderHook(() => useMoveTask(), { wrapper: wrapperFor(queryClient) });
+    act(() => {
+      result.current.mutate({
+        id: "t1",
+        fromProjectId: "p1",
+        toProjectId: "p2",
+        sectionId: null,
+        parentId: null,
+        position: 1000,
+      });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const byId = (id: string) => tables.tasks.find((t) => t.id === id);
+    expect(byId("t1")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId("c1")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId("c2")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId("other")).toMatchObject({ project_id: "p1", section_id: "s1" });
+  });
+});
+
+describe("useReplaceTaskLabels — reemplazar por diferencia (requirement \"Reemplazar las etiquetas nunca quita las que se conservan\")", () => {
+  const createClient = supabaseClientModule.createClient as ReturnType<typeof vi.fn>;
+  const chip = (id: string) => ({ id, name: id, color: "#000000" });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    createClient.mockImplementation(() => ({ from: mock.from }));
+  });
+
+  function setup(options?: FakeDbOptions) {
+    const tables: Record<string, DbRow[]> = {
+      task_labels: [
+        { task_id: "t1", label_id: "compras", user_id: "u1" },
+        { task_id: "t1", label_id: "urgente", user_id: "u1" },
+      ],
+    };
+    createClient.mockImplementation(() => fakeDb(tables, options));
+    const queryClient = new QueryClient();
+    function wrapper({ children }: { children: ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <UndoProvider>{children}</UndoProvider>
+        </QueryClientProvider>
+      );
+    }
+    const hook = renderHook(() => useReplaceTaskLabels(), { wrapper });
+    act(() => {
+      hook.result.current.mutate({ taskId: "t1", projectId: "p1", labels: [chip("compras"), chip("casa")] });
+    });
+    return { tables, hook };
+  }
+
+  const labels = (tables: Record<string, DbRow[]>) => tables.task_labels.map((r) => r.label_id).sort();
+
+  it("sin fallas la tarea queda con exactamente el conjunto nuevo", async () => {
+    const { tables, hook } = setup();
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(labels(tables)).toEqual(["casa", "compras"]);
+  });
+
+  it("si la base rechaza asignar la etiqueta nueva, la tarea conserva las que tenía y se muestra un error", async () => {
+    const { tables, hook } = setup({ failInsert: (table) => table === "task_labels" });
+    await waitFor(() => expect(hook.result.current.isError).toBe(true));
+    expect(labels(tables)).toEqual(["compras", "urgente"]);
+    expect(toastError).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,10 +6,12 @@ import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sou
 import type { RecurrenceAnchor } from "@/lib/recurrence/anchor";
 import { createNextRecurringOccurrence, type NextOccurrence } from "@/lib/recurrence/create-next-occurrence";
 import { createClient } from "@/lib/supabase/client";
-import { toastSuccess } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { Json } from "@/lib/supabase/database.types";
 import { duplicateTaskTree } from "./duplicate";
 import { reportTaskError } from "./errors";
+import { cascadeProjectToDescendants, fetchDescendants } from "./move-subtree";
+import { replaceTaskLabels } from "./replace-labels";
 import { snapshotTaskSubtree, restoreTaskSnapshot } from "./restore";
 import {
   SIBLING_SPACING,
@@ -220,6 +222,13 @@ export function useUpdateTask() {
         } catch (recurrenceError) {
           reportTaskError(recurrenceError);
         }
+        if (nextOccurrence?.labelsFailed) {
+          toastError(
+            "La próxima ocurrencia se creó sin etiquetas",
+            "no pudimos copiarle las de la tarea original",
+            "Agregáselas desde el detalle de la tarea.",
+          );
+        }
       }
       return { nextOccurrence };
     },
@@ -369,15 +378,13 @@ export function useMoveTask() {
       if (error) throw error;
 
       if (fromProjectId !== toProjectId) {
-        const fromList = listSnapshot(queryClient, fromProjectId) ?? [];
-        const descendantIds = taskSubtreeIds(fromList, id).filter((descendantId) => descendantId !== id);
-        if (descendantIds.length > 0) {
-          const { error: cascadeError } = await supabase
-            .from("tasks")
-            .update({ project_id: toProjectId, section_id: null })
-            .in("id", descendantIds);
-          if (cascadeError) throw cascadeError;
-        }
+        // Las subtareas se leen de la base: el caché del proyecto de origen puede no estar cargado.
+        const descendants = await fetchDescendants(supabase, id);
+        await cascadeProjectToDescendants(
+          supabase,
+          descendants.map((d) => d.id),
+          toProjectId,
+        );
       }
 
       const destinationSiblings = siblingsOfTask(
@@ -573,8 +580,8 @@ export function useDeleteEmptyTask() {
 /**
  * Reemplaza el conjunto completo de etiquetas de una tarea (bloque 7.12,
  * requirement "Asignar y quitar etiquetas desde el detalle de la tarea"):
- * borra todas las asignaciones existentes e inserta las nuevas, nunca altas
- * y bajas incrementales.
+ * agrega las nuevas y recién después quita las que sobran (`replaceTaskLabels`),
+ * así una falla nunca deja a la tarea sin etiquetas que conservaba.
  */
 export function useReplaceTaskLabels() {
   const queryClient = useQueryClient();
@@ -588,15 +595,12 @@ export function useReplaceTaskLabels() {
       } = await supabase.auth.getSession();
       if (!session) throw new Error("No hay sesión activa.");
 
-      const { error: deleteError } = await supabase.from("task_labels").delete().eq("task_id", taskId);
-      if (deleteError) throw deleteError;
-
-      if (labels.length > 0) {
-        const { error: insertError } = await supabase
-          .from("task_labels")
-          .insert(labels.map((label) => ({ task_id: taskId, label_id: label.id, user_id: session.user.id })));
-        if (insertError) throw insertError;
-      }
+      await replaceTaskLabels(
+        supabase,
+        taskId,
+        labels.map((label) => label.id),
+        session.user.id,
+      );
     },
     onMutate: async ({ taskId, projectId, labels }) => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKey(projectId) });
@@ -740,6 +744,12 @@ export function useBulkUpdateTasks() {
   });
 }
 
+/** Estado previo de un movimiento en lote, leído de la base: lo que el deshacer restaura. */
+type BulkMovePrevious = {
+  roots: Array<Pick<TaskRow, "id" | "project_id" | "section_id" | "parent_id" | "position">>;
+  descendants: Array<{ id: string; project_id: string; section_id: string | null }>;
+};
+
 /**
  * Mueve varias tareas al mismo proyecto y sección (bloque 7.11: "mover a
  * otro proyecto o sección"), todas a primer nivel del destino (igual que
@@ -756,24 +766,6 @@ export function useBulkMoveTasks() {
 
   return useMutation({
     mutationKey: TASKS_MUTATION_KEY,
-    onMutate: async ({ tasks }: { tasks: BulkTaskRef[]; toProjectId: string; toSectionId: string | null }) => {
-      // Foto de "de dónde vino" cada tarea (proyecto, sección, padre y
-      // posición) antes de moverla: es lo que el deshacer necesita para
-      // devolverla exactamente a su lugar, no solo a su proyecto de origen.
-      const previousRows = new Map<string, Pick<TaskRow, "project_id" | "section_id" | "parent_id" | "position">>();
-      for (const t of tasks) {
-        const row = listSnapshot(queryClient, t.projectId)?.find((r) => r.id === t.id);
-        if (row) {
-          previousRows.set(t.id, {
-            project_id: row.project_id,
-            section_id: row.section_id,
-            parent_id: row.parent_id,
-            position: row.position,
-          });
-        }
-      }
-      return { previousRows };
-    },
     mutationFn: async ({
       tasks,
       toProjectId,
@@ -782,7 +774,27 @@ export function useBulkMoveTasks() {
       tasks: BulkTaskRef[];
       toProjectId: string;
       toSectionId: string | null;
-    }) => {
+    }): Promise<BulkMovePrevious> => {
+      // Foto de "de dónde vino" cada tarea y cada una de sus subtareas, leída
+      // de la base antes de mover nada: es lo que el deshacer necesita, y no
+      // depende de qué listas tenga cargadas la interfaz.
+      const previous: BulkMovePrevious = { roots: [], descendants: [] };
+      for (const task of tasks) {
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("id, project_id, section_id, parent_id, position")
+          .eq("id", task.id)
+          .single();
+        if (error) throw error;
+        previous.roots.push(data);
+        if (task.projectId !== toProjectId) {
+          const descendants = await fetchDescendants(supabase, task.id);
+          previous.descendants.push(
+            ...descendants.map(({ id, project_id, section_id }) => ({ id, project_id, section_id })),
+          );
+        }
+      }
+
       const destinationList = listSnapshot(queryClient, toProjectId) ?? [];
       const base = nextSiblingPositionInContext(destinationList, {
         projectId: toProjectId,
@@ -801,38 +813,36 @@ export function useBulkMoveTasks() {
           })
           .eq("id", task.id);
         if (error) throw error;
-
-        // Igual que `useMoveTask`: si cruza de proyecto, cascadea `project_id`
-        // a todo el subárbol (una tarea no puede quedar en un proyecto
-        // distinto del de su padre) — la selección múltiple solo ofrece
-        // casillero en tareas de primer nivel (bloque 7.10), así que una
-        // tarea movida en lote puede traer subtareas propias sin seleccionar.
-        if (task.projectId !== toProjectId) {
-          const originList = listSnapshot(queryClient, task.projectId) ?? [];
-          const descendantIds = taskSubtreeIds(originList, task.id).filter((id) => id !== task.id);
-          if (descendantIds.length > 0) {
-            const { error: cascadeError } = await supabase
-              .from("tasks")
-              .update({ project_id: toProjectId, section_id: null })
-              .in("id", descendantIds);
-            if (cascadeError) throw cascadeError;
-          }
-        }
       }
+
+      // Igual que `useMoveTask`: si cruza de proyecto, cascadea `project_id`
+      // a todo el subárbol (una tarea no puede quedar en un proyecto
+      // distinto del de su padre) — la selección múltiple solo ofrece
+      // casillero en tareas de primer nivel (bloque 7.10), así que una
+      // tarea movida en lote puede traer subtareas propias sin seleccionar.
+      await cascadeProjectToDescendants(
+        supabase,
+        previous.descendants.map((d) => d.id),
+        toProjectId,
+      );
+
+      return previous;
     },
-    onSuccess: (_data, { tasks }, context) => {
+    onSuccess: (previous, { tasks }) => {
       push({
         label: `${tasks.length} ${pluralTareas(tasks.length)} movidas.`,
         undo: async () => {
-          await Promise.all(
-            tasks.map((t) => {
-              const previous = context?.previousRows.get(t.id);
-              if (!previous) return Promise.resolve();
-              return supabase.from("tasks").update(previous).eq("id", t.id);
-            }),
-          );
+          const results = await Promise.all([
+            ...previous.roots.map(({ id, ...row }) => supabase.from("tasks").update(row).eq("id", id)),
+            ...previous.descendants.map(({ id, project_id, section_id }) =>
+              supabase.from("tasks").update({ project_id, section_id }).eq("id", id),
+            ),
+          ]);
+          const failed = results.find((r) => r.error);
+          if (failed) reportTaskError(failed.error);
           const projectIds = new Set(tasks.map((t) => t.projectId));
-          context?.previousRows.forEach((row) => projectIds.add(row.project_id));
+          previous.roots.forEach((row) => projectIds.add(row.project_id));
+          previous.descendants.forEach((row) => projectIds.add(row.project_id));
           projectIds.forEach((pid) => queryClient.invalidateQueries({ queryKey: tasksQueryKey(pid) }));
           invalidateCrossViewCaches(queryClient);
         },

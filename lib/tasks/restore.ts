@@ -39,11 +39,25 @@ type CommentSnapshotRow = {
   updated_at: string;
 };
 
-export type TaskSnapshot = { tasks: TaskSnapshotRow[]; labelLinks: LabelLink[]; comments: CommentSnapshotRow[] };
+type ReminderSnapshotRow = {
+  id: string;
+  user_id: string;
+  task_id: string;
+  remind_at: string;
+  offset_minutes: number | null;
+  delivered_at: string | null;
+};
+
+export type TaskSnapshot = {
+  tasks: TaskSnapshotRow[];
+  labelLinks: LabelLink[];
+  comments: CommentSnapshotRow[];
+  reminders: ReminderSnapshotRow[];
+};
 
 /**
- * Guarda una tarea y todo su subárbol (más sus etiquetas asignadas y sus
- * comentarios) antes de borrarla, para poder deshacer
+ * Guarda una tarea y todo su subárbol (más sus etiquetas asignadas, sus
+ * comentarios y sus recordatorios) antes de borrarla, para poder deshacer
  * (`.claude/rules/frontend.md`: toda acción destructiva ofrece deshacer, y
  * el requirement "Restaurar una tarea eliminada restaura sus subtareas, sus
  * etiquetas y sus comentarios" de `deshacer`). El borrado en sí sigue
@@ -63,10 +77,16 @@ export async function snapshotTaskSubtree(supabase: SupabaseClient, rootId: stri
     .select("id, task_id, user_id, content, created_at, updated_at")
     .in("task_id", ids);
   if (commentsError) throw commentsError;
+  const { data: reminders, error: remindersError } = await supabase
+    .from("reminders")
+    .select("id, user_id, task_id, remind_at, offset_minutes, delivered_at")
+    .in("task_id", ids);
+  if (remindersError) throw remindersError;
   return {
     tasks,
     labelLinks: (labelLinks ?? []) as LabelLink[],
     comments: (comments ?? []) as CommentSnapshotRow[],
+    reminders: (reminders ?? []) as ReminderSnapshotRow[],
   };
 }
 
@@ -74,7 +94,7 @@ export async function snapshotTaskSubtree(supabase: SupabaseClient, rootId: stri
  * Recrea exactamente las filas de un snapshot: mismos `id`, mismas fechas.
  * Inserta de a tandas (raíz primero, después cada nivel) para que el
  * `parent_id` de cada tanda ya exista en la base cuando se inserta, y
- * recién después las etiquetas y los comentarios, que dependen de que las
+ * recién después las etiquetas, los comentarios y los recordatorios, que dependen de que las
  * tareas ya existan.
  */
 export async function restoreTaskSnapshot(supabase: SupabaseClient, snapshot: TaskSnapshot): Promise<void> {
@@ -92,13 +112,19 @@ export async function restoreTaskSnapshot(supabase: SupabaseClient, snapshot: Ta
     pending = pending.filter((t) => !inserted.has(t.id));
   }
 
-  if (snapshot.labelLinks.length > 0) {
-    const { error } = await supabase.from("task_labels").insert(snapshot.labelLinks);
-    if (error) throw error;
+  // Las tres inserciones dependientes se intentan todas aunque una falle, para
+  // recuperar lo máximo posible; después se lanza el primer error.
+  const dependents = [
+    () => supabase.from("task_labels").insert(snapshot.labelLinks),
+    () => supabase.from("comments").insert(snapshot.comments),
+    () => supabase.from("reminders").insert(snapshot.reminders),
+  ];
+  const sizes = [snapshot.labelLinks.length, snapshot.comments.length, snapshot.reminders.length];
+  let firstError: unknown = null;
+  for (const [index, insert] of dependents.entries()) {
+    if (sizes[index] === 0) continue;
+    const { error } = await insert();
+    if (error && !firstError) firstError = error;
   }
-
-  if (snapshot.comments.length > 0) {
-    const { error } = await supabase.from("comments").insert(snapshot.comments);
-    if (error) throw error;
-  }
+  if (firstError) throw firstError;
 }

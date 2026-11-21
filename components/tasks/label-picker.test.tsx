@@ -12,20 +12,25 @@ vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }))
 vi.mock("@/lib/supabase/client", () => {
   const order = vi.fn();
   const selectLabels = vi.fn(() => ({ order }));
-  const eqDelete = vi.fn();
+  // `task_labels`: el reemplazo lee las asignaciones actuales, inserta las
+  // que faltan y recién después borra las que sobran (`replaceTaskLabels`).
+  const eqCurrent = vi.fn();
+  const selectCurrent = vi.fn(() => ({ eq: eqCurrent }));
+  const inDelete = vi.fn();
+  const eqDelete = vi.fn(() => ({ in: inDelete }));
   const deleteFn = vi.fn(() => ({ eq: eqDelete }));
   const insert = vi.fn();
   const getSession = vi.fn();
   const from = vi.fn((table: string) =>
-    table === "labels" ? { select: selectLabels } : { delete: deleteFn, insert },
+    table === "labels" ? { select: selectLabels } : { select: selectCurrent, delete: deleteFn, insert },
   );
   return {
     createClient: () => ({ from, auth: { getSession } }),
-    __mock: { from, selectLabels, order, deleteFn, eqDelete, insert, getSession },
+    __mock: { from, selectLabels, order, deleteFn, eqDelete, inDelete, eqCurrent, insert, getSession },
   };
 });
 
-const { order, eqDelete, insert, getSession } = (
+const { order, eqDelete, inDelete, eqCurrent, insert, getSession } = (
   supabaseClientModule as unknown as {
     __mock: {
       from: ReturnType<typeof vi.fn>;
@@ -33,6 +38,8 @@ const { order, eqDelete, insert, getSession } = (
       order: ReturnType<typeof vi.fn>;
       deleteFn: ReturnType<typeof vi.fn>;
       eqDelete: ReturnType<typeof vi.fn>;
+      inDelete: ReturnType<typeof vi.fn>;
+      eqCurrent: ReturnType<typeof vi.fn>;
       insert: ReturnType<typeof vi.fn>;
       getSession: ReturnType<typeof vi.fn>;
     };
@@ -58,7 +65,8 @@ describe("LabelPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     order.mockResolvedValue({ data: labels, error: null });
-    eqDelete.mockResolvedValue({ error: null });
+    eqCurrent.mockResolvedValue({ data: [], error: null });
+    inDelete.mockResolvedValue({ error: null });
     insert.mockResolvedValue({ error: null });
     getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
   });
@@ -76,29 +84,31 @@ describe("LabelPicker", () => {
     expect(screen.queryByRole("option", { name: "Compras" })).not.toBeInTheDocument();
   });
 
-  it("permite marcar varias etiquetas y guarda reemplazando el conjunto completo (no suma)", async () => {
+  it("marcar una etiqueta más asigna solo la nueva y no borra las que se conservan", async () => {
+    eqCurrent.mockResolvedValue({ data: [{ label_id: "l1" }], error: null });
     const user = userEvent.setup();
     renderPicker({ assigned: [labels[0]] });
 
     await user.click(await screen.findByRole("button", { name: "Etiquetas de la tarea" }));
     await user.click(await screen.findByRole("option", { name: "Urgente" }));
 
-    await waitFor(() => expect(eqDelete).toHaveBeenCalledWith("task_id", "task-1"));
-    expect(insert).toHaveBeenCalledWith([
-      { task_id: "task-1", label_id: "l1", user_id: "user-1" },
-      { task_id: "task-1", label_id: "l2", user_id: "user-1" },
-    ]);
+    await waitFor(() =>
+      expect(insert).toHaveBeenCalledWith([{ task_id: "task-1", label_id: "l2", user_id: "user-1" }]),
+    );
+    expect(eqDelete).not.toHaveBeenCalled();
   });
 
-  it("destildar una etiqueta ya asignada la saca del conjunto guardado, en vez de una baja incremental", async () => {
+  it("destildar una etiqueta ya asignada quita solo esa del conjunto guardado", async () => {
+    eqCurrent.mockResolvedValue({ data: [{ label_id: "l1" }, { label_id: "l2" }], error: null });
     const user = userEvent.setup();
     renderPicker({ assigned: [labels[0], labels[1]] });
 
     await user.click(await screen.findByRole("button", { name: "Etiquetas de la tarea" }));
     await user.click(await screen.findByRole("option", { name: "Compras" }));
 
-    await waitFor(() => expect(insert).toHaveBeenCalled());
-    expect(insert).toHaveBeenCalledWith([{ task_id: "task-1", label_id: "l2", user_id: "user-1" }]);
+    await waitFor(() => expect(inDelete).toHaveBeenCalledWith("label_id", ["l1"]));
+    expect(eqDelete).toHaveBeenCalledWith("task_id", "task-1");
+    expect(insert).not.toHaveBeenCalled();
   });
 
   it("sin ninguna etiqueta, el trigger sigue siendo un chip (no un párrafo que rompa la fila de atributos)", async () => {

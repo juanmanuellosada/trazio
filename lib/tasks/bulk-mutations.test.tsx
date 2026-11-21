@@ -2,11 +2,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as supabaseClientModule from "@/lib/supabase/client";
 import { UndoProvider } from "@/components/providers/undo-provider";
 import { playCompletionSound, playUncompletionSound } from "@/lib/completion-sound";
-import { useBulkDeleteTasks, useBulkUpdateTasks } from "./mutations";
+import { toastError } from "@/lib/toast";
+import { useBulkDeleteTasks, useBulkMoveTasks, useBulkUpdateTasks } from "./mutations";
 import { tasksQueryKey, type TaskRow } from "./use-tasks";
 
 vi.mock("@/lib/toast", () => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -17,6 +18,7 @@ vi.mock("./restore", () => ({
     tasks: [{ id: rootId }],
     labelLinks: [],
     comments: [],
+    reminders: [],
   })),
   restoreTaskSnapshot: vi.fn(async () => {}),
 }));
@@ -70,6 +72,77 @@ vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
 
 const mock = createSupabaseMock();
 (supabaseClientModule.createClient as ReturnType<typeof vi.fn>).mockImplementation(() => ({ from: mock.from }));
+
+/**
+ * Base en memoria para probar los efectos persistidos: `select`/`update`/
+ * `delete` con filtros `eq`/`in`, `insert`, `rpc` y sesión. `failUpdate`
+ * decide si una actualización concreta la rechaza la base.
+ */
+type DbRow = Record<string, unknown>;
+type FakeDbOptions = {
+  failUpdate?: (table: string, patch: DbRow, ids: unknown[]) => boolean;
+  failInsert?: (table: string) => boolean;
+};
+
+function fakeDb(tables: Record<string, DbRow[]>, options: FakeDbOptions = {}) {
+  function builder(table: string) {
+    const store = tables[table] ?? (tables[table] = []);
+    const filters: Array<(row: DbRow) => boolean> = [];
+    let mode: "select" | "update" | "delete" = "select";
+    let patch: DbRow = {};
+    const api = {
+      select: () => api,
+      update: (p: DbRow) => {
+        mode = "update";
+        patch = p;
+        return api;
+      },
+      delete: () => {
+        mode = "delete";
+        return api;
+      },
+      eq: (col: string, val: unknown) => {
+        filters.push((row) => row[col] === val);
+        return api;
+      },
+      in: (col: string, vals: unknown[]) => {
+        filters.push((row) => vals.includes(row[col]));
+        return api;
+      },
+      single: async () => {
+        const [match] = store.filter((row) => filters.every((f) => f(row)));
+        return match ? { data: { ...match }, error: null } : { data: null, error: { message: "no encontrado" } };
+      },
+      insert: async (payload: DbRow | DbRow[]) => {
+        if (options.failInsert?.(table)) return { error: { message: "rechazado" } };
+        store.push(...(Array.isArray(payload) ? payload : [payload]).map((r) => ({ ...r })));
+        return { error: null };
+      },
+      then: (resolve: (v: { data: DbRow[] | null; error: { message: string } | null }) => void) => {
+        const matching = store.filter((row) => filters.every((f) => f(row)));
+        if (mode === "update") {
+          if (options.failUpdate?.(table, patch, matching.map((r) => r.id))) {
+            return resolve({ data: null, error: { message: "rechazado" } });
+          }
+          for (const row of matching) Object.assign(row, patch);
+          return resolve({ data: null, error: null });
+        }
+        if (mode === "delete") {
+          for (const row of matching) store.splice(store.indexOf(row), 1);
+          return resolve({ data: null, error: null });
+        }
+        resolve({ data: matching.map((r) => ({ ...r })), error: null });
+      },
+    };
+    return api;
+  }
+
+  return {
+    from: (table: string) => builder(table),
+    rpc: async () => ({ error: null }),
+    auth: { getSession: async () => ({ data: { session: { user: { id: "u1" } } } }) },
+  };
+}
 
 function pressUndoShortcut() {
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
@@ -216,5 +289,82 @@ describe("useBulkDeleteTasks — eliminar en lote (bloque 7.11/7.12)", () => {
 
     // Un solo `Ctrl/Cmd+Z` dispara la restauración de las 12, no 12 deshacer separados.
     await waitFor(() => expect(restoreTaskSnapshot).toHaveBeenCalledTimes(12));
+  });
+});
+
+describe("useBulkMoveTasks — mover en lote con foto de la base (requirements de `tareas` y `seleccion-multiple`)", () => {
+  const createClient = supabaseClientModule.createClient as ReturnType<typeof vi.fn>;
+
+  function seed(): Record<string, DbRow[]> {
+    return {
+      tasks: [
+        { id: "t1", project_id: "p1", section_id: "s1", parent_id: null, position: 2000 },
+        { id: "c1", project_id: "p1", section_id: "s2", parent_id: "t1", position: 1000 },
+        { id: "c2", project_id: "p1", section_id: null, parent_id: "c1", position: 1000 },
+        { id: "other", project_id: "p1", section_id: "s1", parent_id: null, position: 3000 },
+      ],
+    };
+  }
+
+  const byId = (tables: Record<string, DbRow[]>, id: string) => tables.tasks.find((t) => t.id === id);
+
+  function useDb(tables: Record<string, DbRow[]>, options?: FakeDbOptions) {
+    createClient.mockImplementation(() => fakeDb(tables, options));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    createClient.mockImplementation(() => ({ from: mock.from }));
+  });
+
+  async function moveAndWait(queryClient: QueryClient) {
+    const { result } = renderHook(() => useBulkMoveTasks(), { wrapper: wrapper(queryClient) });
+    act(() => {
+      result.current.mutate({ tasks: [{ id: "t1", projectId: "p1" }], toProjectId: "p2", toSectionId: null });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  }
+
+  it("mover desde una vista que no cargó el proyecto de origen arrastra las subtareas de todos los niveles, sin sección", async () => {
+    const tables = seed();
+    useDb(tables);
+
+    await moveAndWait(new QueryClient());
+
+    expect(byId(tables, "t1")).toMatchObject({ project_id: "p2", section_id: null, parent_id: null });
+    expect(byId(tables, "c1")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId(tables, "c2")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId(tables, "other")).toMatchObject({ project_id: "p1", section_id: "s1" });
+  });
+
+  it("deshacer devuelve la tarea y sus subtareas a su lugar de origen, aunque la lista de origen nunca se cargó", async () => {
+    const tables = seed();
+    useDb(tables);
+    await moveAndWait(new QueryClient());
+
+    act(() => pressUndoShortcut());
+
+    await waitFor(() => expect(byId(tables, "c2")?.project_id).toBe("p1"));
+    expect(byId(tables, "t1")).toMatchObject({ project_id: "p1", section_id: "s1", parent_id: null, position: 2000 });
+    expect(byId(tables, "c1")).toMatchObject({ project_id: "p1", section_id: "s2" });
+    expect(byId(tables, "c2")).toMatchObject({ project_id: "p1", section_id: null });
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("si el deshacer falla en varias actualizaciones, muestra un solo error", async () => {
+    const tables = seed();
+    useDb(tables, {
+      failUpdate: (_table, patch, ids) => patch.project_id === "p1" && (ids.includes("c1") || ids.includes("c2")),
+    });
+    await moveAndWait(new QueryClient());
+
+    act(() => pressUndoShortcut());
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    // La raíz sí se pudo devolver: una falla no frena las demás.
+    await waitFor(() => expect(byId(tables, "t1")?.project_id).toBe("p1"));
   });
 });
