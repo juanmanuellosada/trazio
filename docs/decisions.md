@@ -2120,3 +2120,21 @@ suavizarla, y queda registrada como el costo real de este acceso, no como un
 detalle técnico menor. Borrar es la excepción: una política de RLS lo
 bloquea para cualquier token que traiga el claim `client_id` de una conexión
 OAuth.
+
+## D64 — Las reglas del árbol de tareas viven solo en la aplicación; el trigger en la base queda pendiente
+
+**Fecha.** 2026-11-21
+
+**Contexto.** `tasks` forma un árbol por `parent_id` y cuelga de un proyecto por
+`project_id`, pero la base no impide un ciclo ni una subtarea en un proyecto
+distinto al de su padre. El cambio `integridad-del-arbol-de-tareas` cierra esos
+huecos sin migración, porque `git push` despliega el código pero no la base.
+
+**Decisión.** Las reglas "sin ciclos" y "una subtarea queda en el proyecto de su
+padre" se aplican únicamente en TypeScript: la interfaz (`lib/tasks/`) y el
+servidor MCP (`lib/mcp/tools/task-placement.ts`) comparten los mismos módulos.
+Un trigger en `tasks` que las valide queda como seguimiento pendiente.
+
+**Consecuencia.** Cualquier escritura que no pase por esos módulos puede romper
+las reglas, y los árboles ya dañados en producción no se reparan. Hasta que
+exista el trigger, una escritura nueva sobre `tasks` tiene que usar esos módulos.
