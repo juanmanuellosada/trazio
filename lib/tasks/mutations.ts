@@ -779,6 +779,7 @@ export function useBulkMoveTasks() {
       // de la base antes de mover nada: es lo que el deshacer necesita, y no
       // depende de qué listas tenga cargadas la interfaz.
       const previous: BulkMovePrevious = { roots: [], descendants: [] };
+      const descendantIdsByTask = new Map<string, string[]>();
       for (const task of tasks) {
         const { data, error } = await supabase
           .from("tasks")
@@ -789,6 +790,10 @@ export function useBulkMoveTasks() {
         previous.roots.push(data);
         if (task.projectId !== toProjectId) {
           const descendants = await fetchDescendants(supabase, task.id);
+          descendantIdsByTask.set(
+            task.id,
+            descendants.map((d) => d.id),
+          );
           previous.descendants.push(
             ...descendants.map(({ id, project_id, section_id }) => ({ id, project_id, section_id })),
           );
@@ -813,18 +818,16 @@ export function useBulkMoveTasks() {
           })
           .eq("id", task.id);
         if (error) throw error;
-      }
 
-      // Igual que `useMoveTask`: si cruza de proyecto, cascadea `project_id`
-      // a todo el subárbol (una tarea no puede quedar en un proyecto
-      // distinto del de su padre) — la selección múltiple solo ofrece
-      // casillero en tareas de primer nivel (bloque 7.10), así que una
-      // tarea movida en lote puede traer subtareas propias sin seleccionar.
-      await cascadeProjectToDescendants(
-        supabase,
-        previous.descendants.map((d) => d.id),
-        toProjectId,
-      );
+        // Igual que `useMoveTask`: si cruza de proyecto, cascadea `project_id`
+        // a todo el subárbol (una tarea no puede quedar en un proyecto
+        // distinto del de su padre) — la selección múltiple solo ofrece
+        // casillero en tareas de primer nivel (bloque 7.10), así que una
+        // tarea movida en lote puede traer subtareas propias sin seleccionar.
+        // Dentro del ciclo, justo después de su raíz: si una tarea posterior
+        // falla, las ya movidas no quedan separadas de sus subtareas.
+        await cascadeProjectToDescendants(supabase, descendantIdsByTask.get(task.id) ?? [], toProjectId);
+      }
 
       return previous;
     },

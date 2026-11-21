@@ -354,6 +354,29 @@ describe("useBulkMoveTasks — mover en lote con foto de la base (requirements d
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  it("si falla mover una tarea posterior del lote, las ya movidas conservan sus subtareas en el proyecto destino", async () => {
+    const tables = seed();
+    useDb(tables, { failUpdate: (_table, patch, ids) => patch.project_id === "p2" && ids.includes("other") });
+
+    const { result } = renderHook(() => useBulkMoveTasks(), { wrapper: wrapper(new QueryClient()) });
+    act(() => {
+      result.current.mutate({
+        tasks: [
+          { id: "t1", projectId: "p1" },
+          { id: "other", projectId: "p1" },
+        ],
+        toProjectId: "p2",
+        toSectionId: null,
+      });
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(byId(tables, "t1")?.project_id).toBe("p2");
+    expect(byId(tables, "c1")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId(tables, "c2")).toMatchObject({ project_id: "p2", section_id: null });
+    expect(byId(tables, "other")?.project_id).toBe("p1");
+  });
+
   it("si el deshacer falla en varias actualizaciones, muestra un solo error", async () => {
     const tables = seed();
     useDb(tables, {
