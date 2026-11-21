@@ -376,18 +376,28 @@ export function useMoveTask() {
   return useMutation({
     mutationKey: TASKS_MUTATION_KEY,
     mutationFn: async ({ id, fromProjectId, toProjectId, sectionId, parentId, position }: MoveTaskVariables) => {
+      // El proyecto de origen se lee de la base antes de mover: `fromProjectId`
+      // viene del caché de la interfaz y puede estar desactualizado.
+      const { data: current, error: currentError } = await supabase
+        .from("tasks")
+        .select("project_id")
+        .eq("id", id)
+        .single();
+      if (currentError) throw currentError;
+
       const { error } = await supabase
         .from("tasks")
         .update({ project_id: toProjectId, section_id: sectionId, parent_id: parentId, position })
         .eq("id", id);
       if (error) throw error;
 
-      if (fromProjectId !== toProjectId) {
+      if (current.project_id !== toProjectId || fromProjectId !== toProjectId) {
         // Las subtareas se leen de la base: el caché del proyecto de origen puede no estar cargado.
         const descendants = await fetchDescendants(supabase, id);
         await cascadeProjectToDescendants(
           supabase,
-          descendants.map((d) => d.id),
+          // Solo las que no están ya en el destino: la cascada les quita la sección.
+          descendants.filter((d) => d.project_id !== toProjectId).map((d) => d.id),
           toProjectId,
         );
       }

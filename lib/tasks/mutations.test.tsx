@@ -563,6 +563,43 @@ describe("useMoveTask — la cascada de proyecto lee de la base (requirement \"M
     expect(byId("c2")).toMatchObject({ project_id: "p2", section_id: null });
     expect(byId("other")).toMatchObject({ project_id: "p1", section_id: "s1" });
   });
+
+  it("arrastra las subtareas aunque la interfaz crea que la tarea ya está en el proyecto destino", async () => {
+    const tables: Record<string, DbRow[]> = {
+      tasks: [
+        { id: "t1", project_id: "p1", section_id: "s1", parent_id: null, position: 1000 },
+        { id: "c1", project_id: "p1", section_id: "s2", parent_id: "t1", position: 1000 },
+      ],
+    };
+    createClient.mockImplementation(() => fakeDb(tables));
+
+    const { result } = renderHook(() => useMoveTask(), { wrapper: wrapperFor(new QueryClient()) });
+    act(() => {
+      // `fromProjectId` viene del caché y está desactualizado: en la base la tarea sigue en p1.
+      result.current.mutate({ id: "t1", fromProjectId: "p2", toProjectId: "p2", sectionId: null, parentId: null, position: 1000 });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(tables.tasks.find((t) => t.id === "c1")).toMatchObject({ project_id: "p2", section_id: null });
+  });
+
+  it("mover dentro del mismo proyecto no toca la sección de las subtareas", async () => {
+    const tables: Record<string, DbRow[]> = {
+      tasks: [
+        { id: "t1", project_id: "p1", section_id: "s1", parent_id: null, position: 1000 },
+        { id: "c1", project_id: "p1", section_id: "s2", parent_id: "t1", position: 1000 },
+      ],
+    };
+    createClient.mockImplementation(() => fakeDb(tables));
+
+    const { result } = renderHook(() => useMoveTask(), { wrapper: wrapperFor(new QueryClient()) });
+    act(() => {
+      result.current.mutate({ id: "t1", fromProjectId: "p1", toProjectId: "p1", sectionId: "s3", parentId: null, position: 2000 });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(tables.tasks.find((t) => t.id === "c1")).toMatchObject({ project_id: "p1", section_id: "s2" });
+  });
 });
 
 describe("useReplaceTaskLabels — reemplazar por diferencia (requirement \"Reemplazar las etiquetas nunca quita las que se conservan\")", () => {
