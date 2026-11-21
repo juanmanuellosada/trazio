@@ -78,7 +78,7 @@ combinación inválida se rechaza con un mensaje que dice qué campo corregir; n
 se corrige sola, para que el asistente no mueva tareas sin pedirlo.
 
 `crear_tarea` con `parent_id`: la tarea hereda el `project_id` del padre y
-queda sin sección. Si el texto o `project_id` indican otro proyecto, se
+queda sin sección, salvo que se indique una de ese proyecto. Si el texto o `project_id` indican otro proyecto, se
 rechaza. Hoy una subtarea creada sin proyecto cae en la Bandeja de entrada,
 lejos de su padre.
 

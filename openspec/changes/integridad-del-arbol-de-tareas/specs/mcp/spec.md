@@ -46,14 +46,21 @@ el proyecto nuevo y sin sección cuando cambia su `project_id`.
 ### Requirement: `crear_tarea` con padre hereda el proyecto del padre
 
 Cuando `crear_tarea` recibe `parent_id`, la tarea SHALL crearse en el proyecto
-de la tarea padre y sin sección. Si el texto o `project_id` indican un
-proyecto distinto, la llamada SHALL rechazarse.
+de la tarea padre. Si el texto o `project_id` indican un proyecto distinto, la
+llamada SHALL rechazarse. La tarea SHALL quedar sin sección salvo que se
+indique una, que SHALL pertenecer al proyecto del padre.
 
 #### Scenario: Subtarea sin proyecto indicado
 
 - **WHEN** se invoca `crear_tarea` con `parent_id` de una tarea del proyecto
   `Casa`, sin `project_id` ni `#proyecto` en el texto
 - **THEN** la tarea SHALL crearse en `Casa`, como subtarea de esa tarea
+
+#### Scenario: Subtarea con sección indicada
+
+- **WHEN** se invoca `crear_tarea` con `parent_id` de una tarea del proyecto
+  `Casa` y `section_id` de una sección de `Casa`
+- **THEN** la tarea SHALL crearse en esa sección
 
 #### Scenario: Proyecto en conflicto con el padre
 
