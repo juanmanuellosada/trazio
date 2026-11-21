@@ -16,7 +16,8 @@ type ProjectCopySource = {
  * Duplica un proyecto (`duplicar-un-proyecto`): el proyecto en sí, sus
  * secciones con su descripción, y sus tareas pendientes con subtareas y
  * etiquetas, reusando `duplicateTaskTree` (`lib/tasks/duplicate.ts`) una vez
- * por tarea raíz — no se reescribe la copia de tareas, que ya está probada.
+ * por tarea raíz — no se reescribe la copia de tareas ni la de etiquetas, que
+ * ya están probadas ahí.
  *
  * Lo que NUNCA copia (D-B del design): tareas completadas (se filtran acá,
  * antes de llamar a `duplicateTaskTree`, no después — 1.3 de tasks.md),
@@ -106,32 +107,12 @@ export async function duplicateProject(
     .order("position", { ascending: true });
   if (rootTasksError) throw rootTasksError;
 
-  const taskIdMap = new Map<string, string>();
   for (const task of (rootTasks ?? []) as { id: string; section_id: string | null; position: number }[]) {
     const newSectionId = task.section_id ? (sectionIdMap.get(task.section_id) ?? null) : null;
     await duplicateTaskTree(supabase, task.id, task.position, {
       projectId: newProjectId,
       sectionId: newSectionId,
-      onCopied: (oldId, newId) => taskIdMap.set(oldId, newId),
     });
-  }
-
-  const oldTaskIds = [...taskIdMap.keys()];
-  if (oldTaskIds.length > 0) {
-    const { data: labelLinks, error: labelLinksError } = await supabase
-      .from("task_labels")
-      .select("task_id, label_id")
-      .in("task_id", oldTaskIds);
-    if (labelLinksError) throw labelLinksError;
-
-    const newLabelLinks = ((labelLinks ?? []) as { task_id: string; label_id: string }[])
-      .map((link) => ({ task_id: taskIdMap.get(link.task_id), label_id: link.label_id, user_id: userId }))
-      .filter((link): link is { task_id: string; label_id: string; user_id: string } => link.task_id != null);
-
-    if (newLabelLinks.length > 0) {
-      const { error: insertLabelsError } = await supabase.from("task_labels").insert(newLabelLinks);
-      if (insertLabelsError) throw insertLabelsError;
-    }
   }
 
   return newProjectId;

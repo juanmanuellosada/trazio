@@ -139,7 +139,8 @@ Tiptap en una columna `jsonb`.
 ### Requirement: Duplicar una tarea
 
 Al duplicar una tarea, la copia SHALL incluir los campos propios de la tarea
-original y SHALL incluir sus subtareas, copiadas recursivamente. La copia NUNCA
+original y SHALL incluir sus subtareas, copiadas recursivamente. La copia SHALL
+incluir las etiquetas de la tarea y las de cada subtarea. La copia NUNCA
 SHALL heredar `completed_at`: nace pendiente. La copia NUNCA SHALL heredar la
 fecha de creación original. El título de la copia SHALL ser idéntico al de la
 tarea original, sin ningún sufijo agregado (nunca "(copia)"). La copia SHALL
@@ -153,6 +154,14 @@ contexto.
 - **THEN** la copia tiene el mismo título, la misma descripción, la misma
   prioridad y la misma fecha de vencimiento
 - **AND** la copia tiene dos subtareas propias, equivalentes a las de la
+  original
+
+#### Scenario: Duplicar copia las etiquetas de la tarea y de sus subtareas
+
+- **WHEN** se duplica una tarea que tiene etiquetas y una subtarea que también
+  tiene etiquetas
+- **THEN** la copia tiene las mismas etiquetas que la tarea original
+- **AND** la subtarea de la copia tiene las mismas etiquetas que la subtarea
   original
 
 #### Scenario: La copia nace pendiente y sin la fecha de creación original

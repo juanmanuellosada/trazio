@@ -36,15 +36,10 @@ type FullTask = {
  * criterio que ya usa `useMoveTask` al cruzar de proyecto (cascada
  * `section_id: null`, `lib/tasks/mutations.ts`): una sección no tiene
  * sentido para una subtarea fuera de su proyecto de origen.
- *
- * `onCopied` deja que el llamador arme un mapa id-viejo → id-nuevo de todo
- * el subárbol (raíz incluida) sin repetir el recorrido: `duplicar-un-
- * proyecto` lo usa para copiar las etiquetas de cada tarea después.
  */
 export type DuplicateTaskTreeOptions = {
   projectId?: string;
   sectionId?: string | null;
-  onCopied?: (oldId: string, newId: string) => void;
 };
 
 /**
@@ -53,7 +48,9 @@ export type DuplicateTaskTreeOptions = {
  * (sin `completed_at`), con su propia `created_at` (no se copia: la deja
  * `default now()` el insert) y sin sufijo en el título. `rootPosition` la
  * ubica en el llamador (`positionAfterOriginal`, `lib/tasks/tree.ts`), acá
- * solo se copian filas.
+ * solo se copian filas. Las etiquetas (`task_labels`) de la raíz y de cada
+ * subtarea se copian al final, así que todo llamador las recibe sin repetir
+ * esa lógica.
  *
  * Recorre el subárbol en anchura e inserta de a un nodo por vez, en vez de
  * un insert masivo por nivel: así el `id` nuevo de cada copia se conoce
@@ -74,6 +71,7 @@ export async function duplicateTaskTree(
   type QueueItem = { source: FullTask; newParentId: string | null; position: number };
   const queue: QueueItem[] = [{ source: root, newParentId: null, position: rootPosition }];
   let newRootId: string | null = null;
+  const idMap = new Map<string, string>();
 
   while (queue.length > 0) {
     const { source, newParentId, position } = queue.shift()!;
@@ -102,11 +100,40 @@ export async function duplicateTaskTree(
     if (error) throw error;
 
     newRootId ??= data.id;
-    options?.onCopied?.(source.id, data.id);
+    idMap.set(source.id, data.id);
 
     for (const child of subtree.filter((t) => t.parent_id === source.id)) {
       queue.push({ source: child, newParentId: data.id, position: child.position });
     }
+  }
+
+  try {
+    const { data: labelLinks, error: labelLinksError } = await supabase
+      .from("task_labels")
+      .select("task_id, label_id")
+      .in("task_id", [...idMap.keys()]);
+    if (labelLinksError) throw labelLinksError;
+
+    const newLabelLinks = ((labelLinks ?? []) as { task_id: string; label_id: string }[]).map((link) => ({
+      task_id: idMap.get(link.task_id)!,
+      label_id: link.label_id,
+      user_id: root.user_id,
+    }));
+    if (newLabelLinks.length > 0) {
+      const { error: insertLabelsError } = await supabase.from("task_labels").insert(newLabelLinks);
+      if (insertLabelsError) throw insertLabelsError;
+    }
+  } catch (error) {
+    // Compensación: una copia sin etiquetas no debe quedar persistida (un
+    // reintento crearía una segunda). Borrar la raíz arrastra las subtareas
+    // (`tasks.parent_id` es `on delete cascade`). Si el borrado también
+    // falla, igual sube el error original.
+    try {
+      await supabase.from("tasks").delete().eq("id", newRootId!);
+    } catch {
+      // Se ignora a propósito: el error que importa es el original.
+    }
+    throw error;
   }
 
   return newRootId!;
